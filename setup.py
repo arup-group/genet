@@ -15,10 +15,11 @@ setup(
     packages=find_packages(),
     python_requires='>=3.7',
     install_requires=[
-            'networkx',
-            's2sphere',
-            'coverage',
-            'pytest',
-            'pytest-mock'
-        ],
+        'networkx',
+        's2sphere',
+        'pyproj',
+        'pytest-cov',
+        'pytest',
+        'pytest-mock',
+    ],
 )
