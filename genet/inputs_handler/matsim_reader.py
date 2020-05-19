@@ -23,7 +23,7 @@ def read_network(network_path, TRANSFORMER):
                 # update old link by link attributes (osm tags etc.)
                 if link_attribs:
                     # if multiple edges, add to the one added most recently
-                    g[u][v][len(g[u][v])]['attributes'] = link_attribs
+                    g[u][v][len(g[u][v])-1]['attributes'] = link_attribs
 
                 attribs = elem.attrib
                 link_id_mapping[attribs['id']] = {

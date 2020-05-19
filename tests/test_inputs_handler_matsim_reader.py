@@ -5,6 +5,7 @@ from genet.inputs_handler import matsim_reader
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "network.xml"))
+pt2matsim_network_multiple_edges_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "network_multiple_edges.xml"))
 
 
 def dict_with_lists_are_equal(d1, d2):
@@ -43,4 +44,44 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
         assert edge in edges
         dict_with_lists_are_equal(data, edges[edge])
 
-    print('')
+
+def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_nodes_and_edges():
+    nodes = {'5221390302696205321': {"id": "21667818", "x": "528504.1342843144", "y": "182155.7435136598"},
+             '5221390301001263407': {"id": "25508485", "x": "528489.467895946", "y": "182206.20303669578"}}
+
+    edges = {'5221390301001263407_5221390302696205321': {
+        0: {
+            'id': "1", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
+            'freespeed': "4.166666666666667", 'capacity': "600.0", 'permlanes': "1.0", 'oneway': "1",
+            'modes': ['walk', 'car'], 'attributes': {
+                'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
+                'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
+                'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
+                'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}}
+            },
+        1: {
+            'id': "2", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
+            'freespeed': "4.166666666666667", 'capacity': "600.0", 'permlanes': "1.0", 'oneway': "1",
+            'modes': ['bus'], 'attributes': {
+                'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '1'},
+                'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
+                'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
+                'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'},
+                'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'},
+                'osm:relation:route': {'class': 'java.lang.String', 'name': 'osm:relation:route', 'text': 'bus,bicycle'}
+        }
+        }}}
+
+    transformer = Transformer.from_proj(Proj(init='epsg:27700'), Proj(init='epsg:4326'))
+
+    g, node_id_mapping, link_id_mapping = matsim_reader.read_network(pt2matsim_network_multiple_edges_test_file, transformer)
+
+    for u, data in g.nodes(data=True):
+        assert str(u) in nodes
+        assert data == nodes[str(u)]
+
+    for edge in g.edges:
+        e = '{}_{}'.format(edge[0], edge[1])
+        assert e in edges
+        assert edge[2] in edges[e]
+        dict_with_lists_are_equal(g[edge[0]][edge[1]][edge[2]], edges[e][edge[2]])
