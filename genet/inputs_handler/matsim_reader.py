@@ -26,6 +26,7 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
             if elem.tag == 'node':
                 attribs = elem.attrib
                 lon, lat = spatial.change_proj(attribs['x'], attribs['y'], TRANSFORMER)
+                attribs['lon'], attribs['lat'] = lon, lat
                 node_id = spatial.grab_index_s2(lat, lon)
                 node_id_mapping[attribs['id']] = node_id
                 g.add_node(node_id, **attribs)
@@ -96,7 +97,7 @@ def read_schedule(schedule_path, TRANSFORMER):
         schedule[transitLine['transitLine']['id']] = []
         for transitRoute, transitRoute_val in transitRoutes.items():
             stops = [s['stop']['refId'] for s in transitRoute_val['stops']]
-            s2_stops = [transit_stop_id_mapping[s['stop']['refId']]['node_id'] for s in transitRoute_val['stops']]
+            s2_stops = [transit_stop_id_mapping[s['stop']['refId']]['s2_node_id'] for s in transitRoute_val['stops']]
 
             arrival_offsets = []
             departure_offsets = []

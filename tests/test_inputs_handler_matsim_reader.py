@@ -24,10 +24,10 @@ def dict_with_lists_are_equal(d1, d2):
 
 
 def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
-    nodes = {'5221390302696205321': {"id": "21667818", "x": "528504.1342843144", "y": "182155.7435136598"},
-             '5221390301001263407': {"id": "25508485", "x": "528489.467895946", "y": "182206.20303669578"}}
+    correct_nodes = {'5221390302696205321': {'id': '21667818', 'x': '528504.1342843144', 'y': '182155.7435136598', 'lon': -0.14910908709500162, 'lat': 51.52370573323939},
+             '5221390301001263407': {'id': '25508485', 'x': '528489.467895946', 'y': '182206.20303669578', 'lon': -0.14930198709481451, 'lat': 51.524162533239284}}
 
-    edges = {'5221390301001263407_5221390302696205321': {
+    correct_edges = {'5221390301001263407_5221390302696205321': {
         'id': "1", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
         'freespeed': "4.166666666666667", 'capacity': "600.0", 'permlanes': "1.0", 'oneway': "1",
         'modes': ['subway,metro', 'walk', 'car'], 'attributes': {
@@ -42,18 +42,18 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
     g, node_id_mapping, link_id_mapping = matsim_reader.read_network(pt2matsim_network_test_file, transformer)
 
     for u, data in g.nodes(data=True):
-        assert str(u) in nodes
-        assert data == nodes[str(u)]
+        assert str(u) in correct_nodes
+        assert data == correct_nodes[str(u)]
 
     for u, v, data in g.edges(data=True):
         edge = '{}_{}'.format(u,v)
-        assert edge in edges
-        dict_with_lists_are_equal(data, edges[edge])
+        assert edge in correct_edges
+        dict_with_lists_are_equal(data, correct_edges[edge])
 
 
 def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_nodes_and_edges():
-    correct_nodes = {'5221390302696205321': {"id": "21667818", "x": "528504.1342843144", "y": "182155.7435136598"},
-             '5221390301001263407': {"id": "25508485", "x": "528489.467895946", "y": "182206.20303669578"}}
+    correct_nodes = {'5221390302696205321': {'id': '21667818', 'x': '528504.1342843144', 'y': '182155.7435136598', 'lon': -0.14910908709500162, 'lat': 51.52370573323939},
+             '5221390301001263407': {'id': '25508485', 'x': '528489.467895946', 'y': '182206.20303669578', 'lon': -0.14930198709481451, 'lat': 51.524162533239284}}
 
     correct_edges = {'5221390301001263407_5221390302696205321': {
         0: {
