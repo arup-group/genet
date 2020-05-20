@@ -25,17 +25,18 @@ class Network:
             self.schedule.summarise()
         )
 
-    def nodes(self, node=None):
-        if node is None:
+    def nodes(self, node_id=None):
+        if node_id is None:
             return self.graph.nodes
         else:
-            return self.graph.nodes[node]
+            return self.graph.nodes[node_id]
 
-    def edges(self, u=None, v=None):
-        if (u is None) and (v is None):
-            return self.graph[u][v]
+    def edges(self, link_id=None):
+        if link_id is None:
+            return self.link_id_mapping.keys()
         else:
-            return self.graph[u][v]
+            u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
+            return dict(self.graph[u][v])
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg

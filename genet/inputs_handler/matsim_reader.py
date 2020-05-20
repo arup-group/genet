@@ -12,8 +12,8 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
     :param TRANSFORMER: pyproj crs transformer
     :return: g (nx.MultiDiGraph representing the multimodal network),
         node_id_mapping (dict {matsim network node ids : s2 spatial ids}),
-        link_id_mapping (dict {matsim network link ids : {'from': s2 spatial ids from node, ,'to': s2 spatial ids to
-        node, 's2_id' : string: '{}_{}'.format(from, to)}})
+        link_id_mapping (dict {matsim network link ids : {'from': matsim id from node, ,'to': matsim id to
+        node, 's2_from' : s2 spatial ids from node, 's2_to': s2 spatial ids to node}})
     """
     g = nx.MultiDiGraph()
 
@@ -28,8 +28,9 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
                 lon, lat = spatial.change_proj(attribs['x'], attribs['y'], TRANSFORMER)
                 attribs['lon'], attribs['lat'] = lon, lat
                 node_id = spatial.grab_index_s2(lat, lon)
+                attribs['s2_id'] = node_id
                 node_id_mapping[attribs['id']] = node_id
-                g.add_node(node_id, **attribs)
+                g.add_node(attribs['id'], **attribs)
             elif elem.tag == 'link':
                 # update old link by link attributes (osm tags etc.)
                 if link_attribs:
@@ -37,10 +38,13 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
                     g[u][v][len(g[u][v])-1]['attributes'] = link_attribs
 
                 attribs = elem.attrib
+                attribs['s2_from'] = node_id_mapping[attribs['from']]
+                attribs['s2_to'] = node_id_mapping[attribs['to']]
                 link_id_mapping[attribs['id']] = {
-                    'from': node_id_mapping[attribs['from']],
-                    'to': node_id_mapping[attribs['to']],
-                    's2_id': '{}_{}'.format(node_id_mapping[attribs['from']], node_id_mapping[attribs['to']])
+                    'from': attribs['from'],
+                    'to': attribs['to'],
+                    's2_from': attribs['s2_from'],
+                    's2_to': attribs['s2_to']
                 }
                 attribs['modes'] = read_modes(attribs['modes'])
 
