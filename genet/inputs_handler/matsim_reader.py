@@ -1,10 +1,20 @@
 import networkx as nx
 import xml.etree.cElementTree as ET
+from pyproj import Transformer
 from genet.utils import spatial
 from genet.variables import MODE_TYPES_MAP
 
 
-def read_network(network_path, TRANSFORMER):
+def read_network(network_path, TRANSFORMER: Transformer.from_proj):
+    """
+    Read MATSim network
+    :param network_path: path to the network.xml file
+    :param TRANSFORMER: pyproj crs transformer
+    :return: g (nx.MultiDiGraph representing the multimodal network),
+        node_id_mapping (dict {matsim network node ids : s2 spatial ids}),
+        link_id_mapping (dict {matsim network link ids : {'from': s2 spatial ids from node, ,'to': s2 spatial ids to
+        node, 's2_id' : string: '{}_{}'.format(from, to)}})
+    """
     g = nx.MultiDiGraph()
 
     node_id_mapping = {}
@@ -61,12 +71,32 @@ def read_modes(modes_string):
     return list(modes)
 
 
-def read_schedule(schedule_path, link_id_mapping, TRANSFORMER):
+def read_schedule(schedule_path, TRANSFORMER):
+    """
+    Read MATSim schedule
+    :param schedule_path: path to the schedule.xml file
+    :param TRANSFORMER: pyproj crs transformer
+    :return: schedule (dict {service_id : list(of unique route services, each is a dict
+    {   'route_short_name': string,
+        'mode': string,
+        'stops': list,
+        'route': ['1'],
+        'trips': {'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+        'arrival_offsets': ['00:00:00', '00:02:00'],
+        'departure_offsets': ['00:00:00', '00:02:00'] }
+    )}),
+        transit_stop_id_mapping (dict {
+        matsim schedule transit stop id : dict {
+            'node_id' : s2 spatial id,
+            'attribs' : dict of matsim schedule attributes attached to that transit stop
+        }})
+    """
     def write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode):
         mode = transportMode['transportMode']
         schedule[transitLine['transitLine']['id']] = []
         for transitRoute, transitRoute_val in transitRoutes.items():
-            stops = [transit_stop_id_mapping[s['stop']['refId']]['node_id'] for s in transitRoute_val['stops']]
+            stops = [s['stop']['refId'] for s in transitRoute_val['stops']]
+            s2_stops = [transit_stop_id_mapping[s['stop']['refId']]['node_id'] for s in transitRoute_val['stops']]
 
             arrival_offsets = []
             departure_offsets = []
@@ -83,52 +113,7 @@ def read_schedule(schedule_path, link_id_mapping, TRANSFORMER):
                     arrival_offsets.append(stop['stop']['arrivalOffset'])
                     departure_offsets.append(stop['stop']['departureOffset'])
 
-            # build up the pt routing dict
-            i = 0
-            pt_route = []
-            pt_routing_link_dict = {}
-            transit_stops_ids = [s['stop']['refId'] for s in transitRoute_val['stops']]
-            for link in transitRoute_val['links']:
-                link_id = link['link']['refId']
-                prev_stop = transitStops[transit_stops_ids[i]]['linkRefId']
-                next_stop = transitStops[transit_stops_ids[i + 1]]['linkRefId']
-
-                if link_id != next_stop:
-                    pt_route.append(link_id)
-                else:
-                    pt_route.append(link_id)
-                    pt_routing_link_dict[
-                        (transit_stop_id_mapping[transit_stops_ids[i]]['node_id'],
-                         transit_stop_id_mapping[transit_stops_ids[i + 1]]['node_id'],
-                         mode)] = pt_route
-                    pt_route = [link_id]
-                    i += 1
-                    if i < len(transit_stops_ids) - 1:
-                        prev_stop = transitStops[transit_stops_ids[i]]['linkRefId']
-                        next_stop = transitStops[transit_stops_ids[i + 1]]['linkRefId']
-                        if prev_stop == next_stop:
-                            pt_routing_link_dict[
-                                (transit_stop_id_mapping[transit_stops_ids[i]]['node_id'],
-                                 transit_stop_id_mapping[transit_stops_ids[i + 1]]['node_id'],
-                                 mode)] = pt_route.copy()
-                            i += 1
-            # convert the linkid pt route to node based as travered in the graph
-            for key, val in pt_routing_link_dict.items():
-                pt_route = []
-                for link_id in val:
-                    link = link_id_mapping[link_id]
-                    link_from_n, link_to_n = link['from'], link['to']
-                    if pt_route:
-                        if pt_route[-1] != link_from_n:
-                            pt_route.append(link_from_n)
-                        if pt_route[-1] != link_to_n:
-                            pt_route.append(link_to_n)
-                    else:
-                        pt_route.append(link_from_n)
-                        if link_from_n != link_to_n:
-                            pt_route.append(link_to_n)
-
-                pt_routing_dict[key] = pt_route
+            route = [r_val['link']['refId'] for r_val in transitRoute_val['links']]
 
             trips = {}
             for dep in transitRoute_val['departure_list']:
@@ -138,6 +123,8 @@ def read_schedule(schedule_path, link_id_mapping, TRANSFORMER):
                 'route_short_name': transitLine['transitLine']['name'],
                 'mode': mode,
                 'stops': stops,
+                's2_stops': s2_stops,
+                'route': route,
                 'trips': trips,
                 'arrival_offsets': arrival_offsets,
                 'departure_offsets': departure_offsets
@@ -145,7 +132,6 @@ def read_schedule(schedule_path, link_id_mapping, TRANSFORMER):
             schedule[transitLine['transitLine']['id']].append(d)
 
     schedule = {}
-    pt_routing_dict = {}
     transitLine = {}
     transitRoutes = {}
     transportMode = {}
@@ -163,7 +149,7 @@ def read_schedule(schedule_path, link_id_mapping, TRANSFORMER):
                     attribs = elem.attrib
                     lon, lat = spatial.change_proj(attribs['x'], attribs['y'], TRANSFORMER)
                     node_id = spatial.grab_index_s2(lat, lon)
-                    transit_stop_id_mapping[attribs['id']] = {'node_id': node_id, 'attribs': attribs}
+                    transit_stop_id_mapping[attribs['id']] = {'s2_node_id': node_id, 'attribs': attribs}
             if elem.tag == 'transitLine':
                 if transitLine:
                     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
@@ -201,83 +187,4 @@ def read_schedule(schedule_path, link_id_mapping, TRANSFORMER):
     # add the last one
     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
 
-    return schedule, pt_routing_dict, transit_stop_id_mapping
-
-
-def update_transit_stops(transit_stop_id_mapping, link_id_mapping):
-    dict_to_return = {}
-
-    for transit_stop_id, transit_stop_id_val in transit_stop_id_mapping.items():
-        attribs = transit_stop_id_val['attribs']
-        attribs['id'] = str(transit_stop_id_val['node_id'])
-        try:
-            attribs['linkRefId'] = link_id_mapping[attribs['linkRefId']]['puma_id']
-            dict_to_return[transit_stop_id_val['node_id']] = attribs
-        except KeyError:
-            dict_to_return[transit_stop_id_val['node_id']] = attribs
-
-    return dict_to_return
-
-#
-# if __name__ == '__main__':
-#     arg_parser = argparse.ArgumentParser(description='Read MATSim network into puma-ish objects')
-#
-#     arg_parser.add_argument('-n',
-#                             '--network',
-#                             help='Input MATSim network',
-#                             required=False)
-#
-#     arg_parser.add_argument('-s',
-#                             '--schedule',
-#                             help='Input MATSim schedule',
-#                             required=False)
-#
-#     arg_parser.add_argument('-p',
-#                             '--projection',
-#                             help='EPSG projection of the inputs',
-#                             default='epsg:27700',
-#                             required=False)
-#
-#     arg_parser.add_argument('-c',
-#                             '--config',
-#                             help='Config for puma. Look at the default config: src/configs/default_config.yml',
-#                             default=os.path.abspath(os.path.join(os.path.dirname(__file__),
-#                                                                  '../configs/default_config.yml')))
-#
-#     arg_parser.add_argument('-o',
-#                             '--output_dir',
-#                             help='Output directory',
-#                             required=True)
-#
-#     args = vars(arg_parser.parse_args())
-#     network_path = args['network']
-#     schedule_path = args['schedule']
-#     config = Config(args['config'])
-#     output_dir = args['output_dir']
-#     persistence.ensure_dir(output_dir)
-#     TRANSFORMER = Transformer.from_proj(Proj(init=args['projection']), Proj(init='epsg:4326'))
-#
-#     if network_path:
-#         network, node_id_mapping, link_id_mapping = read_network(network_path, TRANSFORMER)
-#
-#     if schedule_path:
-#         if not network_path:
-#             raise RuntimeError('You need the network to understand the PT routes')
-#         schedule, pt_routing_dict, transit_stop_id_mapping = read_schedule(
-#             schedule_path,
-#             link_id_mapping,
-#             TRANSFORMER)
-#
-#         osm_indexing_tree = tree_operations.build_s2_indexing_tree(network.edges, {})
-#
-#         transit_stops = update_transit_stops(transit_stop_id_mapping, link_id_mapping)
-#
-#         matsim_xml_writer.write_to_matsim_xmls(
-#             output_dir,
-#             osm_indexing_tree,
-#             transit_stops,
-#             pt_routing_dict,
-#             schedule,
-#             config,
-#             re_write=True
-#         )
+    return schedule, transit_stop_id_mapping
