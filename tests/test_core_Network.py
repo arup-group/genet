@@ -9,7 +9,10 @@ pt2matsim_network_test_file = os.path.abspath(os.path.join(os.path.dirname(__fil
 pt2matsim_schedule_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "schedule.xml"))
 
 
-def test_Network_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):
+
+
+
+def test_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):
     mocker.patch.object(matsim_reader, 'read_network', return_value = (1,2,3))
 
     network = Network()
@@ -18,7 +21,7 @@ def test_Network_read_matsim_network_delegates_to_matsim_reader_read_network(moc
     matsim_reader.read_network.assert_called_once_with(pt2matsim_network_test_file, network.transformer)
 
 
-def test_Network_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_epsg_from_earlier_network_run(mocker):
+def test_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_epsg_from_earlier_network_run(mocker):
     mocker.patch.object(Schedule, 'read_matsim_schedule')
     network = Network()
     network.read_matsim_network(pt2matsim_network_test_file, 'epsg:27700')
@@ -27,7 +30,7 @@ def test_Network_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_e
     Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file, 'epsg:27700')
 
 
-def test_Network_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_given_epsg_independent_of_network(mocker):
+def test_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_given_epsg_independent_of_network(mocker):
     mocker.patch.object(Schedule, 'read_matsim_schedule')
     network = Network()
     network.read_matsim_schedule(pt2matsim_schedule_file, 'epsg:27700')
@@ -35,7 +38,7 @@ def test_Network_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_g
     Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file, 'epsg:27700')
 
 
-def test_Network_read_matsim_schedule_when_asked_to_use_different_epsg_than_stored(mocker):
+def test_read_matsim_schedule_when_asked_to_use_different_epsg_than_stored():
     network = Network()
     network.epsg = 'blop'
 

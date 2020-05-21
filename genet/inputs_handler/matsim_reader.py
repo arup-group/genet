@@ -85,6 +85,7 @@ def read_schedule(schedule_path, TRANSFORMER):
     {   'route_short_name': string,
         'mode': string,
         'stops': list,
+        's2_stops' : stops list indexed by s2sphere
         'route': ['1'],
         'trips': {'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
         'arrival_offsets': ['00:00:00', '00:02:00'],
@@ -153,8 +154,10 @@ def read_schedule(schedule_path, TRANSFORMER):
                 if attribs['id'] not in transit_stop_id_mapping:
                     attribs = elem.attrib
                     lon, lat = spatial.change_proj(attribs['x'], attribs['y'], TRANSFORMER)
+                    attribs['lon'], attribs['lat'] = lon, lat
                     node_id = spatial.grab_index_s2(lat, lon)
-                    transit_stop_id_mapping[attribs['id']] = {'s2_node_id': node_id, 'attribs': attribs}
+                    attribs['s2_node_id'] = node_id
+                    transit_stop_id_mapping[attribs['id']] = attribs
             if elem.tag == 'transitLine':
                 if transitLine:
                     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)

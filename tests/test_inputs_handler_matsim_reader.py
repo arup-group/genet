@@ -107,9 +107,18 @@ def test_read_schedule_reads_the_data_correctly():
         'arrival_offsets': ['00:00:00', '00:02:00'],
         'departure_offsets': ['00:00:00', '00:02:00']}]}
 
+    correct_stops = {'26997928P':
+                         {'id': '26997928P', 'x': '528464.1342843144', 'y': '182179.7435136598',
+                          'name': 'Brunswick Place (Stop P)', 'isBlocking': 'false', 'lon': -0.14967658860132668,
+                          'lat': 51.52393050617373, 's2_node_id': 5221390302759871369},
+                     '26997928P.link:1': {'id': '26997928P.link:1', 'x': '528464.1342843144', 'y': '182179.7435136598',
+                                          'linkRefId': '1', 'name': 'Brunswick Place (Stop P)', 'isBlocking': 'false',
+                                          'lon': -0.14967658860132668, 'lat': 51.52393050617373,
+                                          's2_node_id': 5221390302759871369}}
+
     transformer = Transformer.from_proj(Proj(init='epsg:27700'), Proj(init='epsg:4326'))
 
-    g, node_id_mapping, link_id_mapping = matsim_reader.read_network(pt2matsim_network_test_file, transformer)
-    schedule, transit_stop_id_mapping = matsim_reader.read_schedule(pt2matsim_schedule_file, transformer)
+    schedule, stops = matsim_reader.read_schedule(pt2matsim_schedule_file, transformer)
 
     dict_with_lists_are_equal(schedule, correct_schedule)
+    dict_with_lists_are_equal(stops, correct_stops)

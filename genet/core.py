@@ -22,8 +22,17 @@ class Network:
             self.__class__.__name__,
             id(self),
             nx.info(self.graph),
-            self.schedule.summarise()
+            self.schedule.info()
         )
+
+    def __str__(self):
+        return self.info()
+
+    def print(self):
+        return self.info()
+
+    def info(self):
+        pass
 
     def nodes(self, node_id=None):
         if node_id is None:
@@ -70,13 +79,40 @@ class SpatialTree(nx.DiGraph):
 
 
 class Schedule():
-    def __init__(self, services=None):
+    """
+    Takes services and stops in the correct format and provides method and structure for transit schedules
+
+    Parameters
+    ----------
+    :param services:
+        {'service_id : list(of unique route services, each is a dict
+                      {'route_short_name': string,
+                       'mode': string,
+                       'stops': list,
+        # optional     'route': list of network links,
+                       'trips': {'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+                       'arrival_offsets': ['00:00:00', '00:02:00'],
+                       'departure_offsets': ['00:00:00', '00:02:00'] }
+         )})
+    :param stops: spatial information for the transit stops, at least x,y attributes
+        {'stop_id'  (which feature in services stops lists) : {'x': float, 'y': float x,y in given epsg}
+        }
+    :param epsg: 'epsg:12345'
+    """
+    def __init__(self, services: dict = None, stops: dict = None, epsg = ''):
         super().__init__()
-        if services is None:
+        if (services is None) and (stops is None):
             self.services = {}
+            self.stops = {}
+        elif (services is None) and (stops is not None):
+            raise AssertionError('{} expects all or none of the attributes'.format(self.__class__.__name__))
+        elif (services is not None) and (stops is None):
+            raise AssertionError('You need to provide spatial information for the stops')
         else:
+            assert epsg != '', 'You need to specify the coordinate system for the schedule'
             self.services = services
-        self.epsg = ''
+            self.stops = stops
+        self.epsg = epsg
         self.transformer = ''
 
     def __getitem__(self, service_id):
@@ -92,12 +128,37 @@ class Schedule():
             len(self))
 
     def __str__(self):
-        return self.summarise()
+        return self.info()
 
     def __len__(self):
         return len(self.services)
 
-    def services(self):
+    def __add__(self, other):
+        """
+        takes the services dictionary and adds them to the current
+        services stored in the Schedule. Have to be separable!
+        I.e. the keys in services cannot overlap with the ones already
+        existing (TODO)
+        :param services: (see tests for the dict schema)
+        :return:
+        """
+        if not self.is_separable_from(other):
+            raise NotImplementedError('This method only supports adding non overlapping services.')
+        elif self.epsg != other.epsg:
+            raise RuntimeError('You are merging two schedules with different coordinate systems.')
+        else:
+            return self.__class__({**self.services, **other.services}, stops={**self.stops, **other.stops}, epsg=self.epsg)
+
+    def is_separable_from(self, other):
+        return set(other.services.keys()) & set(self.services.keys()) == set()
+
+    def print(self):
+        return self.info()
+
+    def info(self):
+        return 'Number of services: {}\nNumber of unique routes: {}'.format(self.__len__(), self.number_of_routes())
+
+    def service_ids(self):
         return list(self.services.keys())
 
     def routes(self):
@@ -108,11 +169,15 @@ class Schedule():
             for route in service:
                 yield service_id, route
 
-    def stops(self):
+    def number_of_routes(self):
+        return len([r for id, r in self.routes()])
+
+    def iter_stops(self):
         """
         Iterator for stops in the schedule, returns ...
         """
-        pass
+        for stop_id, attribs in self.stops.items():
+            yield stop_id, attribs
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
@@ -120,22 +185,4 @@ class Schedule():
 
     def read_matsim_schedule(self, path, epsg):
         self.initiate_crs_transformer(epsg)
-        schedule, self.transit_stop_id_mapping = matsim_reader.read_schedule(path, self.transformer)
-        self.add_services(schedule)
-
-    def add_services(self, services: dict):
-        """
-        takes the services dictionary and adds them to the current
-        servicess stored in the Schedule. Have to be separable!
-        I.e. the keys in services cannot overlap with the ones already
-        existing (TODO)
-        :param services: (see tests for the dict schema)
-        :return:
-        """
-        if set(services.keys()) & set(self.services.keys()) != set():
-            raise NotImplementedError('This method only supports adding non overlapping services')
-        else:
-            self.services = {**self.services, **services}
-
-    def summarise(self):
-        pass
+        self.services, self.transit_stop_id_mapping = matsim_reader.read_schedule(path, self.transformer)
