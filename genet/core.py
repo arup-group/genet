@@ -139,6 +139,7 @@ class Network:
             self.link_id_mapping[str(i)] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
             i += 1
 
+
 class Schedule():
     """
     Takes services and stops in the correct format and provides method and structure for transit schedules
@@ -160,7 +161,8 @@ class Schedule():
         }
     :param epsg: 'epsg:12345'
     """
-    def __init__(self, services: dict = None, stops: dict = None, epsg = ''):
+
+    def __init__(self, services: dict = None, stops: dict = None, epsg=''):
         super().__init__()
         if (services is None) and (stops is None):
             self.services = {}
@@ -209,7 +211,8 @@ class Schedule():
         elif self.epsg != other.epsg:
             raise RuntimeError('You are merging two schedules with different coordinate systems.')
         else:
-            return self.__class__({**self.services, **other.services}, stops={**self.stops, **other.stops}, epsg=self.epsg)
+            return self.__class__({**self.services, **other.services}, stops={**self.stops, **other.stops},
+                                  epsg=self.epsg)
 
     def is_separable_from(self, other):
         return set(other.services.keys()) & set(self.services.keys()) == set()
@@ -255,5 +258,6 @@ class SpatialTree(nx.DiGraph):
     Class which represents a nx.MultiDiGraph as a spatial tree
     hierarchy based on s2 cell levels
     """
+
     def __init__(self):
         super().__init__()

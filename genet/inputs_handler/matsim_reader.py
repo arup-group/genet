@@ -35,7 +35,7 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
                 # update old link by link attributes (osm tags etc.)
                 if link_attribs:
                     # if multiple edges, add to the one added most recently
-                    g[u][v][len(g[u][v])-1]['attributes'] = link_attribs  # noqa: F821
+                    g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs  # noqa: F821
 
                 attribs = elem.attrib
                 attribs['s2_from'] = node_id_mapping[attribs['from']]
@@ -52,11 +52,11 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
 
                 u = attribs['from']
                 v = attribs['to']
-                if g.has_edge(u,v):
-                    link_id_mapping[attribs['id']]['multi_edge_idx'] = len(g.edges(u,v))
+                if g.has_edge(u, v):
+                    link_id_mapping[attribs['id']]['multi_edge_idx'] = len(g.edges(u, v))
                 else:
                     link_id_mapping[attribs['id']]['multi_edge_idx'] = 0
-                g.add_weighted_edges_from([(u,v,length)], weight='length', **attribs)
+                g.add_weighted_edges_from([(u, v, length)], weight='length', **attribs)
                 # reset link_attribs
                 link_attribs = {}
             elif elem.tag == 'attribute':
@@ -65,7 +65,7 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
                 link_attribs[elem.attrib['name']] = d
     # update the attributes of the last link
     if link_attribs:
-        g[u][v][len(g[u][v])-1]['attributes'] = link_attribs
+        g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs
     return g, link_id_mapping
 
 
@@ -100,6 +100,7 @@ def read_schedule(schedule_path, TRANSFORMER):
             'attribs' : dict of matsim schedule attributes attached to that transit stop
         }})
     """
+
     def write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode):
         mode = transportMode['transportMode']
         schedule[transitLine['transitLine']['id']] = []
