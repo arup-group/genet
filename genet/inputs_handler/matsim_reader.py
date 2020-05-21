@@ -40,19 +40,22 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
                 attribs = elem.attrib
                 attribs['s2_from'] = node_id_mapping[attribs['from']]
                 attribs['s2_to'] = node_id_mapping[attribs['to']]
+                attribs['modes'] = read_modes(attribs['modes'])
+
                 link_id_mapping[attribs['id']] = {
                     'from': attribs['from'],
-                    'to': attribs['to'],
-                    's2_from': attribs['s2_from'],
-                    's2_to': attribs['s2_to']
+                    'to': attribs['to']
                 }
-                attribs['modes'] = read_modes(attribs['modes'])
 
                 length = float(attribs['length'])
                 del attribs['length']
 
-                u = link_id_mapping[elem.attrib['id']]['from']
-                v = link_id_mapping[elem.attrib['id']]['to']
+                u = attribs['from']
+                v = attribs['to']
+                if g.has_edge(u,v):
+                    link_id_mapping[attribs['id']]['multi_edge_idx'] = len(g.edges(u,v))
+                else:
+                    link_id_mapping[attribs['id']]['multi_edge_idx'] = 0
                 g.add_weighted_edges_from([(u,v,length)], weight='length', **attribs)
                 # reset link_attribs
                 link_attribs = {}
@@ -63,7 +66,7 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
     # update the attributes of the last link
     if link_attribs:
         g[u][v][len(g[u][v])-1]['attributes'] = link_attribs
-    return g, node_id_mapping, link_id_mapping
+    return g, link_id_mapping
 
 
 def read_modes(modes_string):

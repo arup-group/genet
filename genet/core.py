@@ -1,4 +1,7 @@
 import networkx as nx
+import uuid
+import warnings
+from typing import Union
 from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader
 
@@ -6,16 +9,15 @@ from genet.inputs_handler import matsim_reader
 class Network:
     def __init__(self):
         self.graph = nx.MultiDiGraph()
-        self.spatial_tree = SpatialTree()
         self.schedule = Schedule()
+        self.spatial_tree = SpatialTree()
         self.modes = []
 
         self.epsg = ''
         self.transformer = ''
-
-        self.node_id_mapping = {}
+        # link_id_mapping maps between (usually string literal) index per edge to the from and to nodes that are
+        # connected by the edge
         self.link_id_mapping = {}
-        self.transit_stop_id_mapping = {}
 
     def __repr__(self):
         return "<{} instance at {}: with \ngraph: {} and \nschedule {}".format(
@@ -34,18 +36,70 @@ class Network:
     def info(self):
         pass
 
-    def nodes(self, node_id=None):
-        if node_id is None:
-            return self.graph.nodes
+    def add_node(self, node: Union[str, int], attribs: dict = None):
+        if attribs is not None:
+            self.graph.add_node(node, **attribs)
         else:
-            return self.graph.nodes[node_id]
+            self.graph.add_node(node)
 
-    def edges(self, link_id=None):
-        if link_id is None:
-            return self.link_id_mapping.keys()
+    def add_edge(self, u: Union[str, int], v: Union[str, int], attribs: dict = None):
+        link_id = self.generate_index_for_edge()
+        self.add_link(link_id, u, v, attribs)
+
+    def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], attribs: dict = None):
+        if link_id in self.link_id_mapping:
+            new_link_id = self.generate_index_for_edge()
+            warnings.warn('This link_id={} already exists. Generated a new unique_index: {}'.format(
+                link_id, new_link_id))
+            link_id = new_link_id
+        if attribs is not None:
+            self.graph.add_edge(u, v, **attribs)
         else:
-            u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
-            return dict(self.graph[u][v])
+            self.graph.add_edge(u, v)
+        self.link_id_mapping[link_id] = {'from': u, 'to': v}
+
+    def nodes(self):
+        """
+        :return:  Iterator through each node and its attrib
+        """
+        for id, attrib in self.graph.nodes(data=True):
+            yield id, attrib
+
+    def node(self, node_id):
+        """
+        :return:  attribs of the 'node' if if node_id='node'
+        """
+        return self.graph.nodes[node_id]
+
+    def edges(self):
+        """
+        :return: Iterator through each edge's from, to nodes and its attrib (three-tuple)
+        """
+        for u, v, attrib in self.graph.edges(data=True):
+            yield u, v, attrib
+
+    def edge(self, u, v):
+        """
+        :param u: from node of self.graph
+        :param v: to node of self.graph
+        :return:  attribs of the edge from u to  v
+        """
+        return dict(self.graph[u][v])
+
+    def links(self):
+        """
+        :return: Iterator through each link id its attrib (two-tuple)
+        """
+        for link_id in self.link_id_mapping.keys():
+            yield link_id, self.link(link_id)
+
+    def link(self, link_id):
+        """
+        :param link_id:
+        :return:
+        """
+        u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
+        return dict(self.graph[u][v])
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
@@ -53,7 +107,7 @@ class Network:
 
     def read_matsim_network(self, path, epsg):
         self.initiate_crs_transformer(epsg)
-        self.graph, self.node_id_mapping, self.link_id_mapping = matsim_reader.read_network(path, self.transformer)
+        self.graph, self.link_id_mapping = matsim_reader.read_network(path, self.transformer)
 
     def read_matsim_schedule(self, path, epsg=None):
         if epsg is None:
@@ -68,15 +122,24 @@ class Network:
             self.initiate_crs_transformer(epsg)
         self.schedule.read_matsim_schedule(path, self.epsg)
 
+    def generate_index_for_edge(self):
+        try:
+            id = max([int(i) for i in self.link_id_mapping.keys()]) + 1
+        except ValueError:
+            id = len(self.link_id_mapping) + 1
+        if id not in self.link_id_mapping and str(id) not in self.link_id_mapping:
+            pass
+        else:
+            id = uuid.uuid4()
+        return str(id)
 
-class SpatialTree(nx.DiGraph):
-    """
-    Class which represents a nx.MultiDiGraph as a spatial tree
-    hierarchy based on s2 cell levels
-    """
-    def __init__(self):
-        super().__init__()
-
+    def index_graph_edges(self):
+        warnings.warn('This method clears the existing link_id indexing')
+        self.link_id_mapping = {}
+        i = 0
+        for u, v, multi_edge_idx in self.graph.edges:
+            self.link_id_mapping[str(i)] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
+            i += 1
 
 class Schedule():
     """
@@ -114,6 +177,7 @@ class Schedule():
             self.stops = stops
         self.epsg = epsg
         self.transformer = ''
+        # TODO minimal transfer times for MATSim schedules
 
     def __getitem__(self, service_id):
         return self.services[service_id]
@@ -186,3 +250,12 @@ class Schedule():
     def read_matsim_schedule(self, path, epsg):
         self.initiate_crs_transformer(epsg)
         self.services, self.transit_stop_id_mapping = matsim_reader.read_schedule(path, self.transformer)
+
+
+class SpatialTree(nx.DiGraph):
+    """
+    Class which represents a nx.MultiDiGraph as a spatial tree
+    hierarchy based on s2 cell levels
+    """
+    def __init__(self):
+        super().__init__()

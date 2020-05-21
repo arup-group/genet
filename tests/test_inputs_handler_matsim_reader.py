@@ -40,7 +40,7 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
 
     transformer = Transformer.from_proj(Proj(init='epsg:27700'), Proj(init='epsg:4326'))
 
-    g, node_id_mapping, link_id_mapping = matsim_reader.read_network(pt2matsim_network_test_file, transformer)
+    g, link_id_mapping = matsim_reader.read_network(pt2matsim_network_test_file, transformer)
 
     for u, data in g.nodes(data=True):
         assert str(u) in correct_nodes
@@ -81,9 +81,12 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
         }
         }}}
 
+    correct_link_id_map  = {'1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 0},
+                            '2': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 1}}
+
     transformer = Transformer.from_proj(Proj(init='epsg:27700'), Proj(init='epsg:4326'))
 
-    g, node_id_mapping, link_id_mapping = matsim_reader.read_network(pt2matsim_network_multiple_edges_test_file, transformer)
+    g, link_id_mapping = matsim_reader.read_network(pt2matsim_network_multiple_edges_test_file, transformer)
 
     for u, data in g.nodes(data=True):
         assert str(u) in correct_nodes
@@ -94,6 +97,8 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
         assert e in correct_edges
         assert edge[2] in correct_edges[e]
         dict_with_lists_are_equal(g[edge[0]][edge[1]][edge[2]], correct_edges[e][edge[2]])
+
+    assert correct_link_id_map == link_id_mapping
 
 
 def test_read_schedule_reads_the_data_correctly():
