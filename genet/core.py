@@ -114,10 +114,8 @@ class Network:
             assert self.epsg
             assert self.transformer
         elif self.epsg and (epsg != self.epsg):
-                raise RuntimeError('The epsg you have given {} does not match the epsg currently stored for this network '
-                                   '{}. Make sure you pass files with matching coordinate system.'.format(
-                    epsg, self.epsg
-                ))
+            raise RuntimeError('The epsg you have given {} does not match the epsg currently stored for this network '
+                               '{}. Make sure you pass files with matching coordinate system.'.format(epsg, self.epsg))
         else:
             self.initiate_crs_transformer(epsg)
         self.schedule.read_matsim_schedule(path, self.epsg)

@@ -35,7 +35,7 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
                 # update old link by link attributes (osm tags etc.)
                 if link_attribs:
                     # if multiple edges, add to the one added most recently
-                    g[u][v][len(g[u][v])-1]['attributes'] = link_attribs
+                    g[u][v][len(g[u][v])-1]['attributes'] = link_attribs  # noqa: F821
 
                 attribs = elem.attrib
                 attribs['s2_from'] = node_id_mapping[attribs['from']]
