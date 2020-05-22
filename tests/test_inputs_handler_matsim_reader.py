@@ -119,7 +119,7 @@ def test_read_schedule_reads_the_data_correctly():
 
     transformer = Transformer.from_proj(Proj(init='epsg:27700'), Proj(init='epsg:4326'))
 
-    schedule, transit_stop_id_mapping = matsim_reader.read_schedule(pt2matsim_schedule_file, transformer)
+    schedule, stops = matsim_reader.read_schedule(pt2matsim_schedule_file, transformer)
 
     assert_semantically_equal(schedule, correct_schedule)
-    assert_semantically_equal(transit_stop_id_mapping, correct_stops)
+    assert_semantically_equal(stops, correct_stops)
