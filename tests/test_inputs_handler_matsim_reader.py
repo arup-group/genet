@@ -1,18 +1,16 @@
-import json
 import os
 import sys
-from collections import OrderedDict
-
-import dictdiffer
 from pyproj import Proj, Transformer
-
+from tests.fixtures import *
 from genet.inputs_handler import matsim_reader
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_network_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "network.xml"))
+pt2matsim_network_test_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network.xml"))
 pt2matsim_network_multiple_edges_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "network_multiple_edges.xml"))
-pt2matsim_schedule_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "schedule.xml"))
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_multiple_edges.xml"))
+pt2matsim_schedule_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
 
 
 def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
@@ -124,30 +122,4 @@ def test_read_schedule_reads_the_data_correctly():
     schedule, transit_stop_id_mapping = matsim_reader.read_schedule(pt2matsim_schedule_file, transformer)
 
     assert_semantically_equal(schedule, correct_schedule)
-
-
-###########################################################
-# helper functions
-###########################################################
-def deep_sort(obj):
-    if isinstance(obj, dict):
-        obj = OrderedDict(sorted(obj.items()))
-        for k, v in obj.items():
-            if isinstance(v, dict) or isinstance(v, list):
-                obj[k] = deep_sort(v)
-
-    if isinstance(obj, list):
-        for i, v in enumerate(obj):
-            if isinstance(v, dict) or isinstance(v, list):
-                obj[i] = deep_sort(v)
-        obj = sorted(obj, key=lambda x: json.dumps(x))
-
-    return obj
-
-
-def assert_semantically_equal(dict1, dict2):
-    # the tiny permissible tolerance is to account for cross-platform differences in
-    # floating point lat/lon values, as witnessed in our CI build running on Ubuntu
-    # Vs our own OSX laptops - lat/lon values within this tolerance can and should
-    # be considered the same in practical terms
-    assert list(dictdiffer.diff(deep_sort(dict1), deep_sort(dict2), tolerance=0.000000000000001)) == []
+    assert_semantically_equal(transit_stop_id_mapping, correct_stops)

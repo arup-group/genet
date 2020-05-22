@@ -1,11 +1,12 @@
 import os
 import sys
 import pytest
-from genet.inputs_handler import matsim_reader
+from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.core import Schedule
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_schedule_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "schedule.xml"))
+pt2matsim_schedule_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
+gtfs_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs"))
 
 
 def test_Schedule_needs_all_attribs_filled_or_none__services_missing():
@@ -136,3 +137,12 @@ def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker):
     schedule.read_matsim_schedule(pt2matsim_schedule_file, 'epsg:27700')
 
     matsim_reader.read_schedule.assert_called_once_with(pt2matsim_schedule_file, schedule.transformer)
+
+
+def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker):
+    mocker.patch.object(gtfs_reader, 'read_to_schedule', return_value = ({'1': []}, {}))
+
+    schedule = Schedule()
+    schedule.read_gtfs_schedule(gtfs_test_file, '20190604')
+
+    gtfs_reader.read_to_schedule.assert_called_once_with(gtfs_test_file, '20190604')

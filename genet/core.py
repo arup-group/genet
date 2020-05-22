@@ -3,7 +3,7 @@ import uuid
 import warnings
 from typing import Union
 from pyproj import Proj, Transformer
-from genet.inputs_handler import matsim_reader
+from genet.inputs_handler import matsim_reader, gtfs_reader
 
 
 class Network:
@@ -250,7 +250,17 @@ class Schedule():
 
     def read_matsim_schedule(self, path, epsg):
         self.initiate_crs_transformer(epsg)
-        self.services, self.transit_stop_id_mapping = matsim_reader.read_schedule(path, self.transformer)
+        self.services, self.stops = matsim_reader.read_schedule(path, self.transformer)
+
+    def read_gtfs_schedule(self, path, day):
+        """
+        Reads from GTFS. The resulting services will not have route lists. Assumes to be in lat lon epsg:4326
+        :param path: to GTFS folder or a zip file
+        :param day: 'YYYYMMDD' to use form the gtfs
+        :return:
+        """
+        self.initiate_crs_transformer(epsg='epsg:4326')
+        self.services, self.stops = gtfs_reader.read_to_schedule(path, day)
 
 
 class SpatialTree(nx.DiGraph):
