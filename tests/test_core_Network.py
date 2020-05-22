@@ -82,6 +82,24 @@ def test_add_link_generates_a_new_link_id_if_already_exists(mocker):
     Network.generate_index_for_edge.assert_called_once()
 
 
+def test_number_of_multi_edges_counds_multi_edges_on_single_edge():
+    n = Network()
+    n.graph.add_edges_from([(1, 2), (2, 3), (3, 4)])
+    assert n.number_of_multi_edges(1,2) == 1
+
+
+def test_number_of_multi_edges_counds_multi_edges_on_multi_edge():
+    n = Network()
+    n.graph.add_edges_from([(1, 2), (1, 2), (3, 4)])
+    assert n.number_of_multi_edges(1,2) == 2
+
+
+def test_number_of_multi_edges_counds_multi_edges_on_non_existing_edge():
+    n = Network()
+    n.graph.add_edges_from([(1, 2), (1, 2), (3, 4)])
+    assert n.number_of_multi_edges(1214,21321) == 0
+
+
 def test_nodes_gives_iterator_of_node_id_and_attribs():
     n = Network()
     n.graph.add_edges_from([(1,2), (2,3), (3,4)])
@@ -108,14 +126,15 @@ def test_edge_gives_edge_attribs_if_given_from_to_nodes():
 
 def test_links_gives_iterator_of_link_id_and_edge_attribs():
     n = Network()
-    n.graph.add_edges_from([(1,2), (2,3), (3,4)])
-    assert list(n.edges()) ==  [(1, 2, {}), (2, 3, {}), (3, 4, {})]
+    n.add_link('0', 1, 2, {'f':'s'})
+    n.add_link('1', 2, 3, {'h':1})
+    assert list(n.links()) ==  [('0', {'f':'s'}), ('1', {'h':1})]
 
 
 def test_link_gives_link_attribs():
     n = Network()
-    n.graph.add_edge(1, 2, **{'attrib': 1})
-    assert n.edge(1, 2) == {0: {'attrib': 1}}
+    n.add_link('0', 1, 2, {'attrib': 1})
+    assert n.link('0') == {'attrib': 1}
 
 
 def test_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):

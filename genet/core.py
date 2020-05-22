@@ -52,22 +52,35 @@ class Network:
             warnings.warn('This link_id={} already exists. Generated a new unique_index: {}'.format(
                 link_id, new_link_id))
             link_id = new_link_id
+
+        self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': self.number_of_multi_edges(u, v)}
         if attribs is not None:
             self.graph.add_edge(u, v, **attribs)
         else:
             self.graph.add_edge(u, v)
-        self.link_id_mapping[link_id] = {'from': u, 'to': v}
+
+    def number_of_multi_edges(self, u, v):
+        """
+        number of multi edges on edge from u to v
+        :param u: from node
+        :param v: to node
+        :return:
+        """
+        if self.graph.has_edge(u, v):
+            return len(self.graph.edges(u, v))
+        else:
+            return 0
 
     def nodes(self):
         """
-        :return:  Iterator through each node and its attrib
+        :return:  Iterator through each node and its attrib (two-tuple)
         """
         for id, attrib in self.graph.nodes(data=True):
             yield id, attrib
 
     def node(self, node_id):
         """
-        :return:  attribs of the 'node' if if node_id='node'
+        :return:  attribs of the 'node_id'
         """
         return self.graph.nodes[node_id]
 
@@ -98,8 +111,9 @@ class Network:
         :param link_id:
         :return:
         """
-        u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
-        return dict(self.graph[u][v])
+        u, v, multi_idx = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to'], \
+                          self.link_id_mapping[link_id]['multi_edge_idx']
+        return dict(self.graph[u][v][multi_idx])
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
