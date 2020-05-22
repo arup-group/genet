@@ -111,8 +111,8 @@ class Network:
         :param link_id:
         :return:
         """
-        u, v, multi_idx = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to'], \
-                          self.link_id_mapping[link_id]['multi_edge_idx']
+        u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
+        multi_idx = self.link_id_mapping[link_id]['multi_edge_idx']
         return dict(self.graph[u][v][multi_idx])
 
     def initiate_crs_transformer(self, epsg):
