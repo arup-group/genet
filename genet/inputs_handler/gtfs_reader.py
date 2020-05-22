@@ -201,14 +201,15 @@ def read_to_schedule(path: str, day: str):
         import zipfile
         with zipfile.ZipFile(path, 'r') as zip_ref:
             zip_ref.extractall(gtfs_path)
+        gtfs_path = os.path.join(gtfs_path, os.path.splitext(os.path.basename(path))[0])
     else:
         gtfs_path = path
 
-    services = read_services_from_calendar(path, day=day)
-    stop_times, stop_times_db, stops_db, trips_db, routes_db = read_gtfs_to_db_like_tables(path)
+    services = read_services_from_calendar(gtfs_path, day=day)
+    stop_times, stop_times_db, stops_db, trips_db, routes_db = read_gtfs_to_db_like_tables(gtfs_path)
     schedule = parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, routes_db, services)
     stops = generate_stops(stops_db)
 
     if persistence.is_zip(path):
-        shutil.rmtree(gtfs_path)
+        shutil.rmtree(os.path.dirname(gtfs_path))
     return schedule, stops
