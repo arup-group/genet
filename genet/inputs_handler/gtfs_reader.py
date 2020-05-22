@@ -4,7 +4,7 @@ import os
 import shutil
 from datetime import datetime, timedelta
 from genet.utils import spatial, persistence
-from genet.variables import *
+from genet import variables
 
 
 def read_services_from_calendar(path, day):
@@ -99,8 +99,8 @@ def get_mode(route_type):
     if not isinstance(route_type, int):
         route_type = int(route_type)
 
-    if route_type in EXTENDED_TYPE_MAP:
-        return EXTENDED_TYPE_MAP[route_type]
+    if route_type in variables.EXTENDED_TYPE_MAP:
+        return variables.EXTENDED_TYPE_MAP[route_type]
     else:
         return 'other'
 
