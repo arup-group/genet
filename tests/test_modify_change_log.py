@@ -1,5 +1,4 @@
 from pandas import NA
-from datetime import datetime
 from genet.modify import ChangeLog
 
 

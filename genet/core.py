@@ -5,6 +5,7 @@ from typing import Union
 from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.modify import ChangeLog
+from genet.utils.spatial import SpatialTree
 
 
 class Network:
@@ -36,7 +37,10 @@ class Network:
         return self.info()
 
     def info(self):
-        pass
+        return "Graph info: {} \nSchedule info: {}".format(
+            nx.info(self.graph),
+            self.schedule.info()
+        )
 
     def add_node(self, node: Union[str, int], attribs: dict = None):
         if attribs is not None:
@@ -279,13 +283,3 @@ class Schedule():
         """
         self.initiate_crs_transformer(epsg='epsg:4326')
         self.services, self.stops = gtfs_reader.read_to_schedule(path, day)
-
-
-class SpatialTree(nx.DiGraph):
-    """
-    Class which represents a nx.MultiDiGraph as a spatial tree
-    hierarchy based on s2 cell levels
-    """
-
-    def __init__(self):
-        super().__init__()
