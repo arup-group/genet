@@ -53,7 +53,7 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
                 u = attribs['from']
                 v = attribs['to']
                 if g.has_edge(u, v):
-                    link_id_mapping[attribs['id']]['multi_edge_idx'] = len(g.edges(u, v))
+                    link_id_mapping[attribs['id']]['multi_edge_idx'] = len(g[u][v])
                 else:
                     link_id_mapping[attribs['id']]['multi_edge_idx'] = 0
                 g.add_weighted_edges_from([(u, v, length)], weight='length', **attribs)
