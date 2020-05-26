@@ -4,12 +4,14 @@ import warnings
 from typing import Union
 from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader, gtfs_reader
+from genet.modify import ChangeLog
 
 
 class Network:
     def __init__(self):
         self.graph = nx.MultiDiGraph()
         self.schedule = Schedule()
+        self.change_log = ChangeLog()
         self.spatial_tree = SpatialTree()
         self.modes = []
 
@@ -41,6 +43,7 @@ class Network:
             self.graph.add_node(node, **attribs)
         else:
             self.graph.add_node(node)
+        self.change_log.add(object_type = 'node', object_id = node, object_attributes = attribs)
 
     def add_edge(self, u: Union[str, int], v: Union[str, int], attribs: dict = None):
         link_id = self.generate_index_for_edge()
@@ -58,6 +61,7 @@ class Network:
             self.graph.add_edge(u, v, **attribs)
         else:
             self.graph.add_edge(u, v)
+        self.change_log.add(object_type = 'link', object_id = link_id, object_attributes = attribs)
 
     def number_of_multi_edges(self, u, v):
         """
