@@ -1,18 +1,16 @@
-import json
 import os
 import sys
-from collections import OrderedDict
-
-import dictdiffer
 from pyproj import Proj, Transformer
-
+from tests.fixtures import *
 from genet.inputs_handler import matsim_reader
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_network_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "network.xml"))
+pt2matsim_network_test_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network.xml"))
 pt2matsim_network_multiple_edges_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "network_multiple_edges.xml"))
-pt2matsim_schedule_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "schedule.xml"))
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_multiple_edges.xml"))
+pt2matsim_schedule_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
 
 
 def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
@@ -35,7 +33,7 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
 
     transformer = Transformer.from_proj(Proj(init='epsg:27700'), Proj(init='epsg:4326'))
 
-    g, node_id_mapping, link_id_mapping = matsim_reader.read_network(pt2matsim_network_test_file, transformer)
+    g, link_id_mapping = matsim_reader.read_network(pt2matsim_network_test_file, transformer)
 
     for u, data in g.nodes(data=True):
         assert str(u) in correct_nodes
@@ -79,10 +77,12 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
             }
         }}}
 
+    correct_link_id_map  = {'1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 0},
+                            '2': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 1}}
+
     transformer = Transformer.from_proj(Proj(init='epsg:27700'), Proj(init='epsg:4326'))
 
-    g, node_id_mapping, link_id_mapping = matsim_reader.read_network(pt2matsim_network_multiple_edges_test_file,
-                                                                     transformer)
+    g, link_id_mapping = matsim_reader.read_network(pt2matsim_network_multiple_edges_test_file, transformer)
 
     for u, data in g.nodes(data=True):
         assert str(u) in correct_nodes
@@ -94,47 +94,24 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
         assert edge[2] in correct_edges[e]
         assert_semantically_equal(g[edge[0]][edge[1]][edge[2]], correct_edges[e][edge[2]])
 
+    assert correct_link_id_map == link_id_mapping
+
 
 def test_read_schedule_reads_the_data_correctly():
-    correct_schedule = {'10314': [{
-        'route_short_name': '12',
-        'mode': 'bus',
-        'stops': ['26997928P', '26997928P.link:1'],
-        's2_stops': [5221390302759871369, 5221390302759871369],
-        'route': ['1'],
-        'trips': {'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
-        'arrival_offsets': ['00:00:00', '00:02:00'],
-        'departure_offsets': ['00:00:00', '00:02:00']}]}
+    correct_services = [Service(id='10314', routes=[
+            Route(
+                route_short_name='12',
+                mode='bus',
+                stops=[Stop(id='26997928P', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700'),
+                       Stop(id='26997928P.link:1', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700')],
+                route = ['1'],
+                trips = {'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+                arrival_offsets = ['00:00:00', '00:02:00'],
+                departure_offsets = ['00:00:00', '00:02:00']
+            )
+        ])
+    ]
 
-    transformer = Transformer.from_proj(Proj(init='epsg:27700'), Proj(init='epsg:4326'))
+    services = matsim_reader.read_schedule(pt2matsim_schedule_file, 'epsg:27700')
 
-    schedule, transit_stop_id_mapping = matsim_reader.read_schedule(pt2matsim_schedule_file, transformer)
-
-    assert_semantically_equal(schedule, correct_schedule)
-
-
-###########################################################
-# helper functions
-###########################################################
-def deep_sort(obj):
-    if isinstance(obj, dict):
-        obj = OrderedDict(sorted(obj.items()))
-        for k, v in obj.items():
-            if isinstance(v, dict) or isinstance(v, list):
-                obj[k] = deep_sort(v)
-
-    if isinstance(obj, list):
-        for i, v in enumerate(obj):
-            if isinstance(v, dict) or isinstance(v, list):
-                obj[i] = deep_sort(v)
-        obj = sorted(obj, key=lambda x: json.dumps(x))
-
-    return obj
-
-
-def assert_semantically_equal(dict1, dict2):
-    # the tiny permissible tolerance is to account for cross-platform differences in
-    # floating point lat/lon values, as witnessed in our CI build running on Ubuntu
-    # Vs our own OSX laptops - lat/lon values within this tolerance can and should
-    # be considered the same in practical terms
-    assert list(dictdiffer.diff(deep_sort(dict1), deep_sort(dict2), tolerance=0.000000000000001)) == []
+    assert correct_services == services

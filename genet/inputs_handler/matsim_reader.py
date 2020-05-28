@@ -3,6 +3,7 @@ import xml.etree.cElementTree as ET
 from pyproj import Transformer
 from genet.utils import spatial
 from genet.variables import MODE_TYPES_MAP
+from genet.schedule_elements import Route, Stop, Service
 
 
 def read_network(network_path, TRANSFORMER: Transformer.from_proj):
@@ -35,24 +36,27 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
                 # update old link by link attributes (osm tags etc.)
                 if link_attribs:
                     # if multiple edges, add to the one added most recently
-                    g[u][v][len(g[u][v])-1]['attributes'] = link_attribs  # noqa: F821
+                    g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs  # noqa: F821
 
                 attribs = elem.attrib
                 attribs['s2_from'] = node_id_mapping[attribs['from']]
                 attribs['s2_to'] = node_id_mapping[attribs['to']]
+                attribs['modes'] = read_modes(attribs['modes'])
+
                 link_id_mapping[attribs['id']] = {
                     'from': attribs['from'],
-                    'to': attribs['to'],
-                    's2_from': attribs['s2_from'],
-                    's2_to': attribs['s2_to']
+                    'to': attribs['to']
                 }
-                attribs['modes'] = read_modes(attribs['modes'])
 
                 length = float(attribs['length'])
                 del attribs['length']
 
-                u = link_id_mapping[elem.attrib['id']]['from']
-                v = link_id_mapping[elem.attrib['id']]['to']
+                u = attribs['from']
+                v = attribs['to']
+                if g.has_edge(u, v):
+                    link_id_mapping[attribs['id']]['multi_edge_idx'] = len(g[u][v])
+                else:
+                    link_id_mapping[attribs['id']]['multi_edge_idx'] = 0
                 g.add_weighted_edges_from([(u, v, length)], weight='length', **attribs)
                 # reset link_attribs
                 link_attribs = {}
@@ -62,8 +66,8 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
                 link_attribs[elem.attrib['name']] = d
     # update the attributes of the last link
     if link_attribs:
-        g[u][v][len(g[u][v])-1]['attributes'] = link_attribs
-    return g, node_id_mapping, link_id_mapping
+        g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs
+    return g, link_id_mapping
 
 
 def read_modes(modes_string):
@@ -76,15 +80,16 @@ def read_modes(modes_string):
     return list(modes)
 
 
-def read_schedule(schedule_path, TRANSFORMER):
+def read_schedule(schedule_path, epsg):
     """
     Read MATSim schedule
     :param schedule_path: path to the schedule.xml file
-    :param TRANSFORMER: pyproj crs transformer
+    :param epsg: 'epsg:12345'
     :return: schedule (dict {service_id : list(of unique route services, each is a dict
     {   'route_short_name': string,
         'mode': string,
         'stops': list,
+        's2_stops' : stops list indexed by s2sphere
         'route': ['1'],
         'trips': {'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
         'arrival_offsets': ['00:00:00', '00:02:00'],
@@ -96,12 +101,19 @@ def read_schedule(schedule_path, TRANSFORMER):
             'attribs' : dict of matsim schedule attributes attached to that transit stop
         }})
     """
+    services = []
+
     def write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode):
         mode = transportMode['transportMode']
-        schedule[transitLine['transitLine']['id']] = []
+        service_id = transitLine['transitLine']['id']
+        service_routes = []
         for transitRoute, transitRoute_val in transitRoutes.items():
-            stops = [s['stop']['refId'] for s in transitRoute_val['stops']]
-            s2_stops = [transit_stop_id_mapping[s['stop']['refId']]['s2_node_id'] for s in transitRoute_val['stops']]
+            stops = [Stop(
+                s['stop']['refId'],
+                x=transit_stop_id_mapping[s['stop']['refId']]['x'],
+                y=transit_stop_id_mapping[s['stop']['refId']]['y'],
+                epsg=epsg
+            ) for s in transitRoute_val['stops']]
 
             arrival_offsets = []
             departure_offsets = []
@@ -124,19 +136,18 @@ def read_schedule(schedule_path, TRANSFORMER):
             for dep in transitRoute_val['departure_list']:
                 trips[dep['departure']['id']] = dep['departure']['departureTime']
 
-            d = {
-                'route_short_name': transitLine['transitLine']['name'],
-                'mode': mode,
-                'stops': stops,
-                's2_stops': s2_stops,
-                'route': route,
-                'trips': trips,
-                'arrival_offsets': arrival_offsets,
-                'departure_offsets': departure_offsets
-            }
-            schedule[transitLine['transitLine']['id']].append(d)
+            r = Route(
+                route_short_name=transitLine['transitLine']['name'],
+                mode=mode,
+                stops=stops,
+                route=route,
+                trips=trips,
+                arrival_offsets=arrival_offsets,
+                departure_offsets=departure_offsets
+            )
+            service_routes.append(r)
+        services.append(Service(id=service_id, routes=service_routes))
 
-    schedule = {}
     transitLine = {}
     transitRoutes = {}
     transportMode = {}
@@ -151,10 +162,7 @@ def read_schedule(schedule_path, TRANSFORMER):
                 if attribs['id'] not in transitStops:
                     transitStops[attribs['id']] = attribs
                 if attribs['id'] not in transit_stop_id_mapping:
-                    attribs = elem.attrib
-                    lon, lat = spatial.change_proj(attribs['x'], attribs['y'], TRANSFORMER)
-                    node_id = spatial.grab_index_s2(lat, lon)
-                    transit_stop_id_mapping[attribs['id']] = {'s2_node_id': node_id, 'attribs': attribs}
+                    transit_stop_id_mapping[attribs['id']] = elem.attrib
             if elem.tag == 'transitLine':
                 if transitLine:
                     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
@@ -192,4 +200,4 @@ def read_schedule(schedule_path, TRANSFORMER):
     # add the last one
     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
 
-    return schedule, transit_stop_id_mapping
+    return services

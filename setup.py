@@ -21,6 +21,7 @@ setup(
         'pytest-cov',
         'pytest',
         'pytest-mock',
-        'dictdiffer==0.8.1'
+        'dictdiffer==0.8.1',
+        'pandas'
     ],
 )
