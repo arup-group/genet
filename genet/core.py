@@ -72,6 +72,28 @@ class Network:
             self.graph.add_edge(u, v)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
 
+    def modify_node(self, node_id, new_attributes):
+        old_attributes = self.node(node_id)
+        self.change_log.modify(
+            object_type='node',
+            old_id=node_id,
+            new_id=node_id,
+            old_attributes=old_attributes,
+            new_attributes={**old_attributes, **new_attributes})
+        nx.set_node_attributes(self.graph, {node_id: new_attributes})
+
+    def modify_link(self, link_id, new_attributes):
+        u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
+        multi_idx = self.link_id_mapping[link_id]['multi_edge_idx']
+        old_attributes = self.link(link_id)
+        self.change_log.modify(
+            object_type='link',
+            old_id=link_id,
+            new_id=link_id,
+            old_attributes=old_attributes,
+            new_attributes={**old_attributes, **new_attributes})
+        nx.set_edge_attributes(self.graph, {(u, v, multi_idx): new_attributes})
+
     def number_of_multi_edges(self, u, v):
         """
         number of multi edges on edge from u to v
