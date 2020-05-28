@@ -50,7 +50,7 @@ def find_edges_from_common_cell_to_root(s2_link, link_id):
     edges_to_add = []
     if common_cell != 0:
         lvl = common_cell.level()
-        _lvls = [l for l in S2_LEVELS_FOR_SPATIAL_INDEXING if lvl >= l]
+        _lvls = [s2_lvl for s2_lvl in S2_LEVELS_FOR_SPATIAL_INDEXING if lvl >= s2_lvl]
         common_cell = common_cell.parent(_lvls[-1])
         edges_to_add.append((common_cell.id(), link_id))
         if _lvls:
