@@ -1,4 +1,3 @@
-import networkx as nx
 from typing import Union, Dict, Callable
 
 

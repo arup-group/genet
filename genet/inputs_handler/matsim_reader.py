@@ -3,6 +3,7 @@ import xml.etree.cElementTree as ET
 from pyproj import Transformer
 from genet.utils import spatial
 from genet.variables import MODE_TYPES_MAP
+from genet.schedule_elements import Route, Stop, Service
 
 
 def read_network(network_path, TRANSFORMER: Transformer.from_proj):
@@ -79,11 +80,11 @@ def read_modes(modes_string):
     return list(modes)
 
 
-def read_schedule(schedule_path, TRANSFORMER):
+def read_schedule(schedule_path, epsg):
     """
     Read MATSim schedule
     :param schedule_path: path to the schedule.xml file
-    :param TRANSFORMER: pyproj crs transformer
+    :param epsg: 'epsg:12345'
     :return: schedule (dict {service_id : list(of unique route services, each is a dict
     {   'route_short_name': string,
         'mode': string,
@@ -100,13 +101,19 @@ def read_schedule(schedule_path, TRANSFORMER):
             'attribs' : dict of matsim schedule attributes attached to that transit stop
         }})
     """
+    services = []
 
     def write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode):
         mode = transportMode['transportMode']
-        schedule[transitLine['transitLine']['id']] = []
+        service_id = transitLine['transitLine']['id']
+        service_routes = []
         for transitRoute, transitRoute_val in transitRoutes.items():
-            stops = [s['stop']['refId'] for s in transitRoute_val['stops']]
-            s2_stops = [transit_stop_id_mapping[s['stop']['refId']]['s2_node_id'] for s in transitRoute_val['stops']]
+            stops = [Stop(
+                s['stop']['refId'],
+                x=transit_stop_id_mapping[s['stop']['refId']]['x'],
+                y=transit_stop_id_mapping[s['stop']['refId']]['y'],
+                epsg=epsg
+            ) for s in transitRoute_val['stops']]
 
             arrival_offsets = []
             departure_offsets = []
@@ -129,19 +136,18 @@ def read_schedule(schedule_path, TRANSFORMER):
             for dep in transitRoute_val['departure_list']:
                 trips[dep['departure']['id']] = dep['departure']['departureTime']
 
-            d = {
-                'route_short_name': transitLine['transitLine']['name'],
-                'mode': mode,
-                'stops': stops,
-                's2_stops': s2_stops,
-                'route': route,
-                'trips': trips,
-                'arrival_offsets': arrival_offsets,
-                'departure_offsets': departure_offsets
-            }
-            schedule[transitLine['transitLine']['id']].append(d)
+            r = Route(
+                route_short_name=transitLine['transitLine']['name'],
+                mode=mode,
+                stops=stops,
+                route=route,
+                trips=trips,
+                arrival_offsets=arrival_offsets,
+                departure_offsets=departure_offsets
+            )
+            service_routes.append(r)
+        services.append(Service(id=service_id, routes=service_routes))
 
-    schedule = {}
     transitLine = {}
     transitRoutes = {}
     transportMode = {}
@@ -156,12 +162,7 @@ def read_schedule(schedule_path, TRANSFORMER):
                 if attribs['id'] not in transitStops:
                     transitStops[attribs['id']] = attribs
                 if attribs['id'] not in transit_stop_id_mapping:
-                    attribs = elem.attrib
-                    lon, lat = spatial.change_proj(attribs['x'], attribs['y'], TRANSFORMER)
-                    attribs['lon'], attribs['lat'] = lon, lat
-                    node_id = spatial.grab_index_s2(lat, lon)
-                    attribs['s2_node_id'] = node_id
-                    transit_stop_id_mapping[attribs['id']] = attribs
+                    transit_stop_id_mapping[attribs['id']] = elem.attrib
             if elem.tag == 'transitLine':
                 if transitLine:
                     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
@@ -199,4 +200,4 @@ def read_schedule(schedule_path, TRANSFORMER):
     # add the last one
     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
 
-    return schedule, transit_stop_id_mapping
+    return services

@@ -98,28 +98,20 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
 
 
 def test_read_schedule_reads_the_data_correctly():
-    correct_schedule = {'10314': [{
-        'route_short_name': '12',
-        'mode': 'bus',
-        'stops': ['26997928P', '26997928P.link:1'],
-        's2_stops': [5221390302759871369, 5221390302759871369],
-        'route': ['1'],
-        'trips': {'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
-        'arrival_offsets': ['00:00:00', '00:02:00'],
-        'departure_offsets': ['00:00:00', '00:02:00']}]}
+    correct_services = [Service(id='10314', routes=[
+            Route(
+                route_short_name='12',
+                mode='bus',
+                stops=[Stop(id='26997928P', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700'),
+                       Stop(id='26997928P.link:1', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700')],
+                route = ['1'],
+                trips = {'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+                arrival_offsets = ['00:00:00', '00:02:00'],
+                departure_offsets = ['00:00:00', '00:02:00']
+            )
+        ])
+    ]
 
-    correct_stops = {'26997928P':
-                         {'id': '26997928P', 'x': '528464.1342843144', 'y': '182179.7435136598',
-                          'name': 'Brunswick Place (Stop P)', 'isBlocking': 'false', 'lon': -0.14967658860132668,
-                          'lat': 51.52393050617373, 's2_node_id': 5221390302759871369},
-                     '26997928P.link:1': {'id': '26997928P.link:1', 'x': '528464.1342843144', 'y': '182179.7435136598',
-                                          'linkRefId': '1', 'name': 'Brunswick Place (Stop P)', 'isBlocking': 'false',
-                                          'lon': -0.14967658860132668, 'lat': 51.52393050617373,
-                                          's2_node_id': 5221390302759871369}}
+    services = matsim_reader.read_schedule(pt2matsim_schedule_file, 'epsg:27700')
 
-    transformer = Transformer.from_proj(Proj(init='epsg:27700'), Proj(init='epsg:4326'))
-
-    schedule, stops = matsim_reader.read_schedule(pt2matsim_schedule_file, transformer)
-
-    assert_semantically_equal(schedule, correct_schedule)
-    assert_semantically_equal(stops, correct_stops)
+    assert correct_services == services

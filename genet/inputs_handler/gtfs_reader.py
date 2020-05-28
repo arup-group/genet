@@ -5,6 +5,7 @@ import shutil
 from datetime import datetime, timedelta
 from genet.utils import spatial, persistence
 from genet import variables
+from genet.schedule_elements import Service, Route, Stop
 
 
 def read_services_from_calendar(path, day):
@@ -182,18 +183,28 @@ def parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, route_db, servi
     return schedule
 
 
-def generate_stops(stops_db):
-    stops = {}
-    for stop_key, stop_val in stops_db.items():
-        stops[stop_key] = {
-            'x': stop_val['stop_lon'],
-            'y': stop_val['stop_lat'],
-            's2_node_id': spatial.grab_index_s2(lat=float(stop_val['stop_lat']), lng=float(stop_val['stop_lon']))
-        }
-    return stops
+def convert_schedule_to_list_of_services(schedule, stops_db):
+    services = []
+
+    for key, routes in schedule.items():
+        routes_list = []
+        for route in routes:
+            r = Route(
+                route_short_name=route['route_short_name'],
+                mode=route['mode'],
+                stops=[Stop(id=id, x=stops_db[id]['stop_lon'], y=stops_db[id]['stop_lat'], epsg='epsg:4326') for id in
+                       route['stops']],
+                trips=route['trips'],
+                arrival_offsets=route['arrival_offsets'],
+                departure_offsets=route['departure_offsets']
+            )
+            routes_list.append(r)
+        services.append(Service(id=key, routes=routes_list))
+
+    return services
 
 
-def read_to_schedule(path: str, day: str):
+def read_to_list_of_service_objects(path: str, day: str):
     if persistence.is_zip(path):
         gtfs_path = os.path.join(os.getcwd(), 'tmp')
         if not os.path.exists(gtfs_path):
@@ -208,8 +219,8 @@ def read_to_schedule(path: str, day: str):
     services = read_services_from_calendar(gtfs_path, day=day)
     stop_times, stop_times_db, stops_db, trips_db, routes_db = read_gtfs_to_db_like_tables(gtfs_path)
     schedule = parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, routes_db, services)
-    stops = generate_stops(stops_db)
 
     if persistence.is_zip(path):
         shutil.rmtree(os.path.dirname(gtfs_path))
-    return schedule, stops
+
+    return convert_schedule_to_list_of_services(schedule, stops_db)

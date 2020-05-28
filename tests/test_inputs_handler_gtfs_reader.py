@@ -36,29 +36,21 @@ def test_get_mode_returns_other_if_doesnt_recognise():
     assert gtfs_reader.get_mode('99999999') == 'other'
 
 
-def test_parse_db_to_schedule_dict_correct():
+def test_parse_db_to_schedule_dict_correct(correct_schedule_dict):
     schedule = gtfs_reader.parse_db_to_schedule_dict(stop_times_db=correct_stop_times_db, stops_db=correct_stops_db,
                                                      trips_db=correct_trips_db, route_db=correct_routes_db,
                                                      services=['6630', '6631'])
 
-    assert_semantically_equal(schedule, correct_schedule)
+    assert_semantically_equal(schedule, correct_schedule_dict)
 
 
-def test_generate_stops_correct():
-    stops = gtfs_reader.generate_stops(correct_stops_db)
+def test_read_to_schedule_correct(correct_services_from_test_gtfs):
+    services = gtfs_reader.read_to_list_of_service_objects(gtfs_test_file, '20190604')
 
-    assert stops == correct_stops
-
-
-def test_read_to_schedule_correct():
-    schedule, stops = gtfs_reader.read_to_schedule(gtfs_test_file, '20190604')
-
-    assert_semantically_equal(schedule, correct_schedule)
-    assert_semantically_equal(stops, correct_stops)
+    assert services == correct_services_from_test_gtfs
 
 
-def test_zip_read_to_schedule_correct():
-    schedule, stops = gtfs_reader.read_to_schedule(gtfs_test_zip_file, '20190604')
+def test_zip_read_to_schedule_correct(correct_services_from_test_gtfs):
+    services = gtfs_reader.read_to_list_of_service_objects(gtfs_test_zip_file, '20190604')
 
-    assert_semantically_equal(schedule, correct_schedule)
-    assert_semantically_equal(stops, correct_stops)
+    assert services == correct_services_from_test_gtfs

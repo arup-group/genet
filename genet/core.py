@@ -1,11 +1,13 @@
 import networkx as nx
+import pandas as pd
 import uuid
 import warnings
-from typing import Union
+from typing import Union, List
 from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.modify import ChangeLog
-from genet.utils.spatial import SpatialTree
+from genet.utils import spatial
+from genet.schedule_elements import Service
 
 
 class Network:
@@ -13,7 +15,7 @@ class Network:
         self.graph = nx.MultiDiGraph()
         self.schedule = Schedule()
         self.change_log = ChangeLog()
-        self.spatial_tree = SpatialTree()
+        self.spatial_tree = spatial.SpatialTree()
         self.modes = []
 
         self.epsg = ''
@@ -47,7 +49,7 @@ class Network:
             self.graph.add_node(node, **attribs)
         else:
             self.graph.add_node(node)
-        self.change_log.add(object_type = 'node', object_id = node, object_attributes = attribs)
+        self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
 
     def add_edge(self, u: Union[str, int], v: Union[str, int], attribs: dict = None):
         link_id = self.generate_index_for_edge()
@@ -65,7 +67,7 @@ class Network:
             self.graph.add_edge(u, v, **attribs)
         else:
             self.graph.add_edge(u, v)
-        self.change_log.add(object_type = 'link', object_id = link_id, object_attributes = attribs)
+        self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
 
     def number_of_multi_edges(self, u, v):
         """
@@ -162,41 +164,36 @@ class Network:
             i += 1
 
 
-class Schedule():
+class Schedule:
     """
-    Takes services and stops in the correct format and provides method and structure for transit schedules
+    Takes services and stops_mapping in the correct format and provides method and structure for transit schedules
 
     Parameters
     ----------
-    :param services:
-        {'service_id : list(of unique route services, each is a dict
-                      {'route_short_name': string,
-                       'mode': string,
-                       'stops': list,
-        # optional     'route': list of network links,
-                       'trips': {'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
-                       'arrival_offsets': ['00:00:00', '00:02:00'],
-                       'departure_offsets': ['00:00:00', '00:02:00'] }
-         )})
-    :param stops: spatial information for the transit stops, at least x,y attributes
-        {'stop_id'  (which feature in services stops lists) : {'x': float, 'y': float x,y in given epsg}
-        }
-    :param epsg: 'epsg:12345'
+    :param services: list of Service class objects
+    :param stops_mapping: pandas.DataFrame of Stop class objects mapping to Services that use them
+    e.g.
+    | stop_id | stop        | service_id | service        |
+    | id_1    | Stop object | serv_1     | Service object |
+    | id_1    | Stop object | serv_2     | Service object |
+    | id_2    | Stop object | serv_1     | Service object |
+    | id_2    | Stop object | serv_2     | Service object |
+    | id_3    | Stop object | serv_2     | Service object |
+    easy to subset on stop or service and extract the sttops/services of interest
+    :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     """
 
-    def __init__(self, services: dict = None, stops: dict = None, epsg=''):
+    def __init__(self, services: List[Service] = None, epsg=''):
         super().__init__()
-        if (services is None) and (stops is None):
+        if services is None:
             self.services = {}
-            self.stops = {}
-        elif (services is None) and (stops is not None):
-            raise AssertionError('{} expects all or none of the attributes'.format(self.__class__.__name__))
-        elif (services is not None) and (stops is None):
-            raise AssertionError('You need to provide spatial information for the stops')
+            self.stops_mapping = pd.DataFrame(columns=['stop_id', 'stop', 'service_id', 'service'])
         else:
             assert epsg != '', 'You need to specify the coordinate system for the schedule'
-            self.services = services
-            self.stops = stops
+            self.services = {}
+            for service in services:
+                self.services[service.id] = service
+            self.build_stops_mapping()
         self.epsg = epsg
         self.transformer = ''
         # TODO minimal transfer times for MATSim schedules
@@ -233,8 +230,9 @@ class Schedule():
         elif self.epsg != other.epsg:
             raise RuntimeError('You are merging two schedules with different coordinate systems.')
         else:
-            return self.__class__({**self.services, **other.services}, stops={**self.stops, **other.stops},
-                                  epsg=self.epsg)
+            return self.__class__(
+                services=list(self.services.values()) + list(other.services.values()),
+                epsg=self.epsg)
 
     def is_separable_from(self, other):
         return set(other.services.keys()) & set(self.services.keys()) == set()
@@ -253,7 +251,7 @@ class Schedule():
         Iterator for routes in the schedule, returns service_id and a route
         """
         for service_id, service in self.services.items():
-            for route in service:
+            for route in service.routes:
                 yield service_id, route
 
     def number_of_routes(self):
@@ -261,10 +259,28 @@ class Schedule():
 
     def iter_stops(self):
         """
-        Iterator for stops in the schedule, returns ...
+        Iterator for stops_mapping in the schedule, returns two-tuple: stop_id and the Stop object
         """
-        for stop_id, attribs in self.stops.items():
-            yield stop_id, attribs
+        all_stops = set()
+        for service in self.services.values():
+            for route in service.routes:
+                all_stops = all_stops | set(route.stops)
+        for stop in all_stops:
+            yield stop.id, stop
+
+    def build_stops_mapping(self):
+        service_to_stops = {}
+        for service_id, service in self.services.items():
+            service_to_stops[service_id] = [stop.id for stop in service.stops()]
+
+        # ze old switcheroo
+        self.stops_mapping = {}
+        for key, value in service_to_stops.items():
+            for item in value:
+                if item in self.stops_mapping:
+                    self.stops_mapping[item].append(key)
+                else:
+                    self.stops_mapping[item] = [key]
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
@@ -272,7 +288,10 @@ class Schedule():
 
     def read_matsim_schedule(self, path, epsg):
         self.initiate_crs_transformer(epsg)
-        self.services, self.stops = matsim_reader.read_schedule(path, self.transformer)
+        services = matsim_reader.read_schedule(path, epsg)
+        for service in services:
+            self.services[service.id] = service
+        self.build_stops_mapping()
 
     def read_gtfs_schedule(self, path, day):
         """
@@ -282,4 +301,7 @@ class Schedule():
         :return:
         """
         self.initiate_crs_transformer(epsg='epsg:4326')
-        self.services, self.stops = gtfs_reader.read_to_schedule(path, day)
+        services = gtfs_reader.read_to_list_of_service_objects(path, day)
+        for service in services:
+            self.services[service.id] = service
+        self.build_stops_mapping()
