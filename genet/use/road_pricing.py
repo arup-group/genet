@@ -1,11 +1,12 @@
 import os
 import sys
+import argparse
 import networkx as nx
 from tqdm import tqdm
 from lxml import etree as et
 from lxml.etree import Element, SubElement
 
-sys.path.append('../..') # make `genet` reachable from this script
+# sys.path.append('../..') # make `genet` reachable from this script
 from genet.core import Network
 
 
@@ -187,12 +188,15 @@ if __name__ == "__main__":
 
 
     osm_way_ids = extract_toll_ways_from_opl(path_opl)
+    # remove the `w` in front of each id number if present
+    if osm_way_ids[0][0]=='w':
+        osm_way_ids = [item.split('w')[1] for item in osm_way_ids]
 
     n = Network()
     n.read_matsim_network(path_network, epsg='epsg:27700')
 
-    network_toll_ids = extract_network_id_from_osm_id(osm_way_ids)
+    network_toll_ids = extract_network_id_from_osm_id(n,osm_way_ids)
 
     roadpricing = build_tree(network_toll_ids)
 
-    write_xml(roadpricing, out_path)
+    write_xml(roadpricing, outpath)
