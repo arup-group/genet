@@ -172,15 +172,7 @@ class Schedule:
     Parameters
     ----------
     :param services: list of Service class objects
-    :param stops_mapping: pandas.DataFrame of Stop class objects mapping to Services that use them
-    e.g.
-    | stop_id | stop        | service_id | service        |
-    | id_1    | Stop object | serv_1     | Service object |
-    | id_1    | Stop object | serv_2     | Service object |
-    | id_2    | Stop object | serv_1     | Service object |
-    | id_2    | Stop object | serv_2     | Service object |
-    | id_3    | Stop object | serv_2     | Service object |
-    easy to subset on stop or service and extract the sttops/services of interest
+    :param stops_mapping: {'stop_id' : [service_id, service_id_2, ...]} for extracting services given a stop_id
     :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     """
 
