@@ -84,7 +84,9 @@ def test_schedule(test_service):
 ###########################################################
 # correct gtfs vars
 ###########################################################
-correct_stop_times = [{'trip_id': 'BT1', 'arrival_time': '03:21:00', 'departure_time': '03:21:00', 'stop_id': 'BSE',
+@pytest.fixture()
+def correct_stop_times():
+    return [{'trip_id': 'BT1', 'arrival_time': '03:21:00', 'departure_time': '03:21:00', 'stop_id': 'BSE',
                        'stop_sequence': '0', 'stop_headsign': '', 'pickup_type': '0', 'drop_off_type': '1',
                        'timepoint': '1', 'stop_direction_name': ''},
                       {'trip_id': 'BT1', 'arrival_time': '03:23:00', 'departure_time': '03:23:00', 'stop_id': 'BSN',
@@ -96,7 +98,11 @@ correct_stop_times = [{'trip_id': 'BT1', 'arrival_time': '03:21:00', 'departure_
                       {'trip_id': 'RT1', 'arrival_time': '03:23:00', 'departure_time': '03:23:00', 'stop_id': 'RSE',
                        'stop_sequence': '1', 'stop_headsign': '', 'pickup_type': '0', 'drop_off_type': '1',
                        'timepoint': '1', 'stop_direction_name': ''}]
-correct_stop_times_db = {'BT1': [
+
+
+@pytest.fixture()
+def correct_stop_times_db():
+    return {'BT1': [
     {'trip_id': 'BT1', 'arrival_time': '03:21:00', 'departure_time': '03:21:00', 'stop_id': 'BSE',
      'stop_sequence': '0', 'stop_headsign': '', 'pickup_type': '0', 'drop_off_type': '1', 'timepoint': '1',
      'stop_direction_name': ''},
@@ -109,7 +115,11 @@ correct_stop_times_db = {'BT1': [
     {'trip_id': 'RT1', 'arrival_time': '03:23:00', 'departure_time': '03:23:00', 'stop_id': 'RSE',
      'stop_sequence': '1', 'stop_headsign': '', 'pickup_type': '0', 'drop_off_type': '1', 'timepoint': '1',
      'stop_direction_name': ''}]}
-correct_stops_db = {
+
+
+@pytest.fixture()
+def correct_stops_db():
+    return {
     'BSE': {'stop_id': 'BSE', 'stop_code': '', 'stop_name': 'Bus Stop snap to edge', 'stop_lat': '51.5226864',
             'stop_lon': '-0.1413621', 'wheelchair_boarding': '', 'stop_timezone': '', 'location_type': '0.0',
             'parent_station': '210G433', 'platform_code': ''},
@@ -122,12 +132,20 @@ correct_stops_db = {
     'RSN': {'stop_id': 'RSN', 'stop_code': '', 'stop_name': 'Rail Stop snap to node', 'stop_lat': '51.5231335',
             'stop_lon': '-0.1410946', 'wheelchair_boarding': '', 'stop_timezone': '', 'location_type': '0.0',
             'parent_station': '210G430', 'platform_code': ''}}
-correct_trips_db = {
+
+
+@pytest.fixture()
+def correct_trips_db():
+    return {
     'BT1': {'route_id': '1001', 'service_id': '6630', 'trip_id': 'BT1', 'trip_headsign': 'Bus Test trip',
             'block_id': '', 'wheelchair_accessible': '0', 'trip_direction_name': '', 'exceptional': ''},
     'RT1': {'route_id': '1002', 'service_id': '6631', 'trip_id': 'RT1', 'trip_headsign': 'Rail Test trip',
             'block_id': '', 'wheelchair_accessible': '0', 'trip_direction_name': '', 'exceptional': ''}}
-correct_routes_db = {'1001': {'route_id': '1001', 'agency_id': 'OP550', 'route_short_name': 'BTR',
+
+
+@pytest.fixture()
+def correct_routes_db():
+    return {'1001': {'route_id': '1001', 'agency_id': 'OP550', 'route_short_name': 'BTR',
                               'route_long_name': 'Bus Test Route', 'route_type': '3', 'route_url': '',
                               'route_color': 'CE312D', 'route_text_color': 'FFFFFF', 'checkin_duration': ''},
                      '1002': {'route_id': '1002', 'agency_id': 'OP550', 'route_short_name': 'RTR',

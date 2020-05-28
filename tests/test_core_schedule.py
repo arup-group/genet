@@ -10,7 +10,7 @@ pt2matsim_schedule_file = os.path.abspath(os.path.join(os.path.dirname(__file__)
 gtfs_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs"))
 
 
-def test_Schedule_needs_all_attribs_filled_or_none__epsg_missing():
+def test_schedule_rejects_partial_attributes_epsg_missing():
     with pytest.raises(AssertionError) as e:
         Schedule(services=[test_service])
     assert 'You need to specify the coordinate system for the schedule' in str(e.value)
@@ -25,15 +25,16 @@ def test__getitem__returns_a_service(test_service):
 def test__repr__shows_number_of_services(mocker):
     mocker.patch.object(Schedule, '__len__')
     schedule = Schedule()
-    schedule.__repr__()
+    s = schedule.__repr__()
+    assert 'instance at' in s
+    assert 'services' in s
     Schedule.__len__.assert_called_once()
 
 
-def test__str__shows_info(mocker):
-    mocker.patch.object(Schedule, 'info')
+def test__str__shows_info():
     schedule = Schedule()
-    schedule.__str__()
-    Schedule.info.assert_called_once()
+    assert 'Number of services' in schedule.__str__()
+    assert 'Number of unique routes' in schedule.__str__()
 
 
 def test__len__returns_the_number_of_services(test_service):

@@ -14,7 +14,8 @@ def test_read_services_from_calendar_correct():
     assert services == ['6630', '6631']
 
 
-def test_read_gtfs_to_db_like_tables_correct():
+def test_read_gtfs_to_db_like_tables_correct(correct_stop_times, correct_stop_times_db, correct_stops_db,
+                                             correct_trips_db, correct_routes_db):
     stop_times, stop_times_db, stops_db, trips_db, routes_db = gtfs_reader.read_gtfs_to_db_like_tables(gtfs_test_file)
 
     assert stop_times == correct_stop_times
@@ -36,7 +37,8 @@ def test_get_mode_returns_other_if_doesnt_recognise():
     assert gtfs_reader.get_mode('99999999') == 'other'
 
 
-def test_parse_db_to_schedule_dict_correct(correct_schedule_dict):
+def test_parse_db_to_schedule_dict_correct(correct_schedule_dict, correct_stop_times_db, correct_stops_db,
+                                           correct_trips_db, correct_routes_db):
     schedule = gtfs_reader.parse_db_to_schedule_dict(stop_times_db=correct_stop_times_db, stops_db=correct_stops_db,
                                                      trips_db=correct_trips_db, route_db=correct_routes_db,
                                                      services=['6630', '6631'])

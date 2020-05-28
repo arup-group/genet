@@ -2,6 +2,7 @@ import networkx as nx
 import pandas as pd
 import uuid
 import warnings
+import logging
 from typing import Union, List
 from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader, gtfs_reader
@@ -54,6 +55,8 @@ class Network:
     def add_edge(self, u: Union[str, int], v: Union[str, int], attribs: dict = None):
         link_id = self.generate_index_for_edge()
         self.add_link(link_id, u, v, attribs)
+        logging.info('Added edge from {} to {} with link_id {}'.format(u, v, link_id))
+        return link_id
 
     def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], attribs: dict = None):
         if link_id in self.link_id_mapping:
@@ -149,9 +152,7 @@ class Network:
             id = max([int(i) for i in self.link_id_mapping.keys()]) + 1
         except ValueError:
             id = len(self.link_id_mapping) + 1
-        if id not in self.link_id_mapping and str(id) not in self.link_id_mapping:
-            pass
-        else:
+        if (id in self.link_id_mapping) or (str(id) in self.link_id_mapping):
             id = uuid.uuid4()
         return str(id)
 
