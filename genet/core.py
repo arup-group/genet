@@ -6,6 +6,7 @@ import logging
 from typing import Union, List
 from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader, gtfs_reader
+from genet.outputs_handler import matsim_xml_writer
 from genet.modify import ChangeLog
 from genet.utils import spatial
 from genet.schedule_elements import Service
@@ -128,6 +129,14 @@ class Network:
         multi_idx = self.link_id_mapping[link_id]['multi_edge_idx']
         return dict(self.graph[u][v][multi_idx])
 
+    def services(self):
+        """
+        Iterator returning services
+        :return:
+        """
+        for id, service in self.schedule.services.items():
+            yield service
+
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
         self.transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
@@ -164,6 +173,9 @@ class Network:
             self.link_id_mapping[str(i)] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
             i += 1
 
+    def write_to_matsim(self, output_dir):
+        matsim_xml_writer.write_to_matsim_xmls(output_dir, self)
+
 
 class Schedule:
     """
@@ -189,7 +201,7 @@ class Schedule:
             self.build_stops_mapping()
         self.epsg = epsg
         self.transformer = ''
-        # TODO minimal transfer times for MATSim schedules
+        self.minimal_transfer_times = {}
 
     def __getitem__(self, service_id):
         return self.services[service_id]
@@ -214,7 +226,7 @@ class Schedule:
         takes the services dictionary and adds them to the current
         services stored in the Schedule. Have to be separable!
         I.e. the keys in services cannot overlap with the ones already
-        existing (TODO)
+        existing (TODO: add merging complicated schedules, parallels to the merging gtfs work)
         :param services: (see tests for the dict schema)
         :return:
         """
@@ -250,14 +262,13 @@ class Schedule:
     def number_of_routes(self):
         return len([r for id, r in self.routes()])
 
-    def iter_stops(self):
+    def stops(self):
         """
         Iterator for stops_mapping in the schedule, returns two-tuple: stop_id and the Stop object
         """
         all_stops = set()
         for service in self.services.values():
-            for route in service.routes:
-                all_stops = all_stops | set(route.stops)
+            all_stops = all_stops | set(service.stops())
         for stop in all_stops:
             yield stop.id, stop
 
@@ -281,7 +292,7 @@ class Schedule:
 
     def read_matsim_schedule(self, path, epsg):
         self.initiate_crs_transformer(epsg)
-        services = matsim_reader.read_schedule(path, epsg)
+        services, self.minimal_transfer_times = matsim_reader.read_schedule(path, epsg)
         for service in services:
             self.services[service.id] = service
         self.build_stops_mapping()

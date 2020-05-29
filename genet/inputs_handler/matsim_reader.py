@@ -85,21 +85,7 @@ def read_schedule(schedule_path, epsg):
     Read MATSim schedule
     :param schedule_path: path to the schedule.xml file
     :param epsg: 'epsg:12345'
-    :return: schedule (dict {service_id : list(of unique route services, each is a dict
-    {   'route_short_name': string,
-        'mode': string,
-        'stops': list,
-        's2_stops' : stops list indexed by s2sphere
-        'route': ['1'],
-        'trips': {'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
-        'arrival_offsets': ['00:00:00', '00:02:00'],
-        'departure_offsets': ['00:00:00', '00:02:00'] }
-    )}),
-        transit_stop_id_mapping (dict {
-        matsim schedule transit stop id : dict {
-            'node_id' : s2 spatial id,
-            'attribs' : dict of matsim schedule attributes attached to that transit stop
-        }})
+    :return: list of Service objects
     """
     services = []
 
@@ -114,9 +100,12 @@ def read_schedule(schedule_path, epsg):
                 y=transit_stop_id_mapping[s['stop']['refId']]['y'],
                 epsg=epsg
             ) for s in transitRoute_val['stops']]
+            for s in stops:
+                s.add_additional_attributes(transit_stop_id_mapping[s.id])
 
             arrival_offsets = []
             departure_offsets = []
+            await_departure = []
             for stop in transitRoute_val['stops']:
                 if 'departureOffset' not in stop['stop'] and 'arrivalOffset' not in stop['stop']:
                     pass
@@ -129,6 +118,9 @@ def read_schedule(schedule_path, epsg):
                 else:
                     arrival_offsets.append(stop['stop']['arrivalOffset'])
                     departure_offsets.append(stop['stop']['departureOffset'])
+
+                if 'awaitDeparture' in stop['stop']:
+                    await_departure.append(str(stop['stop']['awaitDeparture']).lower() in ['true', '1'])
 
             route = [r_val['link']['refId'] for r_val in transitRoute_val['links']]
 
@@ -143,7 +135,9 @@ def read_schedule(schedule_path, epsg):
                 route=route,
                 trips=trips,
                 arrival_offsets=arrival_offsets,
-                departure_offsets=departure_offsets
+                departure_offsets=departure_offsets,
+                id=transitRoute,
+                await_departure=await_departure
             )
             service_routes.append(r)
         services.append(Service(id=service_id, routes=service_routes))
@@ -153,6 +147,8 @@ def read_schedule(schedule_path, epsg):
     transportMode = {}
     transitStops = {}
     transit_stop_id_mapping = {}
+    is_minimalTransferTimes = False
+    minimalTransferTimes = {}  # {'stop_id_1': {stop: 'stop_id_2', transfer_time: 0.0}}
 
     # transitLines
     for event, elem in ET.iterparse(schedule_path, events=('start', 'end')):
@@ -163,6 +159,16 @@ def read_schedule(schedule_path, epsg):
                     transitStops[attribs['id']] = attribs
                 if attribs['id'] not in transit_stop_id_mapping:
                     transit_stop_id_mapping[attribs['id']] = elem.attrib
+            if elem.tag == 'minimalTransferTimes':
+                is_minimalTransferTimes = not is_minimalTransferTimes
+            if elem.tag == 'relation':
+                if is_minimalTransferTimes:
+                    if not elem.attrib['toStop'] in minimalTransferTimes:
+                        attribs = elem.attrib
+                        minimalTransferTimes[attribs['fromStop']] = {
+                            'stop': attribs['toStop'],
+                            'transferTime': float(attribs['transferTime'])
+                        }
             if elem.tag == 'transitLine':
                 if transitLine:
                     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
@@ -183,7 +189,7 @@ def read_schedule(schedule_path, epsg):
 
             # doesn't have any attribs
             # if elem.tag == 'route':
-            #     routeProfile = {'routeProfile': elem.attrib}
+            #     route = {'route': elem.attrib}
 
             if elem.tag == 'link':
                 transitRoutes[transitRoute]['links'].append({'link': elem.attrib})
@@ -200,4 +206,4 @@ def read_schedule(schedule_path, epsg):
     # add the last one
     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
 
-    return services
+    return services, minimalTransferTimes

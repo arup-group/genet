@@ -97,21 +97,12 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
     assert correct_link_id_map == link_id_mapping
 
 
-def test_read_schedule_reads_the_data_correctly():
-    correct_services = [Service(id='10314', routes=[
-            Route(
-                route_short_name='12',
-                mode='bus',
-                stops=[Stop(id='26997928P', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700'),
-                       Stop(id='26997928P.link:1', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700')],
-                route = ['1'],
-                trips = {'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
-                arrival_offsets = ['00:00:00', '00:02:00'],
-                departure_offsets = ['00:00:00', '00:02:00']
-            )
-        ])
-    ]
+def test_read_schedule_reads_the_data_correctly(correct_services_from_test_pt2matsim_schedule):
+    services, minimalTransferTimes = matsim_reader.read_schedule(pt2matsim_schedule_file, 'epsg:27700')
 
-    services = matsim_reader.read_schedule(pt2matsim_schedule_file, 'epsg:27700')
+    correct_minimalTransferTimes = {
+        '26997928P': {'stop': '26997928P.link:1', 'transferTime': 0.0},
+    }
 
-    assert correct_services == services
+    assert correct_services_from_test_pt2matsim_schedule == services
+    assert_semantically_equal(minimalTransferTimes, correct_minimalTransferTimes)
