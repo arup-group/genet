@@ -203,6 +203,9 @@ class Schedule:
         self.transformer = ''
         self.minimal_transfer_times = {}
 
+    def __nonzero__(self):
+        return self.services
+
     def __getitem__(self, service_id):
         return self.services[service_id]
 
