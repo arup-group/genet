@@ -1,10 +1,9 @@
-import os
-import sys
 import argparse
-import networkx as nx
-from tqdm import tqdm
+import os
+
 from lxml import etree as et
 from lxml.etree import Element, SubElement
+from tqdm import tqdm
 
 # sys.path.append('../..') # make `genet` reachable from this script
 from genet.core import Network
@@ -16,11 +15,11 @@ def extract_toll_ways_from_opl(path_opl):
     :param path_opl: path to the .osm.opl file
     :return: list of OSM way ids matching criteria (str)
     '''
-    # parse .osm.opl contents    
+    # parse .osm.opl contents
     with open(path_opl, 'r') as f:
         contents = [line.rstrip('\n') for line in f]
     # extract all OSM ways
-    ways = [line for line in contents if line[0]=='w']
+    ways = [line for line in contents if line[0] == 'w']
 
     # extract toll ways from above OSM ways
     toll_ways = []
@@ -41,16 +40,17 @@ def extract_toll_ways_from_opl(path_opl):
     # extract ids from toll ways
     toll_ids = [item.split(' ')[0] for item in toll_ways]
     # summary for user
-    print('{} toll ways extracted from {}'.format(len(toll_ids),path_opl))
+    print('{} toll ways extracted from {}'.format(len(toll_ids), path_opl))
 
     return toll_ids
 
 
-# user should check that they are happy with links (osmium getid - QGIS - OSM layer)
+#  user should check that they are happy with links (osmium getid - QGIS - OSM layer)
 # hence why we provide write_toll_ids() and read_toll_ids(), as user may
 # add some ids manually
 
-def write_toll_ids(toll_ids,outpath):
+
+def write_toll_ids(toll_ids, outpath):
     '''
     Given a list of way ids, write them to a file named 'toll_ids' where each is
     on a separate line. Such files can be used to subset a .osm.pbf with osmium
@@ -59,7 +59,7 @@ def write_toll_ids(toll_ids,outpath):
     :param outpath: path to destination folder
     :return: write a list of way ids e.g. `w123456` (str)
     '''
-    with open(os.path.join(outpath,'toll_ids'), 'w') as f:
+    with open(os.path.join(outpath, 'toll_ids'), 'w') as f:
         for item in toll_ids:
             temp = item
             f.write("%s\n" % temp)
@@ -70,20 +70,20 @@ def read_toll_ids(path):
     Read a list of OSM way ids
     :param path: path to folder
     '''
-    with open(path,'r') as f:
+    with open(path, 'r') as f:
         osm_way_ids = [line.rstrip('\n') for line in f]
     # remove the `w` in front of each id number if present
-    if osm_way_ids[0][0]=='w':
+    if osm_way_ids[0][0] == 'w':
         osm_way_ids = [item.split('w')[1] for item in osm_way_ids]
     # remove duplicates
-    osm_way_ids = list(set(osm_way_ids)) 
+    osm_way_ids = list(set(osm_way_ids))
 
     return osm_way_ids
 
 
-def extract_network_id_from_osm_id(n,osm_way_ids):
+def extract_network_id_from_osm_id(n, osm_way_ids):
     '''
-    Parse a Network() object and find edges whose 
+    Parse a Network() object and find edges whose
     ['attributes']['osm:way:id']['text'] is present in osm_way_ids
     :param n: a Network() object with 'osm:way:id'
     :param osm_way_ids: a list of OSM way ids (without the `w` prefix) (str)
@@ -96,26 +96,19 @@ def extract_network_id_from_osm_id(n,osm_way_ids):
 
     for edge_dict in n.edges():
         for key in n.edges(edge_dict):
-
             if 'attributes' in n.edges(edge_dict)[key].keys():
-
-                edge_osm_id = n.edges(edge_dict)[key]['attributes']['osm:way:id']['text']        
-
+                edge_osm_id = n.edges(edge_dict)[key]['attributes']['osm:way:id']['text']
                 if edge_osm_id in osm_way_ids:
                     network_toll_ids.append(
                         n.edges(edge_dict)[key]['id']
                     )
-
                     edge_osm_ids.append(edge_osm_id)
-
-
         edge_osm_ids = list(set(edge_osm_ids))
         if edge_osm_ids == osm_way_ids:
             break
 
-
     print(len(network_toll_ids), ' network ids identified as matching OSM toll ids')
-    print(len(osm_way_ids)-len(edge_osm_ids),' OSM toll ids not found in network.xml')
+    print(len(osm_way_ids) - len(edge_osm_ids), ' OSM toll ids not found in network.xml')
     missing_osm_ways = [item for item in osm_way_ids if item not in edge_osm_ids]
     print('Unfound OSM ids are: ')
     print(missing_osm_ways)
@@ -133,10 +126,10 @@ def write_xml(root, path):
     #     path = Path(path)
     # root = self.build_xml()
     tree = et.tostring(root,
-                        pretty_print=True,
-                        xml_declaration=False,
-                        encoding='UTF-8')
-    with open(os.path.join(path,'roadpricing-file.xml'), 'wb') as file:
+                       pretty_print=True,
+                       xml_declaration=False,
+                       encoding='UTF-8')
+    with open(os.path.join(path, 'roadpricing-file.xml'), 'wb') as file:
         file.write(b'<?xml version="1.0" ?>\n')
         file.write(b'<!DOCTYPE roadpricing SYSTEM "http://matsim.org/files/dtd/roadpricing_v1.dtd">\n')
         file.write(tree)
@@ -154,7 +147,7 @@ def build_tree(network_toll_ids):
 
     links = SubElement(roadpricing, "links")
 
-    for link_id in network_toll_ids: 
+    for link_id in network_toll_ids:
         SubElement(links, "link", id=link_id)
 
     # apply same cost to all links, regardless of vehicle type
@@ -164,10 +157,9 @@ def build_tree(network_toll_ids):
 
 
 if __name__ == "__main__":
-    
     arg_parser = argparse.ArgumentParser(
         description='')
-		
+
     arg_parser.add_argument('--path_opl',
                             help='location of the .osm.opl file',
                             default=None)
@@ -186,16 +178,15 @@ if __name__ == "__main__":
     path_network = args['path_network']
     outpath = args['outpath']
 
-
     osm_way_ids = extract_toll_ways_from_opl(path_opl)
     # remove the `w` in front of each id number if present
-    if osm_way_ids[0][0]=='w':
+    if osm_way_ids[0][0] == 'w':
         osm_way_ids = [item.split('w')[1] for item in osm_way_ids]
 
     n = Network()
     n.read_matsim_network(path_network, epsg='epsg:27700')
 
-    network_toll_ids = extract_network_id_from_osm_id(n,osm_way_ids)
+    network_toll_ids = extract_network_id_from_osm_id(n, osm_way_ids)
 
     roadpricing = build_tree(network_toll_ids)
 

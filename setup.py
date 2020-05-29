@@ -22,6 +22,8 @@ setup(
         'pytest',
         'pytest-mock',
         'dictdiffer==0.8.1',
-        'pandas'
+        'pandas',
+        'tqdm',
+        'lxml'
     ],
 )
