@@ -3,12 +3,13 @@ import pandas as pd
 import uuid
 import warnings
 import logging
+import os
 from typing import Union, List
 from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.outputs_handler import matsim_xml_writer
 from genet.modify import ChangeLog
-from genet.utils import spatial
+from genet.utils import spatial, persistence
 from genet.schedule_elements import Service
 
 
@@ -174,7 +175,9 @@ class Network:
             i += 1
 
     def write_to_matsim(self, output_dir):
+        persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_to_matsim_xmls(output_dir, self)
+        self.change_log.export(os.path.join(output_dir, 'change_log.csv'))
 
 
 class Schedule:

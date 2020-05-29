@@ -241,3 +241,12 @@ def test_write_to_matsim_generates_network_matsim_file_if_network_is_car_only(ne
     assert os.path.exists(expected_network_xml)
     assert not os.path.exists(expected_schedule_xml)
     assert not os.path.exists(expected_vehicle_xml)
+
+
+def test_write_to_matsim_generates_change_log_csv(network_object_from_test_data, tmpdir):
+    expected_change_log_path = os.path.join(tmpdir, 'change_log.csv')
+    assert not os.path.exists(expected_change_log_path)
+
+    network_object_from_test_data.write_to_matsim(tmpdir)
+
+    assert os.path.exists(expected_change_log_path)
