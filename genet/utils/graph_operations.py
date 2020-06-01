@@ -97,7 +97,7 @@ def extract_links_on_edge_attributes(network, conditions: Union[list, dict], how
 
     * all: means all conditions need to be met
     * any: means at least one condition needs to be met
-    :return: list of link ids of network
+    :return: list of link ids of the input network
     """
     filter = Filter(conditions, how)
 
@@ -108,3 +108,38 @@ def extract_links_on_edge_attributes(network, conditions: Union[list, dict], how
             link_ids_to_return.append(link_id)
 
     return link_ids_to_return
+
+
+def extract_nodes_on_node_attributes(network, conditions: Union[list, dict], how='any'):
+    """
+    Extracts graph nodes based on values of attributes saved on the nodes. Fails silently,
+    assumes not all nodes have all of the attributes.
+    :param network: genet.core.Network object
+    :param conditions: {'attribute_key': 'target_value'} or nested
+    {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+
+    - single value, string, int, float, where the node_data[key] == value
+    - list of single values as above, where node_data[key] in list(value1, value2)
+    - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+      lower_bound <= node_data[key] <= upper_bound
+    - function that returns a boolean given the value e.g.
+
+    def below_exclusive_upper_bound(value):
+        return value < 100
+
+    :param how: {'all', 'any'}, default 'any'
+    How to subset the graph if more than one condition is specified in values_to_subset_on
+
+    * all: means all conditions need to be met
+    * any: means at least one condition needs to be met
+    :return: list of node ids of the input network
+    """
+    filter = Filter(conditions, how)
+
+    node_ids_to_return = []
+    for node_id, node_attribs in network.nodes():
+        a = filter.satisfies_conditions(node_attribs)
+        if a:
+            node_ids_to_return.append(node_id)
+
+    return node_ids_to_return

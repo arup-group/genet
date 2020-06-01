@@ -104,3 +104,107 @@ def test_extract_graph_links_with_callable_condition():
     )
 
     assert links == ['0']
+
+
+def test_extract_graph_nodes_with_flat_condition():
+    n = Network()
+    n.add_node(1, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
+    n.add_node(2, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
+    n.add_node(3, {'attributes': 'yes'})
+
+    nodes = graph_operations.extract_nodes_on_node_attributes(
+        n,
+        conditions={'attributes': 'yes'},
+    )
+
+    assert nodes == [3]
+
+
+def test_extract_graph_nodes_with_nested_condition():
+    n = Network()
+    n.add_node(1, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
+    n.add_node(2, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
+
+    nodes = graph_operations.extract_nodes_on_node_attributes(
+        n,
+        conditions= {'attributes': {'osm:way:highway': {'text': 'primary'}}},
+    )
+
+    assert nodes == [1, 2]
+
+
+def test_extract_graph_nodes_with_list_of_conditions():
+    n = Network()
+    n.add_node(1, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
+    n.add_node(2, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
+    n.add_node(3, {'attributes': 'yes'})
+
+    nodes = graph_operations.extract_nodes_on_node_attributes(
+        n,
+        conditions= [{'attributes': {'osm:way:highway': {'text': 'primary'}}},
+                     {'attributes': 'yes'}],
+        how='any'
+    )
+
+    assert nodes == [1, 2, 3]
+
+
+def test_extract_graph_nodes_with_list_of_conditions_strict():
+    n = Network()
+    n.add_node(1, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway:to:hell', 'class': 'java.lang.String', 'text': 'primary'}}})
+    n.add_node(2, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
+    n.add_node(3, {'attributes': 'yes'})
+
+    nodes = graph_operations.extract_nodes_on_node_attributes(
+        n,
+        conditions= [{'attributes': {'osm:way:highway': {'text': 'primary'}}},
+                     {'attributes': {'osm:way:highway': {'name': 'osm:way:highway'}}}],
+        how='all'
+    )
+
+    assert nodes == [2]
+
+
+def test_extract_graph_nodes_with_list_condition_with():
+    n = Network()
+    n.add_node(1, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
+    n.add_node(2, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
+    n.add_node(3, {'attributes': 'yes'})
+
+    nodes = graph_operations.extract_nodes_on_node_attributes(
+        n,
+        conditions= {'attributes': {'osm:way:highway': {'text': ['primary', 'some_other_highway']}}}
+    )
+
+    assert nodes == [1, 2]
+
+
+def test_extract_graph_nodes_with_bound_condition():
+    n = Network()
+    n.add_node(1, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 9}}})
+    n.add_node(2, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 1}}})
+    n.add_node(3, {'attributes': 'yes'})
+
+    nodes = graph_operations.extract_nodes_on_node_attributes(
+        n,
+        conditions= {'attributes': {'osm:way:highway': {'text': (2,10)}}}
+    )
+
+    assert nodes == [1]
+
+
+def test_extract_graph_nodes_with_callable_condition():
+    n = Network()
+    n.add_node(1, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 9}}})
+    n.add_node(2, {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 1}}})
+    n.add_node(3, {'attributes': 'yes'})
+
+    def condition(val):
+        return val == 9
+
+    nodes = graph_operations.extract_nodes_on_node_attributes(
+        n,
+        conditions= {'attributes': {'osm:way:highway': {'text': condition}}}
+    )
+
+    assert nodes == [1]
