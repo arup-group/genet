@@ -1,12 +1,12 @@
 import networkx as nx
 import xml.etree.cElementTree as ET
-from pyproj import Transformer
+from pyproj import Transformer, Proj
 from genet.utils import spatial
 from genet.variables import MODE_TYPES_MAP
 from genet.schedule_elements import Route, Stop, Service
 
 
-def read_network(network_path, TRANSFORMER: Transformer.from_proj):
+def read_network(network_path, TRANSFORMER: Transformer):
     """
     Read MATSim network
     :param network_path: path to the network.xml file
@@ -48,6 +48,13 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
                     'to': attribs['to']
                 }
 
+                try:
+                    attribs['freespeed'] = float(attribs['freespeed'])
+                    attribs['capacity'] = float(attribs['capacity'])
+                    attribs['permlanes'] = float(attribs['permlanes'])
+                except KeyError:
+                    pass
+
                 length = float(attribs['length'])
                 del attribs['length']
 
@@ -85,23 +92,10 @@ def read_schedule(schedule_path, epsg):
     Read MATSim schedule
     :param schedule_path: path to the schedule.xml file
     :param epsg: 'epsg:12345'
-    :return: schedule (dict {service_id : list(of unique route services, each is a dict
-    {   'route_short_name': string,
-        'mode': string,
-        'stops': list,
-        's2_stops' : stops list indexed by s2sphere
-        'route': ['1'],
-        'trips': {'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
-        'arrival_offsets': ['00:00:00', '00:02:00'],
-        'departure_offsets': ['00:00:00', '00:02:00'] }
-    )}),
-        transit_stop_id_mapping (dict {
-        matsim schedule transit stop id : dict {
-            'node_id' : s2 spatial id,
-            'attribs' : dict of matsim schedule attributes attached to that transit stop
-        }})
+    :return: list of Service objects
     """
     services = []
+    transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
 
     def write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode):
         mode = transportMode['transportMode']
@@ -112,7 +106,8 @@ def read_schedule(schedule_path, epsg):
                 s['stop']['refId'],
                 x=transit_stop_id_mapping[s['stop']['refId']]['x'],
                 y=transit_stop_id_mapping[s['stop']['refId']]['y'],
-                epsg=epsg
+                epsg=epsg,
+                transformer=transformer
             ) for s in transitRoute_val['stops']]
 
             arrival_offsets = []
