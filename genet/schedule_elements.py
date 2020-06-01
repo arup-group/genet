@@ -28,9 +28,10 @@ class Stop:
         self.epsg = epsg
         if transformer is None:
             self.transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
-        else: self.transformer = transformer
+        else:
+            self.transformer = transformer
 
-        if self.epsg=='epsg:4326':
+        if self.epsg == 'epsg:4326':
             self.lon, self.lat = float(x), float(y)
         else:
             self.lon, self.lat = spatial.change_proj(x, y, self.transformer)
