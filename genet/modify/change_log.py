@@ -52,4 +52,4 @@ class ChangeLog:
         }, ignore_index=True)
 
     def export(self, path):
-        self.log.write_csv(path)
+        self.log.to_csv(path)

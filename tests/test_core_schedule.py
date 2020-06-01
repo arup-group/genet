@@ -112,8 +112,8 @@ def test_number_of_routes_counts_routes(test_service, different_test_service):
 
 def test_iter_stops_returns_stops_with_attribs(test_service, different_test_service, stop_epsg_27700):
     schedule = Schedule(services=[test_service, different_test_service], epsg='1234')
-    assert [stop for stop, attrib in schedule.iter_stops()] == ['0']
-    assert [attrib for stop, attrib in schedule.iter_stops()] == [stop_epsg_27700]
+    assert [stop for stop, attrib in schedule.stops()] == ['0']
+    assert [attrib for stop, attrib in schedule.stops()] == [stop_epsg_27700]
 
 
 def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker):

@@ -36,6 +36,8 @@ class Stop:
         else:
             self.lon, self.lat = spatial.change_proj(x, y, self.transformer)
 
+        self.additional_attributes = []
+
     def __eq__(self, other):
         return (round(self.lat, SPATIAL_TOLERANCE) == round(other.lat, SPATIAL_TOLERANCE)) \
                and (round(self.lon, SPATIAL_TOLERANCE) == round(other.lon, SPATIAL_TOLERANCE))
@@ -51,8 +53,14 @@ class Stop:
         :return:
         """
         for k, v in attribs.items():
-            if k not in ['id', 'x', 'y']:
+            if k not in self.__dict__:
                 setattr(self, k, v)
+                self.additional_attributes.append(k)
+
+    def iter_through_additional_attributes(self):
+        for attr, value in self.__dict__.items():
+            if attr in self.additional_attributes:
+                yield attr, value
 
     def is_exact(self, other):
         same_id = self.id == other.id
@@ -81,21 +89,32 @@ class Route:
     :param arrival_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
     :param departure_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
     :param route: optional, network link_ids traversed by the vehicles in this Route instance
+    :param route_long_name: optional, verbose name for the route if exists
+    :param id: optional, unique identifier for the route if available, if not given, at the time of writing outputs to
+        matsim network files, an id will be generated from the service id the route belongs to and the index of the
+        route in the list of routes of that service.
+    :param await_departure: optional, list of bools of length stops param, whether to await departure at each stop
     """
 
     def __init__(self, route_short_name: str, mode: str, stops: List[Stop], trips: Dict[str, str],
-                 arrival_offsets: List[str], departure_offsets: List[str], route: list = None):
+                 arrival_offsets: List[str], departure_offsets: List[str], route: list = None,
+                 route_long_name: str = '', id: str = '', await_departure: list = None):
         self.route_short_name = route_short_name
-        self.mode = mode
+        self.mode = mode.lower()
         self.stops = stops
         self.trips = trips
         self.arrival_offsets = arrival_offsets
         self.departure_offsets = departure_offsets
-
+        self.route_long_name = route_long_name
+        self.id = id
         if route is None:
             self.route = []
         else:
             self.route = route
+        if await_departure is None:
+            self.await_departure = []
+        else:
+            self.await_departure = await_departure
 
     def __eq__(self, other):
         same_route_name = self.route_short_name == other.route_short_name
@@ -136,6 +155,13 @@ class Service:
     def __init__(self, id: str, routes: List[Route]):
         self.id = id
         self.routes = routes
+        # a service inherits a name from the first route in the list (all route names are still accessible via each
+        # route object
+        if routes[0].route_short_name:
+            name = routes[0].route_short_name
+        else:
+            name = routes[0].route_long_name
+        self.name = str(name)
 
     def __eq__(self, other):
         return self.id == other.id

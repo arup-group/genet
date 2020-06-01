@@ -2,7 +2,7 @@ from genet.schedule_elements import Service
 from tests.fixtures import *
 
 
-def test_services_equal():
+def test_services_equal(route):
     a = Service(id='service',
                 routes=[route, similar_non_exact_test_route])
 
@@ -12,7 +12,7 @@ def test_services_equal():
     assert a == b
 
 
-def test_services_exact():
+def test_services_exact(route):
     a = Service(id='service',
                 routes=[route, similar_non_exact_test_route])
 
