@@ -112,6 +112,7 @@ and many more. You can find the examples in the jupyter notebook: `notebooks/GeN
 ### Modifying a Network object
 
 
+
 ### Validation
 
 

@@ -3,12 +3,14 @@ import pandas as pd
 import uuid
 import warnings
 import logging
+from copy import deepcopy
 from typing import Union, List
 from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.modify import ChangeLog
 from genet.utils import spatial
 from genet.schedule_elements import Service
+from genet.utils import persistence
 
 
 class Network:
@@ -80,13 +82,20 @@ class Network:
         :param new_attributes: dictionary of data to add/replace if present
         :return:
         """
-        old_attributes = self.node(node_id)
+        old_attributes = deepcopy(self.node(node_id))
+
+        # check if change is to nested part of node data
+        if any(isinstance(v, dict) for v in new_attributes.values()):
+            new_attributes = persistence.set_nested_value(old_attributes, new_attributes)
+        else:
+            new_attributes = {**old_attributes, **new_attributes}
+
         self.change_log.modify(
             object_type='node',
             old_id=node_id,
             new_id=node_id,
-            old_attributes=old_attributes,
-            new_attributes={**old_attributes, **new_attributes})
+            old_attributes=self.node(node_id),
+            new_attributes=new_attributes)
         nx.set_node_attributes(self.graph, {node_id: new_attributes})
 
     def modify_nodes(self, nodes: list, new_attributes: dict):
@@ -110,13 +119,21 @@ class Network:
         """
         u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
         multi_idx = self.link_id_mapping[link_id]['multi_edge_idx']
-        old_attributes = self.link(link_id)
+        old_attributes = deepcopy(self.link(link_id))
+
+        # check if change is to nested part of node data
+        if any(isinstance(v, dict) for v in new_attributes.values()):
+            new_attributes = persistence.set_nested_value(old_attributes, new_attributes)
+        else:
+            new_attributes = {**old_attributes, **new_attributes}
+
         self.change_log.modify(
             object_type='link',
             old_id=link_id,
             new_id=link_id,
-            old_attributes=old_attributes,
-            new_attributes={**old_attributes, **new_attributes})
+            old_attributes=self.link(link_id),
+            new_attributes=new_attributes)
+
         nx.set_edge_attributes(self.graph, {(u, v, multi_idx): new_attributes})
 
     def modify_links(self, links: list, new_attributes: dict):
