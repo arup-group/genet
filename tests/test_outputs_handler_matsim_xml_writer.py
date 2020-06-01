@@ -54,7 +54,7 @@ def test_write_matsim_network_produces_symantically_equal_xml_to_input_matsim_xm
 
 
 def test_generates_valid_matsim_schedule_xml_file(network_object_from_test_data, schedule_dtd, tmpdir):
-    matsim_xml_writer.write_matsim_schedule(tmpdir, network_object_from_test_data)
+    matsim_xml_writer.write_matsim_schedule(tmpdir, network_object_from_test_data.schedule)
 
     generated_file_path = os.path.join(tmpdir, 'schedule.xml')
     xml_obj = lxml.etree.parse(generated_file_path)
@@ -66,7 +66,7 @@ def test_generates_valid_matsim_schedule_xml_file(network_object_from_test_data,
 
 
 def test_write_matsim_schedule_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data, tmpdir):
-    matsim_xml_writer.write_matsim_schedule(tmpdir, network_object_from_test_data)
+    matsim_xml_writer.write_matsim_schedule(tmpdir, network_object_from_test_data.schedule)
 
     xml_diff.assert_semantically_equal(os.path.join(tmpdir, 'schedule.xml'), pt2matsim_schedule_file)
 
@@ -143,7 +143,7 @@ def test_throws_exception_when_generating_vehicles_xml_from_unrecognised_vehicle
 
 def test_write_matsim_vehicles_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data, tmpdir):
     network = network_object_from_test_data
-    vehicles = matsim_xml_writer.write_matsim_schedule(tmpdir, network)
+    vehicles = matsim_xml_writer.write_matsim_schedule(tmpdir, network.schedule)
     matsim_xml_writer.write_vehicles(tmpdir, vehicles)
 
     xml_diff.assert_semantically_equal(os.path.join(tmpdir, 'vehicles.xml'), pt2matsim_vehicles_file)

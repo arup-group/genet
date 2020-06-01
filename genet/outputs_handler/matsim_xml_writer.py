@@ -27,7 +27,7 @@ def delete_redundant_link_attributes_for_xml(d):
 def write_to_matsim_xmls(output_dir, network):
     write_matsim_network(output_dir, network)
     if network.schedule:
-        vehicles = write_matsim_schedule(output_dir, network)
+        vehicles = write_matsim_schedule(output_dir, network.schedule, epsg=network.epsg)
         write_vehicles(output_dir, vehicles)
 
 
@@ -61,9 +61,11 @@ def write_matsim_network(output_dir, network):
                         xf.write(etree.Element("link", sanitise_dictionary_for_xml(link_attributes)))
 
 
-def write_matsim_schedule(output_dir, network):
+def write_matsim_schedule(output_dir, schedule, epsg=''):
     fname = os.path.join(output_dir, "schedule.xml")
-    transformer = Transformer.from_proj(Proj(init='epsg:4326'), Proj(init=network.epsg))
+    if not epsg:
+        epsg = schedule.epsg
+    transformer = Transformer.from_proj(Proj(init='epsg:4326'), Proj(init=epsg))
     logging.info('Writing {}'.format(fname))
 
     # Also makes vehicles
@@ -75,9 +77,9 @@ def write_matsim_schedule(output_dir, network):
         with xf.element("transitSchedule"):
             # transitStops first
             with xf.element("transitStops"):
-                for stop_facility_id, stop_facility in network.schedule.stops():
+                for stop_facility_id, stop_facility in schedule.stops():
                     transit_stop_attrib = {'id': str(stop_facility_id)}
-                    if stop_facility.epsg == network.epsg:
+                    if stop_facility.epsg == epsg:
                         x = stop_facility.x
                         y = stop_facility.y
                     else:
@@ -91,9 +93,9 @@ def write_matsim_schedule(output_dir, network):
                     xf.write(etree.Element("stopFacility", transit_stop_attrib))
 
             # minimalTransferTimes, if present
-            if network.schedule.minimal_transfer_times:
+            if schedule.minimal_transfer_times:
                 with xf.element("minimalTransferTimes"):
-                    for stop_1_id, val in network.schedule.minimal_transfer_times.items():
+                    for stop_1_id, val in schedule.minimal_transfer_times.items():
                         minimal_transfer_times_attribs = {
                             'fromStop': str(stop_1_id),
                             'toStop': str(val['stop']),
@@ -107,8 +109,8 @@ def write_matsim_schedule(output_dir, network):
 
             # transitLine
             v_id = 0  # generating some ids for vehicles
-            for service in network.services():
-                transit_line_attribs = {'id': service.id, 'name': str(service.name)}
+            for service_id, service in schedule.services.items():
+                transit_line_attribs = {'id': service_id, 'name': str(service.name)}
 
                 with xf.element("transitLine", transit_line_attribs):
                     for i in range(len(service.routes)):

@@ -315,3 +315,8 @@ class Schedule:
         for service in services:
             self.services[service.id] = service
         self.build_stops_mapping()
+
+    def write_to_matsim(self, output_dir):
+        persistence.ensure_dir(output_dir)
+        vehicles = matsim_xml_writer.write_matsim_schedule(output_dir, self)
+        matsim_xml_writer.write_vehicles(output_dir, vehicles)
