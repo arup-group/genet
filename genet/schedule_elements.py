@@ -16,15 +16,26 @@ class Stop:
     :param x: x coordinate or lon if using 'epsg:4326'
     :param y: y coordinate or lat if using 'epsg:4326'
     :param epsg: 'epsg:12345'
+    :param transformer: optional but makes things MUCH faster if you're reading through a lot of stops in the same
+            projection
     """
 
-    def __init__(self, id: Union[str, int], x: Union[str, int, float], y: Union[str, int, float], epsg: str):
+    def __init__(self, id: Union[str, int], x: Union[str, int, float], y: Union[str, int, float], epsg: str,
+                 transformer: Transformer = None):
         self.id = id
         self.x = float(x)
         self.y = float(y)
         self.epsg = epsg
-        self.transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
-        self.lon, self.lat = spatial.change_proj(x, y, self.transformer)
+        if transformer is None:
+            self.transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
+        else:
+            self.transformer = transformer
+
+        if self.epsg == 'epsg:4326':
+            self.lon, self.lat = float(x), float(y)
+        else:
+            self.lon, self.lat = spatial.change_proj(x, y, self.transformer)
+
         self.additional_attributes = []
 
     def __eq__(self, other):
@@ -120,7 +131,7 @@ class Route:
         same_departure_offsets = self.departure_offsets == other.departure_offsets
 
         statement = same_route_name and same_mode and same_stops and same_trips and same_arrival_offsets \
-            and same_departure_offsets
+                    and same_departure_offsets
         return statement
 
     def isin_exact(self, routes: list):

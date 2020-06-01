@@ -1,12 +1,12 @@
 import networkx as nx
 import xml.etree.cElementTree as ET
-from pyproj import Transformer
+from pyproj import Transformer, Proj
 from genet.utils import spatial
 from genet.variables import MODE_TYPES_MAP
 from genet.schedule_elements import Route, Stop, Service
 
 
-def read_network(network_path, TRANSFORMER: Transformer.from_proj):
+def read_network(network_path, TRANSFORMER: Transformer):
     """
     Read MATSim network
     :param network_path: path to the network.xml file
@@ -48,6 +48,13 @@ def read_network(network_path, TRANSFORMER: Transformer.from_proj):
                     'to': attribs['to']
                 }
 
+                try:
+                    attribs['freespeed'] = float(attribs['freespeed'])
+                    attribs['capacity'] = float(attribs['capacity'])
+                    attribs['permlanes'] = float(attribs['permlanes'])
+                except KeyError:
+                    pass
+
                 length = float(attribs['length'])
                 del attribs['length']
 
@@ -88,6 +95,7 @@ def read_schedule(schedule_path, epsg):
     :return: list of Service objects
     """
     services = []
+    transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
 
     def write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode):
         mode = transportMode['transportMode']
@@ -98,7 +106,8 @@ def read_schedule(schedule_path, epsg):
                 s['stop']['refId'],
                 x=transit_stop_id_mapping[s['stop']['refId']]['x'],
                 y=transit_stop_id_mapping[s['stop']['refId']]['y'],
-                epsg=epsg
+                epsg=epsg,
+                transformer=transformer
             ) for s in transitRoute_val['stops']]
             for s in stops:
                 s.add_additional_attributes(transit_stop_id_mapping[s.id])
