@@ -5,7 +5,6 @@ from lxml import etree as et
 from lxml.etree import Element, SubElement
 from tqdm import tqdm
 
-# sys.path.append('../..') # make `genet` reachable from this script
 from genet.core import Network
 
 
@@ -69,6 +68,7 @@ def read_toll_ids(path):
     '''
     Read a list of OSM way ids
     :param path: path to folder
+    :return: a list of OSM way ids (without the `w` prefix) (str)
     '''
     with open(path, 'r') as f:
         osm_way_ids = [line.rstrip('\n') for line in f]
@@ -94,15 +94,13 @@ def extract_network_id_from_osm_id(n, osm_way_ids):
     network_toll_ids = []
     edge_osm_ids = []
 
-    for edge_dict in n.edges():
-        for key in n.edges(edge_dict):
-            if 'attributes' in n.edges(edge_dict)[key].keys():
-                edge_osm_id = n.edges(edge_dict)[key]['attributes']['osm:way:id']['text']
-                if edge_osm_id in osm_way_ids:
-                    network_toll_ids.append(
-                        n.edges(edge_dict)[key]['id']
-                    )
-                    edge_osm_ids.append(edge_osm_id)
+    for link_id, link_attribs in n.links():
+        if 'attributes' in link_attribs.keys():
+            edge_osm_id = link_attribs['attributes']['osm:way:id']['text']
+            if edge_osm_id in osm_way_ids:
+                network_toll_ids.append(link_id)
+                edge_osm_ids.append(edge_osm_id)
+
         edge_osm_ids = list(set(edge_osm_ids))
         if edge_osm_ids == osm_way_ids:
             break
@@ -118,8 +116,9 @@ def extract_network_id_from_osm_id(n, osm_way_ids):
 
 def write_xml(root, path):
     """
-    Write config to given xml path.
-    :param path: pathlib.Path
+    Write XML config for MATSim Road Pricing a given folder location.
+    :param root: a ??? object corresponding to the root of an XML tree
+    :param path: location of destination folder for Road Pricing config
     :return: None
     """
     # if isinstance(path, str):
@@ -137,7 +136,9 @@ def write_xml(root, path):
 
 def build_tree(network_toll_ids):
     '''
-    description
+    Build XML config for MATSim Road Pricing from given network link ids.
+    :param network_toll_ids: a list of network edge ids (str)
+    :return: a ??? object
     '''
     # creat ETree root
     roadpricing = Element("roadpricing", type="cordon", name="cordon-toll")
