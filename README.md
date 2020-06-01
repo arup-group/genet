@@ -89,8 +89,25 @@ Once you have a `genet.Network` object, you can use it to produce auxiliary file
 For example, you can extract the unique ids of links in the network which satisfy certain conditions pertaining to the
 data being stored on graph edges.
 
+    >>> links = genet.graph_operations.extract_links_on_edge_attributes(
+            n,
+            conditions= {'attributes': {'osm:way:highway': {'text': 'primary'}}},
+        )
+    >>> links[:5]
+    ['1007', '1008', '1023', '1024', '103']
 
+The data saved on the edges of the graph can be nested. The function above gathers link ids which satisfy conditions 
+to arbitrary level of nested-ness. It also allows quite flexible conditions---above we require that the link value
+at `data['attributes']['osm:way:highway']['text'] == 'primary'`, where data is the data dictionary stored on that link.
+You can also define a condition such that `data['attributes']['osm:way:highway']['text']` is one of the items in a 
+list: `['primary', 'secondary', 'something else']`:
 
+    >>> links = genet.graph_operations.extract_links_on_edge_attributes(
+            n,
+            conditions= {'attributes': {'osm:way:highway': {'text': ['primary', 'secondary', 'something else']}}},
+        )
+
+and many more. You can find the examples in the jupyter notebook: `notebooks/GeNet walk-through.ipynb`
 
 ### Modifying a Network object
 
