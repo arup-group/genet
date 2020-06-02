@@ -126,7 +126,6 @@ dmypy.json
 tests/test_outputs/
 test_chunks.csv
 reports/
-images/
 mprofile*
 benchmark-outputs/
 working-dir/
