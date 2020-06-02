@@ -124,16 +124,13 @@ def write_xml(root, path):
     :param path: location of destination folder for Road Pricing config
     :return: None
     """
-    # if isinstance(path, str):
-    #     path = Path(path)
-    # root = self.build_xml()
     tree = et.tostring(root,
                        pretty_print=True,
                        xml_declaration=False,
                        encoding='UTF-8')
     with open(os.path.join(path, 'roadpricing-file.xml'), 'wb') as file:
         file.write(b'<?xml version="1.0" ?>\n')
-        file.write(b'<!DOCTYPE roadpricing SYSTEM "http://matsim.org/files/dtd/roadpricing_v1.dtd">\n')
+        file.write(b'<!DOCTYPE roadpricing SYSTEM "http://www.matsim.org/files/dtd/roadpricing_v1.dtd">\n')
         file.write(tree)
 
 
