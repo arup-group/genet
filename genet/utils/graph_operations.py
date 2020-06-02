@@ -1,4 +1,5 @@
 from typing import Union, Dict, Callable
+from anytree import Node, RenderTree
 
 
 class Filter():
@@ -143,3 +144,50 @@ def extract_nodes_on_node_attributes(network, conditions: Union[list, dict], how
             node_ids_to_return.append(node_id)
 
     return node_ids_to_return
+
+
+def get_attribute_schema(iterator, data=False):
+    def has_identical_twin(parent, name_of_node_to_be):
+        return name_of_node_to_be in [child.name for child in parent.children]
+
+    def get_identical_twin_if_exists(parent, name_of_node_to_be):
+        for child in parent.children:
+            if name_of_node_to_be == child.name:
+                return child
+        return Node(name_of_node_to_be, parent=parent)
+
+    def append_to_tree(d: dict, parent):
+        for k, v in d.items():
+            if isinstance(v, dict):
+                append_to_tree(v, get_identical_twin_if_exists(parent, k))
+            elif not has_identical_twin(parent, k):
+                if data:
+                    if isinstance(v, list):
+                        values = set(v)
+                    else:
+                        values = {v}
+                    Node(k, parent=parent, values=values)
+                else:
+                    Node(k, parent=parent)
+            elif data:
+                node = get_identical_twin_if_exists(parent, k)
+                if isinstance(v, list):
+                    values = set(v)
+                else:
+                    values = {v}
+                node.values = node.values | values
+
+    root = Node('attribute')
+
+    for _id, _attribs in iterator:
+        append_to_tree(_attribs, root)
+
+    return root
+
+
+def render_tree(root, data=False):
+    for pre, fill, node in RenderTree(root):
+        if hasattr(node, 'values') and data:
+            print("%s%s: %s" % (pre, node.name, list(node.values)[:5]))
+        else:
+            print("%s%s" % (pre, node.name))

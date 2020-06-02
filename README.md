@@ -98,7 +98,64 @@ data being stored on graph edges.
     >>> links[:5]
     ['1007', '1008', '1023', '1024', '103']
 
-The data saved on the edges of the graph can be nested. The function above gathers link ids which satisfy conditions 
+#### Summary
+The data saved on the edges of the graph can be nested. There are a couple of convenient methods that summarise the 
+schema of the data found on the nodes and links to show you what the keys (and if `data=True`, also values) of those 
+dictionaries look like. If `data=True`, the output shows up to 5 unique values stored in that location.
+
+    >>> n.node_attribute_summary(data=True)
+    
+    attribute
+    ├── id: ['293813458', '4582907654', '107829', '2833956947', '5607749654']
+    ├── x: ['527677.5109120146', '529801.0659699676', '530238.1178740165', '527959.3321330055', '530629.5558489189']
+    ├── y: ['181250.1252480651', '182424.5440813937', '181228.56259440206', '182169.2831176619', '181516.2234405568']
+    ├── lon: [-0.15178558709839862, -0.15872448710537235, -0.13569068709168342, -0.13766218709633904, -0.13543658708819173]
+    ├── lat: [51.51609983324067, 51.5182034332405, 51.51504733324089, 51.522253033239515, 51.522948433239556]
+    └── s2_id: [5221390710015643649, 5221390314367946753, 5221366508477440003, 5221390682291777543, 5221390739236081673]
+
+and for links,
+
+    >>> n.link_attribute_summary()
+    
+    attribute
+    ├── id
+    ├── from
+    ├── to
+    ├── freespeed
+    ├── capacity
+    ├── permlanes
+    ├── oneway
+    ├── modes
+    ├── s2_from
+    ├── s2_to
+    ├── length
+    └── attributes
+        ├── osm:way:access
+        │   ├── name
+        │   ├── class
+        │   └── text
+        ├── osm:way:highway
+        │   ├── name
+        │   ├── class
+        │   └── text
+        ├── osm:way:id
+        │   ├── name
+        │   ├── class
+        │   └── text
+        ├── osm:way:name
+        │   ├── name
+        │   ├── class
+        │   └── text
+        ...
+        └── osm:way:service
+            ├── name
+            ├── class
+            └── text
+
+
+#### Extracting links of interest
+
+The function above gathers link ids which satisfy conditions 
 to arbitrary level of nested-ness. It also allows quite flexible conditions---above we require that the link value
 at `data['attributes']['osm:way:highway']['text'] == 'primary'`, where data is the data dictionary stored on that link.
 You can also define a condition such that `data['attributes']['osm:way:highway']['text']` is one of the items in a 

@@ -10,9 +10,8 @@ from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.outputs_handler import matsim_xml_writer
 from genet.modify import ChangeLog
-from genet.utils import spatial
+from genet.utils import spatial, persistence, graph_operations
 from genet.schedule_elements import Service
-from genet.utils import persistence
 
 
 class Network:
@@ -48,6 +47,26 @@ class Network:
             nx.info(self.graph),
             self.schedule.info()
         )
+
+    def node_attribute_summary(self, data=False):
+        """
+        Is expensive. Parses through data stored on nodes and gives a summary tree of the data stored on the nodes.
+        If data is True, shows also up to 5 unique values stored under such keys.
+        :param data: bool, False by default
+        :return:
+        """
+        root = graph_operations.get_attribute_schema(self.nodes(), data=data)
+        graph_operations.render_tree(root, data)
+
+    def link_attribute_summary(self, data=False):
+        """
+        Is expensive. Parses through data stored on links and gives a summary tree of the data stored on the links.
+        If data is True, shows also up to 5 unique values stored under such keys.
+        :param data: bool, False by default
+        :return:
+        """
+        root = graph_operations.get_attribute_schema(self.links(), data=data)
+        graph_operations.render_tree(root, data)
 
     def add_node(self, node: Union[str, int], attribs: dict = None):
         if attribs is not None:
