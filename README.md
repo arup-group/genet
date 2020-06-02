@@ -167,3 +167,8 @@ At the moment GeNet supports saving `Network` and `Schedule` objects to MATSim's
 `vehicles.xml`.
 
     >>> n.write_to_matsim('/path/to/matsim/networks/genet_output'))
+    
+Saving a `Network` will result in `network.xml`, `schedule.xml` and `vehicles.xml` files if the Network has a non-empty 
+`Schedule`.
+
+Saving a `Schedule` will result in `schedule.xml` and `vehicles.xml` files.
