@@ -51,8 +51,8 @@ This section goes through basic usage examples.
 
 Instantiate an empty network
 
-    >>> import genet as gn
-    >>> n = gn.Network()
+    >>> import genet
+    >>> n = genet.Network()
     >>> n
     
     <Network instance at 4683796240: with 
@@ -111,9 +111,59 @@ and many more. You can find the examples in the jupyter notebook: `notebooks/GeN
 
 ### Modifying a Network object
 
+Let's say you have extracted `genet.Network` link ids of interest, they are stored in the list `links` as above, and 
+now you want to make changes to the network. Let's 
+make changes to the nested OSM data stored on the links. We will replace the highway tags from to 
+`'SOMETHING'`.
 
+    >>> n.modify_links(links, {'attributes': {'osm:way:highway': {'text': 'SOMETHING'}}})
+    
+    >>> n.link('1007')
+    
+    {'id': '1007',
+     'from': '4356572310',
+     'to': '5811263955',
+     'freespeed': 22.22222222222222,
+     'capacity': 3000.0,
+     'permlanes': 2.0,
+     'oneway': '1',
+     'modes': ['car'],
+     's2_from': 5221390723045407809,
+     's2_to': 5221390723040504387,
+     'length': 13.941905154249884,
+     'attributes': {'osm:way:highway': {'name': 'osm:way:highway',
+       'class': 'java.lang.String',
+       'text': 'SOMETHING'},
+      'osm:way:id': {'name': 'osm:way:id',
+       'class': 'java.lang.Long',
+       'text': '589660342'},
+      'osm:way:lanes': {'name': 'osm:way:lanes',
+       'class': 'java.lang.String',
+       'text': '2'},
+      'osm:way:name': {'name': 'osm:way:name',
+       'class': 'java.lang.String',
+       'text': 'Shaftesbury Avenue'},
+      'osm:way:oneway': {'name': 'osm:way:oneway',
+       'class': 'java.lang.String',
+       'text': 'yes'}}}
+
+The changes you make to the `Network` will be recorded in the `change_log` which is a `pandas.DataFrame`. This log
+gets saved to a csv together with any `Network` outputs.
+
+    >>> n.change_log.log
+    
+    |    | timestamp           | change_event   | object_type   |   old_id |   new_id | old_attributes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | new_attributes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | diff                                                                      |
+    |---:|:--------------------|:---------------|:--------------|---------:|---------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------|
+    |  0 | 2020-06-02 10:47:03 | modify         | link          |     1007 |     1007 | {'id': '1007', 'from': '4356572310', 'to': '5811263955', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390723045407809, 's2_to': 5221390723040504387, 'length': 13.941905154249884, 'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '589660342'}, 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '2'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Shaftesbury Avenue'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}}                  | {'id': '1007', 'from': '4356572310', 'to': '5811263955', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390723045407809, 's2_to': 5221390723040504387, 'length': 13.941905154249884, 'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'SOMETHING'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '589660342'}, 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '2'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Shaftesbury Avenue'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}}                  | [('change', 'attributes.osm:way:highway.text', ('primary', 'SOMETHING'))] |
+    |  1 | 2020-06-02 10:47:03 | modify         | link          |     1008 |     1008 | {'id': '1008', 'from': '5811263955', 'to': '21665588', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390723040504387, 's2_to': 5221390723204000715, 'length': 25.86037080854938, 'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '614324183'}, 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '2'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Shaftesbury Avenue'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}}                     | {'id': '1008', 'from': '5811263955', 'to': '21665588', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390723040504387, 's2_to': 5221390723204000715, 'length': 25.86037080854938, 'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'SOMETHING'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '614324183'}, 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '2'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Shaftesbury Avenue'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}}                     | [('change', 'attributes.osm:way:highway.text', ('primary', 'SOMETHING'))] |
+    |  2 | 2020-06-02 10:47:03 | modify         | link          |     1023 |     1023 | {'id': '1023', 'from': '1611125463', 'to': '108234', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['bus', 'car', 'pt'], 's2_from': 5221390319884366911, 's2_to': 5221390320040783993, 'length': 53.767011109096586, 'attributes': {'osm:relation:route': {'name': 'osm:relation:route', 'class': 'java.lang.String', 'text': 'bus'}, 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '59718434'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Cavendish Place'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}} | {'id': '1023', 'from': '1611125463', 'to': '108234', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['bus', 'car', 'pt'], 's2_from': 5221390319884366911, 's2_to': 5221390320040783993, 'length': 53.767011109096586, 'attributes': {'osm:relation:route': {'name': 'osm:relation:route', 'class': 'java.lang.String', 'text': 'bus'}, 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'SOMETHING'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '59718434'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Cavendish Place'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}} | [('change', 'attributes.osm:way:highway.text', ('primary', 'SOMETHING'))] |
 
 ### Validation
 
 
 ### Writing results
+
+At the moment GeNet supports saving `Network` and `Schedule` objects to MATSim's `network.xml`, `schedule.xml` and
+`vehicles.xml`.
+
+    >>> n.write_to_matsim('/path/to/matsim/networks/genet_output'))

@@ -10,7 +10,7 @@ from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.outputs_handler import matsim_xml_writer
 from genet.modify import ChangeLog
-from genet.utils import spatial, persistence
+from genet.utils import spatial
 from genet.schedule_elements import Service
 from genet.utils import persistence
 
