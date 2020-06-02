@@ -73,4 +73,4 @@ class ChangeLog:
         return diff
 
     def export(self, path):
-        self.log.write_csv(path)
+        self.log.to_csv(path)

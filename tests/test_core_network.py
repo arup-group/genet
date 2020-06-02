@@ -3,6 +3,7 @@ import sys
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
+from tests.fixtures import network_object_from_test_data
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
 
@@ -334,3 +335,47 @@ def test_index_graph_edges_generates_completely_new_index():
     n.add_link('x2', 1, 2)
     n.index_graph_edges()
     assert list(n.link_id_mapping.keys()) == ['0', '1']
+
+
+def test_write_to_matsim_generates_three_matsim_files(network_object_from_test_data, tmpdir):
+    # the correctness of these files is tested elsewhere
+    expected_network_xml = os.path.join(tmpdir, 'network.xml')
+    assert not os.path.exists(expected_network_xml)
+    expected_schedule_xml = os.path.join(tmpdir, 'schedule.xml')
+    assert not os.path.exists(expected_schedule_xml)
+    expected_vehicle_xml = os.path.join(tmpdir, 'vehicles.xml')
+    assert not os.path.exists(expected_vehicle_xml)
+
+    network_object_from_test_data.write_to_matsim(tmpdir)
+
+    assert os.path.exists(expected_network_xml)
+    assert os.path.exists(expected_schedule_xml)
+    assert os.path.exists(expected_vehicle_xml)
+
+
+def test_write_to_matsim_generates_network_matsim_file_if_network_is_car_only(network_object_from_test_data, tmpdir):
+    # the correctness of these files is tested elsewhere
+    expected_network_xml = os.path.join(tmpdir, 'network.xml')
+    assert not os.path.exists(expected_network_xml)
+    expected_schedule_xml = os.path.join(tmpdir, 'schedule.xml')
+    assert not os.path.exists(expected_schedule_xml)
+    expected_vehicle_xml = os.path.join(tmpdir, 'vehicles.xml')
+    assert not os.path.exists(expected_vehicle_xml)
+
+    n = network_object_from_test_data
+    n.schedule = Schedule()
+    assert not n.schedule
+    n.write_to_matsim(tmpdir)
+
+    assert os.path.exists(expected_network_xml)
+    assert not os.path.exists(expected_schedule_xml)
+    assert not os.path.exists(expected_vehicle_xml)
+
+
+def test_write_to_matsim_generates_change_log_csv(network_object_from_test_data, tmpdir):
+    expected_change_log_path = os.path.join(tmpdir, 'change_log.csv')
+    assert not os.path.exists(expected_change_log_path)
+
+    network_object_from_test_data.write_to_matsim(tmpdir)
+
+    assert os.path.exists(expected_change_log_path)
