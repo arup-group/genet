@@ -82,6 +82,8 @@ You can now use methods to read in MATSim network files:
     Average out degree:   1.9049 and 
     schedule Number of services: 62
     Number of unique routes: 520
+    
+![GeNet Network diagram](images/genet_network.png)
 
 ### Using a Network object
 
