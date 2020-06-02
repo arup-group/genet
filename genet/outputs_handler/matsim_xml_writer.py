@@ -130,9 +130,10 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                                     stop_attribs = {'refId': str(route.stops[j].id)}
 
                                     if not (route.departure_offsets and route.arrival_offsets):
-                                        logging.warning('The stop(s) along your route don\'t have arrival and '
-                                            'departure offsets. This is likely a route with one stop - consider '
-                                            'validating your schedule.')
+                                        logging.warning(
+                                            'The stop(s) along your route don\'t have arrival and departure offsets. '
+                                            'This is likely a route with one stop - consider validating your schedule.'
+                                        )
                                     else:
                                         if j == 0:
                                             stop_attribs['departureOffset'] = route.departure_offsets[j]
@@ -148,10 +149,11 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
 
                             with xf.element("route"):
                                 if not route.route:
-                                    logging.warning("Route needs to have a network route composed of a list of "
-                                    "network links that the vehicle on this route traverses. If read the Schedule "
-                                    "from GTFS, the resulting Route objects will not have reference to the network "
-                                    "route taken.")
+                                    logging.warning(
+                                        "Route needs to have a network route composed of a list of network links that "
+                                        "the vehicle on this route traverses. If read the Schedule from GTFS, the "
+                                        "resulting Route objects will not have reference to the network route taken."
+                                    )
                                 for link_id in route.route:
                                     route_attribs = {'refId': str(link_id)}
                                     xf.write(etree.Element("link", route_attribs))
