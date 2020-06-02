@@ -129,23 +129,31 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                                 for j in range(len(route.stops)):
                                     stop_attribs = {'refId': str(route.stops[j].id)}
 
-                                    if j == 0:
-                                        stop_attribs['departureOffset'] = route.departure_offsets[j]
-                                    elif j == len(route.stops) - 1:
-                                        stop_attribs['arrivalOffset'] = route.arrival_offsets[j]
+                                    if not (route.departure_offsets and route.arrival_offsets):
+                                        logging.warning(
+                                            'The stop(s) along your route don\'t have arrival and departure offsets. '
+                                            'This is likely a route with one stop - consider validating your schedule.'
+                                        )
                                     else:
-                                        stop_attribs['departureOffset'] = route.departure_offsets[j]
-                                        stop_attribs['arrivalOffset'] = route.arrival_offsets[j]
+                                        if j == 0:
+                                            stop_attribs['departureOffset'] = route.departure_offsets[j]
+                                        elif j == len(route.stops) - 1:
+                                            stop_attribs['arrivalOffset'] = route.arrival_offsets[j]
+                                        else:
+                                            stop_attribs['departureOffset'] = route.departure_offsets[j]
+                                            stop_attribs['arrivalOffset'] = route.arrival_offsets[j]
 
-                                    if route.await_departure:
-                                        stop_attribs['awaitDeparture'] = str(route.await_departure[j]).lower()
+                                        if route.await_departure:
+                                            stop_attribs['awaitDeparture'] = str(route.await_departure[j]).lower()
                                     xf.write(etree.Element("stop", stop_attribs))
 
                             with xf.element("route"):
-                                assert route.route, "Route needs to have a network route composed of a list of " \
-                                    "network links that the vehicle on this route traverses. If " \
-                                    "read the Schedule from GTFS, the resulting Route objects will " \
-                                    "not have reference to the network route taken."
+                                if not route.route:
+                                    logging.warning(
+                                        "Route needs to have a network route composed of a list of network links that "
+                                        "the vehicle on this route traverses. If read the Schedule from GTFS, the "
+                                        "resulting Route objects will not have reference to the network route taken."
+                                    )
                                 for link_id in route.route:
                                     route_attribs = {'refId': str(link_id)}
                                     xf.write(etree.Element("link", route_attribs))
