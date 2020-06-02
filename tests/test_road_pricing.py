@@ -1,6 +1,7 @@
 import os
 from lxml.etree import Element
 
+from genet.core import Network
 from genet.use import road_pricing
 
 
@@ -37,21 +38,22 @@ def test_extract_toll_ways_from_opl(path_opl='tests/test_data/road_pricing/test.
         assert item[0]=='w'
 
 
-#########
+def test_extract_network_id_from_osm_id(path_network='tests/test_data/road_pricing/network.xml',
+                                        path_osm_way_ids='tests/test_data/road_pricing/test_osm_toll_ids'):
+    n = Network()
+    n.read_matsim_network(path_network, epsg='epsg:27700')
 
-# def test_extract_network_id_from_osm_id(n='test_data/road_pricing/???',
-#                                         osm_way_ids='test_data/road_pricing/test_osm_toll_ids'):
-#     toll_ids = road_pricing.extract_network_id_from_osm_id(n, osm_way_ids)
-#     # check that returns a list
-#     assert isinstance(toll_ids, list)
-#     # check that the list is non-empty
-#     assert len(toll_ids) > 0
-#     # check that all items in list are strings
-#     for item in toll_ids:
-#         assert isinstance(item, str)
+    osm_way_ids = road_pricing.read_toll_ids(path_osm_way_ids)
 
-#     # do we need to test whether the contents of `toll_ids` are indeed part of network `n` ?
-
+    toll_ids = road_pricing.extract_network_id_from_osm_id(n, osm_way_ids)
+    # check that returns a list
+    assert isinstance(toll_ids, list)
+    # check that the list is non-empty
+    assert len(toll_ids) > 0
+    # check that all items in list are strings
+    for item in toll_ids:
+        assert isinstance(item, str)
+    # do we need to test whether the contents of `toll_ids` are indeed part of network `n` ?
 
 
 
@@ -69,9 +71,8 @@ def test_extract_toll_ways_from_opl(path_opl='tests/test_data/road_pricing/test.
 
 
 
-
-# def test_build_tree(network_toll_ids='test_data/road_pricing/test_network_ids',
-#                     xml_schema_dtd='test_data/road_pricing/roadpricing_v1.dtd'):
+# def test_build_tree(network_toll_ids='tests/test_data/road_pricing/network_toll_ids',
+#                     xml_schema_dtd='tests/test_data/road_pricing/roadpricing_v1.dtd'):
 #     root = road_pricing.build_tree(network_toll_ids)
 
 #     # check type of root object

@@ -97,9 +97,12 @@ def extract_network_id_from_osm_id(n, osm_way_ids):
     for link_id, link_attribs in n.links():
         if 'attributes' in link_attribs.keys():
             edge_osm_id = link_attribs['attributes']['osm:way:id']['text']
-            if edge_osm_id in osm_way_ids:
-                network_toll_ids.append(link_id)
-                edge_osm_ids.append(edge_osm_id)
+            if type(edge_osm_id) is str:
+                if edge_osm_id in osm_way_ids:
+                    network_toll_ids.append(link_id)
+                    edge_osm_ids.append(edge_osm_id)
+            else:
+                continue
 
         edge_osm_ids = list(set(edge_osm_ids))
         if edge_osm_ids == osm_way_ids:
@@ -117,7 +120,7 @@ def extract_network_id_from_osm_id(n, osm_way_ids):
 def write_xml(root, path):
     """
     Write XML config for MATSim Road Pricing a given folder location.
-    :param root: a ??? object corresponding to the root of an XML tree
+    :param root: an 'lxml.etree._Element' object corresponding to the root of an XML tree
     :param path: location of destination folder for Road Pricing config
     :return: None
     """
@@ -138,7 +141,7 @@ def build_tree(network_toll_ids):
     '''
     Build XML config for MATSim Road Pricing from given network link ids.
     :param network_toll_ids: a list of network edge ids (str)
-    :return: a ??? object
+    :return: an 'lxml.etree._Element' object
     '''
     # creat ETree root
     roadpricing = Element("roadpricing", type="cordon", name="cordon-toll")
