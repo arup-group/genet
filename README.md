@@ -66,11 +66,11 @@ Instantiate an empty network
 
 You can now use methods to read in MATSim network files:
 
-    >>> network = 'path/to/network.xml'
-    >>> schedule = 'path/to/schedule.xml'
+    >>> pt2matsim_network = 'path/to/network.xml'
+    >>> pt2matsim_schedule = 'path/to/schedule.xml'
     
-    >>> n.read_matsim_network(network, epsg='epsg:27700')
-    >>> n.read_matsim_schedule(schedule, epsg='epsg:27700')
+    >>> n.read_matsim_network(pt2matsim_network, epsg='epsg:27700')
+    >>> n.read_matsim_schedule(pt2matsim_schedule, epsg='epsg:27700')
     >>> n
     
     <Network instance at 4683796240: with 
@@ -172,3 +172,14 @@ Saving a `Network` will result in `network.xml`, `schedule.xml` and `vehicles.xm
 `Schedule`.
 
 Saving a `Schedule` will result in `schedule.xml` and `vehicles.xml` files.
+
+You can check that a `Network` that had been read in from MATSim files results in semantically equal xml files 
+(if not changes were applied to the `Network` of course)
+
+    >>> from tests.xml_diff import assert_semantically_equal
+    >>> assert_semantically_equal(
+            pt2matsim_schedule, 
+            '/path/to/matsim/networks/genet_output/schedule.xml')
+            
+            
+    path/to/schedule.xml and /path/to/matsim/networks/genet_output/schedule.xml are semantically equal
