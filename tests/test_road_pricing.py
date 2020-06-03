@@ -48,6 +48,16 @@ def test_read_toll_ids(path='tests/test_data/road_pricing/test_osm_toll_ids'):
         assert item[0] != 'w'
 
 
+def test_read_toll_ids_w_prefix(path='tests/test_data/road_pricing/test_osm_toll_ids_w_prefix'):
+    toll_ids = road_pricing.read_toll_ids(path)
+    # check that returns a list
+    assert isinstance(toll_ids, list)
+    # check that all items in list are strings and don't start with 'w'
+    for item in toll_ids:
+        assert isinstance(item, str)
+        assert item[0] != 'w'
+
+
 def test_extract_toll_ways_from_opl(path_opl='tests/test_data/road_pricing/test.osm.opl'):
     toll_ids = road_pricing.extract_toll_ways_from_opl(path_opl)
     # check that returns a list

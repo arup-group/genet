@@ -14,7 +14,7 @@ def extract_toll_ways_from_opl(path_opl):
     # parse .osm.opl contents
     with open(path_opl, 'r') as f:
         contents = [line.rstrip('\n') for line in f]
-    # extract all OSM ways
+    # extract all OSM ways (lines starting with 'w')
     ways = [line for line in contents if line[0] == 'w']
 
     # extract toll ways from above OSM ways
@@ -54,6 +54,9 @@ def write_toll_ids(toll_ids, outpath):
     :param toll_ids: list of way ids (str)
     :param outpath: path to destination folder
     :return: write a list of way ids e.g. `w123456` (str)
+
+    the reason we are keeping the 'w' while writing the ids, is that they are
+    required by the osmium command detailed above
     '''
     with open(os.path.join(outpath, 'toll_ids'), 'w') as f:
         for item in toll_ids:
