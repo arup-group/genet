@@ -97,15 +97,46 @@ def test_writes_road_pricing_xml_file_with_expected_content(tmpdir, road_pricing
     assert_xml_trees_equal(road_pricing_sample_xml, xml_obj)
 
 
-# def test_build_tree(network_toll_ids='tests/test_data/road_pricing/network_toll_ids',
-#                     xml_schema_dtd='tests/test_data/road_pricing/roadpricing_v1.dtd'):
-#     root = road_pricing.build_tree(network_toll_ids)
+def test_builds_valid_xml_tree_from_network_toll_ids(road_pricing_dtd):
+    toll_ids = [str(i) for i in range(10)]
 
-#     # check type of root object
-#     assert isinstance(root, ???)
-#     # check DTD !!!
-#     assert xml_schema_dtd
-#     # do we need to check that links in `network_toll_ids` are present under <links> ? ALSO YES
+    xml_tree = road_pricing.build_tree(toll_ids)
+
+    assert isinstance(xml_tree, lxml.etree._Element)
+    assert road_pricing_dtd.validate(xml_tree), \
+        'Tree generated at is not valid against DTD due to {}'.format(road_pricing_dtd.error_log.filter_from_errors())
+
+
+def test_builds_xml_tree_with_correct_content_from_network_toll_ids():
+    toll_ids = [str(i) for i in range(10)]
+
+    xml_tree_root = road_pricing.build_tree(toll_ids)
+
+    assert xml_tree_root.tag == 'roadpricing'
+    assert xml_tree_root.attrib == {'type': 'cordon', 'name': 'cordon-toll'}
+    assert len(xml_tree_root) == 3 # description, links, cost subelements
+
+    descs = xml_tree_root.findall('description')
+    assert len(descs) == 1
+    assert descs[0].tag == 'description'
+    assert descs[0].text == 'A simple cordon toll scheme'
+
+    costs = xml_tree_root.findall('cost')
+    assert len(costs) == 1
+    assert costs[0].tag == 'cost'
+    assert costs[0].attrib == {'start_time': '00:00', 'end_time': '23:59', 'amount': '2.00'}
+
+    links = xml_tree_root.findall('links')
+    assert len(links) == 1
+    assert links[0].tag == 'links'
+
+    assert len(links[0]) == len(toll_ids)
+    for link in links[0]:
+        assert link.tag == 'link'
+        link_id = link.attrib['id']
+        toll_ids.remove(link_id)
+    assert len(toll_ids) == 0
+
 
 ###########################################################
 # helper functions

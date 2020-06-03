@@ -1,11 +1,8 @@
-import argparse
 import os
 
 from lxml import etree as et
 from lxml.etree import Element, SubElement
 from tqdm import tqdm
-
-from genet.core import Network
 
 
 def extract_toll_ways_from_opl(path_opl):
@@ -155,40 +152,3 @@ def build_tree(network_toll_ids):
     SubElement(roadpricing, "cost", start_time="00:00", end_time="23:59", amount="2.00")
 
     return roadpricing
-
-
-if __name__ == "__main__":
-    arg_parser = argparse.ArgumentParser(
-        description='')
-
-    arg_parser.add_argument('--path_opl',
-                            help='location of the .osm.opl file',
-                            default=None)
-
-    arg_parser.add_argument('--path_network',
-                            help='location of the network.xml file',
-                            default=None)
-
-    arg_parser.add_argument('--outpath',
-                            help='destination folder for roadpricing-file.xml \
-                            output file',
-                            default=None)
-
-    args = vars(arg_parser.parse_args())
-    path_opl = args['path_opl']
-    path_network = args['path_network']
-    outpath = args['outpath']
-
-    osm_way_ids = extract_toll_ways_from_opl(path_opl)
-    # remove the `w` in front of each id number if present
-    if osm_way_ids[0][0] == 'w':
-        osm_way_ids = [item.split('w')[1] for item in osm_way_ids]
-
-    n = Network()
-    n.read_matsim_network(path_network, epsg='epsg:27700')
-
-    network_toll_ids = extract_network_id_from_osm_id(n, osm_way_ids)
-
-    roadpricing = build_tree(network_toll_ids)
-
-    write_xml(roadpricing, outpath)
