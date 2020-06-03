@@ -58,6 +58,14 @@ class Network:
         root = graph_operations.get_attribute_schema(self.nodes(), data=data)
         graph_operations.render_tree(root, data)
 
+    def node_attribute_data_under_key(self, key):
+        """
+        Generates a pandas.Series object index by node ids, with data stored on the nodes under `key`
+        :param key: e.g.
+        :return: pandas.Series
+        """
+        return pd.Series(graph_operations.get_attribute_data_under_key(self.nodes(), key))
+
     def link_attribute_summary(self, data=False):
         """
         Is expensive. Parses through data stored on links and gives a summary tree of the data stored on the links.
@@ -67,6 +75,14 @@ class Network:
         """
         root = graph_operations.get_attribute_schema(self.links(), data=data)
         graph_operations.render_tree(root, data)
+
+    def link_attribute_data_under_key(self, key):
+        """
+        Generates a pandas.Series object index by link ids, with data stored on the links under `key`
+        :param key:
+        :return: pandas.Series
+        """
+        return pd.Series(graph_operations.get_attribute_data_under_key(self.links(), key))
 
     def add_node(self, node: Union[str, int], attribs: dict = None):
         if attribs is not None:

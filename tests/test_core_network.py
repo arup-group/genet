@@ -2,7 +2,7 @@ import os
 import sys
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import network_object_from_test_data
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
@@ -32,6 +32,42 @@ def test_print_shows_info(mocker):
     n = Network()
     n.print()
     n.info.assert_called_once()
+
+
+def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
+    n = Network()
+    n.add_node(1, {'a': {'b': 1}})
+    n.add_node(2, {'a': {'b': 4}})
+
+    output_series = n.node_attribute_data_under_key(key={'a': 'b'})
+    assert_series_equal(output_series, pd.Series({1:1, 2:4}))
+
+
+def test_node_attribute_data_under_key_returns_correct_pd_series_with_flat_keys():
+    n = Network()
+    n.add_node(1, {'b': 1})
+    n.add_node(2, {'b': 4})
+
+    output_series = n.node_attribute_data_under_key(key='b')
+    assert_series_equal(output_series, pd.Series({1:1, 2:4}))
+
+
+def test_link_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
+    n = Network()
+    n.add_link('0', 1, 2, {'a': {'b': 1}})
+    n.add_link('1', 1, 2, {'a': {'b': 4}})
+
+    output_series = n.link_attribute_data_under_key(key={'a': 'b'})
+    assert_series_equal(output_series, pd.Series({'0':1, '1':4}))
+
+
+def test_link_attribute_data_under_key_returns_correct_pd_series_with_flat_keys():
+    n = Network()
+    n.add_link('0', 1, 2, {'b': 1})
+    n.add_link('1', 1, 2, {'b': 4})
+
+    output_series = n.link_attribute_data_under_key(key='b')
+    assert_series_equal(output_series, pd.Series({'0':1, '1':4}))
 
 
 def test_add_node_adds_node_to_graph_with_attribs():

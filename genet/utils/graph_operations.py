@@ -1,4 +1,4 @@
-from typing import Union, Dict, Callable
+from typing import Union, Dict, Callable, Iterable
 from anytree import Node, RenderTree
 
 
@@ -191,3 +191,32 @@ def render_tree(root, data=False):
             print("%s%s: %s" % (pre, node.name, list(node.values)[:5]))
         else:
             print("%s%s" % (pre, node.name))
+
+
+def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
+    """
+    Returns all data stored under key in attribute dictionaries for interators yielding (index, attribute_dictionary),
+    inherits index from the iterator.
+    :param iterator: list or iterator yielding (index, attribute_dictionary)
+    :param key: either a string e.g. 'modes', or if accessing nested information, a dictionary
+        e.g. {'attributes': {'osm:way:name': 'text'}}
+    :return: dictionary where keys are indicies and values are data stored under the key
+    """
+    def get_the_data(attributes, key):
+        if isinstance(key, dict):
+            for k, v in key.items():
+                if k in attributes:
+                    if isinstance(v, dict):
+                        get_the_data(attributes[k], v)
+                    else:
+                        data[_id] = attributes[k][v]
+        else:
+            if key in attributes:
+                data[_id] = attributes[key]
+
+    data = {}
+
+    for _id, _attribs in iterator:
+        get_the_data(_attribs, key)
+
+    return data

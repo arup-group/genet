@@ -1,6 +1,7 @@
 from genet.core import Network, Schedule
 from genet.utils import graph_operations
 from anytree import Node, RenderTree
+from tests.fixtures import assert_semantically_equal
 
 
 def generate_output_tree(root):
@@ -315,3 +316,31 @@ def test_get_attribute_schema_merges_lists():
 
     assert output_tree == [(0, None, 'attribute'), (1, 'attribute', 'modes', {'bike', 'car', 'walk'})]
 
+
+def test_get_attribute_data_under_key_with_non_nested_key():
+    input_list = [
+        ('0', {'attributes': {'osm:way:highway': {'name': 'osm:way:highway',
+                                                  'class': 'java.lang.String',
+                                                  'text': 'primary'}}}),
+        ('1', {'attributes': {'osm:way:highway': {'name': 'osm:way:highway',
+                                                  'class': 'java.lang.String',
+                                                  'text': 'secondary'}}}),
+        ('2', {'modes': ['car', 'walk']})
+    ]
+
+    data = graph_operations.get_attribute_data_under_key(input_list, 'modes')
+    assert_semantically_equal(data, {'2': ['walk', 'car']})
+
+
+def test_get_attribute_data_under_key_with_nested_link_data_and_nested_key():
+    input_list = [
+        ('0', {'attributes': {'osm:way:highway': {'name': 'osm:way:highway',
+                                                  'class': 'java.lang.String',
+                                                  'text': 'primary'}}}),
+        ('1', {'attributes': {'osm:way:highway': {'name': 'osm:way:highway',
+                                                  'class': 'java.lang.String',
+                                                  'text': 'secondary'}}})
+    ]
+
+    data = graph_operations.get_attribute_data_under_key(input_list, {'attributes': {'osm:way:highway': 'text'}})
+    assert_semantically_equal(data, {'0': 'primary', '1': 'secondary'})

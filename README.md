@@ -153,6 +153,40 @@ and for links,
             └── text
 
 
+Once you see the general schema for the data stored on nodes and links, you may decide to look at or perform analysis 
+on all of the data stored in the netowrk under a particular key. A GeNet network has two methods which generate a
+`pandas.Series` object, which stores the nodes or links data present at the specified key, indexed by the same index 
+as the nodes or links.
+
+    >>> s_freespeed = n.link_attribute_data_under_key('freespeed')
+    >>> s_freespeed
+    1                4.166667
+    10               4.166667
+    100              4.166667
+    1000             4.166667
+    1001             4.166667
+                      ...    
+    998              6.944444
+    999              6.944444
+    pt_1383_2634     5.000000
+    pt_1383_3328    10.000000
+    pt_1506_1663     5.000000
+    Length: 3166, dtype: float64
+
+then you can treat it as a `pandas` object and use their methods to analyse it, e.g.
+    
+    >>> s_freespeed.describe()
+    count    3166.000000
+    mean        9.522794
+    std         7.723735
+    min         2.777778
+    25%         4.166667
+    50%         4.166667
+    75%        22.222222
+    max        22.222222
+    dtype: float64
+
+
 #### Extracting links of interest
 
 The function above gathers link ids which satisfy conditions 
