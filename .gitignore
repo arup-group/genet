@@ -1,7 +1,6 @@
 fixtures
 outputs
 .idea/
-*.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -126,7 +125,6 @@ dmypy.json
 tests/test_outputs/
 test_chunks.csv
 reports/
-images/
 mprofile*
 benchmark-outputs/
 working-dir/

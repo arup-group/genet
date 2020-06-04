@@ -51,8 +51,8 @@ This section goes through basic usage examples.
 
 Instantiate an empty network
 
-    >>> import genet as gn
-    >>> n = gn.Network()
+    >>> import genet
+    >>> n = genet.Network()
     >>> n
     
     <Network instance at 4683796240: with 
@@ -66,11 +66,11 @@ Instantiate an empty network
 
 You can now use methods to read in MATSim network files:
 
-    >>> network = 'path/to/network.xml'
-    >>> schedule = 'path/to/schedule.xml'
+    >>> pt2matsim_network = 'path/to/network.xml'
+    >>> pt2matsim_schedule = 'path/to/schedule.xml'
     
-    >>> n.read_matsim_network(network, epsg='epsg:27700')
-    >>> n.read_matsim_schedule(schedule, epsg='epsg:27700')
+    >>> n.read_matsim_network(pt2matsim_network, epsg='epsg:27700')
+    >>> n.read_matsim_schedule(pt2matsim_schedule, epsg='epsg:27700')
     >>> n
     
     <Network instance at 4683796240: with 
@@ -82,11 +82,105 @@ You can now use methods to read in MATSim network files:
     Average out degree:   1.9049 and 
     schedule Number of services: 62
     Number of unique routes: 520
+    
+![GeNet Network diagram](images/genet_network.png)
 
 ### Using a Network object
 
-Once you have a `genet.Network` object, you can use it to produce auxiliary files or analyse the network.
-For example, you can extract the unique ids of links in the network which satisfy certain conditions pertaining to the
+Once you have a `genet.Network` object, you can use it to produce auxiliary files, analyse of modify the network.
+
+#### Summary
+The data saved on the edges of the graph can be nested. There are a couple of convenient methods that summarise the 
+schema of the data found on the nodes and links to show you what the keys (and if `data=True`, also values) of those 
+dictionaries look like. If `data=True`, the output shows up to 5 unique values stored in that location.
+
+    >>> n.node_attribute_summary(data=True)
+    
+    attribute
+    ├── id: ['293813458', '4582907654', '107829', '2833956947', '5607749654']
+    ├── x: ['527677.5109120146', '529801.0659699676', '530238.1178740165', '527959.3321330055', '530629.5558489189']
+    ├── y: ['181250.1252480651', '182424.5440813937', '181228.56259440206', '182169.2831176619', '181516.2234405568']
+    ├── lon: [-0.15178558709839862, -0.15872448710537235, -0.13569068709168342, -0.13766218709633904, -0.13543658708819173]
+    ├── lat: [51.51609983324067, 51.5182034332405, 51.51504733324089, 51.522253033239515, 51.522948433239556]
+    └── s2_id: [5221390710015643649, 5221390314367946753, 5221366508477440003, 5221390682291777543, 5221390739236081673]
+
+and for links,
+
+    >>> n.link_attribute_summary()
+    
+    attribute
+    ├── id
+    ├── from
+    ├── to
+    ├── freespeed
+    ├── capacity
+    ├── permlanes
+    ├── oneway
+    ├── modes
+    ├── s2_from
+    ├── s2_to
+    ├── length
+    └── attributes
+        ├── osm:way:access
+        │   ├── name
+        │   ├── class
+        │   └── text
+        ├── osm:way:highway
+        │   ├── name
+        │   ├── class
+        │   └── text
+        ├── osm:way:id
+        │   ├── name
+        │   ├── class
+        │   └── text
+        ├── osm:way:name
+        │   ├── name
+        │   ├── class
+        │   └── text
+        ...
+        └── osm:way:service
+            ├── name
+            ├── class
+            └── text
+
+
+Once you see the general schema for the data stored on nodes and links, you may decide to look at or perform analysis 
+on all of the data stored in the netowrk under a particular key. A GeNet network has two methods which generate a
+`pandas.Series` object, which stores the nodes or links data present at the specified key, indexed by the same index 
+as the nodes or links.
+
+    >>> s_freespeed = n.link_attribute_data_under_key('freespeed')
+    >>> s_freespeed
+    1                4.166667
+    10               4.166667
+    100              4.166667
+    1000             4.166667
+    1001             4.166667
+                      ...    
+    998              6.944444
+    999              6.944444
+    pt_1383_2634     5.000000
+    pt_1383_3328    10.000000
+    pt_1506_1663     5.000000
+    Length: 3166, dtype: float64
+
+then you can treat it as a `pandas` object and use their methods to analyse it, e.g.
+    
+    >>> s_freespeed.describe()
+    count    3166.000000
+    mean        9.522794
+    std         7.723735
+    min         2.777778
+    25%         4.166667
+    50%         4.166667
+    75%        22.222222
+    max        22.222222
+    dtype: float64
+
+
+#### Extracting links of interest
+
+You can extract the unique ids of links in the network which satisfy certain conditions pertaining to the
 data being stored on graph edges.
 
     >>> links = genet.graph_operations.extract_links_on_edge_attributes(
@@ -96,7 +190,7 @@ data being stored on graph edges.
     >>> links[:5]
     ['1007', '1008', '1023', '1024', '103']
 
-The data saved on the edges of the graph can be nested. The function above gathers link ids which satisfy conditions 
+The function above gathers link ids which satisfy conditions 
 to arbitrary level of nested-ness. It also allows quite flexible conditions---above we require that the link value
 at `data['attributes']['osm:way:highway']['text'] == 'primary'`, where data is the data dictionary stored on that link.
 You can also define a condition such that `data['attributes']['osm:way:highway']['text']` is one of the items in a 
@@ -111,8 +205,75 @@ and many more. You can find the examples in the jupyter notebook: `notebooks/GeN
 
 ### Modifying a Network object
 
+Let's say you have extracted `genet.Network` link ids of interest, they are stored in the list `links` as above, and 
+now you want to make changes to the network. Let's 
+make changes to the nested OSM data stored on the links. We will replace the highway tags from to 
+`'SOMETHING'`.
+
+    >>> n.apply_attributes_to_links(links, {'attributes': {'osm:way:highway': {'text': 'SOMETHING'}}})
+    
+    >>> n.link('1007')
+    
+    {'id': '1007',
+     'from': '4356572310',
+     'to': '5811263955',
+     'freespeed': 22.22222222222222,
+     'capacity': 3000.0,
+     'permlanes': 2.0,
+     'oneway': '1',
+     'modes': ['car'],
+     's2_from': 5221390723045407809,
+     's2_to': 5221390723040504387,
+     'length': 13.941905154249884,
+     'attributes': {'osm:way:highway': {'name': 'osm:way:highway',
+       'class': 'java.lang.String',
+       'text': 'SOMETHING'},
+      'osm:way:id': {'name': 'osm:way:id',
+       'class': 'java.lang.Long',
+       'text': '589660342'},
+      'osm:way:lanes': {'name': 'osm:way:lanes',
+       'class': 'java.lang.String',
+       'text': '2'},
+      'osm:way:name': {'name': 'osm:way:name',
+       'class': 'java.lang.String',
+       'text': 'Shaftesbury Avenue'},
+      'osm:way:oneway': {'name': 'osm:way:oneway',
+       'class': 'java.lang.String',
+       'text': 'yes'}}}
+
+The changes you make to the `Network` will be recorded in the `change_log` which is a `pandas.DataFrame`. This log
+gets saved to a csv together with any `Network` outputs.
+
+    >>> n.change_log.log
+    
+    |    | timestamp           | change_event   | object_type   |   old_id |   new_id | old_attributes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | new_attributes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | diff                                                                      |
+    |---:|:--------------------|:---------------|:--------------|---------:|---------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------|
+    |  0 | 2020-06-02 10:47:03 | modify         | link          |     1007 |     1007 | {'id': '1007', 'from': '4356572310', 'to': '5811263955', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390723045407809, 's2_to': 5221390723040504387, 'length': 13.941905154249884, 'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '589660342'}, 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '2'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Shaftesbury Avenue'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}}                  | {'id': '1007', 'from': '4356572310', 'to': '5811263955', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390723045407809, 's2_to': 5221390723040504387, 'length': 13.941905154249884, 'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'SOMETHING'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '589660342'}, 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '2'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Shaftesbury Avenue'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}}                  | [('change', 'attributes.osm:way:highway.text', ('primary', 'SOMETHING'))] |
+    |  1 | 2020-06-02 10:47:03 | modify         | link          |     1008 |     1008 | {'id': '1008', 'from': '5811263955', 'to': '21665588', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390723040504387, 's2_to': 5221390723204000715, 'length': 25.86037080854938, 'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '614324183'}, 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '2'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Shaftesbury Avenue'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}}                     | {'id': '1008', 'from': '5811263955', 'to': '21665588', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390723040504387, 's2_to': 5221390723204000715, 'length': 25.86037080854938, 'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'SOMETHING'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '614324183'}, 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '2'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Shaftesbury Avenue'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}}                     | [('change', 'attributes.osm:way:highway.text', ('primary', 'SOMETHING'))] |
+    |  2 | 2020-06-02 10:47:03 | modify         | link          |     1023 |     1023 | {'id': '1023', 'from': '1611125463', 'to': '108234', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['bus', 'car', 'pt'], 's2_from': 5221390319884366911, 's2_to': 5221390320040783993, 'length': 53.767011109096586, 'attributes': {'osm:relation:route': {'name': 'osm:relation:route', 'class': 'java.lang.String', 'text': 'bus'}, 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '59718434'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Cavendish Place'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}} | {'id': '1023', 'from': '1611125463', 'to': '108234', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['bus', 'car', 'pt'], 's2_from': 5221390319884366911, 's2_to': 5221390320040783993, 'length': 53.767011109096586, 'attributes': {'osm:relation:route': {'name': 'osm:relation:route', 'class': 'java.lang.String', 'text': 'bus'}, 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'SOMETHING'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '59718434'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Cavendish Place'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}} | [('change', 'attributes.osm:way:highway.text', ('primary', 'SOMETHING'))] |
 
 ### Validation
 
 
 ### Writing results
+
+At the moment GeNet supports saving `Network` and `Schedule` objects to MATSim's `network.xml`, `schedule.xml` and
+`vehicles.xml`.
+
+    >>> n.write_to_matsim('/path/to/matsim/networks/genet_output'))
+    
+Saving a `Network` will result in `network.xml`, `schedule.xml` and `vehicles.xml` files if the Network has a non-empty 
+`Schedule`.
+
+Saving a `Schedule` will result in `schedule.xml` and `vehicles.xml` files.
+
+You can check that a `Network` that had been read in from MATSim files results in semantically equal xml files 
+(if not changes were applied to the `Network` of course)
+
+    >>> from tests.xml_diff import assert_semantically_equal
+    >>> assert_semantically_equal(
+            pt2matsim_schedule, 
+            '/path/to/matsim/networks/genet_output/schedule.xml')
+            
+            
+    path/to/schedule.xml and /path/to/matsim/networks/genet_output/schedule.xml are semantically equal

@@ -24,6 +24,7 @@ setup(
         'dictdiffer==0.8.1',
         'pandas',
         'lxml',
-        'xmltodict'
+        'xmltodict',
+        'anytree'
     ],
 )

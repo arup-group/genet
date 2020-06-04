@@ -1,6 +1,8 @@
 import os
 import sys
+import pandas as pd
 import pytest
+from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import network_object_from_test_data
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
@@ -30,6 +32,42 @@ def test_print_shows_info(mocker):
     n = Network()
     n.print()
     n.info.assert_called_once()
+
+
+def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
+    n = Network()
+    n.add_node(1, {'a': {'b': 1}})
+    n.add_node(2, {'a': {'b': 4}})
+
+    output_series = n.node_attribute_data_under_key(key={'a': 'b'})
+    assert_series_equal(output_series, pd.Series({1:1, 2:4}))
+
+
+def test_node_attribute_data_under_key_returns_correct_pd_series_with_flat_keys():
+    n = Network()
+    n.add_node(1, {'b': 1})
+    n.add_node(2, {'b': 4})
+
+    output_series = n.node_attribute_data_under_key(key='b')
+    assert_series_equal(output_series, pd.Series({1:1, 2:4}))
+
+
+def test_link_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
+    n = Network()
+    n.add_link('0', 1, 2, {'a': {'b': 1}})
+    n.add_link('1', 1, 2, {'a': {'b': 4}})
+
+    output_series = n.link_attribute_data_under_key(key={'a': 'b'})
+    assert_series_equal(output_series, pd.Series({'0':1, '1':4}))
+
+
+def test_link_attribute_data_under_key_returns_correct_pd_series_with_flat_keys():
+    n = Network()
+    n.add_link('0', 1, 2, {'b': 1})
+    n.add_link('1', 1, 2, {'b': 4})
+
+    output_series = n.link_attribute_data_under_key(key='b')
+    assert_series_equal(output_series, pd.Series({'0':1, '1':4}))
 
 
 def test_add_node_adds_node_to_graph_with_attribs():
@@ -70,6 +108,133 @@ def test_add_link_adds_edge_to_graph_without_attribs():
     n.graph.has_edge(1, 2)
     assert '0' in n.link_id_mapping
     assert n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
+
+
+def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
+    n = Network()
+    n.add_node(1, {'a': 1})
+    n.apply_attributes_to_node(1, {'b': 1})
+
+    assert n.node(1) == {'b': 1, 'a': 1}
+
+    correct_change_log_df = pd.DataFrame(
+        {'timestamp': {0: '2020-05-28 13:49:53', 1: '2020-05-28 13:49:53'}, 'change_event': {0: 'add', 1: 'modify'},
+         'object_type': {0: 'node', 1: 'node'}, 'old_id': {0: None, 1: 1}, 'new_id': {0: 1, 1: 1},
+         'old_attributes': {0: None, 1: "{'a': 1}"}, 'new_attributes': {0: "{'a': 1}", 1: "{'a': 1, 'b': 1}"},
+         'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', 1)], 1: [('add', '', [('b', 1)])]}})
+
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_names=False,
+                       check_dtype=False)
+
+
+def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log():
+    n = Network()
+    n.add_node(1, {'a': 1})
+    n.apply_attributes_to_node(1, {'a': 4})
+
+    assert n.node(1) == {'a': 4}
+
+    correct_change_log_df = pd.DataFrame(
+        {'timestamp': {0: '2020-05-28 13:49:53', 1: '2020-05-28 13:49:53'}, 'change_event': {0: 'add', 1: 'modify'},
+         'object_type': {0: 'node', 1: 'node'}, 'old_id': {0: None, 1: 1}, 'new_id': {0: 1, 1: 1},
+         'old_attributes': {0: None, 1: "{'a': 1}"}, 'new_attributes': {0: "{'a': 1}", 1: "{'a': 4}"},
+         'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', 1)], 1: [('change', 'a', (1, 4))]}})
+
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+
+
+def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_recorded_by_change_log():
+    n = Network()
+    n.add_node(1, {'a': 1})
+    n.add_node(2, {'b': 1})
+    n.apply_attributes_to_nodes([1, 2], {'a': 4})
+
+    assert n.node(1) == {'a': 4}
+    assert n.node(2) == {'b': 1, 'a': 4}
+
+    correct_change_log_df = pd.DataFrame(
+        {'timestamp': {0: '2020-06-01 15:07:51', 1: '2020-06-01 15:07:51', 2: '2020-06-01 15:07:51',
+                       3: '2020-06-01 15:07:51'}, 'change_event': {0: 'add', 1: 'add', 2: 'modify', 3: 'modify'},
+         'object_type': {0: 'node', 1: 'node', 2: 'node', 3: 'node'}, 'old_id': {0: None, 1: None, 2: 1, 3: 2},
+         'new_id': {0: 1, 1: 2, 2: 1, 3: 2}, 'old_attributes': {0: None, 1: None, 2: "{'a': 1}", 3: "{'b': 1}"},
+         'new_attributes': {0: "{'a': 1}", 1: "{'b': 1}", 2: "{'a': 4}", 3: "{'b': 1, 'a': 4}"},
+         'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', 1)], 1: [('add', '', [('b', 1)]), ('add', 'id', 2)],
+                  2: [('change', 'a', (1, 4))], 3: [('add', '', [('a', 4)])]}
+         })
+
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+
+
+def test_modify_link_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
+    n = Network()
+    n.add_link('0', 1, 2, {'a': 1})
+    n.apply_attributes_to_link('0', {'b': 1})
+
+    assert n.link('0') == {'b': 1, 'a': 1}
+
+    correct_change_log_df = pd.DataFrame(
+        {'timestamp': {0: '2020-05-28 13:49:53', 1: '2020-05-28 13:49:53'}, 'change_event': {0: 'add', 1: 'modify'},
+         'object_type': {0: 'link', 1: 'link'}, 'old_id': {0: None, 1: '0'}, 'new_id': {0: '0', 1: '0'},
+         'old_attributes': {0: None, 1: "{'a': 1}"}, 'new_attributes': {0: "{'a': 1}", 1: "{'a': 1, 'b': 1}"},
+         'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', '0')], 1: [('add', '', [('b', 1)])]}})
+
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+
+
+def test_modify_link_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log():
+    n = Network()
+    n.add_link('0', 1, 2, {'a': 1})
+    n.apply_attributes_to_link('0', {'a': 4})
+
+    assert n.link('0') == {'a': 4}
+
+    correct_change_log_df = pd.DataFrame(
+        {'timestamp': {0: '2020-06-01 18:23:00', 1: '2020-06-01 18:23:00'}, 'change_event': {0: 'add', 1: 'modify'},
+         'object_type': {0: 'link', 1: 'link'}, 'old_id': {0: None, 1: '0'}, 'new_id': {0: '0', 1: '0'},
+         'old_attributes': {0: None, 1: "{'a': 1}"}, 'new_attributes': {0: "{'a': 1}", 1: "{'a': 4}"},
+         'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', '0')], 1: [('change', 'a', (1, 4))]}})
+
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+
+
+def test_modify_link_adds_attributes_in_the_graph_with_multiple_edges():
+    n = Network()
+    n.add_link('0', 1, 2, {'a': 1})
+    n.add_link('1', 1, 2, {'c': 100})
+    n.apply_attributes_to_link('0', {'b': 1})
+
+    assert n.link('0') == {'b': 1, 'a': 1}
+    assert n.link('1') == {'c': 100}
+
+
+def test_modify_links_adds_and_changes_attributes_in_the_graph_with_multiple_edges_and_change_is_recorded_by_change_log():
+    n = Network()
+    n.add_link('0', 1, 2, {'a': {'b': 1}})
+    n.add_link('1', 1, 2, {'c': 100})
+    n.apply_attributes_to_links(['0', '1'], {'a': {'b': 100}})
+
+    assert n.link('0') == {'a': {'b': 100}}
+    assert n.link('1') == {'c': 100, 'a': {'b': 100}}
+
+    correct_change_log_df = pd.DataFrame(
+        {'timestamp': {0: '2020-06-01 18:19:59', 1: '2020-06-01 18:19:59', 2: '2020-06-01 18:20:37',
+                       3: '2020-06-01 18:20:37'}, 'change_event': {0: 'add', 1: 'add', 2: 'modify', 3: 'modify'},
+         'object_type': {0: 'link', 1: 'link', 2: 'link', 3: 'link'}, 'old_id': {0: None, 1: None, 2: '0', 3: '1'},
+         'new_id': {0: '0', 1: '1', 2: '0', 3: '1'},
+         'old_attributes': {0: None, 1: None, 2: "{'a': {'b': 1}}", 3: "{'c': 100}"},
+         'new_attributes': {0: "{'a': {'b': 1}}", 1: "{'c': 100}", 2: "{'a': {'b': 100}}",
+                            3: "{'c': 100, 'a': {'b': 100}}"},
+         'diff': {0: [('add', '', [('a', {'b': 1})]), ('add', 'id', '0')],
+                  1: [('add', '', [('c', 100)]), ('add', 'id', '1')], 2: [('change', 'a.b', (1, 100))],
+                  3: [('add', '', [('a', {'b': 100})])]}})
+
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
 
 
 def test_resolves_link_id_clashes_by_mapping_clashing_link_to_a_new_id(mocker):
@@ -125,7 +290,7 @@ def test_edges_gives_iterator_of_edge_from_to_nodes_and_attribs():
     assert list(n.edges()) == [(1, 2, {}), (2, 3, {}), (3, 4, {})]
 
 
-def test_edge_mothod_gives_attributtes_for_given_from_and_to_nodes():
+def test_edge_method_gives_attributes_for_given_from_and_to_nodes():
     n = Network()
     n.graph.add_edge(1, 2, **{'attrib': 1})
     assert n.edge(1, 2) == {0: {'attrib': 1}}
