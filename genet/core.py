@@ -111,7 +111,7 @@ class Network:
             self.graph.add_edge(u, v)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
 
-    def modify_node(self, node_id, new_attributes):
+    def apply_attributes_to_node(self, node_id, new_attributes):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the node currently so no data is lost, unless it is being overwritten.
@@ -135,7 +135,7 @@ class Network:
             new_attributes=new_attributes)
         nx.set_node_attributes(self.graph, {node_id: new_attributes})
 
-    def modify_nodes(self, nodes: list, new_attributes: dict):
+    def apply_attributes_to_nodes(self, nodes: list, new_attributes: dict):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the node currently so no data is lost, unless it is being overwritten.
@@ -143,10 +143,9 @@ class Network:
         :param new_attributes: dictionary of data to add/replace if present
         :return:
         """
-        for node in nodes:
-            self.modify_node(node, new_attributes)
+        [self.apply_attributes_to_node(node, new_attributes) for node in nodes]
 
-    def modify_link(self, link_id, new_attributes):
+    def apply_attributes_to_link(self, link_id, new_attributes):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the link currently so no data is lost, unless it is being overwritten.
@@ -173,7 +172,7 @@ class Network:
 
         nx.set_edge_attributes(self.graph, {(u, v, multi_idx): new_attributes})
 
-    def modify_links(self, links: list, new_attributes: dict):
+    def apply_attributes_to_links(self, links: list, new_attributes: dict):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the link currently so no data is lost, unless it is being overwritten.
@@ -181,8 +180,7 @@ class Network:
         :param new_attributes: dictionary of data to add/replace if present
         :return:
         """
-        for link in links:
-            self.modify_link(link, new_attributes)
+        [self.apply_attributes_to_link(link, new_attributes) for link in links]
 
     def number_of_multi_edges(self, u, v):
         """

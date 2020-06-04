@@ -113,7 +113,7 @@ def test_add_link_adds_edge_to_graph_without_attribs():
 def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
     n = Network()
     n.add_node(1, {'a': 1})
-    n.modify_node(1, {'b': 1})
+    n.apply_attributes_to_node(1, {'b': 1})
 
     assert n.node(1) == {'b': 1, 'a': 1}
 
@@ -131,7 +131,7 @@ def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_chan
 def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log():
     n = Network()
     n.add_node(1, {'a': 1})
-    n.modify_node(1, {'a': 4})
+    n.apply_attributes_to_node(1, {'a': 4})
 
     assert n.node(1) == {'a': 4}
 
@@ -149,7 +149,7 @@ def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_rec
     n = Network()
     n.add_node(1, {'a': 1})
     n.add_node(2, {'b': 1})
-    n.modify_nodes([1, 2], {'a': 4})
+    n.apply_attributes_to_nodes([1, 2], {'a': 4})
 
     assert n.node(1) == {'a': 4}
     assert n.node(2) == {'b': 1, 'a': 4}
@@ -171,7 +171,7 @@ def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_rec
 def test_modify_link_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
     n = Network()
     n.add_link('0', 1, 2, {'a': 1})
-    n.modify_link('0', {'b': 1})
+    n.apply_attributes_to_link('0', {'b': 1})
 
     assert n.link('0') == {'b': 1, 'a': 1}
 
@@ -188,7 +188,7 @@ def test_modify_link_adds_attributes_in_the_graph_and_change_is_recorded_by_chan
 def test_modify_link_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log():
     n = Network()
     n.add_link('0', 1, 2, {'a': 1})
-    n.modify_link('0', {'a': 4})
+    n.apply_attributes_to_link('0', {'a': 4})
 
     assert n.link('0') == {'a': 4}
 
@@ -206,7 +206,7 @@ def test_modify_link_adds_attributes_in_the_graph_with_multiple_edges():
     n = Network()
     n.add_link('0', 1, 2, {'a': 1})
     n.add_link('1', 1, 2, {'c': 100})
-    n.modify_link('0', {'b': 1})
+    n.apply_attributes_to_link('0', {'b': 1})
 
     assert n.link('0') == {'b': 1, 'a': 1}
     assert n.link('1') == {'c': 100}
@@ -216,7 +216,7 @@ def test_modify_links_adds_and_changes_attributes_in_the_graph_with_multiple_edg
     n = Network()
     n.add_link('0', 1, 2, {'a': {'b': 1}})
     n.add_link('1', 1, 2, {'c': 100})
-    n.modify_links(['0', '1'], {'a': {'b': 100}})
+    n.apply_attributes_to_links(['0', '1'], {'a': {'b': 100}})
 
     assert n.link('0') == {'a': {'b': 100}}
     assert n.link('1') == {'c': 100, 'a': {'b': 100}}

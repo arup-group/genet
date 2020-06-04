@@ -87,16 +87,7 @@ You can now use methods to read in MATSim network files:
 
 ### Using a Network object
 
-Once you have a `genet.Network` object, you can use it to produce auxiliary files or analyse the network.
-For example, you can extract the unique ids of links in the network which satisfy certain conditions pertaining to the
-data being stored on graph edges.
-
-    >>> links = genet.graph_operations.extract_links_on_edge_attributes(
-            n,
-            conditions= {'attributes': {'osm:way:highway': {'text': 'primary'}}},
-        )
-    >>> links[:5]
-    ['1007', '1008', '1023', '1024', '103']
+Once you have a `genet.Network` object, you can use it to produce auxiliary files, analyse of modify the network.
 
 #### Summary
 The data saved on the edges of the graph can be nested. There are a couple of convenient methods that summarise the 
@@ -189,6 +180,16 @@ then you can treat it as a `pandas` object and use their methods to analyse it, 
 
 #### Extracting links of interest
 
+You can extract the unique ids of links in the network which satisfy certain conditions pertaining to the
+data being stored on graph edges.
+
+    >>> links = genet.graph_operations.extract_links_on_edge_attributes(
+            n,
+            conditions= {'attributes': {'osm:way:highway': {'text': 'primary'}}},
+        )
+    >>> links[:5]
+    ['1007', '1008', '1023', '1024', '103']
+
 The function above gathers link ids which satisfy conditions 
 to arbitrary level of nested-ness. It also allows quite flexible conditions---above we require that the link value
 at `data['attributes']['osm:way:highway']['text'] == 'primary'`, where data is the data dictionary stored on that link.
@@ -209,7 +210,7 @@ now you want to make changes to the network. Let's
 make changes to the nested OSM data stored on the links. We will replace the highway tags from to 
 `'SOMETHING'`.
 
-    >>> n.modify_links(links, {'attributes': {'osm:way:highway': {'text': 'SOMETHING'}}})
+    >>> n.apply_attributes_to_links(links, {'attributes': {'osm:way:highway': {'text': 'SOMETHING'}}})
     
     >>> n.link('1007')
     

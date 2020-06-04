@@ -63,7 +63,7 @@ def test_extract_graph_links_with_list_of_conditions():
         n,
         conditions=[{'attributes': {'osm:way:highway': {'text': 'primary'}}},
                     {'attributes': 'yes'}],
-        how='any'
+        how=any
     )
 
     assert links == ['0', '1', '2']
@@ -81,7 +81,7 @@ def test_extract_graph_links_with_list_of_conditions_strict():
         n,
         conditions=[{'attributes': {'osm:way:highway': {'text': 'primary'}}},
                     {'attributes': {'osm:way:highway': {'name': 'osm:way:highway'}}}],
-        how='all'
+        how=all
     )
 
     assert links == ['1']
@@ -181,7 +181,7 @@ def test_extract_graph_nodes_with_list_of_conditions():
         n,
         conditions=[{'attributes': {'osm:way:highway': {'text': 'primary'}}},
                     {'attributes': 'yes'}],
-        how='any'
+        how=any
     )
 
     assert nodes == [1, 2, 3]
@@ -199,7 +199,7 @@ def test_extract_graph_nodes_with_list_of_conditions_strict():
         n,
         conditions=[{'attributes': {'osm:way:highway': {'text': 'primary'}}},
                     {'attributes': {'osm:way:highway': {'name': 'osm:way:highway'}}}],
-        how='all'
+        how=all
     )
 
     assert nodes == [2]
