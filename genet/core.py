@@ -4,12 +4,13 @@ import uuid
 import warnings
 import logging
 import os
+from copy import deepcopy
 from typing import Union, List
 from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.outputs_handler import matsim_xml_writer
 from genet.modify import ChangeLog
-from genet.utils import spatial, persistence
+from genet.utils import spatial, persistence, graph_operations
 from genet.schedule_elements import Service
 
 
@@ -47,6 +48,42 @@ class Network:
             self.schedule.info()
         )
 
+    def node_attribute_summary(self, data=False):
+        """
+        Is expensive. Parses through data stored on nodes and gives a summary tree of the data stored on the nodes.
+        If data is True, shows also up to 5 unique values stored under such keys.
+        :param data: bool, False by default
+        :return:
+        """
+        root = graph_operations.get_attribute_schema(self.nodes(), data=data)
+        graph_operations.render_tree(root, data)
+
+    def node_attribute_data_under_key(self, key):
+        """
+        Generates a pandas.Series object index by node ids, with data stored on the nodes under `key`
+        :param key: e.g.
+        :return: pandas.Series
+        """
+        return pd.Series(graph_operations.get_attribute_data_under_key(self.nodes(), key))
+
+    def link_attribute_summary(self, data=False):
+        """
+        Is expensive. Parses through data stored on links and gives a summary tree of the data stored on the links.
+        If data is True, shows also up to 5 unique values stored under such keys.
+        :param data: bool, False by default
+        :return:
+        """
+        root = graph_operations.get_attribute_schema(self.links(), data=data)
+        graph_operations.render_tree(root, data)
+
+    def link_attribute_data_under_key(self, key):
+        """
+        Generates a pandas.Series object index by link ids, with data stored on the links under `key`
+        :param key:
+        :return: pandas.Series
+        """
+        return pd.Series(graph_operations.get_attribute_data_under_key(self.links(), key))
+
     def add_node(self, node: Union[str, int], attribs: dict = None):
         if attribs is not None:
             self.graph.add_node(node, **attribs)
@@ -73,6 +110,77 @@ class Network:
         else:
             self.graph.add_edge(u, v)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
+
+    def apply_attributes_to_node(self, node_id, new_attributes):
+        """
+        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
+        stored at the node currently so no data is lost, unless it is being overwritten.
+        :param node_id: node id to perform the change to
+        :param new_attributes: dictionary of data to add/replace if present
+        :return:
+        """
+        old_attributes = deepcopy(self.node(node_id))
+
+        # check if change is to nested part of node data
+        if any(isinstance(v, dict) for v in new_attributes.values()):
+            new_attributes = persistence.set_nested_value(old_attributes, new_attributes)
+        else:
+            new_attributes = {**old_attributes, **new_attributes}
+
+        self.change_log.modify(
+            object_type='node',
+            old_id=node_id,
+            new_id=node_id,
+            old_attributes=self.node(node_id),
+            new_attributes=new_attributes)
+        nx.set_node_attributes(self.graph, {node_id: new_attributes})
+
+    def apply_attributes_to_nodes(self, nodes: list, new_attributes: dict):
+        """
+        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
+        stored at the node currently so no data is lost, unless it is being overwritten.
+        :param nodes: list of node ids
+        :param new_attributes: dictionary of data to add/replace if present
+        :return:
+        """
+        [self.apply_attributes_to_node(node, new_attributes) for node in nodes]
+
+    def apply_attributes_to_link(self, link_id, new_attributes):
+        """
+        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
+        stored at the link currently so no data is lost, unless it is being overwritten.
+        :param link_id: link id to perform the change to
+        :param new_attributes: dictionary of data to add/replace if present
+        :return:
+        """
+        u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
+        multi_idx = self.link_id_mapping[link_id]['multi_edge_idx']
+        old_attributes = deepcopy(self.link(link_id))
+
+        # check if change is to nested part of node data
+        if any(isinstance(v, dict) for v in new_attributes.values()):
+            new_attributes = persistence.set_nested_value(old_attributes, new_attributes)
+        else:
+            new_attributes = {**old_attributes, **new_attributes}
+
+        self.change_log.modify(
+            object_type='link',
+            old_id=link_id,
+            new_id=link_id,
+            old_attributes=self.link(link_id),
+            new_attributes=new_attributes)
+
+        nx.set_edge_attributes(self.graph, {(u, v, multi_idx): new_attributes})
+
+    def apply_attributes_to_links(self, links: list, new_attributes: dict):
+        """
+        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
+        stored at the link currently so no data is lost, unless it is being overwritten.
+        :param links: list of link ids
+        :param new_attributes: dictionary of data to add/replace if present
+        :return:
+        """
+        [self.apply_attributes_to_link(link, new_attributes) for link in links]
 
     def number_of_multi_edges(self, u, v):
         """
