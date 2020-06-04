@@ -19,7 +19,6 @@ class Network:
         self.schedule = Schedule()
         self.change_log = ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
-        self.modes = []
 
         self.epsg = ''
         self.transformer = ''
@@ -37,6 +36,36 @@ class Network:
 
     def __str__(self):
         return self.info()
+
+    def add(self, other):
+        """
+        This is deliberately not a magic function to discourage `new_network = network_1 + network_2` (and memory
+        goes out the window)
+        :param other:
+        :return:
+        """
+        # check epsgs, reproject other if do not match
+        if self.epsg != other.epsg:
+            pass
+
+        # TODO decide what to do with equal nodes (spatially, but different index)
+        # relabel those nodes? then to the link index analysis
+
+        # TODO: decide on inheritance of link_ids self have priority
+        # use nx.intersection to figure out which link_ids need to be resolved
+        # TODO: decide on overlapping link_ids
+        self.link_id_mapping = {**self.link_id_mapping, **other.link_id_mapping}
+
+        # once the link ids have been sorted, combine the graphs
+        self.graph = nx.compose(self.graph, other.graph)
+        # TODO update link 'id' attribute
+
+        # combine schedules
+        self.schedule = self.schedule + other.schedule
+
+        # merge change_log DataFrames
+        self.change_log = self.change_log.append(other.change_log)
+        self.change_log = self.change_log.sort_values(by='timestamp').reset_index(drop=True)
 
     def print(self):
         return self.info()
@@ -142,6 +171,13 @@ class Network:
         self.epsg = epsg
         self.transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
 
+    def reproject(self, new_epsg):
+        # TODO reproject x, y attributes stored in nodes data
+        transformer = Transformer.from_proj(Proj(init='epsg:4326'), Proj(init=new_epsg))
+        
+        # TODO reproject Schedule
+        pass
+
     def read_matsim_network(self, path, epsg):
         self.initiate_crs_transformer(epsg)
         self.graph, self.link_id_mapping = matsim_reader.read_network(path, self.transformer)
@@ -237,8 +273,10 @@ class Schedule:
         :return:
         """
         if not self.is_separable_from(other):
+            # have left and right indicies
             raise NotImplementedError('This method only supports adding non overlapping services.')
         elif self.epsg != other.epsg:
+            # TODO change to reprojection
             raise RuntimeError('You are merging two schedules with different coordinate systems.')
         else:
             return self.__class__(
