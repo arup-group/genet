@@ -45,20 +45,40 @@ class Network:
         :param other:
         :return:
         """
+        # other will change projection to self's if not the same
+        # only the nodes hold spatial information and only the ones that dont exist in
+        # self will need to be reprojected, we will use nx.compose to combine the graphs and the
+        # self.graph will impose it's data on other.graph
+        # find spatially overlapping nodes by extracting all of the s2_ids from other
+        s2_ids = other.node_attribute_data_under_key('s2_id')
+        # check if there are more nodes in the same spot
+        assert len(s2_ids) == len(s2_ids.unique()), 'There is more than one node in one place in the network you are' \
+            ' trying to add'
+
+        overlapping_nodes = graph_operations.extract_nodes_on_node_attributes(
+            self,
+            conditions={'s2_id': s2_ids.to_list()},
+        )
+        for node in overlapping_nodes:
+            other.apply_attributes_to_node()
+
+
+
         # check epsgs, reproject other if do not match
-        if self.epsg != other.epsg:
-            pass
+
 
         # TODO decide what to do with equal nodes (spatially, but different index)
         # relabel those nodes? then to the link index analysis
 
         # TODO: decide on inheritance of link_ids self have priority
         # use nx.intersection to figure out which link_ids need to be resolved
+        # also use it for nodes to see which need to be reprojected?
         # TODO: decide on overlapping link_ids
         self.link_id_mapping = {**self.link_id_mapping, **other.link_id_mapping}
 
         # once the link ids have been sorted, combine the graphs
-        self.graph = nx.compose(self.graph, other.graph)
+        # nx.compose(left, right) overwrites data in left with data in right under matching ids
+        self.graph = nx.compose(other.graph, self.graph)
         # TODO update link 'id' attribute
 
         # combine schedules
@@ -278,13 +298,6 @@ class Network:
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
         self.transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
-
-    def reproject(self, new_epsg):
-        # TODO reproject x, y attributes stored in nodes data
-        transformer = Transformer.from_proj(Proj(init='epsg:4326'), Proj(init=new_epsg))
-        
-        # TODO reproject Schedule
-        pass
 
     def read_matsim_network(self, path, epsg):
         self.initiate_crs_transformer(epsg)
