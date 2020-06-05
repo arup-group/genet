@@ -248,7 +248,7 @@ class Network:
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
-        self.transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
+        self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
 
     def read_matsim_network(self, path, epsg):
         self.initiate_crs_transformer(epsg)
@@ -402,7 +402,7 @@ class Schedule:
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
-        self.transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
+        self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
 
     def read_matsim_schedule(self, path, epsg):
         self.initiate_crs_transformer(epsg)
