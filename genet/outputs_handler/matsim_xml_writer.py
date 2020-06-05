@@ -65,7 +65,7 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
     fname = os.path.join(output_dir, "schedule.xml")
     if not epsg:
         epsg = schedule.epsg
-    transformer = Transformer.from_proj(Proj(init='epsg:4326'), Proj(init=epsg))
+    transformer = Transformer.from_proj(Proj('epsg:4326'), Proj(epsg))
     logging.info('Writing {}'.format(fname))
 
     # Also makes vehicles

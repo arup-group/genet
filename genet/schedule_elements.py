@@ -27,7 +27,7 @@ class Stop:
         self.y = float(y)
         self.epsg = epsg
         if transformer is None:
-            self.transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
+            self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
         else:
             self.transformer = transformer
 
