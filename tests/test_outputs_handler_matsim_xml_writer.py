@@ -4,6 +4,9 @@ import lxml
 from tests.fixtures import network_object_from_test_data
 from tests import xml_diff
 from genet.outputs_handler import matsim_xml_writer
+from genet.schedule_elements import Stop
+from genet.utils import spatial
+from pyproj import Proj, Transformer
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -66,6 +69,27 @@ def test_generates_valid_matsim_schedule_xml_file(network_object_from_test_data,
 
 
 def test_write_matsim_schedule_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data, tmpdir):
+    matsim_xml_writer.write_matsim_schedule(tmpdir, network_object_from_test_data.schedule)
+
+    xml_diff.assert_semantically_equal(os.path.join(tmpdir, 'schedule.xml'), pt2matsim_schedule_file)
+
+
+def test_write_matsim_schedule_produces_symantically_equal_xml_to_input_matsim_xml_if_stops_need_to_reprojected(network_object_from_test_data, tmpdir):
+    # we change all the stops in the one service and one route that exists in the test data
+    stops = network_object_from_test_data.schedule['10314'].routes[0].stops
+    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:3035'))
+    reprojected_stops = []
+    for stop in stops:
+        x, y = spatial.change_proj(stop.x, stop.y, transformer)
+        new_stop = Stop(id=stop.id, x=x, y=y, epsg='epsg:3035')
+        additional_attributes = {}
+        for k, v in stop.iter_through_additional_attributes():
+            additional_attributes[k] = v
+        new_stop.add_additional_attributes(additional_attributes)
+        reprojected_stops.append(new_stop)
+
+    network_object_from_test_data.schedule['10314'].routes[0].stops = reprojected_stops
+
     matsim_xml_writer.write_matsim_schedule(tmpdir, network_object_from_test_data.schedule)
 
     xml_diff.assert_semantically_equal(os.path.join(tmpdir, 'schedule.xml'), pt2matsim_schedule_file)
