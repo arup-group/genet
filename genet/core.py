@@ -1,7 +1,6 @@
 import networkx as nx
 import pandas as pd
 import uuid
-import warnings
 import logging
 import os
 from copy import deepcopy
@@ -50,25 +49,31 @@ class Network:
         # self will need to be reprojected, we will use nx.compose to combine the graphs and the
         # self.graph will impose it's data on other.graph
         # find spatially overlapping nodes by extracting all of the s2_ids from other
-        s2_ids = other.node_attribute_data_under_key('s2_id')
-        # check if there are more nodes in the same spot
-        assert len(s2_ids) == len(s2_ids.unique()), 'There is more than one node in one place in the network you are' \
-            ' trying to add'
+        s2_ids_other = other.node_attribute_data_under_key('s2_id')
+        assert len(s2_ids_other) == len(s2_ids_other.unique()), 'There is more than one node in one place in the ' \
+                                                                'network you are trying to add'
+        s2_ids_other.name = 's2_id'
+        s2_ids_other.index = s2_ids_other.index.set_names(['other'])
+        s2_ids_self = self.node_attribute_data_under_key('s2_id')
+        # do the same for self
+        assert len(s2_ids_self) == len(s2_ids_self.unique()), 'There is more than one node in one place in the ' \
+                                                              'network you are trying to add'
+        s2_ids_self.name = 's2_id'
+        s2_ids_self.index = s2_ids_self.index.set_names(['self'])
+        # combine spatial info on nodes in self and other into a dataframe
+        s2_id_df = pd.DataFrame(s2_ids_other).reset_index().merge(
+            pd.DataFrame(s2_ids_self).reset_index(), on='s2_id', how='outer')
 
-        overlapping_nodes = graph_operations.extract_nodes_on_node_attributes(
-            self,
-            conditions={'s2_id': s2_ids.to_list()},
-        )
-        for node in overlapping_nodes:
-            other.apply_attributes_to_node()
-
-
-
-        # check epsgs, reproject other if do not match
-
-
-        # TODO decide what to do with equal nodes (spatially, but different index)
-        # relabel those nodes? then to the link index analysis
+        # relabel those nodes which overlap
+        [other.apply_attributes_to_node(s2_id_df.loc[idx, 'other'], self.node(s2_id_df.loc[idx, 'self']))
+         for idx in s2_id_df.dropna().index]
+        if self.epsg != other.epsg:
+            transformer = Transformer.from_proj(Proj(init=other.epsg), Proj(init=self.epsg))
+            # re-project the rest of other's nodes if do not match
+            for idx in s2_id_df[s2_id_df['self'].isna()].index:
+                node_attribs = other.node(s2_id_df.loc[idx, 'other'])
+                node_attribs['x'], node_attribs['y'] = spatial.change_proj(
+                    node_attribs['y'], node_attribs['x'], transformer)
 
         # TODO: decide on inheritance of link_ids self have priority
         # use nx.intersection to figure out which link_ids need to be resolved
@@ -149,7 +154,7 @@ class Network:
     def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], attribs: dict = None):
         if link_id in self.link_id_mapping:
             new_link_id = self.generate_index_for_edge()
-            warnings.warn('This link_id={} already exists. Generated a new unique_index: {}'.format(
+            logging.warning('This link_id={} already exists. Generated a new unique_index: {}'.format(
                 link_id, new_link_id))
             link_id = new_link_id
 
@@ -159,6 +164,40 @@ class Network:
         else:
             self.graph.add_edge(u, v)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
+
+    def reindex_node(self, node_id, new_node_id):
+        # check if new id is already occupied
+        if self.node_id_exists(new_node_id):
+            new_node_id = self.generate_index_for_node()
+        # extract link ids which will be affected byt the node relabel and change the from anf to attributes
+        from_links = graph_operations.extract_links_on_edge_attributes(self, conditions={'from': node_id})
+        self.apply_attributes_to_links(from_links, {'from': new_node_id})
+        to_links = graph_operations.extract_links_on_edge_attributes(self, conditions={'to': node_id})
+        self.apply_attributes_to_links(to_links, {'to': new_node_id})
+        # update link_id_mapping
+        for k in from_links:
+            self.link_id_mapping[k]['from'] = new_node_id
+        for k in to_links:
+            self.link_id_mapping[k]['to'] = new_node_id
+
+        new_attribs = deepcopy(self.node(node_id))
+        new_attribs['id'] = new_node_id
+        self.change_log.modify(object_type='node', old_id=node_id, new_id=new_node_id,
+            old_attributes=self.node(node_id), new_attributes=new_attribs)
+        self.apply_attributes_to_node(node_id, new_attribs)
+        self.graph = nx.relabel_nodes(self.graph, {node_id: new_node_id})
+
+    def reindex_link(self, link_id, new_link_id):
+        # check if new id is already occupied
+        if self.link_id_exists(new_link_id):
+            new_link_id = self.generate_index_for_node()
+        new_attribs = deepcopy(self.link(link_id))
+        new_attribs['id'] = new_link_id
+        self.change_log.modify(object_type='link', old_id=link_id, new_id=new_link_id,
+            old_attributes=self.link(link_id), new_attributes=new_attribs)
+        self.apply_attributes_to_link(link_id, new_attribs)
+        self.link_id_mapping[new_link_id] = self.link_id_mapping[link_id]
+        del self.link_id_mapping[link_id]
 
     def apply_attributes_to_node(self, node_id, new_attributes):
         """
@@ -314,6 +353,29 @@ class Network:
             self.initiate_crs_transformer(epsg)
         self.schedule.read_matsim_schedule(path, self.epsg)
 
+    def node_id_exists(self, node_id):
+        if node_id in [i for i, attribs in self.nodes()]:
+            logging.warning('This node_id={} already exists.'.format(node_id))
+            return True
+        return False
+
+    def generate_index_for_node(self):
+        nodes = [i for i, attribs in self.nodes()]
+        try:
+            id = max([int(i) for i in nodes]) + 1
+        except ValueError:
+            id = len(nodes) + 1
+        if (id in nodes) or (str(id) in nodes):
+            id = uuid.uuid4()
+        logging.info('Generated node id {}.'.format(id))
+        return str(id)
+
+    def link_id_exists(self, link_id):
+        if link_id in self.link_id_mapping:
+            logging.warning('This link_id={} already exists.'.format(link_id))
+            return True
+        return False
+
     def generate_index_for_edge(self):
         try:
             id = max([int(i) for i in self.link_id_mapping.keys()]) + 1
@@ -321,10 +383,11 @@ class Network:
             id = len(self.link_id_mapping) + 1
         if (id in self.link_id_mapping) or (str(id) in self.link_id_mapping):
             id = uuid.uuid4()
+        logging.info('Generated link id {}.'.format(id))
         return str(id)
 
     def index_graph_edges(self):
-        warnings.warn('This method clears the existing link_id indexing')
+        logging.warning('This method clears the existing link_id indexing')
         self.link_id_mapping = {}
         i = 0
         for u, v, multi_edge_idx in self.graph.edges:
