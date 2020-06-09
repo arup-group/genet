@@ -1,5 +1,10 @@
 from typing import Union, Dict, Callable, Iterable
 from anytree import Node, RenderTree
+import pandas as pd
+import logging
+from copy import deepcopy
+from pyproj import Proj, Transformer
+from genet.utils import spatial
 
 
 class Filter():
@@ -201,3 +206,64 @@ def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
         get_the_data(_attribs, key)
 
     return data
+
+
+def consolidate_node_indices(left, right):
+    """
+    Changes the node indexing in right to match left spatially and resolves clashing node ids if they don't match
+    spatially.
+    :param left: genet.core.Network
+    :param right: genet.core.Network that needs to be updated to match left network
+    :return:
+    """
+    # right will change projection to left's if not the same
+    # only the nodes hold spatial information and only the ones that dont exist in
+    # left will need to be reprojected, we will use nx.compose to combine the graphs and the
+    # left.graph will impose it's data on right.graph
+    # find spatially overlapping nodes by extracting all of the s2_ids from right
+    s2_ids_right = right.node_attribute_data_under_key('s2_id')
+    assert len(s2_ids_right) == len(s2_ids_right.unique()), 'There is more than one node in one place in the ' \
+                                                            'network you are trying to add'
+    s2_ids_right.name = 's2_id'
+    s2_ids_right.index = s2_ids_right.index.set_names(['right'])
+    s2_ids_left = left.node_attribute_data_under_key('s2_id')
+    # do the same for left
+    assert len(s2_ids_left) == len(s2_ids_left.unique()), 'There is more than one node in one place in the ' \
+                                                          'network you are trying to add'
+    s2_ids_left.name = 's2_id'
+    s2_ids_left.index = s2_ids_left.index.set_names(['left'])
+    # combine spatial info on nodes in left and right into a dataframe
+    s2_id_df = pd.DataFrame(s2_ids_right).reset_index().merge(
+        pd.DataFrame(s2_ids_left).reset_index(), on='s2_id', how='outer')
+
+    # relabel those nodes which overlap
+    [right.apply_attributes_to_node(s2_id_df.loc[idx, 'right'], left.node(s2_id_df.loc[idx, 'left']))
+     for idx in s2_id_df.dropna().index]
+    # change x,y coordinates for right nodes if the projections dont match
+    if left.epsg != right.epsg:
+        logging.info('Adding two Networks with different projections may require less strict spatial matching.'
+                     'Please check where your networks overlap for duplication of nodes and edges.')
+        transformer = Transformer.from_proj(Proj(init=right.epsg), Proj(init=left.epsg))
+        # re-project the rest of right's nodes if do not match
+        for idx in s2_id_df[s2_id_df['left'].isna()].index:
+            node_attribs = deepcopy(right.node(s2_id_df.loc[idx, 'right']))
+            node_attribs['x'], node_attribs['y'] = spatial.change_proj(
+                node_attribs['x'], node_attribs['y'], transformer)
+            right.apply_attributes_to_node(s2_id_df.loc[idx, 'right'], node_attribs)
+
+    # check uniqueness of the node indices that are left in right
+    clashing_right_node_ids = \
+        set(s2_id_df[s2_id_df['left'].isna()]['right']) & set(s2_id_df['left'].dropna())
+    if clashing_right_node_ids:
+        # generate the index in left, otherwise the method could return one that is only unique in right
+        [right.reindex_node(node, left.generate_index_for_node()) for node in clashing_right_node_ids]
+
+    # finally change node ids for overlapping nodes
+    [right.reindex_node(s2_id_df.loc[idx, 'right'], s2_id_df.loc[idx, 'left'])
+     for idx in s2_id_df.dropna()[s2_id_df['right'] != s2_id_df['left']].index]
+    logging.info('Finished consolidating node indexing between the two graphs')
+    return right
+
+
+def consolidate_link_indices(left, right):
+    pass

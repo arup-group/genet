@@ -44,67 +44,44 @@ class Network:
         :param other:
         :return:
         """
-        # other will change projection to self's if not the same
-        # only the nodes hold spatial information and only the ones that dont exist in
-        # self will need to be reprojected, we will use nx.compose to combine the graphs and the
-        # self.graph will impose it's data on other.graph
-        # find spatially overlapping nodes by extracting all of the s2_ids from other
-        s2_ids_other = other.node_attribute_data_under_key('s2_id')
-        assert len(s2_ids_other) == len(s2_ids_other.unique()), 'There is more than one node in one place in the ' \
-                                                                'network you are trying to add'
-        s2_ids_other.name = 's2_id'
-        s2_ids_other.index = s2_ids_other.index.set_names(['other'])
-        s2_ids_self = self.node_attribute_data_under_key('s2_id')
-        # do the same for self
-        assert len(s2_ids_self) == len(s2_ids_self.unique()), 'There is more than one node in one place in the ' \
-                                                              'network you are trying to add'
-        s2_ids_self.name = 's2_id'
-        s2_ids_self.index = s2_ids_self.index.set_names(['self'])
-        # combine spatial info on nodes in self and other into a dataframe
-        s2_id_df = pd.DataFrame(s2_ids_other).reset_index().merge(
-            pd.DataFrame(s2_ids_self).reset_index(), on='s2_id', how='outer')
+        other = graph_operations.consolidate_node_indices(self, other)
 
-        # relabel those nodes which overlap
-        [other.apply_attributes_to_node(s2_id_df.loc[idx, 'other'], self.node(s2_id_df.loc[idx, 'self']))
-            for idx in s2_id_df.dropna().index]
-        # change x,y coordinates for other nodes if the projections dont match
-        if self.epsg != other.epsg:
-            transformer = Transformer.from_proj(Proj(init=other.epsg), Proj(init=self.epsg))
-            # re-project the rest of other's nodes if do not match
-            for idx in s2_id_df[s2_id_df['self'].isna()].index:
-                node_attribs = deepcopy(other.node(s2_id_df.loc[idx, 'other']))
-                node_attribs['x'], node_attribs['y'] = spatial.change_proj(
-                    node_attribs['x'], node_attribs['y'], transformer)
-                other.apply_attributes_to_node(s2_id_df.loc[idx, 'other'], node_attribs)
+        # Now consolidate link ids, do a similar dataframe join as for nodes but on edge data and nodes the edges
+        # connect instead of spatial
+        modes = self.link_attribute_data_under_key('modes')
+        modes.name = 'modes'
+        n_from = self.link_attribute_data_under_key('from')
+        n_from.name = 'from'
+        n_to = self.link_attribute_data_under_key('to')
+        n_to.name = 'to'
+        link_id = self.link_attribute_data_under_key('id')
+        link_id.name = 'link_id'
 
-        # check uniqueness of the node indices that are left in other
-        clashing_other_node_ids = \
-            set(s2_id_df[s2_id_df['self'].isna()]['other']) & set(s2_id_df['self'].dropna())
-        if clashing_other_node_ids:
-            # generate the index in self, otherwise the method could return one that is only unique in other
-            [other.reindex_node(node, self.generate_index_for_node()) for node in clashing_other_node_ids]
+        s2_id_df = pd.DataFrame(s2_ids_right).reset_index().merge(
+            pd.DataFrame(s2_ids_left).reset_index(), on='s2_id', how='outer')
 
-        # finally change node ids for overlapping nodes
-        [other.reindex_node(s2_id_df.loc[idx, 'other'], s2_id_df.loc[idx, 'self'])
-             for idx in s2_id_df.dropna().index]
 
-        # TODO: decide on inheritance of link_ids self have priority
-        # use nx.intersection to figure out which link_ids need to be resolved
-        # also use it for nodes to see which need to be reprojected?
-        # TODO: decide on overlapping link_ids
-        self.link_id_mapping = {**self.link_id_mapping, **other.link_id_mapping}
+        # TODO: decide on inheritance of link_ids; self have priority
+        # use nx.intersection to figure out which edges/link_ids need to be resolved
+        # nodes_intersection = set(other.graph.nodes) & set(self.graph.nodes)
+        # graph_intersection = nx.intersection(
+        #     other.graph.subgraph(nodes_intersection), self.graph.subgraph(nodes_intersection))
+        # TODO: reindex clashing link_ids
 
-        # once the link ids have been sorted, combine the graphs
+        # finally, combine link_id_mappings
+        # self.link_id_mapping = {**self.link_id_mapping, **other.link_id_mapping}
+
+        # finally, once the node and link ids have been sorted, combine the graphs
         # nx.compose(left, right) overwrites data in left with data in right under matching ids
         self.graph = nx.compose(other.graph, self.graph)
         # TODO update link 'id' attribute
 
         # combine schedules
-        self.schedule = self.schedule + other.schedule
+        # self.schedule = self.schedule + other.schedule
 
         # merge change_log DataFrames
-        self.change_log = self.change_log.append(other.change_log)
-        self.change_log = self.change_log.sort_values(by='timestamp').reset_index(drop=True)
+        self.change_log.log = self.change_log.log.append(other.change_log.log)
+        self.change_log.log = self.change_log.log.sort_values(by='timestamp').reset_index(drop=True)
 
     def print(self):
         return self.info()
@@ -143,10 +120,11 @@ class Network:
         root = graph_operations.get_attribute_schema(self.links(), data=data)
         graph_operations.render_tree(root, data)
 
-    def link_attribute_data_under_key(self, key):
+    def link_attribute_data_under_key(self, key: Union[str, dict]):
         """
         Generates a pandas.Series object index by link ids, with data stored on the links under `key`
-        :param key:
+        :param key: either a string e.g. 'modes', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
         :return: pandas.Series
         """
         return pd.Series(graph_operations.get_attribute_data_under_key(self.links(), key))
