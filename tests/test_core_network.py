@@ -33,29 +33,30 @@ def network1():
                  'lon': -0.14439428709377497,
                  'lat': 51.52228713323965,
                  's2_id': 5221390328605860387})
-    n1.add_link('0', '101982', '101986', {'id': '0',
-                                          'from': '101982',
-                                          'to': '101986',
-                                          'freespeed': 4.166666666666667,
-                                          'capacity': 600.0,
-                                          'permlanes': 1.0,
-                                          'oneway': '1',
-                                          'modes': ['car'],
-                                          's2_from': 5221390329378179879,
-                                          's2_to': 5221390328605860387,
-                                          'length': 52.765151087870265,
-                                          'attributes': {'osm:way:access': {'name': 'osm:way:access',
-                                                                            'class': 'java.lang.String',
-                                                                            'text': 'permissive'},
-                                                         'osm:way:highway': {'name': 'osm:way:highway',
-                                                                             'class': 'java.lang.String',
-                                                                             'text': 'unclassified'},
-                                                         'osm:way:id': {'name': 'osm:way:id',
-                                                                        'class': 'java.lang.Long',
-                                                                        'text': '26997928'},
-                                                         'osm:way:name': {'name': 'osm:way:name',
-                                                                          'class': 'java.lang.String',
-                                                                          'text': 'Brunswick Place'}}})
+    n1.add_link('0', '101982', '101986',
+                {'id': '0',
+                'from': '101982',
+                'to': '101986',
+                'freespeed': 4.166666666666667,
+                'capacity': 600.0,
+                'permlanes': 1.0,
+                'oneway': '1',
+                'modes': ['car'],
+                's2_from': 5221390329378179879,
+                's2_to': 5221390328605860387,
+                'length': 52.765151087870265,
+                'attributes': {'osm:way:access': {'name': 'osm:way:access',
+                                                'class': 'java.lang.String',
+                                                'text': 'permissive'},
+                             'osm:way:highway': {'name': 'osm:way:highway',
+                                                 'class': 'java.lang.String',
+                                                 'text': 'unclassified'},
+                             'osm:way:id': {'name': 'osm:way:id',
+                                            'class': 'java.lang.Long',
+                                            'text': '26997928'},
+                             'osm:way:name': {'name': 'osm:way:name',
+                                              'class': 'java.lang.String',
+                                              'text': 'Brunswick Place'}}})
     return n1
 
 
@@ -77,29 +78,30 @@ def network2():
                  'lon': -0.14770188709624754,
                  'lat': 51.5205729332399,
                  's2_id': 5221390304444511271})
-    n2.add_link('0', '101982', '101990', {'id': '0',
-                                          'from': '101982',
-                                          'to': '101990',
-                                          'freespeed': 4.166666666666667,
-                                          'capacity': 600.0,
-                                          'permlanes': 1.0,
-                                          'oneway': '1',
-                                          'modes': ['car'],
-                                          's2_from': 5221390329378179879,
-                                          's2_to': 5221390304444511271,
-                                          'length': 52.765151087870265,
-                                          'attributes': {'osm:way:access': {'name': 'osm:way:access',
-                                                                            'class': 'java.lang.String',
-                                                                            'text': 'permissive'},
-                                                         'osm:way:highway': {'name': 'osm:way:highway',
-                                                                             'class': 'java.lang.String',
-                                                                             'text': 'unclassified'},
-                                                         'osm:way:id': {'name': 'osm:way:id',
-                                                                        'class': 'java.lang.Long',
-                                                                        'text': '26997928'},
-                                                         'osm:way:name': {'name': 'osm:way:name',
-                                                                          'class': 'java.lang.String',
-                                                                          'text': 'Brunswick Place'}}})
+    n2.add_link('0', '101982', '101990',
+                {'id': '0',
+                'from': '101982',
+                'to': '101990',
+                'freespeed': 4.166666666666667,
+                'capacity': 600.0,
+                'permlanes': 1.0,
+                'oneway': '1',
+                'modes': ['car'],
+                's2_from': 5221390329378179879,
+                's2_to': 5221390304444511271,
+                'length': 52.765151087870265,
+                'attributes': {'osm:way:access': {'name': 'osm:way:access',
+                                                'class': 'java.lang.String',
+                                                'text': 'permissive'},
+                             'osm:way:highway': {'name': 'osm:way:highway',
+                                                 'class': 'java.lang.String',
+                                                 'text': 'unclassified'},
+                             'osm:way:id': {'name': 'osm:way:id',
+                                            'class': 'java.lang.Long',
+                                            'text': '26997928'},
+                             'osm:way:name': {'name': 'osm:way:name',
+                                              'class': 'java.lang.String',
+                                              'text': 'Brunswick Place'}}})
     return n2
 
 
@@ -161,13 +163,21 @@ def test_add_changes_others_node_ids_if_they_clash_with_selfs_spatially_nonoverl
     assert network2.node('101987') == {'id': '101987', 'x': 528610.5722059759, 'y': 181809.83345613896,
                                        'lon': -0.14770188709624754, 'lat': 51.5205729332399,
                                        's2_id': 5221390304444511271}
-#
-#
-# def test_add_updates_links_data_for_overlapping_links(network1, network2):
-#     assert [id for id, attribs in network1.links()] == ['0']
-#     assert [id for id, attribs in network2.links()] == ['0']
-#     assert network1.links('0') != network2.links('0')
-#     # network1.add(network2)
+
+
+def test_add_updates_links_data_for_overlapping_links(network1, network2):
+    assert [id for id, attribs in network1.links()] == ['0']
+    assert [id for id, attribs in network2.links()] == ['0']
+    assert network1.link('0') != network2.link('0')
+    # network1.add(network2)
+
+
+def test_add(network1):
+    n1 = network1
+    n2 = network1
+    assert [id for id, attribs in n1.links()] == ['0']
+    assert [id for id, attribs in n2.links()] == ['0']
+    n1.add(n2)
 
 
 def test_print_shows_info(mocker):
@@ -195,6 +205,26 @@ def test_node_attribute_data_under_key_returns_correct_pd_series_with_flat_keys(
     assert_series_equal(output_series, pd.Series({1: 1, 2: 4}))
 
 
+def test_node_attribute_data_under_keys(network1):
+    df = network1.node_attribute_data_under_keys(['x', 'y'])
+
+    df_to_compare = pd.DataFrame({'x': {'101982': '528704.1425925883', '101986': '528835.203274008'},
+                                  'y': {'101982': '182068.78193707118', '101986': '182006.27331298392'}})
+
+    assert_frame_equal(df, df_to_compare)
+
+
+def test_node_attribute_data_under_keys_with_named_index(network1):
+    df = network1.node_attribute_data_under_keys(['x', 'y'], index_name='index')
+    assert df.index.name == 'index'
+
+
+def test_node_attribute_data_under_keys_returns_dataframe_with_one_col_if_passed_one_key(network1):
+    df = network1.node_attribute_data_under_keys(['x'], index_name='index')
+    assert isinstance(df, pd.DataFrame)
+    assert len(df.columns) == 1
+
+
 def test_link_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
     n = Network()
     n.add_link('0', 1, 2, {'a': {'b': 1}})
@@ -211,6 +241,26 @@ def test_link_attribute_data_under_key_returns_correct_pd_series_with_flat_keys(
 
     output_series = n.link_attribute_data_under_key(key='b')
     assert_series_equal(output_series, pd.Series({'0': 1, '1': 4}))
+
+
+def test_link_attribute_data_under_keys(network1):
+    df = network1.link_attribute_data_under_keys(['modes', 'freespeed', 'capacity', 'permlanes'])
+
+    df_to_compare = pd.DataFrame({'modes': {'0': ['car']}, 'freespeed': {'0': 4.166666666666667},
+                                  'capacity': {'0': 600.0}, 'permlanes': {'0': 1.0}})
+
+    assert_frame_equal(df, df_to_compare)
+
+
+def test_link_attribute_data_under_keys_with_named_index(network1):
+    df = network1.link_attribute_data_under_keys(['modes', 'freespeed', 'capacity', 'permlanes'], index_name='index')
+    assert df.index.name == 'index'
+
+
+def test_link_attribute_data_under_keys_returns_dataframe_with_one_col_if_passed_one_key(network1):
+    df = network1.link_attribute_data_under_keys(['modes'], index_name='index')
+    assert isinstance(df, pd.DataFrame)
+    assert len(df.columns) == 1
 
 
 def test_add_node_adds_node_to_graph_with_attribs():
@@ -313,6 +363,7 @@ def test_reindex_link(network1):
     assert network1.link('0')['from'] == '101982'
     assert network1.link('0')['to'] == '101986'
     assert [(from_n, to_n) for from_n, to_n, attribs in network1.edges()] == [('101982', '101986')]
+    assert network1.edge('101982', '101986')[0]['id'] == '0'
 
     network1.reindex_link('0', '007')
 
@@ -323,6 +374,7 @@ def test_reindex_link(network1):
     assert network1.link('007')['from'] == '101982'
     assert network1.link('007')['to'] == '101986'
     assert [(from_n, to_n) for from_n, to_n, attribs in network1.edges()] == [('101982', '101986')]
+    assert network1.edge('101982', '101986')[0]['id'] == '007'
 
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {3: '2020-06-08 19:34:48', 4: '2020-06-08 19:34:48'}, 'change_event': {3: 'modify', 4: 'modify'},

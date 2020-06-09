@@ -48,18 +48,8 @@ class Network:
 
         # Now consolidate link ids, do a similar dataframe join as for nodes but on edge data and nodes the edges
         # connect instead of spatial
-        modes = self.link_attribute_data_under_key('modes')
-        modes.name = 'modes'
-        n_from = self.link_attribute_data_under_key('from')
-        n_from.name = 'from'
-        n_to = self.link_attribute_data_under_key('to')
-        n_to.name = 'to'
-        link_id = self.link_attribute_data_under_key('id')
-        link_id.name = 'link_id'
-
-        s2_id_df = pd.DataFrame(s2_ids_right).reset_index().merge(
-            pd.DataFrame(s2_ids_left).reset_index(), on='s2_id', how='outer')
-
+        self_df = self.link_attribute_data_under_keys(['modes', 'from', 'to', 'id'], index_name='self')
+        other_df = self.link_attribute_data_under_keys(['modes', 'from', 'to', 'id'], index_name='other')
 
         # TODO: decide on inheritance of link_ids; self have priority
         # use nx.intersection to figure out which edges/link_ids need to be resolved
@@ -105,10 +95,39 @@ class Network:
     def node_attribute_data_under_key(self, key):
         """
         Generates a pandas.Series object index by node ids, with data stored on the nodes under `key`
-        :param key: e.g.
+        :param key: either a string e.g. 'x', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
         :return: pandas.Series
         """
         return pd.Series(graph_operations.get_attribute_data_under_key(self.nodes(), key))
+
+    def node_attribute_data_under_keys(self, keys: list, index_name=None):
+        """
+        Generates a pandas.DataFrame object index by link ids, with data stored on the nodes under `key`
+        :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        df = None
+        for key in keys:
+            if isinstance(key, dict):
+                # consolidate nestedness to get a name for the column
+                name = '_'.join([k for k, v in key.items()])
+                name = name.replace('{', '').replace('}', '').replace(':', '').replace("'", '').replace(' ', ':')
+            else:
+                name = key
+
+            col_series = self.node_attribute_data_under_key(key)
+            col_series.name = name
+
+            if df is not None:
+                df = df.merge(pd.DataFrame(col_series), left_index=True, right_index=True, how='outer')
+            else:
+                df = pd.DataFrame(col_series)
+        if index_name:
+            df.index = df.index.set_names([index_name])
+        return df
 
     def link_attribute_summary(self, data=False):
         """
@@ -128,6 +147,34 @@ class Network:
         :return: pandas.Series
         """
         return pd.Series(graph_operations.get_attribute_data_under_key(self.links(), key))
+
+    def link_attribute_data_under_keys(self, keys: list, index_name=None):
+        """
+        Generates a pandas.DataFrame object index by link ids, with data stored on the links under `key`
+        :param keys: list of either a string e.g. 'modes', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        df = None
+        for key in keys:
+            if isinstance(key, dict):
+                # consolidate nestedness to get a name for the column
+                name = '_'.join([k for k, v in key.items()])
+                name = name.replace('{', '').replace('}', '').replace(':', '').replace("'", '').replace(' ', ':')
+            else:
+                name = key
+
+            col_series = self.link_attribute_data_under_key(key)
+            col_series.name = name
+
+            if df is not None:
+                df = df.merge(pd.DataFrame(col_series), left_index=True, right_index=True, how='outer')
+            else:
+                df = pd.DataFrame(col_series)
+        if index_name:
+            df.index = df.index.set_names([index_name])
+        return df
 
     def add_node(self, node: Union[str, int], attribs: dict = None):
         if attribs is not None:
