@@ -116,18 +116,51 @@ def test__str__shows_info():
     assert 'Schedule info' in n.__str__()
 
 
-# def test_add_updates_nodes_data_for_overlapping_nodes_and_reprojects_non_overlapping_nodes(network1, network2):
-#     assert [id for id, attribs in network1.nodes()] == ['101982', '101986']
-#     assert [id for id, attribs in network2.nodes()] == ['101982', '101990']
-#
-#     network1.add(network2)
-#
-#     assert network2.node('101982') == {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118',
-#                                        'lon': -0.14625948709424305, 'lat': 51.52287873323954,
-#                                        's2_id': 5221390329378179879}
-#     assert network2.node('101990') == {'id': '101990', 'x': 7488929.506966253, 'y': -5554692.151344044,
-#                                        'lon': -0.14770188709624754, 'lat': 51.5205729332399,
-#                                        's2_id': 5221390304444511271}
+def test_add_updates_nodes_data_for_overlapping_nodes_and_reprojects_non_overlapping_nodes(network1, network2):
+    assert [id for id, attribs in network1.nodes()] == ['101982', '101986']
+    assert [id for id, attribs in network2.nodes()] == ['101982', '101990']
+
+    network1.add(network2)
+
+    assert network2.node('101982') == {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118',
+                                       'lon': -0.14625948709424305, 'lat': 51.52287873323954,
+                                       's2_id': 5221390329378179879}
+    assert network2.node('101990') == {'id': '101990', 'x': 528610.5722059759, 'y': 181809.83345613896,
+                                       'lon': -0.14770188709624754, 'lat': 51.5205729332399,
+                                       's2_id': 5221390304444511271}
+
+
+def test_add_changes_others_node_ids_if_they_clash_with_selfs_spatially_overlapping_nodes(network1, network2):
+    network2.reindex_node('101982', '101986')
+    network2.reindex_node('101990', '101982')
+    assert [id for id, attribs in network1.nodes()] == ['101982', '101986']
+    assert [id for id, attribs in network2.nodes()] == ['101986', '101982']
+    assert network1.node('101982')['s2_id'] == network2.node('101986')['s2_id']
+
+    network1.add(network2)
+
+    assert network2.node('101982') == {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118',
+                                       'lon': -0.14625948709424305, 'lat': 51.52287873323954,
+                                       's2_id': 5221390329378179879}
+    assert network2.node('101987') == {'id': '101987', 'x': 528610.5722059759, 'y': 181809.83345613896,
+                                       'lon': -0.14770188709624754, 'lat': 51.5205729332399,
+                                       's2_id': 5221390304444511271}
+
+
+def test_add_changes_others_node_ids_if_they_clash_with_selfs_spatially_nonoverlapping_nodes(network1, network2):
+    network2.reindex_node('101990', '101986')
+    assert [id for id, attribs in network1.nodes()] == ['101982', '101986']
+    assert [id for id, attribs in network2.nodes()] == ['101982', '101986']
+    assert network1.node('101986')['s2_id'] != network2.node('101986')['s2_id']
+
+    network1.add(network2)
+
+    assert network2.node('101982') == {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118',
+                                       'lon': -0.14625948709424305, 'lat': 51.52287873323954,
+                                       's2_id': 5221390329378179879}
+    assert network2.node('101987') == {'id': '101987', 'x': 528610.5722059759, 'y': 181809.83345613896,
+                                       'lon': -0.14770188709624754, 'lat': 51.5205729332399,
+                                       's2_id': 5221390304444511271}
 #
 #
 # def test_add_updates_links_data_for_overlapping_links(network1, network2):

@@ -66,14 +66,27 @@ class Network:
 
         # relabel those nodes which overlap
         [other.apply_attributes_to_node(s2_id_df.loc[idx, 'other'], self.node(s2_id_df.loc[idx, 'self']))
-         for idx in s2_id_df.dropna().index]
+            for idx in s2_id_df.dropna().index]
+        # change x,y coordinates for other nodes if the projections dont match
         if self.epsg != other.epsg:
             transformer = Transformer.from_proj(Proj(init=other.epsg), Proj(init=self.epsg))
             # re-project the rest of other's nodes if do not match
             for idx in s2_id_df[s2_id_df['self'].isna()].index:
-                node_attribs = other.node(s2_id_df.loc[idx, 'other'])
+                node_attribs = deepcopy(other.node(s2_id_df.loc[idx, 'other']))
                 node_attribs['x'], node_attribs['y'] = spatial.change_proj(
-                    node_attribs['y'], node_attribs['x'], transformer)
+                    node_attribs['x'], node_attribs['y'], transformer)
+                other.apply_attributes_to_node(s2_id_df.loc[idx, 'other'], node_attribs)
+
+        # check uniqueness of the node indices that are left in other
+        clashing_other_node_ids = \
+            set(s2_id_df[s2_id_df['self'].isna()]['other']) & set(s2_id_df['self'].dropna())
+        if clashing_other_node_ids:
+            # generate the index in self, otherwise the method could return one that is only unique in other
+            [other.reindex_node(node, self.generate_index_for_node()) for node in clashing_other_node_ids]
+
+        # finally change node ids for overlapping nodes
+        [other.reindex_node(s2_id_df.loc[idx, 'other'], s2_id_df.loc[idx, 'self'])
+             for idx in s2_id_df.dropna().index]
 
         # TODO: decide on inheritance of link_ids self have priority
         # use nx.intersection to figure out which link_ids need to be resolved
@@ -183,7 +196,7 @@ class Network:
         new_attribs = deepcopy(self.node(node_id))
         new_attribs['id'] = new_node_id
         self.change_log.modify(object_type='node', old_id=node_id, new_id=new_node_id,
-            old_attributes=self.node(node_id), new_attributes=new_attribs)
+                               old_attributes=self.node(node_id), new_attributes=new_attribs)
         self.apply_attributes_to_node(node_id, new_attribs)
         self.graph = nx.relabel_nodes(self.graph, {node_id: new_node_id})
 
@@ -194,7 +207,7 @@ class Network:
         new_attribs = deepcopy(self.link(link_id))
         new_attribs['id'] = new_link_id
         self.change_log.modify(object_type='link', old_id=link_id, new_id=new_link_id,
-            old_attributes=self.link(link_id), new_attributes=new_attribs)
+                               old_attributes=self.link(link_id), new_attributes=new_attribs)
         self.apply_attributes_to_link(link_id, new_attribs)
         self.link_id_mapping[new_link_id] = self.link_id_mapping[link_id]
         del self.link_id_mapping[link_id]
