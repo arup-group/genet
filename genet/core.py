@@ -14,6 +14,8 @@ from genet.modify import ChangeLog
 from genet.utils import spatial, persistence, graph_operations
 from genet.schedule_elements import Service
 
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
 
 class Network:
     def __init__(self):
@@ -111,6 +113,20 @@ class Network:
         else:
             self.graph.add_edge(u, v)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
+
+    def subgraph_on_link_conditions(self, conditions):
+        """
+        Gives a subgraph of network.graph based on matching conditions defined in conditions
+        :param conditions as describen in graph_operations.extract_links_on_edge_attributes
+        :return:
+        """
+        links = graph_operations.extract_links_on_edge_attributes(self, conditions)
+        edges_for_sub = [
+            (self.link_id_mapping[link]['from'],
+             self.link_id_mapping[link]['to'],
+             self.link_id_mapping[link]['multi_edge_idx'])
+            for link in links]
+        return nx.MultiDiGraph(nx.edge_subgraph(self.graph, edges_for_sub))
 
     def apply_attributes_to_node(self, node_id, new_attributes):
         """
@@ -294,6 +310,23 @@ class Network:
                       edge_alpha=0.5,
                       save=False,
                       show=True)
+
+    def generate_validation_report(self):
+        report = {}
+        # decribe network connectivity
+        modes = ['car', 'walk', 'bike']
+        report['graph_connectivity'] = {}
+        for mode in modes:
+            logging.info('Checking network connectivity for mode: {}'.format(mode))
+
+            def modal_condition(modes_list):
+                return set(modes_list) & {mode}
+
+            # subgraph for the mode to be tested
+            G_mode = self.subgraph_on_link_conditions(conditions={'modes': modal_condition})
+            # calculate how many connected subgraphs there are
+            report['graph_connectivity'][mode] = graph_operations.describe_graph_connectivity(G_mode)
+        return report
 
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)

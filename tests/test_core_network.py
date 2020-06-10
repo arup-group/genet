@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
-from tests.fixtures import network_object_from_test_data
+from tests.fixtures import network_object_from_test_data, assert_semantically_equal
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
 
@@ -40,7 +40,7 @@ def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_key
     n.add_node(2, {'a': {'b': 4}})
 
     output_series = n.node_attribute_data_under_key(key={'a': 'b'})
-    assert_series_equal(output_series, pd.Series({1:1, 2:4}))
+    assert_series_equal(output_series, pd.Series({1: 1, 2: 4}))
 
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_flat_keys():
@@ -49,7 +49,7 @@ def test_node_attribute_data_under_key_returns_correct_pd_series_with_flat_keys(
     n.add_node(2, {'b': 4})
 
     output_series = n.node_attribute_data_under_key(key='b')
-    assert_series_equal(output_series, pd.Series({1:1, 2:4}))
+    assert_series_equal(output_series, pd.Series({1: 1, 2: 4}))
 
 
 def test_link_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
@@ -58,7 +58,7 @@ def test_link_attribute_data_under_key_returns_correct_pd_series_with_nested_key
     n.add_link('1', 1, 2, {'a': {'b': 4}})
 
     output_series = n.link_attribute_data_under_key(key={'a': 'b'})
-    assert_series_equal(output_series, pd.Series({'0':1, '1':4}))
+    assert_series_equal(output_series, pd.Series({'0': 1, '1': 4}))
 
 
 def test_link_attribute_data_under_key_returns_correct_pd_series_with_flat_keys():
@@ -67,7 +67,7 @@ def test_link_attribute_data_under_key_returns_correct_pd_series_with_flat_keys(
     n.add_link('1', 1, 2, {'b': 4})
 
     output_series = n.link_attribute_data_under_key(key='b')
-    assert_series_equal(output_series, pd.Series({'0':1, '1':4}))
+    assert_series_equal(output_series, pd.Series({'0': 1, '1': 4}))
 
 
 def test_add_node_adds_node_to_graph_with_attribs():
@@ -108,6 +108,19 @@ def test_add_link_adds_edge_to_graph_without_attribs():
     n.graph.has_edge(1, 2)
     assert '0' in n.link_id_mapping
     assert n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
+
+
+def test_network_modal_subgraph():
+    def modal_condition(modes_list):
+        return set(modes_list) & {'car'}
+
+    n = Network()
+    n.add_link('0', 1, 2, {'modes': ['car', 'bike']})
+    n.add_link('1', 2, 3, {'modes': ['car']})
+    n.add_link('2', 2, 3, {'modes': ['bike']})
+
+    car_graph = n.subgraph_on_link_conditions(conditions={'modes': modal_condition})
+    assert list(car_graph.edges()) == [(1, 2), (2, 3)]
 
 
 def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
@@ -371,6 +384,19 @@ def test_index_graph_edges_generates_completely_new_index():
     n.add_link('x2', 1, 2)
     n.index_graph_edges()
     assert list(n.link_id_mapping.keys()) == ['0', '1']
+
+
+def test_generate_validation_report(network_object_from_test_data):
+    n = network_object_from_test_data
+    report = n.generate_validation_report()
+    correct_report = {'graph_connectivity': {
+        'car': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
+                'number_of_connected_subgraphs': 2, 'connected_subgraphs': [(['21667818'], 1), (['25508485'], 1)]},
+        'walk': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
+                 'number_of_connected_subgraphs': 2, 'connected_subgraphs': [(['21667818'], 1), (['25508485'], 1)]},
+        'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0,
+                 'connected_subgraphs': []}}}
+    assert_semantically_equal(report, correct_report)
 
 
 def test_write_to_matsim_generates_three_matsim_files(network_object_from_test_data, tmpdir):
