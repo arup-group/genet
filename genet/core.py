@@ -4,6 +4,7 @@ import uuid
 import warnings
 import logging
 import os
+import osmnx as ox
 from copy import deepcopy
 from typing import Union, List
 from pyproj import Proj, Transformer
@@ -281,6 +282,18 @@ class Network:
         for u, v, multi_edge_idx in self.graph.edges:
             self.link_id_mapping[str(i)] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
             i += 1
+
+    def plot(self):
+        self.graph.graph['crs'] = {'init': self.epsg}
+        self.graph.graph['name'] = 'Graph_for_plotting'
+        ox.plot_graph(self.graph,
+                      filename='network_graph',
+                      node_color='#273746',
+                      node_size=1,
+                      edge_linewidth=0.5,
+                      edge_alpha=0.5,
+                      save=False,
+                      show=True)
 
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)

@@ -25,6 +25,7 @@ setup(
         'pandas',
         'lxml',
         'xmltodict',
-        'anytree'
+        'anytree',
+        'osmnx'
     ],
 )
