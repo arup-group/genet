@@ -214,7 +214,7 @@ def consolidate_node_indices(left, right):
     spatially.
     :param left: genet.core.Network
     :param right: genet.core.Network that needs to be updated to match left network
-    :return:
+    :return: updated right
     """
     # right will change projection to left's if not the same
     # only the nodes hold spatial information and only the ones that dont exist in
@@ -222,21 +222,21 @@ def consolidate_node_indices(left, right):
     # left.graph will impose it's data on right.graph
     # find spatially overlapping nodes by extracting all of the s2_ids from right
     s2_ids_right = right.node_attribute_data_under_key('s2_id')
-    assert len(s2_ids_right) == len(s2_ids_right.unique()), 'There is more than one node in one place in the ' \
-                                                            'network you are trying to add'
+    if len(s2_ids_right) == len(s2_ids_right.unique()):
+        raise RuntimeError('There is more than one node in one place in the network you are trying to add')
     s2_ids_right.name = 's2_id'
     s2_ids_right.index = s2_ids_right.index.set_names(['right'])
     s2_ids_left = left.node_attribute_data_under_key('s2_id')
     # do the same for left
-    assert len(s2_ids_left) == len(s2_ids_left.unique()), 'There is more than one node in one place in the ' \
-                                                          'network you are trying to add'
+    if len(s2_ids_left) == len(s2_ids_left.unique()):
+        raise RuntimeError('There is more than one node in one place in the network you are trying to add')
     s2_ids_left.name = 's2_id'
     s2_ids_left.index = s2_ids_left.index.set_names(['left'])
     # combine spatial info on nodes in left and right into a dataframe
     s2_id_df = pd.DataFrame(s2_ids_right).reset_index().merge(
         pd.DataFrame(s2_ids_left).reset_index(), on='s2_id', how='outer')
 
-    # relabel those nodes which overlap
+    # update the data dict of those nodes which overlap
     [right.apply_attributes_to_node(s2_id_df.loc[idx, 'right'], left.node(s2_id_df.loc[idx, 'left']))
      for idx in s2_id_df.dropna().index]
     # change x,y coordinates for right nodes if the projections dont match
@@ -259,6 +259,7 @@ def consolidate_node_indices(left, right):
         [right.reindex_node(node, left.generate_index_for_node()) for node in clashing_right_node_ids]
 
     # finally change node ids for overlapping nodes
+    # TODO check that a new index is not being generated if an index exists in reight but hasnt been overwritten yet
     [right.reindex_node(s2_id_df.loc[idx, 'right'], s2_id_df.loc[idx, 'left'])
      for idx in s2_id_df.dropna()[s2_id_df['right'] != s2_id_df['left']].index]
     logging.info('Finished consolidating node indexing between the two graphs')
@@ -266,4 +267,59 @@ def consolidate_node_indices(left, right):
 
 
 def consolidate_link_indices(left, right):
-    pass
+    """
+    Changes the link indexing in right to match left on modes stored on the links and resolves clashing link ids if
+    they don't match. This method assumes that the node ids of left vs right have already been consolidated (see
+    the method above with consolidates node ids)
+    :param left: genet.core.Network
+    :param right: genet.core.Network that needs to be updated to match left network
+    :return: updated right
+    """
+    def sort_and_hash(l):
+        l.sort()
+        return '_'.join(l)
+
+    def extract_multindex(l, g):
+        return g.link_id_mapping[l]['multi_edge_idx']
+
+    # Now consolidate link ids, we do a similar dataframe join as for nodes but on edge data and nodes the edges
+    # connect instead of spatial
+    left_df = left.link_attribute_data_under_keys(['modes', 'from', 'to', 'id'], index_name='left')
+    # extract multi index and hash modes
+    left_df['multi_idx'] = left_df['id'].apply(lambda x: extract_multindex(x, left))
+    left_df['modes'] = left_df['modes'].apply(lambda x: sort_and_hash(x))
+    left_df = left_df.rename(columns={'id': 'link_id'})
+    right_df = right.link_attribute_data_under_keys(['modes', 'from', 'to', 'id'], index_name='right')
+    # extract multi index and hash modes
+    right_df['multi_idx'] = right_df['id'].apply(lambda x: extract_multindex(x, right))
+    right_df['modes'] = right_df['modes'].apply(lambda x: sort_and_hash(x))
+    right_df = right_df.rename(columns={'id': 'link_id'})
+
+    df = left_df.reset_index().merge(right_df.reset_index(), on=['modes', 'from', 'to'], how='outer',
+        suffixes=('_left', '_right'))
+
+    # In the dataframe above we have combined to compare edges which have the same from and to nodes and the same modes
+    # on the edge. Remember these graphs have multi edges, there could be more than one edge between two nodes.
+    # There are a few different scenarios here, if edges have found a match on mode, and nodes
+    # - link ids match and multi indices match
+    # - link ids match but the multi indices dont match
+    # - link ids dont match but multi indices do match
+    # - neither link ids or multi indices match, but the edge is the same in terms of mode and from/to nodes
+    # Similarly, there are a few scenarios if the edges didn't find a match
+    # - remaining (unmatched) link ids for edges in right are unique, don't clash with left,
+    # they will remain as they are
+    # - link ids clash with left
+
+    # first resolve clashing link ids for links in right which don't exist in left
+    clashing_right_link_ids = \
+        set(df[df['left'].isna()]['link_id_right']) & set(df['link_id_left'].dropna())
+    if clashing_right_link_ids:
+        # generate the index in left, otherwise the method could return one that is only unique in right
+        [right.reindex_link(link, left.generate_index_for_edge()) for link in clashing_right_link_ids]
+
+    # TODO Impose link id and multi index id  from left on right
+    # TODO check that a new index is not being generated if an index exists in reight but hasnt been overwritten yet
+
+    logging.info('Finished consolidating link indexing between the two graphs')
+
+    return right

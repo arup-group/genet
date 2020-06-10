@@ -44,27 +44,16 @@ class Network:
         :param other:
         :return:
         """
+        # consolidate node ids
         other = graph_operations.consolidate_node_indices(self, other)
-
-        # Now consolidate link ids, do a similar dataframe join as for nodes but on edge data and nodes the edges
-        # connect instead of spatial
-        self_df = self.link_attribute_data_under_keys(['modes', 'from', 'to', 'id'], index_name='self')
-        other_df = self.link_attribute_data_under_keys(['modes', 'from', 'to', 'id'], index_name='other')
-
-        # TODO: decide on inheritance of link_ids; self have priority
-        # use nx.intersection to figure out which edges/link_ids need to be resolved
-        # nodes_intersection = set(other.graph.nodes) & set(self.graph.nodes)
-        # graph_intersection = nx.intersection(
-        #     other.graph.subgraph(nodes_intersection), self.graph.subgraph(nodes_intersection))
-        # TODO: reindex clashing link_ids
-
-        # finally, combine link_id_mappings
-        # self.link_id_mapping = {**self.link_id_mapping, **other.link_id_mapping}
+        # consolidate link ids
+        other = graph_operations.consolidate_link_indices(self, other)
 
         # finally, once the node and link ids have been sorted, combine the graphs
         # nx.compose(left, right) overwrites data in left with data in right under matching ids
         self.graph = nx.compose(other.graph, self.graph)
-        # TODO update link 'id' attribute
+        # TODO finally, combine link_id_mappings
+        self.link_id_mapping = {**self.link_id_mapping, **other.link_id_mapping}
 
         # combine schedules
         # self.schedule = self.schedule + other.schedule
@@ -228,7 +217,7 @@ class Network:
     def reindex_link(self, link_id, new_link_id):
         # check if new id is already occupied
         if self.link_id_exists(new_link_id):
-            new_link_id = self.generate_index_for_node()
+            new_link_id = self.generate_index_for_edge()
         new_attribs = deepcopy(self.link(link_id))
         new_attribs['id'] = new_link_id
         self.change_log.modify(object_type='link', old_id=link_id, new_id=new_link_id,

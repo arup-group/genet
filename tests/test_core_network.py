@@ -169,7 +169,8 @@ def test_add_updates_links_data_for_overlapping_links(network1, network2):
     assert [id for id, attribs in network1.links()] == ['0']
     assert [id for id, attribs in network2.links()] == ['0']
     assert network1.link('0') != network2.link('0')
-    # network1.add(network2)
+    network1.add(network2)
+    # TODO
 
 
 def test_add(network1):
@@ -178,6 +179,7 @@ def test_add(network1):
     assert [id for id, attribs in n1.links()] == ['0']
     assert [id for id, attribs in n2.links()] == ['0']
     n1.add(n2)
+    # TODO
 
 
 def test_print_shows_info(mocker):
