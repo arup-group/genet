@@ -324,6 +324,7 @@ class Network:
         u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
         multi_idx = self.link_id_mapping[link_id]['multi_edge_idx']
         self.graph.remove_edge(u, v, multi_idx)
+        del self.link_id_mapping[link_id]
 
     def remove_links(self, links):
         """

@@ -593,10 +593,12 @@ def test_removing_single_link():
     n.add_link('1', 1, 2, {'b': 4})
     n.add_link('2', 2, 3, {'a': 1})
     n.add_link('3', 2, 3, {'b': 4})
+    assert '1' in n.link_id_mapping
 
     n.remove_link('1')
     assert list(n.graph.nodes) == [1, 2, 3]
     assert list(n.graph.edges) == [(1, 2, 0), (2, 3, 0), (2, 3, 1)]
+    assert not '1' in n.link_id_mapping
 
     correct_change_log = pd.DataFrame({'timestamp': {4: '2020-06-11 10:41:10'}, 'change_event': {4: 'remove'}, 'object_type': {4: 'link'}, 'old_id': {4: '1'}, 'new_id': {4: None}, 'old_attributes': {4: "{'b': 4}"}, 'new_attributes': {4: None}, 'diff': {4: [('remove', '', [('b', 4)]), ('remove', 'id', '1')]}})
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
@@ -610,10 +612,14 @@ def test_removing_multiple_links():
     n.add_link('1', 1, 2, {'b': 4})
     n.add_link('2', 2, 3, {'a': 1})
     n.add_link('3', 2, 3, {'b': 4})
+    assert '0' in n.link_id_mapping
+    assert '2' in n.link_id_mapping
 
     n.remove_links(['0', '2'])
     assert list(n.graph.nodes) == [1, 2, 3]
     assert list(n.graph.edges) == [(1, 2, 1), (2, 3, 1)]
+    assert not '0' in n.link_id_mapping
+    assert not '2' in n.link_id_mapping
 
     correct_change_log = pd.DataFrame({'timestamp': {4: '2020-06-11 10:41:52', 5: '2020-06-11 10:41:52'}, 'change_event': {4: 'remove', 5: 'remove'}, 'object_type': {4: 'link', 5: 'link'}, 'old_id': {4: '0', 5: '2'}, 'new_id': {4: None, 5: None}, 'old_attributes': {4: "{'a': 1}", 5: "{'a': 1}"}, 'new_attributes': {4: None, 5: None}, 'diff': {4: [('remove', '', [('a', 1)]), ('remove', 'id', '0')], 5: [('remove', '', [('a', 1)]), ('remove', 'id', '2')]}})
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
