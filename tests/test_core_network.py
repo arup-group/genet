@@ -554,6 +554,73 @@ def test_resolves_link_id_clashes_by_mapping_clashing_link_to_a_new_id(mocker):
     assert n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
 
 
+def test_removing_single_node():
+    n = Network()
+    n.add_link('0', 1, 2, {'a': 1})
+    n.add_link('1', 1, 2, {'b': 4})
+    n.add_link('2', 2, 3, {'a': 1})
+    n.add_link('3', 2, 3, {'b': 4})
+
+    n.remove_node(1)
+    assert list(n.graph.nodes) == [2, 3]
+    assert list(n.graph.edges) == [(2, 3, 0), (2, 3, 1)]
+
+    correct_change_log = pd.DataFrame({'timestamp': {4: '2020-06-11 10:37:54'}, 'change_event': {4: 'remove'}, 'object_type': {4: 'node'}, 'old_id': {4: 1}, 'new_id': {4: None}, 'old_attributes': {4: '{}'}, 'new_attributes': {4: None}, 'diff': {4: [('remove', 'id', 1)]}})
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(n.change_log.log[cols_to_compare].tail(1), correct_change_log[cols_to_compare], check_dtype=False)
+
+
+def test_removing_multiple_nodes():
+    n = Network()
+    n.add_link('0', 1, 2, {'a': 1})
+    n.add_link('1', 1, 2, {'b': 4})
+    n.add_link('2', 2, 3, {'a': 1})
+    n.add_link('3', 2, 3, {'b': 4})
+
+    n.remove_nodes([1,2])
+    assert list(n.graph.nodes) == [3]
+    assert list(n.graph.edges) == []
+
+    correct_change_log = pd.DataFrame({'timestamp': {4: '2020-06-11 10:39:52', 5: '2020-06-11 10:39:52'}, 'change_event': {4: 'remove', 5: 'remove'}, 'object_type': {4: 'node', 5: 'node'}, 'old_id': {4: 1, 5: 2}, 'new_id': {4: None, 5: None}, 'old_attributes': {4: '{}', 5: '{}'}, 'new_attributes': {4: None, 5: None}, 'diff': {4: [('remove', 'id', 1)], 5: [('remove', 'id', 2)]}})
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(n.change_log.log[cols_to_compare].tail(2), correct_change_log[cols_to_compare],
+                       check_dtype=False)
+
+
+def test_removing_single_link():
+    n = Network()
+    n.add_link('0', 1, 2, {'a': 1})
+    n.add_link('1', 1, 2, {'b': 4})
+    n.add_link('2', 2, 3, {'a': 1})
+    n.add_link('3', 2, 3, {'b': 4})
+
+    n.remove_link('1')
+    assert list(n.graph.nodes) == [1, 2, 3]
+    assert list(n.graph.edges) == [(1, 2, 0), (2, 3, 0), (2, 3, 1)]
+
+    correct_change_log = pd.DataFrame({'timestamp': {4: '2020-06-11 10:41:10'}, 'change_event': {4: 'remove'}, 'object_type': {4: 'link'}, 'old_id': {4: '1'}, 'new_id': {4: None}, 'old_attributes': {4: "{'b': 4}"}, 'new_attributes': {4: None}, 'diff': {4: [('remove', '', [('b', 4)]), ('remove', 'id', '1')]}})
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(n.change_log.log[cols_to_compare].tail(1), correct_change_log[cols_to_compare],
+                       check_dtype=False)
+
+
+def test_removing_multiple_links():
+    n = Network()
+    n.add_link('0', 1, 2, {'a': 1})
+    n.add_link('1', 1, 2, {'b': 4})
+    n.add_link('2', 2, 3, {'a': 1})
+    n.add_link('3', 2, 3, {'b': 4})
+
+    n.remove_links(['0', '2'])
+    assert list(n.graph.nodes) == [1, 2, 3]
+    assert list(n.graph.edges) == [(1, 2, 1), (2, 3, 1)]
+
+    correct_change_log = pd.DataFrame({'timestamp': {4: '2020-06-11 10:41:52', 5: '2020-06-11 10:41:52'}, 'change_event': {4: 'remove', 5: 'remove'}, 'object_type': {4: 'link', 5: 'link'}, 'old_id': {4: '0', 5: '2'}, 'new_id': {4: None, 5: None}, 'old_attributes': {4: "{'a': 1}", 5: "{'a': 1}"}, 'new_attributes': {4: None, 5: None}, 'diff': {4: [('remove', '', [('a', 1)]), ('remove', 'id', '0')], 5: [('remove', '', [('a', 1)]), ('remove', 'id', '2')]}})
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(n.change_log.log[cols_to_compare].tail(2), correct_change_log[cols_to_compare],
+                       check_dtype=False)
+
+
 def test_number_of_multi_edges_counts_multi_edges_on_single_edge():
     n = Network()
     n.graph.add_edges_from([(1, 2), (2, 3), (3, 4)])

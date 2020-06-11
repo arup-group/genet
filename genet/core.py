@@ -297,6 +297,42 @@ class Network:
         """
         [self.apply_attributes_to_link(link, new_attributes) for link in links]
 
+    def remove_node(self, node_id):
+        """
+        Removes the node n and all adjacent edges
+        :param node_id:
+        :return:
+        """
+        self.change_log.remove(object_type='node', object_id=node_id, object_attributes=self.node(node_id))
+        self.graph.remove_node(node_id)
+
+    def remove_nodes(self, nodes):
+        """
+        Removes several nodes and all adjacent edges
+        :param nodes:
+        :return:
+        """
+        [self.remove_node(node) for node in nodes]
+
+    def remove_link(self, link_id):
+        """
+        Removes the multi edge pertaining to link given
+        :param link_id:
+        :return:
+        """
+        self.change_log.remove(object_type='link', object_id=link_id, object_attributes=self.link(link_id))
+        u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
+        multi_idx = self.link_id_mapping[link_id]['multi_edge_idx']
+        self.graph.remove_edge(u, v, multi_idx)
+
+    def remove_links(self, links):
+        """
+        Removes the multi edges pertaining to links given
+        :param links:
+        :return:
+        """
+        [self.remove_link(link) for link in links]
+
     def number_of_multi_edges(self, u, v):
         """
         number of multi edges on edge from u to v

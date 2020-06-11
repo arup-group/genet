@@ -222,13 +222,13 @@ def consolidate_node_indices(left, right):
     # left.graph will impose it's data on right.graph
     # find spatially overlapping nodes by extracting all of the s2_ids from right
     s2_ids_right = right.node_attribute_data_under_key('s2_id')
-    if len(s2_ids_right) == len(s2_ids_right.unique()):
+    if len(s2_ids_right) != len(s2_ids_right.unique()):
         raise RuntimeError('There is more than one node in one place in the network you are trying to add')
     s2_ids_right.name = 's2_id'
     s2_ids_right.index = s2_ids_right.index.set_names(['right'])
     s2_ids_left = left.node_attribute_data_under_key('s2_id')
     # do the same for left
-    if len(s2_ids_left) == len(s2_ids_left.unique()):
+    if len(s2_ids_left) != len(s2_ids_left.unique()):
         raise RuntimeError('There is more than one node in one place in the network you are trying to add')
     s2_ids_left.name = 's2_id'
     s2_ids_left.index = s2_ids_left.index.set_names(['left'])
@@ -317,8 +317,8 @@ def consolidate_link_indices(left, right):
         # generate the index in left, otherwise the method could return one that is only unique in right
         [right.reindex_link(link, left.generate_index_for_edge()) for link in clashing_right_link_ids]
 
-    # TODO Impose link id and multi index id  from left on right
-    # TODO check that a new index is not being generated if an index exists in reight but hasnt been overwritten yet
+    # TODO Impose link id and multi index if from left on right
+    # TODO check that a new index is not being generated if an index exists in right but hasn't been overwritten yet
 
     logging.info('Finished consolidating link indexing between the two graphs')
 
