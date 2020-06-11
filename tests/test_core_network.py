@@ -110,7 +110,7 @@ def test_add_link_adds_edge_to_graph_without_attribs():
     assert n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
 
 
-def test_network_modal_subgraph():
+def test_network_modal_subgraph_using_general_subgraph_on_link_attribs():
     def modal_condition(modes_list):
         return set(modes_list) & {'car'}
 
@@ -120,7 +120,28 @@ def test_network_modal_subgraph():
     n.add_link('2', 2, 3, {'modes': ['bike']})
 
     car_graph = n.subgraph_on_link_conditions(conditions={'modes': modal_condition})
-    assert list(car_graph.edges()) == [(1, 2), (2, 3)]
+    assert list(car_graph.edges) == [(1, 2, 0), (2, 3, 0)]
+
+
+def test_network_modal_subgraph_using_specific_modal_subgraph_method_single_mode():
+    n = Network()
+    n.add_link('0', 1, 2, {'modes': ['car', 'bike']})
+    n.add_link('1', 2, 3, {'modes': ['car']})
+    n.add_link('2', 2, 3, {'modes': ['bike']})
+
+    car_graph = n.modal_subgraph(modes='car')
+    assert list(car_graph.edges) == [(1, 2, 0), (2, 3, 0)]
+
+
+def test_network_modal_subgraph_using_specific_modal_subgraph_method_several_modes():
+    n = Network()
+    n.add_link('0', 1, 2, {'modes': ['car', 'bike']})
+    n.add_link('1', 2, 3, {'modes': ['car']})
+    n.add_link('2', 2, 3, {'modes': ['bike']})
+    n.add_link('3', 2, 3, {'modes': ['walk']})
+
+    car_graph = n.modal_subgraph(modes=['car', 'bike'])
+    assert list(car_graph.edges) == [(1, 2, 0), (2, 3, 0), (2, 3, 1)]
 
 
 def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
@@ -394,8 +415,8 @@ def test_generate_validation_report(network_object_from_test_data):
                 'number_of_connected_subgraphs': 2, 'connected_subgraphs': [(['21667818'], 1), (['25508485'], 1)]},
         'walk': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
                  'number_of_connected_subgraphs': 2, 'connected_subgraphs': [(['21667818'], 1), (['25508485'], 1)]},
-        'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0,
-                 'connected_subgraphs': []}}}
+        'bike': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
+                 'number_of_connected_subgraphs': 2, 'connected_subgraphs': [(['21667818'], 1), (['25508485'], 1)]}}}
     assert_semantically_equal(report, correct_report)
 
 

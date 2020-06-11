@@ -128,6 +128,16 @@ class Network:
             for link in links]
         return nx.MultiDiGraph(nx.edge_subgraph(self.graph, edges_for_sub))
 
+    def modal_subgraph(self, modes: Union[str, list]):
+        if isinstance(modes, str):
+            modes = {modes}
+        else:
+            modes = set(modes)
+
+        def modal_condition(modes_list):
+            return set(modes_list) & modes
+        return self.subgraph_on_link_conditions(conditions={'modes': modal_condition})
+
     def apply_attributes_to_node(self, node_id, new_attributes):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
@@ -318,12 +328,8 @@ class Network:
         report['graph_connectivity'] = {}
         for mode in modes:
             logging.info('Checking network connectivity for mode: {}'.format(mode))
-
-            def modal_condition(modes_list):
-                return set(modes_list) & {mode}
-
             # subgraph for the mode to be tested
-            G_mode = self.subgraph_on_link_conditions(conditions={'modes': modal_condition})
+            G_mode = self.modal_subgraph('car')
             # calculate how many connected subgraphs there are
             report['graph_connectivity'][mode] = graph_operations.describe_graph_connectivity(G_mode)
         return report
