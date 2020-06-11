@@ -169,6 +169,10 @@ def test_add_updates_links_data_for_overlapping_links(network1, network2):
     assert [id for id, attribs in network1.links()] == ['0']
     assert [id for id, attribs in network2.links()] == ['0']
     assert network1.link('0') != network2.link('0')
+    network1.add_link('1', '101982', '101982', {'modes': ['walk']})
+    network1.add_link('2', '101982', '101982', {'modes': ['bike']})
+    network2.add_link('2', '101982', '101982', {'modes': ['walk']})
+    network2.add_link('3', '101982', '101982', {'modes': ['piggyback']})
     network1.add(network2)
     # TODO
 

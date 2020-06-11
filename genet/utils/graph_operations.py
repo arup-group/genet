@@ -310,14 +310,22 @@ def consolidate_link_indices(left, right):
     # they will remain as they are
     # - link ids clash with left
 
+    # remove all edges that match and clash, we will re-add them later
+    # this includes multiedges of edges that may have matched only one multiedge - this is to consolidate
+    # the multindices across left and right
+    clashing_overlapping_links = df[df[['link_id_right', 'link_id_left']].isna()]
+    right.remove_links(set(clashing_overlapping_links['link_id_right']))
+
     # first resolve clashing link ids for links in right which don't exist in left
-    clashing_right_link_ids = \
-        set(df[df['left'].isna()]['link_id_right']) & set(df['link_id_left'].dropna())
+    clashing_right_link_ids = set(df[df['left'].isna()]['link_id_right']) & set(df['link_id_left'].dropna())
     if clashing_right_link_ids:
         # generate the index in left, otherwise the method could return one that is only unique in right
         [right.reindex_link(link, left.generate_index_for_edge()) for link in clashing_right_link_ids]
 
-    # TODO Impose link id and multi index if from left on right
+    # Impose link id and multi index if from left on right, basically add the links we deleted from right but using
+    # left's indexing
+
+
     # TODO check that a new index is not being generated if an index exists in right but hasn't been overwritten yet
 
     logging.info('Finished consolidating link indexing between the two graphs')

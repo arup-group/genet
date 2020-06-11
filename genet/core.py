@@ -186,10 +186,12 @@ class Network:
             link_id = new_link_id
 
         self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': self.number_of_multi_edges(u, v)}
-        if attribs is not None:
-            self.graph.add_edge(u, v, **attribs)
+        compulsory_attribs = {'from': u, 'to': v, 'id': link_id}
+        if attribs is None:
+            attribs = compulsory_attribs
         else:
-            self.graph.add_edge(u, v)
+            attribs = {**attribs, **compulsory_attribs}
+        self.graph.add_edge(u, v, **attribs)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
 
     def reindex_node(self, node_id, new_node_id):
@@ -342,7 +344,7 @@ class Network:
         :return:
         """
         if self.graph.has_edge(u, v):
-            return len(self.graph.edges(u, v))
+            return len(self.graph.edges(u, v)) - 1
         else:
             return 0
 
