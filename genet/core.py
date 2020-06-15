@@ -12,6 +12,8 @@ from genet.modify import ChangeLog
 from genet.utils import spatial, persistence, graph_operations
 from genet.schedule_elements import Service
 
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
 
 class Network:
     def __init__(self):
@@ -171,6 +173,8 @@ class Network:
         else:
             self.graph.add_node(node)
         self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
+        logging.info('Added Node with index `{}` and data={}'.format(node, attribs))
+        return node
 
     def add_edge(self, u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None, attribs: dict = None):
         """
@@ -185,7 +189,7 @@ class Network:
         """
         link_id = self.generate_index_for_edge()
         self.add_link(link_id, u, v, multi_edge_idx, attribs)
-        logging.info('Added edge from {} to {} with link_id {}'.format(u, v, link_id))
+        logging.info('Added edge from `{}` to `{}` with link_id `{}`'.format(u, v, link_id))
         return link_id
 
     def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None,
@@ -203,7 +207,7 @@ class Network:
         """
         if link_id in self.link_id_mapping:
             new_link_id = self.generate_index_for_edge()
-            logging.warning('This link_id={} already exists. Generated a new unique_index: {}'.format(
+            logging.warning('This link_id=`{}` already exists. Generated a new unique_index: `{}`'.format(
                 link_id, new_link_id))
             link_id = new_link_id
 
@@ -212,8 +216,8 @@ class Network:
         if self.graph.has_edge(u, v, multi_edge_idx):
             old_idx = multi_edge_idx
             multi_edge_idx = self.graph.new_edge_key(u, v)
-            logging.warning('Changing passed multi_edge_idx: {} as there already exists an edge stored under that '
-                            'index. New multi_edge_idx: {}'.format(old_idx, multi_edge_idx))
+            logging.warning('Changing passed multi_edge_idx: `{}` as there already exists an edge stored under that '
+                            'index. New multi_edge_idx: `{}`'.format(old_idx, multi_edge_idx))
         if not isinstance(multi_edge_idx, int):
             raise RuntimeError('Multi index key needs to be an integer')
 
@@ -225,6 +229,9 @@ class Network:
             attribs = {**attribs, **compulsory_attribs}
         self.graph.add_edge(u, v, key=multi_edge_idx, **attribs)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
+        logging.info('Added Link with index {}, from node:{} to node:{}, under multi-index:{}, and data={}'.format(
+            link_id, u, v, multi_edge_idx, attribs))
+        return link_id
 
     def reindex_node(self, node_id, new_node_id):
         # check if new id is already occupied
@@ -247,6 +254,7 @@ class Network:
                                old_attributes=self.node(node_id), new_attributes=new_attribs)
         self.apply_attributes_to_node(node_id, new_attribs)
         self.graph = nx.relabel_nodes(self.graph, {node_id: new_node_id})
+        logging.info('Changed Node index from {} to {}'.format(node_id, new_node_id))
 
     def reindex_link(self, link_id, new_link_id):
         # check if new id is already occupied
@@ -259,6 +267,7 @@ class Network:
         self.apply_attributes_to_link(link_id, new_attribs)
         self.link_id_mapping[new_link_id] = self.link_id_mapping[link_id]
         del self.link_id_mapping[link_id]
+        logging.info('Changed Link index from {} to {}'.format(link_id, new_link_id))
 
     def apply_attributes_to_node(self, node_id, new_attributes):
         """
@@ -283,6 +292,7 @@ class Network:
             old_attributes=self.node(node_id),
             new_attributes=new_attributes)
         nx.set_node_attributes(self.graph, {node_id: new_attributes})
+        logging.info('Changed Node attributes under index: {}'.format(node_id))
 
     def apply_attributes_to_nodes(self, nodes: list, new_attributes: dict):
         """
@@ -320,6 +330,7 @@ class Network:
             new_attributes=new_attributes)
 
         nx.set_edge_attributes(self.graph, {(u, v, multi_idx): new_attributes})
+        logging.info('Changed Link attributes under index: {}'.format(link_id))
 
     def apply_attributes_to_links(self, links: list, new_attributes: dict):
         """
@@ -339,6 +350,7 @@ class Network:
         """
         self.change_log.remove(object_type='node', object_id=node_id, object_attributes=self.node(node_id))
         self.graph.remove_node(node_id)
+        logging.info('Removed Node under index: {}'.format(node_id))
 
     def remove_nodes(self, nodes):
         """
@@ -359,6 +371,7 @@ class Network:
         multi_idx = self.link_id_mapping[link_id]['multi_edge_idx']
         self.graph.remove_edge(u, v, multi_idx)
         del self.link_id_mapping[link_id]
+        logging.info('Removed Link under index: {}'.format(link_id))
 
     def remove_links(self, links):
         """
