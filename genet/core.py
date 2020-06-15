@@ -172,26 +172,58 @@ class Network:
             self.graph.add_node(node)
         self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
 
-    def add_edge(self, u: Union[str, int], v: Union[str, int], attribs: dict = None):
+    def add_edge(self, u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None, attribs: dict = None):
+        """
+        Adds an edge between u and v. If an edge between u and v already exists, adds an additional one. Generates
+        link id. If you already have a link id, use the method to add_link.
+        :param u: node in the graph
+        :param v: node in the graph
+        :param multi_edge_idx: you can specify which multi index to use if there are other edges between u and v.
+        Will generate new index if already used.
+        :param attribs:
+        :return:
+        """
         link_id = self.generate_index_for_edge()
-        self.add_link(link_id, u, v, attribs)
+        self.add_link(link_id, u, v, multi_edge_idx, attribs)
         logging.info('Added edge from {} to {} with link_id {}'.format(u, v, link_id))
         return link_id
 
-    def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], attribs: dict = None):
+    def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None,
+                 attribs: dict = None):
+        """
+        Adds an link between u and v with id link_id, if available. If a link between u and v already exists,
+        adds an additional one.
+        :param link_id:
+        :param u: node in the graph
+        :param v: node in the graph
+        :param multi_edge_idx: you can specify which multi index to use if there are other edges between u and v.
+        Will generate new index if already used.
+        :param attribs:
+        :return:
+        """
         if link_id in self.link_id_mapping:
             new_link_id = self.generate_index_for_edge()
             logging.warning('This link_id={} already exists. Generated a new unique_index: {}'.format(
                 link_id, new_link_id))
             link_id = new_link_id
 
-        self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': self.number_of_multi_edges(u, v)}
+        if not multi_edge_idx:
+            multi_edge_idx = self.graph.new_edge_key(u, v)
+        if self.graph.has_edge(u, v, multi_edge_idx):
+            old_idx = multi_edge_idx
+            multi_edge_idx = self.graph.new_edge_key(u, v)
+            logging.warning('Changing passed multi_edge_idx: {} as there already exists an edge stored under that '
+                            'index. New multi_edge_idx: {}'.format(old_idx, multi_edge_idx))
+        if not isinstance(multi_edge_idx, int):
+            raise RuntimeError('Multi index key needs to be an integer')
+
+        self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
         compulsory_attribs = {'from': u, 'to': v, 'id': link_id}
         if attribs is None:
             attribs = compulsory_attribs
         else:
             attribs = {**attribs, **compulsory_attribs}
-        self.graph.add_edge(u, v, **attribs)
+        self.graph.add_edge(u, v, key=multi_edge_idx, **attribs)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
 
     def reindex_node(self, node_id, new_node_id):
@@ -344,7 +376,7 @@ class Network:
         :return:
         """
         if self.graph.has_edge(u, v):
-            return len(self.graph.edges(u, v)) - 1
+            return len(self.graph.edges(u, v))
         else:
             return 0
 
@@ -425,13 +457,15 @@ class Network:
             return True
         return False
 
-    def generate_index_for_node(self):
-        nodes = [i for i, attribs in self.nodes()]
+    def generate_index_for_node(self, avoid_keys: Union[list, set] = None):
+        existing_keys = set([i for i, attribs in self.nodes()])
+        if avoid_keys:
+            existing_keys = existing_keys | set(avoid_keys)
         try:
-            id = max([int(i) for i in nodes]) + 1
+            id = max([int(i) for i in existing_keys]) + 1
         except ValueError:
-            id = len(nodes) + 1
-        if (id in nodes) or (str(id) in nodes):
+            id = len(existing_keys) + 1
+        if (id in existing_keys) or (str(id) in existing_keys):
             id = uuid.uuid4()
         logging.info('Generated node id {}.'.format(id))
         return str(id)
@@ -442,12 +476,15 @@ class Network:
             return True
         return False
 
-    def generate_index_for_edge(self):
+    def generate_index_for_edge(self, avoid_keys: Union[list, set] = None):
+        existing_keys = set(self.link_id_mapping.keys())
+        if avoid_keys:
+            existing_keys = existing_keys | set(avoid_keys)
         try:
-            id = max([int(i) for i in self.link_id_mapping.keys()]) + 1
+            id = max([int(i) for i in existing_keys]) + 1
         except ValueError:
-            id = len(self.link_id_mapping) + 1
-        if (id in self.link_id_mapping) or (str(id) in self.link_id_mapping):
+            id = len(existing_keys) + 1
+        if (id in existing_keys) or (str(id) in existing_keys):
             id = uuid.uuid4()
         logging.info('Generated link id {}.'.format(id))
         return str(id)

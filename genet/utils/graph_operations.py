@@ -5,6 +5,7 @@ import logging
 from copy import deepcopy
 from pyproj import Proj, Transformer
 from genet.utils import spatial
+from itertools import count, filterfalse
 
 
 class Filter():
@@ -188,6 +189,7 @@ def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
         e.g. {'attributes': {'osm:way:name': 'text'}}
     :return: dictionary where keys are indicies and values are data stored under the key
     """
+
     def get_the_data(attributes, key):
         if isinstance(key, dict):
             for k, v in key.items():
@@ -218,9 +220,9 @@ def consolidate_node_indices(left, right):
     """
     # right will change projection to left's if not the same
     # only the nodes hold spatial information and only the ones that dont exist in
-    # left will need to be reprojected, we will use nx.compose to combine the graphs and the
-    # left.graph will impose it's data on right.graph
-    # find spatially overlapping nodes by extracting all of the s2_ids from right
+    # left will need to be reprojected, we impose left.graph's data on right.graph
+
+    # find spatially overlapping nodes by extracting all of the s2 spatial ids from right
     s2_ids_right = right.node_attribute_data_under_key('s2_id')
     if len(s2_ids_right) != len(s2_ids_right.unique()):
         raise RuntimeError('There is more than one node in one place in the network you are trying to add')
@@ -232,17 +234,18 @@ def consolidate_node_indices(left, right):
         raise RuntimeError('There is more than one node in one place in the network you are trying to add')
     s2_ids_left.name = 's2_id'
     s2_ids_left.index = s2_ids_left.index.set_names(['left'])
-    # combine spatial info on nodes in left and right into a dataframe
+    # combine spatial info on nodes in left and right into a dataframe, join on s2 ids
     s2_id_df = pd.DataFrame(s2_ids_right).reset_index().merge(
         pd.DataFrame(s2_ids_left).reset_index(), on='s2_id', how='outer')
 
     # update the data dict of those nodes which overlap
     [right.apply_attributes_to_node(s2_id_df.loc[idx, 'right'], left.node(s2_id_df.loc[idx, 'left']))
      for idx in s2_id_df.dropna().index]
+
     # change x,y coordinates for right nodes if the projections dont match
     if left.epsg != right.epsg:
         logging.info('Adding two Networks with different projections may require less strict spatial matching.'
-                     'Please check where your networks overlap for duplication of nodes and edges.')
+                     'Please check your output network for duplication of nodes and edges very close together.')
         transformer = Transformer.from_proj(Proj(init=right.epsg), Proj(init=left.epsg))
         # re-project the rest of right's nodes if do not match
         for idx in s2_id_df[s2_id_df['left'].isna()].index:
@@ -255,11 +258,12 @@ def consolidate_node_indices(left, right):
     clashing_right_node_ids = \
         set(s2_id_df[s2_id_df['left'].isna()]['right']) & set(s2_id_df['left'].dropna())
     if clashing_right_node_ids:
-        # generate the index in left, otherwise the method could return one that is only unique in right
-        [right.reindex_node(node, left.generate_index_for_node()) for node in clashing_right_node_ids]
+        # generate the index avoiding indices from left, that way they're unique across both graphs
+        [right.reindex_node(node, right.generate_index_for_node([i for i, a in left.nodes()])) for node in
+         clashing_right_node_ids]
 
     # finally change node ids for overlapping nodes
-    # TODO check that a new index is not being generated if an index exists in reight but hasnt been overwritten yet
+    # TODO check that a new index is not being generated if an index exists in right but hasnt been overwritten yet
     [right.reindex_node(s2_id_df.loc[idx, 'right'], s2_id_df.loc[idx, 'left'])
      for idx in s2_id_df.dropna()[s2_id_df['right'] != s2_id_df['left']].index]
     logging.info('Finished consolidating node indexing between the two graphs')
@@ -275,12 +279,30 @@ def consolidate_link_indices(left, right):
     :param right: genet.core.Network that needs to be updated to match left network
     :return: updated right
     """
+
     def sort_and_hash(l):
         l.sort()
         return '_'.join(l)
 
     def extract_multindex(l, g):
         return g.link_id_mapping[l]['multi_edge_idx']
+
+    def get_edges_with_clashing_ids(group):
+        if ((group.dropna()['link_id_right'] != group.dropna()['link_id_left']) | (
+                group.dropna()['multi_idx_right'] != group.dropna()['multi_idx_left'])).any():
+            return group
+        elif group.dropna().empty:
+            clashing_multi_idx = set(group['multi_idx_right'].dropna()) & set(group['multi_idx_left'].dropna())
+            if clashing_multi_idx:
+                return group
+
+    def append_data_to_overlapping_links_data(row):
+        if not row.empty:
+            overlapping_links_data[row['link_id_left']] = right.link(row['link_id_right'])
+
+    def append_data_to_unique_clashing_links_data(row):
+        if not row.empty:
+            unique_clashing_links_data[row['link_id_right']] = right.link(row['link_id_right'])
 
     # Now consolidate link ids, we do a similar dataframe join as for nodes but on edge data and nodes the edges
     # connect instead of spatial
@@ -296,7 +318,7 @@ def consolidate_link_indices(left, right):
     right_df = right_df.rename(columns={'id': 'link_id'})
 
     df = left_df.reset_index().merge(right_df.reset_index(), on=['modes', 'from', 'to'], how='outer',
-        suffixes=('_left', '_right'))
+                                     suffixes=('_left', '_right'))
 
     # In the dataframe above we have combined to compare edges which have the same from and to nodes and the same modes
     # on the edge. Remember these graphs have multi edges, there could be more than one edge between two nodes.
@@ -311,23 +333,53 @@ def consolidate_link_indices(left, right):
     # - link ids clash with left
 
     # remove all edges that match and clash, we will re-add them later
-    # this includes multiedges of edges that may have matched only one multiedge - this is to consolidate
-    # the multindices across left and right
-    clashing_overlapping_links = df[df[['link_id_right', 'link_id_left']].isna()]
-    right.remove_links(set(clashing_overlapping_links['link_id_right']))
+    # this includes multiedges of edges that may have matched only one multiedge or no multi edges at all, i.e. the
+    # graphs that multi edges that are completely separate but clash in the multi index
+    # ---this is to consolidate the multindices across left and right
+    clashing_overlapping_edges = df.groupby(['from', 'to']).apply(get_edges_with_clashing_ids).reset_index(drop=True)
+    # store the edge data from right
+    overlapping_links_data = {}
+    unique_clashing_links_data = {}
+    if not clashing_overlapping_edges.empty:
+        clashing_overlapping_edges[clashing_overlapping_edges['link_id_right'].notna() & clashing_overlapping_edges[
+            'link_id_left'].notna()].apply(
+            lambda row: append_data_to_overlapping_links_data(row), axis=1)
+        clashing_overlapping_edges[clashing_overlapping_edges['link_id_right'].notna() & clashing_overlapping_edges[
+            'link_id_left'].isna()].apply(
+            lambda row: append_data_to_unique_clashing_links_data(row), axis=1)
 
-    # first resolve clashing link ids for links in right which don't exist in left
+        right.remove_links(set(clashing_overlapping_edges['link_id_right'].dropna()))
+
+    # resolve clashing link ids for links in right which don't exist in left
     clashing_right_link_ids = set(df[df['left'].isna()]['link_id_right']) & set(df['link_id_left'].dropna())
+    # some link ids could have been picked up before and deleted, only consider the ones which don't overlap
+    clashing_right_link_ids = set(right.link_id_mapping.keys()) & clashing_right_link_ids
     if clashing_right_link_ids:
-        # generate the index in left, otherwise the method could return one that is only unique in right
-        [right.reindex_link(link, left.generate_index_for_edge()) for link in clashing_right_link_ids]
+        # generate the index avoiding indices from left, that way they're unique across both graphs
+        [right.reindex_link(link, right.generate_index_for_edge(set(left.link_id_mapping.keys()))) for link in
+         clashing_right_link_ids]
 
     # Impose link id and multi index if from left on right, basically add the links we deleted from right but using
-    # left's indexing
+    # left's indexing, keep the data from right using the dictionaries where we saved them
+    for left_link_id, data in overlapping_links_data.items():
+        u, v = left.link_id_mapping[left_link_id]['from'], left.link_id_mapping[left_link_id]['to']
+        multi_idx = left.link_id_mapping[left_link_id]['multi_edge_idx']
+        right.add_link(left_link_id, u, v, multi_idx, data)
 
-
-    # TODO check that a new index is not being generated if an index exists in right but hasn't been overwritten yet
+    for right_link_id, data in unique_clashing_links_data.items():
+        u, v = data['from'], data['to']
+        # generate unique multi index, unique in both left and right
+        right_multi_idx = set()
+        if right.graph.has_edge(u, v):
+            right_multi_idx = set(right.graph[u][v].keys())
+        left_multi_idx = set()
+        if left.graph.has_edge(u, v):
+            left_multi_idx = set(left.graph[u][v].keys())
+        existing_multi_edge_ids = right_multi_idx | left_multi_idx
+        multi_idx = next(filterfalse(set(existing_multi_edge_ids).__contains__, count(1)))
+        if right_link_id in set(left.link_id_mapping.keys()) | set(right.link_id_mapping.keys()):
+            right_link_id = right.generate_index_for_edge(set(left.link_id_mapping.keys()))
+        right.add_link(right_link_id, u, v, multi_idx, data)
 
     logging.info('Finished consolidating link indexing between the two graphs')
-
     return right
