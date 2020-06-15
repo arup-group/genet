@@ -332,6 +332,13 @@ def test_node_attribute_data_under_keys_with_named_index(network1):
     assert df.index.name == 'index'
 
 
+def test_node_attribute_data_under_keys_generates_key_for_nested_data(network1):
+    network1.add_node('1', {'key': {'nested_value': {'more_nested': 4}}})
+    df = network1.node_attribute_data_under_keys([{'key': {'nested_value': 'more_nested'}}])
+    assert isinstance(df, pd.DataFrame)
+    assert 'key::nested_value::more_nested' in df.columns
+
+
 def test_node_attribute_data_under_keys_returns_dataframe_with_one_col_if_passed_one_key(network1):
     df = network1.node_attribute_data_under_keys(['x'], index_name='index')
     assert isinstance(df, pd.DataFrame)
@@ -371,9 +378,15 @@ def test_link_attribute_data_under_keys_with_named_index(network1):
 
 
 def test_link_attribute_data_under_keys_returns_dataframe_with_one_col_if_passed_one_key(network1):
-    df = network1.link_attribute_data_under_keys(['modes'], index_name='index')
+    df = network1.link_attribute_data_under_keys(['modes'])
     assert isinstance(df, pd.DataFrame)
     assert len(df.columns) == 1
+
+
+def test_link_attribute_data_under_keys_generates_key_for_nested_data(network1):
+    df = network1.link_attribute_data_under_keys([{'attributes': {'osm:way:access': 'text'}}])
+    assert isinstance(df, pd.DataFrame)
+    assert 'attributes::osm:way:access::text' in df.columns
 
 
 def test_add_node_adds_node_to_graph_with_attribs():
@@ -424,6 +437,26 @@ def test_add_link_adds_edge_to_graph_without_attribs():
     n.graph.has_edge(1, 2)
     assert '0' in n.link_id_mapping
     assert n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
+
+
+def test_add_link_adds_link_with_specific_multi_idx():
+    n = Network()
+    n.add_link('0', 1, 2, 0)
+    assert '0' in n.link_id_mapping
+    assert n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
+    assert n.graph[1][2][0] == {'from': 1, 'to': 2, 'id': '0'}
+
+
+def test_add_link_generates_new_multi_idx_if_already_exists():
+    n = Network()
+    n.add_link('0', 1, 2, 0)
+    n.add_link('1', 1, 2, 0)
+    assert '0' in n.link_id_mapping
+    assert '1' in n.link_id_mapping
+    assert n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
+    assert n.graph[1][2][0] == {'from': 1, 'to': 2, 'id': '0'}
+    assert n.link_id_mapping['1']['multi_edge_idx'] != 0
+    assert n.graph[1][2][n.link_id_mapping['1']['multi_edge_idx']] == {'from': 1, 'to': 2, 'id': '1'}
 
 
 def test_reindex_node(network1):

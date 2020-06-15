@@ -102,8 +102,8 @@ class Network:
         for key in keys:
             if isinstance(key, dict):
                 # consolidate nestedness to get a name for the column
-                name = '_'.join([k for k, v in key.items()])
-                name = name.replace('{', '').replace('}', '').replace(':', '').replace("'", '').replace(' ', ':')
+                name = str(key)
+                name = name.replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
             else:
                 name = key
 
@@ -149,8 +149,8 @@ class Network:
         for key in keys:
             if isinstance(key, dict):
                 # consolidate nestedness to get a name for the column
-                name = '_'.join([k for k, v in key.items()])
-                name = name.replace('{', '').replace('}', '').replace(':', '').replace("'", '').replace(' ', ':')
+                name = str(key)
+                name = name.replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
             else:
                 name = key
 
@@ -207,7 +207,7 @@ class Network:
                 link_id, new_link_id))
             link_id = new_link_id
 
-        if not multi_edge_idx:
+        if multi_edge_idx is None:
             multi_edge_idx = self.graph.new_edge_key(u, v)
         if self.graph.has_edge(u, v, multi_edge_idx):
             old_idx = multi_edge_idx
