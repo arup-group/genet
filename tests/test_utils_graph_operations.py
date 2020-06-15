@@ -392,9 +392,9 @@ def test_consolidating_node_ids_reprojects_non_overlapping_nodes():
 
     output_n_right = graph_operations.consolidate_node_indices(n_left, n_right)
 
-    assert output_n_right.node('101990') == {'id': '101990', 'x': 528610.5722059759, 'y': 181809.83345613896,
+    assert_semantically_equal(output_n_right.node('101990'), {'id': '101990', 'x': 528610.5722059759, 'y': 181809.83345613896,
                                              'lon': -0.14770188709624754, 'lat': 51.5205729332399,
-                                             's2_id': 5221390304444511271}
+                                             's2_id': 5221390304444511271})
 
 
 def test_add_reindexes_node_if_clashes_with_spatially_matched_nodes():
@@ -430,9 +430,9 @@ def test_add_reindexes_node_if_clashes_with_spatially_unmatched_nodes():
 
     assert not output_n_right.graph.has_node('101982')
     the_node = [i for i, a in output_n_right.nodes()][0]
-    assert output_n_right.node(the_node) == {'id': the_node, 'x': 528610.5722059759, 'y': 181809.83345613896,
+    assert_semantically_equal(output_n_right.node(the_node), {'id': the_node, 'x': 528610.5722059759, 'y': 181809.83345613896,
                                              'lon': -0.14770188709624754, 'lat': 51.5205729332399,
-                                             's2_id': 5221390304444511271}
+                                             's2_id': 5221390304444511271})
 
 
 def test_consolidating_link_ids_does_nothing_to_completely_matching_links():

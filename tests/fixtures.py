@@ -37,7 +37,7 @@ def assert_semantically_equal(dict1, dict2):
     # floating point lat/lon values, as witnessed in our CI build running on Ubuntu
     # Vs our own OSX laptops - lat/lon values within this tolerance can and should
     # be considered the same in practical terms
-    assert list(dictdiffer.diff(deep_sort(dict1), deep_sort(dict2), tolerance=0.00000000000001)) == []
+    assert list(dictdiffer.diff(deep_sort(dict1), deep_sort(dict2), tolerance=0.0000000001)) == []
 
 
 ###########################################################
