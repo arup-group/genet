@@ -13,8 +13,8 @@ class Stop:
     Parameters
     ----------
     :param id: unique identifier
-    :param x: x coordinate or lon if using 'epsg:4326'
-    :param y: y coordinate or lat if using 'epsg:4326'
+    :param x: x coordinate or lat if using 'epsg:4326'
+    :param y: y coordinate or lon if using 'epsg:4326'
     :param epsg: 'epsg:12345'
     :param transformer: optional but makes things MUCH faster if you're reading through a lot of stops in the same
             projection
@@ -27,14 +27,14 @@ class Stop:
         self.y = float(y)
         self.epsg = epsg
         if transformer is None:
-            self.transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
+            self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
         else:
             self.transformer = transformer
 
         if self.epsg == 'epsg:4326':
-            self.lon, self.lat = float(x), float(y)
+            self.lat, self.lon = float(x), float(y)
         else:
-            self.lon, self.lat = spatial.change_proj(x, y, self.transformer)
+            self.lat, self.lon = spatial.change_proj(x, y, self.transformer)
 
         self.additional_attributes = []
 

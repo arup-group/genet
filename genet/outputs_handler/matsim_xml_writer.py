@@ -65,7 +65,7 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
     fname = os.path.join(output_dir, "schedule.xml")
     if not epsg:
         epsg = schedule.epsg
-    transformer = Transformer.from_proj(Proj(init='epsg:4326'), Proj(init=epsg))
+    transformer = Transformer.from_proj(Proj('epsg:4326'), Proj(epsg))
     logging.info('Writing {}'.format(fname))
 
     # Also makes vehicles
@@ -84,8 +84,8 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                         y = stop_facility.y
                     else:
                         x, y = change_proj(
-                            x=stop_facility.lon,
-                            y=stop_facility.lat,
+                            x=stop_facility.lat,
+                            y=stop_facility.lon,
                             crs_transformer=transformer)
                     transit_stop_attrib['x'], transit_stop_attrib['y'] = str(x), str(y)
                     for k, v in stop_facility.iter_through_additional_attributes():

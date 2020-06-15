@@ -26,7 +26,9 @@ def read_network(network_path, TRANSFORMER: Transformer):
         if event == 'start':
             if elem.tag == 'node':
                 attribs = elem.attrib
-                lon, lat = spatial.change_proj(attribs['x'], attribs['y'], TRANSFORMER)
+                lat, lon = spatial.change_proj(attribs['x'], attribs['y'], TRANSFORMER)
+                # ideally we would check if the transformer was created with always_xy=True and swap
+                # lat and long values if so, but there is no obvious way to interrogate the transformer
                 attribs['lon'], attribs['lat'] = lon, lat
                 node_id = spatial.grab_index_s2(lat, lon)
                 attribs['s2_id'] = node_id
@@ -95,7 +97,7 @@ def read_schedule(schedule_path, epsg):
     :return: list of Service objects
     """
     services = []
-    transformer = Transformer.from_proj(Proj(init=epsg), Proj(init='epsg:4326'))
+    transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
 
     def write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode):
         mode = transportMode['transportMode']

@@ -1,8 +1,7 @@
-import os
-import sys
 from pyproj import Proj, Transformer
-from tests.fixtures import *
+
 from genet.inputs_handler import matsim_reader
+from tests.fixtures import *
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -31,7 +30,7 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
             'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}
         }}}
 
-    transformer = Transformer.from_proj(Proj(init='epsg:27700'), Proj(init='epsg:4326'))
+    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'))
 
     g, link_id_mapping = matsim_reader.read_network(pt2matsim_network_test_file, transformer)
 
@@ -80,7 +79,7 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
     correct_link_id_map  = {'1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 0},
                             '2': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 1}}
 
-    transformer = Transformer.from_proj(Proj(init='epsg:27700'), Proj(init='epsg:4326'))
+    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'))
 
     g, link_id_mapping = matsim_reader.read_network(pt2matsim_network_multiple_edges_test_file, transformer)
 
