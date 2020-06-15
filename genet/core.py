@@ -52,11 +52,11 @@ class Network:
         # finally, once the node and link ids have been sorted, combine the graphs
         # nx.compose(left, right) overwrites data in left with data in right under matching ids
         self.graph = nx.compose(other.graph, self.graph)
-        # TODO finally, combine link_id_mappings
-        self.link_id_mapping = {**self.link_id_mapping, **other.link_id_mapping}
+        # finally, combine link_id_mappings
+        self.link_id_mapping = {**other.link_id_mapping, **self.link_id_mapping}
 
         # combine schedules
-        # self.schedule = self.schedule + other.schedule
+        self.schedule = self.schedule + other.schedule
 
         # merge change_log DataFrames
         self.change_log.log = self.change_log.log.append(other.change_log.log)
