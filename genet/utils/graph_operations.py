@@ -280,12 +280,12 @@ def consolidate_link_indices(left, right):
     :return: updated right
     """
 
-    def sort_and_hash(l):
-        l.sort()
-        return '_'.join(l)
+    def sort_and_hash(modes_list):
+        modes_list.sort()
+        return '_'.join(modes_list)
 
-    def extract_multindex(l, g):
-        return g.link_id_mapping[l]['multi_edge_idx']
+    def extract_multindex(link_id, graph):
+        return graph.link_id_mapping[link_id]['multi_edge_idx']
 
     def get_edges_with_clashing_ids(group):
         if ((group.dropna()['link_id_right'] != group.dropna()['link_id_left']) | (
