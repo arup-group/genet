@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
-from tests.fixtures import network_object_from_test_data
+from tests.fixtures import network_object_from_test_data, assert_semantically_equal
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
 
@@ -40,7 +40,7 @@ def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_key
     n.add_node(2, {'a': {'b': 4}})
 
     output_series = n.node_attribute_data_under_key(key={'a': 'b'})
-    assert_series_equal(output_series, pd.Series({1:1, 2:4}))
+    assert_series_equal(output_series, pd.Series({1: 1, 2: 4}))
 
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_flat_keys():
@@ -49,7 +49,7 @@ def test_node_attribute_data_under_key_returns_correct_pd_series_with_flat_keys(
     n.add_node(2, {'b': 4})
 
     output_series = n.node_attribute_data_under_key(key='b')
-    assert_series_equal(output_series, pd.Series({1:1, 2:4}))
+    assert_series_equal(output_series, pd.Series({1: 1, 2: 4}))
 
 
 def test_link_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
@@ -58,7 +58,7 @@ def test_link_attribute_data_under_key_returns_correct_pd_series_with_nested_key
     n.add_link('1', 1, 2, {'a': {'b': 4}})
 
     output_series = n.link_attribute_data_under_key(key={'a': 'b'})
-    assert_series_equal(output_series, pd.Series({'0':1, '1':4}))
+    assert_series_equal(output_series, pd.Series({'0': 1, '1': 4}))
 
 
 def test_link_attribute_data_under_key_returns_correct_pd_series_with_flat_keys():
@@ -67,7 +67,7 @@ def test_link_attribute_data_under_key_returns_correct_pd_series_with_flat_keys(
     n.add_link('1', 1, 2, {'b': 4})
 
     output_series = n.link_attribute_data_under_key(key='b')
-    assert_series_equal(output_series, pd.Series({'0':1, '1':4}))
+    assert_series_equal(output_series, pd.Series({'0': 1, '1': 4}))
 
 
 def test_add_node_adds_node_to_graph_with_attribs():
@@ -307,6 +307,43 @@ def test_link_gives_link_attribs():
     n = Network()
     n.add_link('0', 1, 2, {'attrib': 1})
     assert n.link('0') == {'attrib': 1}
+
+
+def test_read_osm_network():
+    osm_test_file = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml"))
+    config = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "configs", "default_config.yml"))
+    network = Network()
+    network.read_osm_to_network(osm_test_file, config, 'epsg:27700', 1)
+    assert_semantically_equal(dict(network.nodes()), {
+        '0': {'id': '0', 'x': 49.76680731128457, 'y': -7.557159824733108, 'lon': -0.0006545205888310243,
+              'lat': 0.008554364250688652, 's2_id': 1152921492875543713},
+        '1': {'id': '1', 'x': 49.766807452044425, 'y': -7.557159840875761, 'lon': -0.0006545205888310243,
+              'lat': 0.024278505899735615, 's2_id': 1152921335974974453},
+        '2': {'id': '2', 'x': 49.76680717052477, 'y': -7.557159808590456, 'lon': -0.0006545205888310243,
+              'lat': -0.00716977739835831, 's2_id': 384307157539499829}})
+    assert_semantically_equal([link_id_mapping for id, link_id_mapping in network.links()], [
+        {'modes': ['car', 'walk', 'bike'], 'osmid': 0, 'highway': 'unclassified', 'length': 1748.4487354464366},
+        {'modes': ['car', 'walk', 'bike'], 'osmid': 0, 'highway': 'unclassified', 'length': 1748.4487354464366},
+        {'modes': ['car', 'walk', 'bike'], 'osmid': 100, 'highway': 'unclassified', 'length': 1748.4488584600201},
+        {'modes': ['car', 'walk', 'bike'], 'osmid': 100, 'highway': 'unclassified', 'length': 1748.4488584600201},
+        {'modes': ['car', 'walk', 'bike'], 'osmid': 400, 'highway': 'unclassified', 'length': 1748.4487354464366},
+        {'modes': ['car', 'walk', 'bike'], 'osmid': 400, 'highway': 'unclassified', 'length': 1748.4487354464366},
+        {'modes': ['car', 'walk', 'bike'], 'osmid': 700, 'highway': 'unclassified', 'length': 1748.4488584600201},
+        {'modes': ['car', 'walk', 'bike'], 'osmid': 700, 'highway': 'unclassified', 'length': 1748.4488584600201}])
+
+    assert_semantically_equal(network.edge('0', '1'), {
+        0: {'modes': ['bike', 'car', 'walk'], 'highway': 'unclassified', 'osmid': 0, 'length': 1748.4487354464366},
+        1: {'modes': ['bike', 'car', 'walk'], 'highway': 'unclassified', 'osmid': 400, 'length': 1748.4487354464366}})
+    assert_semantically_equal(network.edge('0', '2'), {
+        0: {'modes': ['bike', 'car', 'walk'], 'highway': 'unclassified', 'osmid': 100, 'length': 1748.4488584600201},
+        1: {'modes': ['bike', 'car', 'walk'], 'highway': 'unclassified', 'osmid': 700, 'length': 1748.4488584600201}})
+    assert_semantically_equal(network.edge('1', '0'), {
+        0: {'modes': ['bike', 'car', 'walk'], 'highway': 'unclassified', 'osmid': 0, 'length': 1748.4487354464366},
+        1: {'modes': ['bike', 'car', 'walk'], 'highway': 'unclassified', 'osmid': 400, 'length': 1748.4487354464366}})
+    assert_semantically_equal(network.edge('2', '0'), {
+        0: {'modes': ['bike', 'car', 'walk'], 'highway': 'unclassified', 'osmid': 100, 'length': 1748.4488584600201},
+        1: {'modes': ['bike', 'car', 'walk'], 'highway': 'unclassified', 'osmid': 700, 'length': 1748.4488584600201}})
 
 
 def test_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):

@@ -7,18 +7,22 @@ import os
 from copy import deepcopy
 from typing import Union, List
 from pyproj import Proj, Transformer
-from genet.inputs_handler import matsim_reader, gtfs_reader
-from genet.outputs_handler import matsim_xml_writer
-from genet.modify import ChangeLog
-from genet.utils import spatial, persistence, graph_operations
-from genet.schedule_elements import Service
+import genet.inputs_handler.matsim_reader as matsim_reader
+import genet.inputs_handler.gtfs_reader as gtfs_reader
+import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
+import genet.modify.change_log as change_log
+import genet.utils.spatial as spatial
+import genet.utils.persistence as persistence
+import genet.utils.graph_operations as graph_operations
+import genet.schedule_elements as schedule_elements
+import genet.inputs_handler.osm_reader as osm_reader
 
 
 class Network:
     def __init__(self):
         self.graph = nx.MultiDiGraph()
         self.schedule = Schedule()
-        self.change_log = ChangeLog()
+        self.change_log = change_log.ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
         self.modes = []
 
@@ -104,7 +108,7 @@ class Network:
                 link_id, new_link_id))
             link_id = new_link_id
 
-        self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': self.number_of_multi_edges(u, v)}
+        self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': self.graph.new_edge_key(u, v)}
         if attribs is not None:
             self.graph.add_edge(u, v, **attribs)
         else:
@@ -250,6 +254,26 @@ class Network:
         self.epsg = epsg
         self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
 
+    def read_osm_to_network(self, osm_file_path, osm_read_config, output_epsg, num_processes: int = 1):
+        self.initiate_crs_transformer(output_epsg)
+        input_to_output_transformer = Transformer.from_proj(Proj(output_epsg), Proj('epsg:4326'))
+        nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
+            osm_file_path, osm_reader.Config(osm_read_config), num_processes)
+        for node_id, attribs in nodes.items():
+            x, y = spatial.change_proj(attribs['x'], attribs['y'], input_to_output_transformer)
+            self.add_node(str(node_id), {
+                'id': str(node_id),
+                'x': x,
+                'y': y,
+                'lon': attribs['x'],
+                'lat': attribs['y'],
+                's2_id': attribs['s2id']
+            })
+
+        for edge, attribs in edges:
+            u, v = str(edge[0]), str(edge[1])
+            self.add_edge(u, v, attribs=attribs)
+
     def read_matsim_network(self, path, epsg):
         self.initiate_crs_transformer(epsg)
         self.graph, self.link_id_mapping = matsim_reader.read_network(path, self.transformer)
@@ -299,7 +323,7 @@ class Schedule:
     :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     """
 
-    def __init__(self, services: List[Service] = None, epsg=''):
+    def __init__(self, services: List[schedule_elements.Service] = None, epsg=''):
         super().__init__()
         if services is None:
             self.services = {}
