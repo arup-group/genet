@@ -1,0 +1,80 @@
+OSM_TAGS:
+  # tags that are included when reading OSM data, this is the minimal suggested set
+  USEFUL_TAGS_NODE:
+    - ref
+    - highway
+  USEFUL_TAGS_PATH:
+    - bridge
+    - tunnel
+    - oneway
+    - lanes
+    - highway
+    - service
+    - access
+    - railway
+    - route
+    - lanes
+    - oneway
+    - psv
+    - vehicle
+    - junction
+    - osmid
+
+MODES:
+  MODE_INDICATORS:
+    # These refer to tags stored in OSM, the mode assignment to tags is manual and definitely not exhaustive. The
+    # tags that are not understood by puma will be logged and can be reviewed before proceeding with building the network.
+    # if a tag is not listed here, it will not be read into the network. This is where you should define how dense
+    # you want your network to be. If any of these tags don't have values defined for them in
+    # src/outputs_handling/matsim_xml_values.py, it will default to
+    highway:
+      motorway:
+        - car
+      motorway_link:
+        - car
+      trunk:
+        - car
+      trunk_link:
+        - car
+      primary:
+        - car
+        - walk
+        - bike
+      primary_link:
+        - car
+        - walk
+        - bike
+      secondary:
+        - car
+        - walk
+        - bike
+      secondary_link:
+        - car
+        - walk
+        - bike
+      tertiary:
+        - car
+        - walk
+        - bike
+      tertiary_link:
+        - car
+        - walk
+        - bike
+      unclassified:
+        - car
+        - walk
+        - bike
+    railway:
+      - rail
+
+  DEFAULT_OSM_TAG_VALUE:
+  # puma will first look at OSM tags to infer the matsim values the link should have. For the types and values head over to 
+  # outputs_handling/matsim_xml_values.py. Not all links will have an OSM tag because they could have come from GFTS that is 
+  # too far to snap to the OSM network. In that case, puma will look at the modes on that link and default to the matsim 
+  # values below. Make sure you include modes that exist in GTFS, i.e. take a look at values in MODES:MODE_SUBGROUPS:
+    car: secondary
+    bus: secondary
+    rail: railway
+    subway,metro: railway
+    bike: living_street
+    walk: pedestrian

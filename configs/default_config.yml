@@ -1,0 +1,120 @@
+OSM_TAGS:
+  # tags that are included when reading OSM data, this is the minimal suggested set
+  USEFUL_TAGS_NODE:
+    - ref
+    - highway
+  USEFUL_TAGS_PATH:
+    - bridge
+    - tunnel
+    - oneway
+    - lanes
+    - highway
+    - service
+    - access
+    - railway
+    - route
+    - lanes
+    - oneway
+    - psv
+    - vehicle
+    - junction
+    - osmid
+
+MODES:
+  MODE_INDICATORS:
+    # These refer to tags stored in OSM, the mode assignment to tags is manual and definitely not exhaustive. The
+    # tags that are not understood by puma will be logged and can be reviewed before proceeding with building the network.
+    # if a tag is not listed here, it will not be read into the network. This is where you should define how dense
+    # you want your network to be. If any of these tags don't have values defined for them in
+    # src/outputs_handling/matsim_xml_values.py, it will default to DEFAULT_OSM_TAG_VALUE
+    highway:
+      motorway:
+        - car
+      motorway_link:
+        - car
+      trunk:
+        - car
+      trunk_link:
+        - car
+      primary:
+        - car
+        - walk
+        - bike
+      primary_link:
+        - car
+        - walk
+        - bike
+      secondary:
+        - car
+        - walk
+        - bike
+      secondary_link:
+        - car
+        - walk
+        - bike
+      tertiary:
+        - car
+        - walk
+        - bike
+      tertiary_link:
+        - car
+        - walk
+        - bike
+      minor:
+        - car
+        - walk
+        - bike
+      unclassified:
+        - car
+        - walk
+        - bike
+      track:
+        - car
+        - walk
+        - bike
+      residential:
+        - car
+        - walk
+        - bike
+      service:
+        - car
+        - walk
+        - bike
+      living_street:
+        - car
+        - walk
+        - bike
+      pedestrian:
+        - walk
+      footway:
+        - walk
+      steps:
+        - walk
+      bridleway:
+        - walk
+      corridor:
+        - walk
+      path:
+        - walk
+      crossing:
+        - walk
+      escalator:
+        - walk
+      stepping_stones:
+        - walk
+      cycleway:
+        - bike
+      raceway:
+        - car
+      access:
+        - car
+    railway:
+      - rail
+
+  DEFAULT_OSM_TAG_VALUE:
+    car: secondary
+    bus: secondary
+    rail: railway
+    subway,metro: railway
+    bike: living_street
+    walk: pedestrian
