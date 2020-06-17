@@ -112,12 +112,20 @@ def assume_travel_modes(edge, config):
                         logging.debug('Value {} for key {} does not have a mode assignment'.format(val, key))
             else:
                 modes.extend(config.MODE_INDICATORS[key])
-        # elif key not in ['osmid', 'nodes', 'name', 'maxspeed', 'oneway', 'lanes', 'access']:
-        #     logging.info('Key {} is not present in OSM mode definitions'.format(key))
+        elif key not in ['osmid', 'nodes', 'name', 'maxspeed', 'oneway', 'lanes', 'access']:
+            logging.debug('Key {} is not present in OSM mode definitions'.format(key))
     return list(set(modes))
 
 
 def return_edges(paths, args):
+    """
+    Makes graph edges from osm paths
+    :param paths: dictionary {osm_way_id: {osmid: x, nodes:[a,b], osmtags: vals}}
+    :param args: dictionary of other inputs:
+    - config: genet.inputs_handler.osm_reader.Config object
+    - bidirectional: bool value if True, reads all paths as both ways
+    :return:
+    """
     config = args['config']
     if 'bidirectional' not in args:
         bidirectional = False

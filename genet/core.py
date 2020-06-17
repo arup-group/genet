@@ -272,6 +272,7 @@ class Network:
 
         for edge, attribs in edges:
             u, v = str(edge[0]), str(edge[1])
+            # TODO add the correct sahping to link attributes
             self.add_edge(u, v, attribs=attribs)
 
     def read_matsim_network(self, path, epsg):

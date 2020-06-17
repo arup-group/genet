@@ -5,6 +5,7 @@ import pytest
 from collections import OrderedDict
 from genet.schedule_elements import Stop, Route, Service
 from genet.core import Schedule, Network
+from genet.inputs_handler import osm_reader
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -236,3 +237,19 @@ def correct_services_from_test_pt2matsim_schedule():
     ])
                 ]
     return services
+
+
+###########################################################
+# OSM reading configs
+###########################################################
+
+@pytest.fixture()
+def full_fat_default_config():
+    return osm_reader.Config(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "configs",
+                                                        "default_config.yml")))
+
+
+@pytest.fixture()
+def slim_default_config():
+    return osm_reader.Config(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "configs",
+                                                        "slim_config.yml")))

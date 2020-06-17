@@ -2,7 +2,7 @@ import os
 import yaml
 import logging
 import osmread
-import genet.inputs_handler.osmnx_customised_ftns as osmnx_customised_ftns
+import genet.inputs_handler.osmnx_customised as osmnx_customised
 import genet.utils.spatial as spatial
 import genet.utils.parallel as parallel
 
@@ -38,7 +38,7 @@ def create_s2_indexed_osm_graph(response_jsons, config, num_processes, bidirecti
     nodes = {}
     paths = {}
     for osm_data in response_jsons:
-        nodes_temp, paths_temp = osmnx_customised_ftns.parse_osm_nodes_paths(osm_data, config)
+        nodes_temp, paths_temp = osmnx_customised.parse_osm_nodes_paths(osm_data, config)
         for key, value in nodes_temp.items():
             nodes[key] = value
         for key, value in paths_temp.items():
@@ -46,7 +46,7 @@ def create_s2_indexed_osm_graph(response_jsons, config, num_processes, bidirecti
 
     logging.info('OSM: Add each OSM way (aka, path) to the OSM graph')
     edges = parallel.multiprocess_wrap_function_processing_dict_data(
-        osmnx_customised_ftns.return_edges,
+        osmnx_customised.return_edges,
         paths,
         processes=num_processes,
         config=config,
