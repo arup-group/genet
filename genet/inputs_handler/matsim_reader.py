@@ -55,6 +55,7 @@ def read_network(network_path, TRANSFORMER: Transformer):
                         link_id = _id.format(i)
                         i += 1
                     logging.warning('Generated new link_id: {}'.format(link_id))
+                    attribs['id'] = link_id
                 link_id_mapping[link_id] = {
                     'from': attribs['from'],
                     'to': attribs['to']
