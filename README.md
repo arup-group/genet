@@ -145,9 +145,14 @@ and for links,
 
 
 Once you see the general schema for the data stored on nodes and links, you may decide to look at or perform analysis 
-on all of the data stored in the netowrk under a particular key. A GeNet network has two methods which generate a
-`pandas.Series` object, which stores the nodes or links data present at the specified key, indexed by the same index 
+on all of the data stored in the network under a particular key. A GeNet network has four methods (two for nodes and 
+two for links) which generate:
+
+- `pandas.Series` object, which stores the nodes or links data present at the specified key, indexed by the same index 
 as the nodes or links.
+- or `pandas.DatFrame` object if you want to exctract data under more than one key, indexed by the same index 
+as the nodes or links.
+
 
     >>> s_freespeed = n.link_attribute_data_under_key('freespeed')
     >>> s_freespeed
@@ -176,7 +181,18 @@ then you can treat it as a `pandas` object and use their methods to analyse it, 
     75%        22.222222
     max        22.222222
     dtype: float64
+    
+And for more keys:
 
+    >>> n.link_attribute_data_under_keys(['freespeed', {'attributes': {'osm:way:highway': 'text'}}]).head()
+
+    |      |   freespeed | attributes::osm:way:highway::text   |
+    |-----:|------------:|:------------------------------------|
+    |    1 |     4.16667 | unclassified                        |
+    |   10 |     4.16667 | unclassified                        |
+    |  100 |     4.16667 | unclassified                        |
+    | 1000 |     4.16667 | residential                         |
+    | 1001 |     4.16667 | residential                         |
 
 #### Extracting links of interest
 
@@ -204,6 +220,34 @@ list: `['primary', 'secondary', 'something else']`:
 and many more. You can find the examples in the jupyter notebook: `notebooks/GeNet walk-through.ipynb`
 
 ### Modifying a Network object
+
+`GeNet` supports some simple modifications like adding, reindexing and removing nodes and links and some involved 
+modifications like changing the data stored under nodes or links (which will be discussed below). All of these 
+changes get recorded in `n.change_log`.
+
+#### 1.) Adding nodes/links
+
+    >>> n.add_link(link_id='proposed_index', u='4356572310', v='5811263955')
+    >>> n.add_node(node='proposed_index', attribs={'data':'some_data'})
+
+The index passed is only a proposition. If a node or link under this link exists, a new, unique index will be 
+generated.
+
+#### 2.) Reindexing
+
+To reindex a node or link:
+
+    >>> n.reindex_node('proposed_index', 'another_index')
+    >>> n.reindex_link('proposed_index', 'another_index')
+
+#### 3.) Removing nodes/links
+
+To remove a link or node:
+
+    >>> n.remove_links('another_index')
+    >>> n.remove_node('another_index')
+
+#### 4.) Modifying data stored on nodes or edges:
 
 Let's say you have extracted `genet.Network` link ids of interest, they are stored in the list `links` as above, and 
 now you want to make changes to the network. Let's 
@@ -254,6 +298,20 @@ gets saved to a csv together with any `Network` outputs.
 
 ### Validation
 
+TBA
+
+## Adding two networks
+
+You can add one network to another. The network you're adding the other network too will be updated with the nodes, 
+link and data from the other network. Before the network you are adding will go through a process of having it's node
+and link indices consolidated to match the network it's being added to. The node ids are consolidated based on their
+spatial information, i.e. the network-to-add will inherit the node ids from the main network if the nodes share the
+`s2` index. The link ids and the multi index the edge is stored under in the graph are consolidated based on shared 
+from and to nodes and modes and the modes stored in the links data.
+
+For now, the method only supports non overlapping services.
+
+    >>> n.add(other_network)
 
 ### Writing results
 
