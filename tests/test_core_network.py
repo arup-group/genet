@@ -4,7 +4,7 @@ import uuid
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
-from tests.fixtures import network_object_from_test_data, assert_semantically_equal
+from tests.fixtures import network_object_from_test_data, assert_semantically_equal, full_fat_default_config_path
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
 
@@ -884,7 +884,7 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
     assert number_of_1_multi_idx == 4
 
     assert_semantically_equal(network.link('1'),
-                              {'permlanes': 1.0, 'freespeed': 12.5, 'freespeedFactor': 1.0, 'capacity': 600.0,
+                              {'id': '1', 'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0,
                                'oneway': '1',
                                'modes': ['walk', 'bike', 'car'], 'from': '0', 'to': '1', 's2_from': 1152921492875543713,
                                's2_to': 1152921335974974453, 'length': 1748.4487354464366,

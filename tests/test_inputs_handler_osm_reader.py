@@ -67,49 +67,49 @@ def test_find_matsim_link_values_finds_values_for_well_defined_highway_osm_tag(f
     edge_data = {'highway': 'motorway', 'osmid': 0, 'modes': ['walk', 'car', 'bike'], 'length': 1748.4487354464366}
     matsim_vals = osm_reader.find_matsim_link_values(edge_data, full_fat_default_config)
     assert_semantically_equal(matsim_vals,
-                              {'permlanes': 2.0, 'freespeed': 33.36, 'freespeedFactor': 1.0, 'capacity': 2000.0})
+                              {'permlanes': 2.0, 'freespeed': 33.36, 'capacity': 2000.0})
 
 
 def test_find_matsim_link_values_defaults_to_highway_secondary_if_unknown_highway_osm_tag(full_fat_default_config):
     edge_data = {'highway': 'whaaaaaaaat', 'osmid': 0, 'modes': ['walk', 'car', 'bike'], 'length': 1748.4487354464366}
     matsim_vals = osm_reader.find_matsim_link_values(edge_data, full_fat_default_config)
     assert_semantically_equal(matsim_vals,
-                              {'permlanes': 1.0, 'freespeed': 16.68, 'freespeedFactor': 1.0, 'capacity': 1000.0})
+                              {'permlanes': 1.0, 'freespeed': 16.68, 'capacity': 1000.0})
 
 
 def test_find_matsim_link_values_finds_values_for_non_highway_osm_tag(full_fat_default_config):
     edge_data = {'railway': 'yassss', 'osmid': 0, 'modes': ['rail'], 'length': 1748.4487354464366}
     matsim_vals = osm_reader.find_matsim_link_values(edge_data, full_fat_default_config)
     assert_semantically_equal(matsim_vals,
-                              {'permlanes': 1.0, 'freespeed': 44.44, 'freespeedFactor': 1.0, 'capacity': 9999.0})
+                              {'permlanes': 1.0, 'freespeed': 44.44, 'capacity': 9999.0})
 
 
 def test_find_matsim_link_values_finds_values_based_on_modes_defaults_in_config_when_tags_missing(full_fat_default_config):
     edge_data = {'osmid': 0, 'modes': ['rail'], 'length': 1748.4487354464366}
     matsim_vals = osm_reader.find_matsim_link_values(edge_data, full_fat_default_config)
     assert_semantically_equal(matsim_vals,
-                              {'permlanes': 1.0, 'freespeed': 44.44, 'freespeedFactor': 1.0, 'capacity': 9999.0})
+                              {'permlanes': 1.0, 'freespeed': 44.44, 'capacity': 9999.0})
 
 
 def test_find_matsim_link_values_settles_on_bigger_capacity_values_if_finding_values_based_on_several_modes(full_fat_default_config):
     edge_data = {'osmid': 0, 'modes': ['walk', 'car'], 'length': 1748.4487354464366}
     matsim_vals = osm_reader.find_matsim_link_values(edge_data, full_fat_default_config)
     assert_semantically_equal(matsim_vals,
-                              {'permlanes': 1.0, 'freespeed': 16.68, 'freespeedFactor': 1.0, 'capacity': 1000.0})
+                              {'permlanes': 1.0, 'freespeed': 16.68, 'capacity': 1000.0})
 
 
 def test_find_matsim_link_values_to_highway_secondary_values_if_surrounded_with_gibberish_modes(full_fat_default_config):
     edge_data = {'osmid': 0, 'modes': ['piggyback', 'walk', 'levitating'], 'length': 1748.4487354464366}
     matsim_vals = osm_reader.find_matsim_link_values(edge_data, full_fat_default_config)
     assert_semantically_equal(matsim_vals,
-                              {'permlanes': 1.0, 'freespeed': 16.68, 'freespeedFactor': 1.0, 'capacity': 1000.0})
+                              {'permlanes': 1.0, 'freespeed': 16.68, 'capacity': 1000.0})
 
 
 def test_find_matsim_link_values_defaults_to_highway_secondary_values_when_everything_fails(full_fat_default_config):
     edge_data = {'osmid': 0, 'modes': ['piggyback', 'levitating'], 'length': 1748.4487354464366}
     matsim_vals = osm_reader.find_matsim_link_values(edge_data, full_fat_default_config)
     assert_semantically_equal(matsim_vals,
-                              {'permlanes': 1.0, 'freespeed': 16.68, 'freespeedFactor': 1.0, 'capacity': 1000.0})
+                              {'permlanes': 1.0, 'freespeed': 16.68, 'capacity': 1000.0})
 
 
 def test_generate_osm_graph_edges_from_file(full_fat_default_config):

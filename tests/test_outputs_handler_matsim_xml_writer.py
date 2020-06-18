@@ -51,8 +51,8 @@ def test_generates_valid_matsim_network_xml_file(network_object_from_test_data, 
                                                                         network_dtd.error_log.filter_from_errors())
 
 
-@pytest.mark.xfail
-def test_network_from_test_osm_data_produces_valid_matsim_network_xml_file(full_fat_default_config_path, tmpdir):
+def test_network_from_test_osm_data_produces_valid_matsim_network_xml_file(full_fat_default_config_path, network_dtd,
+                                                                           tmpdir):
     osm_test_file = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml"))
     network = Network()
