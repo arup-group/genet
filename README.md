@@ -306,11 +306,10 @@ You can add one network to another. The network you're adding the other network 
 link and data from the other network. Before the network you are adding will go through a process of having it's node
 and link indices consolidated to match the network it's being added to. The node ids are consolidated based on their
 spatial information, i.e. the network-to-add will inherit the node ids from the main network if the nodes share the
-`s2` `index. The link ids and the multi index the edge is stored under in the graph are consolidated based on shared 
+`s2` index. The link ids and the multi index the edge is stored under in the graph are consolidated based on shared 
 from and to nodes and modes and the modes stored in the links data.
 
-For now, the method only supports non overlapping services so let's merge two graphs, one of which being a small 
-subgraph of `n`.
+For now, the method only supports non overlapping services.
 
     >>> n.add(other_network)
 

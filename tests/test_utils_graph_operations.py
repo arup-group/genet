@@ -523,7 +523,3 @@ def test_consolidating_link_ids_generates_unique_indices_for_non_overlapping_lin
     assert len(output_n_right.link_id_mapping) == 1
     u, v, midx = list(output_n_right.graph.edges)[0]
     assert midx != 1
-
-
-def test_consolidating_link_ids():
-    pass
