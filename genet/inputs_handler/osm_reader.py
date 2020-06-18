@@ -4,7 +4,7 @@ import osmread
 import genet.inputs_handler.osmnx_customised as osmnx_customised
 import genet.utils.spatial as spatial
 import genet.utils.parallel as parallel
-from  genet.outputs_handler.matsim_xml_values import MATSIM_JOSM_DEFAULTS
+from genet.outputs_handler.matsim_xml_values import MATSIM_JOSM_DEFAULTS
 
 
 class Config(object):
@@ -37,7 +37,6 @@ def assume_travel_modes(edge, config):
         elif key not in ['osmid', 'nodes', 'name', 'maxspeed', 'oneway', 'lanes', 'access']:
             logging.debug('Key {} is not present in OSM mode definitions'.format(key))
     return list(set(modes))
-
 
 
 def find_matsim_link_values(edge_data, config):

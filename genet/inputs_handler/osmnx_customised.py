@@ -1,4 +1,3 @@
-import logging
 from itertools import groupby
 import genet.utils.spatial as spatial
 import genet.inputs_handler.osm_reader as osm_reader

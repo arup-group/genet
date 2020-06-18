@@ -484,7 +484,7 @@ class Network:
             # the rest of the keys are osm attributes
             link_attributes['attributes'] = {}
             for key, val in attribs.items():
-                if not key in link_attributes:
+                if key not in link_attributes:
                     link_attributes['attributes']['osm:way:{}'.format(key)] = {
                             'name': 'osm:way:{}'.format(key),
                             'class': 'java.lang.String',
