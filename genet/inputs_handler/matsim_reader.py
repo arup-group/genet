@@ -1,3 +1,4 @@
+import logging
 import networkx as nx
 import xml.etree.cElementTree as ET
 from pyproj import Transformer, Proj
@@ -45,7 +46,16 @@ def read_network(network_path, TRANSFORMER: Transformer):
                 attribs['s2_to'] = node_id_mapping[attribs['to']]
                 attribs['modes'] = read_modes(attribs['modes'])
 
-                link_id_mapping[attribs['id']] = {
+                link_id = attribs['id']
+                if link_id in link_id_mapping:
+                    logging.warning('This MATSim network has a link which that is not unique: {}'.format(link_id))
+                    i = 1
+                    _id = link_id + '_{}'
+                    while link_id in link_id_mapping:
+                        link_id = _id.format(i)
+                        i += 1
+                    logging.warning('Generated new link_id: {}'.format(link_id))
+                link_id_mapping[link_id] = {
                     'from': attribs['from'],
                     'to': attribs['to']
                 }
@@ -63,9 +73,9 @@ def read_network(network_path, TRANSFORMER: Transformer):
                 u = attribs['from']
                 v = attribs['to']
                 if g.has_edge(u, v):
-                    link_id_mapping[attribs['id']]['multi_edge_idx'] = len(g[u][v])
+                    link_id_mapping[link_id]['multi_edge_idx'] = len(g[u][v])
                 else:
-                    link_id_mapping[attribs['id']]['multi_edge_idx'] = 0
+                    link_id_mapping[link_id]['multi_edge_idx'] = 0
                 g.add_weighted_edges_from([(u, v, length)], weight='length', **attribs)
                 # reset link_attribs
                 link_attribs = {}
