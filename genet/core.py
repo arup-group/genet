@@ -215,8 +215,8 @@ class Network:
         """
         :return: Iterator through each edge's from, to nodes and its attrib (three-tuple)
         """
-        for u, v, attrib in self.graph.edges(data=True):
-            yield u, v, attrib
+        for u, v in self.graph.edges():
+            yield u, v, self.edge(u, v)
 
     def edge(self, u, v):
         """
@@ -257,8 +257,9 @@ class Network:
     def read_osm_to_network(self, osm_file_path, osm_read_config, output_epsg, num_processes: int = 1):
         self.initiate_crs_transformer(output_epsg)
         input_to_output_transformer = Transformer.from_proj(Proj(output_epsg), Proj('epsg:4326'))
+        config = osm_reader.Config(osm_read_config)
         nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
-            osm_file_path, osm_reader.Config(osm_read_config), num_processes)
+            osm_file_path, config, num_processes)
         for node_id, attribs in nodes.items():
             x, y = spatial.change_proj(attribs['x'], attribs['y'], input_to_output_transformer)
             self.add_node(str(node_id), {
@@ -272,8 +273,26 @@ class Network:
 
         for edge, attribs in edges:
             u, v = str(edge[0]), str(edge[1])
-            # TODO add the correct sahping to link attributes
-            self.add_edge(u, v, attribs=attribs)
+            link_attributes = osm_reader.find_matsim_link_values(attribs, config)
+            link_attributes['oneway'] = '1'
+            link_attributes['modes'] = attribs['modes']
+            link_attributes['from'] = self.node(u)['id']
+            link_attributes['to'] = self.node(v)['id']
+            link_attributes['s2_from'] = self.node(u)['s2_id']
+            link_attributes['s2_to'] = self.node(v)['s2_id']
+            link_attributes['length'] = attribs['length']
+
+            # the rest of the keys are osm attributes
+            link_attributes['attributes'] = {}
+            for key, val in attribs.items():
+                if not key in link_attributes:
+                    link_attributes['attributes']['osm:way:{}'.format(key)] = {
+                            'name': 'osm:way:{}'.format(key),
+                            'class': 'java.lang.String',
+                            'text': str(val),
+                        }
+
+            self.add_edge(u, v, attribs=link_attributes)
 
     def read_matsim_network(self, path, epsg):
         self.initiate_crs_transformer(epsg)

@@ -1,10 +1,10 @@
-import os
 import yaml
 import logging
 import osmread
 import genet.inputs_handler.osmnx_customised as osmnx_customised
 import genet.utils.spatial as spatial
 import genet.utils.parallel as parallel
+from  genet.outputs_handler.matsim_xml_values import MATSIM_JOSM_DEFAULTS
 
 
 class Config(object):
@@ -17,6 +17,62 @@ class Config(object):
 
         self.MODE_INDICATORS = self.config['MODES']['MODE_INDICATORS']
         self.DEFAULT_OSM_TAG_VALUE = self.config['MODES']['DEFAULT_OSM_TAG_VALUE']
+
+
+def assume_travel_modes(edge, config):
+    modes = []
+    for key, val in edge.items():
+        if key in config.MODE_INDICATORS:
+            if isinstance(config.MODE_INDICATORS[key], dict):
+                if val == 'road':
+                    edge['highway'] = 'unclassified'
+                    modes.extend(config.MODE_INDICATORS['highway']['unclassified'])
+                elif val not in ['construction', 'proposed']:
+                    if val in config.MODE_INDICATORS[key]:
+                        modes.extend(config.MODE_INDICATORS[key][val])
+                    else:
+                        logging.debug('Value {} for key {} does not have a mode assignment'.format(val, key))
+            else:
+                modes.extend(config.MODE_INDICATORS[key])
+        elif key not in ['osmid', 'nodes', 'name', 'maxspeed', 'oneway', 'lanes', 'access']:
+            logging.debug('Key {} is not present in OSM mode definitions'.format(key))
+    return list(set(modes))
+
+
+
+def find_matsim_link_values(edge_data, config):
+    matsim_vals = {}
+    if (set(edge_data.keys()) | set(MATSIM_JOSM_DEFAULTS.keys())) or ('highway' in edge_data):
+        if 'highway' in edge_data:
+            # highway is the one allowed 'nested' osm tag, the values of the tags are flattened in MATSIM_JOSM_DEFAULTS
+            if edge_data['highway'] in MATSIM_JOSM_DEFAULTS:
+                matsim_vals = MATSIM_JOSM_DEFAULTS[edge_data['highway']]
+            else:
+                logging.info('{} is highway but has no value defaults'.format(edge_data['highway']))
+        else:
+            for key in edge_data.keys():
+                if key in MATSIM_JOSM_DEFAULTS:
+                    # checks the non nested tags, at the time of writing that is just railway
+                    matsim_vals = MATSIM_JOSM_DEFAULTS[key]
+
+    if not matsim_vals:
+        # check the modes as a last resort and look at the defaults in the config
+        for mode in edge_data['modes']:
+            # if more than one mode, there may have been a capacity already assumed for the link, go for the values
+            # with bigger capacity
+            if 'capacity' in matsim_vals:
+                if mode in config.DEFAULT_OSM_TAG_VALUE:
+                    new_matsim_vals = MATSIM_JOSM_DEFAULTS[config.DEFAULT_OSM_TAG_VALUE[mode]]
+                    # decide which one is better on lane capacity
+                    if float(new_matsim_vals['capacity']) > float(matsim_vals['capacity']):
+                        matsim_vals = new_matsim_vals
+            elif mode in config.DEFAULT_OSM_TAG_VALUE:
+                matsim_vals = MATSIM_JOSM_DEFAULTS[config.DEFAULT_OSM_TAG_VALUE[mode]]
+            else:
+                logging.info('Mode {} not in the config\'s DEFAULT_OSM_TAG_VALUE\'s. '
+                             'Defaulting to {}'.format(mode, 'secondary'))
+                matsim_vals = MATSIM_JOSM_DEFAULTS['secondary']
+    return matsim_vals
 
 
 def generate_osm_graph_edges_from_file(osm_file, config, num_processes):

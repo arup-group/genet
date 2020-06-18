@@ -1,7 +1,7 @@
 import logging
 from itertools import groupby
 import genet.utils.spatial as spatial
-
+import genet.inputs_handler.osm_reader as osm_reader
 
 # rip of a few functions from osmnx.core to customise the tags being saved to the graph
 
@@ -93,28 +93,8 @@ def get_path(element, config):
             if useful_tag in element['tags']:
                 path[useful_tag] = element['tags'][useful_tag]
 
-    path['modes'] = assume_travel_modes(path, config)
+    path['modes'] = osm_reader.assume_travel_modes(path, config)
     return path
-
-
-def assume_travel_modes(edge, config):
-    modes = []
-    for key, val in edge.items():
-        if key in config.MODE_INDICATORS:
-            if isinstance(config.MODE_INDICATORS[key], dict):
-                if val == 'road':
-                    edge['highway'] = 'unclassified'
-                    modes.extend(config.MODE_INDICATORS['highway']['unclassified'])
-                elif val not in ['construction', 'proposed']:
-                    if val in config.MODE_INDICATORS[key]:
-                        modes.extend(config.MODE_INDICATORS[key][val])
-                    else:
-                        logging.debug('Value {} for key {} does not have a mode assignment'.format(val, key))
-            else:
-                modes.extend(config.MODE_INDICATORS[key])
-        elif key not in ['osmid', 'nodes', 'name', 'maxspeed', 'oneway', 'lanes', 'access']:
-            logging.debug('Key {} is not present in OSM mode definitions'.format(key))
-    return list(set(modes))
 
 
 def return_edges(paths, args):
