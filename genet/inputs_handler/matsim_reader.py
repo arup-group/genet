@@ -31,10 +31,16 @@ def read_network(network_path, TRANSFORMER: Transformer):
                 # ideally we would check if the transformer was created with always_xy=True and swap
                 # lat and long values if so, but there is no obvious way to interrogate the transformer
                 attribs['lon'], attribs['lat'] = lon, lat
-                node_id = spatial.grab_index_s2(lat, lon)
-                attribs['s2_id'] = node_id
-                node_id_mapping[attribs['id']] = node_id
-                g.add_node(attribs['id'], **attribs)
+                attribs['s2_id'] = spatial.grab_index_s2(lat, lon)
+                node_id = attribs['id']
+                if node_id in node_id_mapping:
+                    logging.warning('This MATSim network has a node that is not unique: {}. Generating a new id would'
+                                    'be pointless as we don\'t know which links should be connected to this particular'
+                                    'node. The node will cease to exist and the first encountered node with this id'
+                                    'will be kept. Investigate the links connected to that node.'.format(node_id))
+                else:
+                    node_id_mapping[node_id] = attribs['s2_id']
+                    g.add_node(node_id, **attribs)
             elif elem.tag == 'link':
                 # update old link by link attributes (osm tags etc.)
                 if link_attribs:
@@ -48,7 +54,7 @@ def read_network(network_path, TRANSFORMER: Transformer):
 
                 link_id = attribs['id']
                 if link_id in link_id_mapping:
-                    logging.warning('This MATSim network has a link which that is not unique: {}'.format(link_id))
+                    logging.warning('This MATSim network has a link that is not unique: {}'.format(link_id))
                     i = 1
                     _id = link_id + '_{}'
                     while link_id in link_id_mapping:
