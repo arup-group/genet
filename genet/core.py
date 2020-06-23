@@ -73,6 +73,20 @@ class Network:
             self.schedule.info()
         )
 
+    def reproject(self, new_epsg):
+        """
+        Changes projection of the network to new_epsg
+        :param new_epsg: 'epsg:1234'
+        :return:
+        """
+        old_to_new_transformer = Transformer.from_proj(Proj(self.epsg), Proj(new_epsg))
+        for node_id, node_attribs in self.nodes():
+            x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], old_to_new_transformer)
+            reprojected_node_attribs = {'x': x, 'y': y}
+            self.apply_attributes_to_node(node_id, reprojected_node_attribs)
+        self.schedule.reproject(new_epsg)
+        self.initiate_crs_transformer(new_epsg)
+
     def node_attribute_summary(self, data=False):
         """
         Is expensive. Parses through data stored on nodes and gives a summary tree of the data stored on the nodes.
@@ -609,6 +623,17 @@ class Schedule:
 
     def info(self):
         return 'Number of services: {}\nNumber of unique routes: {}'.format(self.__len__(), self.number_of_routes())
+
+    def reproject(self, new_epsg):
+        """
+        Changes projection of the schedule to new_epsg
+        :param new_epsg: 'epsg:1234'
+        :return:
+        """
+        old_to_new_transformer = Transformer.from_proj(Proj(self.epsg), Proj(new_epsg))
+        for stop_id, stop in self.stops():
+            pass
+        self.initiate_crs_transformer(new_epsg)
 
     def service_ids(self):
         return list(self.services.keys())
