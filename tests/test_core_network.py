@@ -4,9 +4,10 @@ import uuid
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
-from tests.fixtures import network_object_from_test_data, assert_semantically_equal
+from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
+from genet.schedule_elements import Service
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -116,6 +117,24 @@ def test__str__shows_info():
     n = Network()
     assert 'Graph info' in n.__str__()
     assert 'Schedule info' in n.__str__()
+
+
+def test_reproject_changes_x_y_values_for_all_nodes(network1):
+    network1.reproject('epsg:4326')
+    nodes = dict(network1.nodes())
+    correct_nodes = {
+        '101982': {'id': '101982', 'x': 51.52287873323954, 'y': -0.14625948709424305, 'lon': -0.14625948709424305,
+                   'lat': 51.52287873323954, 's2_id': 5221390329378179879},
+        '101986': {'id': '101986', 'x': 51.52228713323965, 'y': -0.14439428709377497, 'lon': -0.14439428709377497,
+                   'lat': 51.52228713323965, 's2_id': 5221390328605860387}}
+    assert_semantically_equal(nodes, correct_nodes)
+
+
+def test_reproject_delegates_reprojection_to_schedules_own_method(network1, route, mocker):
+    mocker.patch.object(Schedule, 'reproject')
+    network1.schedule = Schedule([Service(id='id', routes=[route])], epsg='epsg:27700')
+    network1.reproject('epsg:4326')
+    network1.schedule.reproject.assert_called_once_with('epsg:4326')
 
 
 def test_adding_the_same_networks():

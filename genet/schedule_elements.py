@@ -25,11 +25,7 @@ class Stop:
         self.id = id
         self.x = float(x)
         self.y = float(y)
-        self.epsg = epsg
-        if transformer is None:
-            self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
-        else:
-            self.transformer = transformer
+        self.initiate_crs_transformer(epsg, transformer)
 
         if self.epsg == 'epsg:4326':
             self.lat, self.lon = float(x), float(y)
@@ -44,6 +40,30 @@ class Stop:
 
     def __hash__(self):
         return hash((self.id, round(self.lat, SPATIAL_TOLERANCE), round(self.lon, SPATIAL_TOLERANCE)))
+
+    def initiate_crs_transformer(self, epsg, transformer):
+        self.epsg = epsg
+        if transformer is None:
+            if epsg != 'epsg:4326':
+                self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+            else:
+                self.transformer = None
+        else:
+            self.transformer = transformer
+
+    def reproject(self, new_epsg, transformer: Transformer = None):
+        """
+        Changes projection of a stop. If doing many stops, it's much quicker to pass the transformer as well as epsg.
+        :param new_epsg: 'epsg:12345'
+        :param transformer:
+        :return:
+        """
+        if transformer is None:
+            transformer = Transformer.from_proj(Proj(self.epsg), Proj(new_epsg))
+        self.x, self.y = spatial.change_proj(self.x, self.y, transformer)
+
+        self.epsg = new_epsg
+        self.transformer = Transformer.from_proj(Proj(self.epsg), Proj('epsg:4326'))
 
     def add_additional_attributes(self, attribs: dict):
         """

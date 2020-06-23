@@ -84,7 +84,8 @@ class Network:
             x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], old_to_new_transformer)
             reprojected_node_attribs = {'x': x, 'y': y}
             self.apply_attributes_to_node(node_id, reprojected_node_attribs)
-        self.schedule.reproject(new_epsg)
+        if self.schedule:
+            self.schedule.reproject(new_epsg)
         self.initiate_crs_transformer(new_epsg)
 
     def node_attribute_summary(self, data=False):
@@ -461,7 +462,10 @@ class Network:
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
-        self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+        if epsg != 'epsg:4326':
+            self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+        else:
+            self.transformer = None
 
     def read_matsim_network(self, path, epsg):
         self.initiate_crs_transformer(epsg)
@@ -631,8 +635,10 @@ class Schedule:
         :return:
         """
         old_to_new_transformer = Transformer.from_proj(Proj(self.epsg), Proj(new_epsg))
-        for stop_id, stop in self.stops():
-            pass
+        # need to go through all instances of all the stops
+        for service_id, route in self.routes():
+            for stop in route.stops:
+                stop.reproject(new_epsg, old_to_new_transformer)
         self.initiate_crs_transformer(new_epsg)
 
     def service_ids(self):
@@ -675,7 +681,10 @@ class Schedule:
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
-        self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+        if epsg != 'epsg:4326':
+            self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+        else:
+            self.transformer = None
 
     def read_matsim_schedule(self, path, epsg):
         self.initiate_crs_transformer(epsg)

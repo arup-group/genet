@@ -59,6 +59,28 @@ def test_info_shows_number_of_services_and_routes(mocker):
     Schedule.number_of_routes.assert_called_once()
 
 
+def test_reproject_changes_projection_for_all_stops_in_route():
+    correct_x_y = {'x': 51.52393050617373, 'y': -0.14967658860132668}
+    schedule = Schedule(
+        [Service(id='10314', routes=[
+            Route(
+                route_short_name='12',
+                mode='bus',
+                stops=[Stop(id='26997928P', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700'),
+                       Stop(id='26997928P.link:1', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700')],
+                route=['1'],
+                trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+                arrival_offsets=['00:00:00', '00:02:00'],
+                departure_offsets=['00:00:00', '00:02:00']
+            )
+        ])],
+        'epsg:27700')
+    schedule.reproject('epsg:4326')
+    stops = dict(schedule.stops())
+    assert_semantically_equal({'x': stops['26997928P'].x, 'y': stops['26997928P'].y}, correct_x_y)
+    assert_semantically_equal({'x': stops['26997928P.link:1'].x, 'y': stops['26997928P.link:1'].y}, correct_x_y)
+
+
 def test_adding_merges_separable_schedules(route):
     schedule = Schedule([Service(id='1', routes=[route])], epsg='epsg:1234')
     schedule_to_be_added = Schedule([Service(id='2', routes=[route])], epsg='epsg:1234')
