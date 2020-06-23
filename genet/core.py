@@ -451,7 +451,25 @@ class Network:
 
     def read_matsim_network(self, path, epsg):
         self.initiate_crs_transformer(epsg)
-        self.graph, self.link_id_mapping = matsim_reader.read_network(path, self.transformer)
+        self.graph, self.link_id_mapping, duplicated_nodes, duplicated_links = \
+            matsim_reader.read_network(path, self.transformer)
+
+        for node_id, duplicated_node_attribs in duplicated_nodes.items():
+            for duplicated_node_attrib in duplicated_node_attribs:
+                self.change_log.remove(
+                    object_type='node',
+                    object_id=node_id,
+                    object_attributes=duplicated_node_attrib
+                )
+        for link_id, reindexed_duplicated_links in duplicated_links.items():
+            for duplicated_link in reindexed_duplicated_links:
+                self.change_log.modify(
+                    object_type='link',
+                    old_id=link_id,
+                    old_attributes=self.link(duplicated_link),
+                    new_id=duplicated_link,
+                    new_attributes=self.link(duplicated_link)
+                )
 
     def read_matsim_schedule(self, path, epsg=None):
         if epsg is None:
