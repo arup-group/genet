@@ -104,14 +104,14 @@ def test_adding_throws_error_when_schedules_not_separable(test_service):
     assert 'This method only supports adding non overlapping services' in str(e.value)
 
 
-def test_adding_throws_error_when_schedules_dont_have_matching_epsg(test_service, different_test_service):
-    schedule = Schedule(services=[test_service], epsg='1234')
+def test_adding_calls_on_reproject_when_schedules_dont_have_matching_epsg(test_service, different_test_service, mocker):
+    mocker.patch.object(Schedule, 'reproject')
+    schedule = Schedule(services=[test_service], epsg='epsg:27700')
     assert 'service' in schedule.services
-    schedule_to_be_added = Schedule(services=[different_test_service], epsg='2')
+    schedule_to_be_added = Schedule(services=[different_test_service], epsg='epsg:4326')
 
-    with pytest.raises(RuntimeError) as e:
-        schedule + schedule_to_be_added
-    assert 'You are merging two schedules with different coordinate systems' in str(e.value)
+    schedule + schedule_to_be_added
+    schedule_to_be_added.reproject.assert_called_once_with('epsg:27700')
 
 
 def test_service_ids_returns_keys_of_the_services_dict(test_service):

@@ -612,12 +612,10 @@ class Schedule:
             # have left and right indicies
             raise NotImplementedError('This method only supports adding non overlapping services.')
         elif self.epsg != other.epsg:
-            # TODO change to reprojection
-            raise RuntimeError('You are merging two schedules with different coordinate systems.')
-        else:
-            return self.__class__(
-                services=list(self.services.values()) + list(other.services.values()),
-                epsg=self.epsg)
+            other.reproject(self.epsg)
+        return self.__class__(
+            services=list(self.services.values()) + list(other.services.values()),
+            epsg=self.epsg)
 
     def is_separable_from(self, other):
         return set(other.services.keys()) & set(self.services.keys()) == set()
