@@ -152,9 +152,38 @@ def test_adding_the_same_networks():
     n_right.schedule.epsg = 'epsg:27700'
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                            'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
-    n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
+    n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
+
+    n_left.add(n_right)
+    assert_semantically_equal(dict(n_left.nodes()), {
+        '1': {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118, 'lon': -0.14625948709424305,
+              'lat': 51.52287873323954, 's2_id': 5221390329378179879},
+        '2': {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392, 'lon': -0.14439428709377497,
+              'lat': 51.52228713323965, 's2_id': 5221390328605860387}})
+    assert_semantically_equal(dict(n_left.links()), {'1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}})
+
+
+def test_adding_the_same_networks_but_with_differing_projections():
+    n_left = Network()
+    n_left.epsg = 'epsg:27700'
+    n_left.schedule.epsg = 'epsg:27700'
+    n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
+                          'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
+    n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
+                          'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
+    n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
+
+    n_right = Network()
+    n_right.epsg = 'epsg:27700'
+    n_right.schedule.epsg = 'epsg:27700'
+    n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
+                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
+    n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
+                          'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
+    n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
+    n_right.reproject('epsg:4326')
 
     n_left.add(n_right)
     assert_semantically_equal(dict(n_left.nodes()), {

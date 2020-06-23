@@ -46,6 +46,11 @@ class Network:
         :param other:
         :return:
         """
+        # consolidate coordinate systems
+        if other.epsg != self.epsg:
+            logging.info('Attempting to merge two networks in different coordinate systems. '
+                         'Reprojecting from {} to {}'.format(other.epsg, self.epsg))
+            other.reproject(other.epsg)
         # consolidate node ids
         other = graph_operations.consolidate_node_indices(self, other)
         # consolidate link ids
