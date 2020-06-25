@@ -1,10 +1,10 @@
 import os
-
+import pandas as pd
 from lxml import etree as et
-from lxml.etree import Element, SubElement
+from lxml.etree import Element, SubElement, Comment
 from tqdm import tqdm
 
-
+# Below function should be deprecated - possibly replaced by an XML parser ?
 def extract_toll_ways_from_opl(path_opl):
     '''
     Given a .osm.opl file, extract the ids of toll ways
@@ -39,7 +39,6 @@ def extract_toll_ways_from_opl(path_opl):
     print('{} toll ways extracted from {}'.format(len(toll_ids), path_opl))
 
     return toll_ids
-
 
 #  user should check that they are happy with links (osmium getid - QGIS - OSM layer)
 # hence why we provide write_toll_ids() and read_toll_ids(), as user may
@@ -81,11 +80,11 @@ def read_toll_ids(path):
     return osm_way_ids
 
 
-def extract_network_id_from_osm_id(n, osm_way_ids):
+def extract_network_id_from_osm_id(network, osm_way_ids):
     '''
     Parse a Network() object and find edges whose
     ['attributes']['osm:way:id']['text'] is present in osm_way_ids
-    :param n: a Network() object with 'osm:way:id'
+    :param network: a Network() object with 'osm:way:id'
     :param osm_way_ids: a list of OSM way ids (without the `w` prefix) (str)
     :return: a list of network edge ids (str)
     '''
@@ -94,7 +93,7 @@ def extract_network_id_from_osm_id(n, osm_way_ids):
     network_toll_ids = []
     edge_osm_ids = []
 
-    for link_id, link_attribs in n.links():
+    for link_id, link_attribs in network.links():
         if 'attributes' in link_attribs.keys():
             edge_osm_id = link_attribs['attributes']['osm:way:id']['text']
             if type(edge_osm_id) is str:
@@ -115,6 +114,55 @@ def extract_network_id_from_osm_id(n, osm_way_ids):
     print(missing_osm_ways)
 
     return network_toll_ids
+
+
+def extract_network_id_from_osm_csv(network, osm_csv_path, outpath):
+    '''
+    '''
+    osm_df = pd.read_csv(osm_csv_path, dtype=str)
+    # for each row in osm_df, we want to add a values 'network_id'
+    osm_df['network_id'] = pd.Series(dtype=str)
+
+    edge_osm_ids = set()
+    osm_ids = set(osm_df['osm_ids'].values)
+
+    for link_id, link_attribs in network.links():
+        if 'attributes' in link_attribs.keys():
+            # extract the OSM id associated to that Network link
+            edge_osm_id = link_attribs['attributes']['osm:way:id']['text']
+            if str(edge_osm_id) in osm_ids:
+                # if the OSM id associated to that Network link is one of the OSM toll ways we are interested in
+                # then we extract the indices of all rows in the .csv where that OSM toll way appears
+                temp_index = osm_df[osm_df['osm_ids']==edge_osm_id].index
+                if len(temp_index) > 1:
+                    osm_df.loc[temp_index,'network_id'] = link_id
+                else:
+                    temp_index = temp_index[0]
+                    osm_df.loc[temp_index,'network_id'] = link_id
+                
+                edge_osm_ids.update(edge_osm_id)
+            else:
+                continue
+
+        edge_osm_ids = set(edge_osm_ids)
+        if edge_osm_ids == osm_ids:
+            # if we have found all the OSM way ids, no need to go through the rest of the Network
+            break
+        # else:
+        #     print(len(osm_ids) - len(edge_osm_ids), ' OSM ways still to be found.')
+
+    # check whether some of our OSM ids were not found
+    unmatched_osm_df = osm_df[osm_df['network_id'].isnull()]
+    if unmatched_osm_df.shape[0] > 0:
+        # print unmatched ids
+        print('these OSM way ids did not find a match in the network.xml')
+        print(unmatched_osm_df['osm_ids'].values)
+        # remove the corresponding rows from the dataframe
+        print('these OSM way ids have been removed from the output saved at '+outpath)
+        osm_df = osm_df.drop(osm_df[osm_df['network_id'].isnull()].index)
+    # write back to .csv
+    osm_df.to_csv(outpath, index=False)
+
 
 
 def write_xml(root, path):
@@ -153,5 +201,57 @@ def build_tree(network_toll_ids):
 
     # apply same cost to all links, regardless of vehicle type
     SubElement(roadpricing, "cost", start_time="00:00", end_time="23:59", amount="2.00")
+
+    return roadpricing
+
+
+
+def build_tree_from_csv(csv_input):
+    '''
+    Build XML config for MATSim Road Pricing from .csv input
+    :param csv_input: 
+    :return: an 'lxml.etree._Element' object
+    '''
+    # creat ETree root
+    roadpricing = Element("roadpricing", type="cordon", name="cordon-toll")
+    # <description
+    description = SubElement(roadpricing, "description")
+    description.text = "A simple cordon toll scheme"
+
+    links = SubElement(roadpricing, "links")
+
+    tolled_links_df = pd.read_csv(csv_input)
+    tolled_links_df = tolled_links_df.sort_values(by='osm_refs') # make sure all links from same toll are grouped together
+
+    # remove references to 'DPT', we will hard-code its paramters below
+    links_DPT = list(tolled_links_df[tolled_links_df['osm_refs']=='DPT']['network_id'].values)
+    tolled_links_df = tolled_links_df[tolled_links_df['osm_refs']!='DPT'] 
+    
+    commented_tolls = [] # list to keep track of which Toll names we added as comments
+
+    # all other tolls
+    for index, row in tolled_links_df.iterrows():
+
+        if str(row['osm_refs']) not in commented_tolls:
+            links.append(Comment(' === '+str(row['osm_refs'])+' === '))
+            commented_tolls.append(str(row['osm_refs']))
+
+        link = SubElement(links, "link", id=str(row['network_id']))
+        SubElement(link, "cost", start_time=str(row['start_time']), end_time=str(row['end_time']), 
+                    amount=str(row['toll_amount'])
+                    )
+
+    # DPT    
+    links.append(Comment(' === '+'DPT'+' === '))
+
+    for link_id in links_DPT:
+
+        link = SubElement(links, "link", id=str(link_id))
+        SubElement(link, "cost", start_time="00:00", end_time="05:59", amount="3.00")
+        SubElement(link, "cost", start_time="06:00", end_time="09:59", amount="10.00")
+        SubElement(link, "cost", start_time="10:00", end_time="15:59", amount="3.00")
+        SubElement(link, "cost", start_time="16:00", end_time="18:59", amount="10.00")
+        SubElement(link, "cost", start_time="19:00", end_time="23:59", amount="3.00")
+
 
     return roadpricing
