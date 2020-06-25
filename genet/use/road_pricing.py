@@ -146,7 +146,7 @@ def extract_network_id_from_osm_csv(network, osm_csv_path, outpath):
                 else:
                     temp_index = temp_index[0]
                     osm_df.loc[temp_index, 'network_id'] = link_id
-                
+
                 edge_osm_ids.update(edge_osm_id)
             else:
                 continue
@@ -214,12 +214,13 @@ def build_tree(network_toll_ids):
 def build_tree_from_csv(csv_input):
     '''
     Build XML config for MATSim Road Pricing from .csv input
-    :param csv_input: 
+    :param csv_input:
     :return: an 'lxml.etree._Element' object
     '''
+
     # creat ETree root
     roadpricing = Element("roadpricing", type="cordon", name="cordon-toll")
-    # <description
+    # description
     description = SubElement(roadpricing, "description")
     description.text = "A simple cordon toll scheme"
 
