@@ -246,8 +246,7 @@ def build_tree_from_csv(csv_input):
         SubElement(link, "cost", start_time=str(row['start_time']),
                    end_time=str(row['end_time']), amount=str(row['toll_amount'])
                    )
-
-    # DPT    
+    # DPT
     links.append(Comment(' === '+'DPT'+' === '))
 
     for link_id in links_DPT:
