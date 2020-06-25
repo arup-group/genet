@@ -4,6 +4,7 @@ from lxml import etree as et
 from lxml.etree import Element, SubElement, Comment
 from tqdm import tqdm
 
+
 # Below function should be deprecated - possibly replaced by an XML parser ?
 def extract_toll_ways_from_opl(path_opl):
     '''
@@ -88,6 +89,7 @@ def extract_network_id_from_osm_id(network, osm_way_ids):
     :param osm_way_ids: a list of OSM way ids (without the `w` prefix) (str)
     :return: a list of network edge ids (str)
     '''
+
     # a notion of progress bar could be nice but it's tricky to implement here
     # as we don't know how long the loop will have to run for (see break clause)
     network_toll_ids = []
@@ -117,7 +119,12 @@ def extract_network_id_from_osm_id(network, osm_way_ids):
 
 
 def extract_network_id_from_osm_csv(network, osm_csv_path, outpath):
-    '''
+    '''Parse a Network() object and find edges whose
+    ['attributes']['osm:way:id']['text'] is present in a list of OSM way ids
+    :param network: a Network() object with 'osm:way:id'
+    :param osm_csv_path: path to a .csv config file where OSM way ids are stored in column `osm_ids`
+    :param outpath: path to a .csv file to be written
+    :return: None, but will write .csv file to `outpath` location
     '''
     osm_df = pd.read_csv(osm_csv_path, dtype=str)
     # for each row in osm_df, we want to add a values 'network_id'
@@ -133,12 +140,12 @@ def extract_network_id_from_osm_csv(network, osm_csv_path, outpath):
             if str(edge_osm_id) in osm_ids:
                 # if the OSM id associated to that Network link is one of the OSM toll ways we are interested in
                 # then we extract the indices of all rows in the .csv where that OSM toll way appears
-                temp_index = osm_df[osm_df['osm_ids']==edge_osm_id].index
+                temp_index = osm_df[osm_df['osm_ids'] == edge_osm_id].index
                 if len(temp_index) > 1:
-                    osm_df.loc[temp_index,'network_id'] = link_id
+                    osm_df.loc[temp_index, 'network_id'] = link_id
                 else:
                     temp_index = temp_index[0]
-                    osm_df.loc[temp_index,'network_id'] = link_id
+                    osm_df.loc[temp_index, 'network_id'] = link_id
                 
                 edge_osm_ids.update(edge_osm_id)
             else:
@@ -164,14 +171,13 @@ def extract_network_id_from_osm_csv(network, osm_csv_path, outpath):
     osm_df.to_csv(outpath, index=False)
 
 
-
 def write_xml(root, path):
-    """
+    '''
     Write XML config for MATSim Road Pricing a given folder location.
     :param root: an 'lxml.etree._Element' object corresponding to the root of an XML tree
     :param path: location of destination folder for Road Pricing config
     :return: None
-    """
+    '''
     tree = et.tostring(root,
                        pretty_print=True,
                        xml_declaration=False,
@@ -205,7 +211,6 @@ def build_tree(network_toll_ids):
     return roadpricing
 
 
-
 def build_tree_from_csv(csv_input):
     '''
     Build XML config for MATSim Road Pricing from .csv input
@@ -221,13 +226,14 @@ def build_tree_from_csv(csv_input):
     links = SubElement(roadpricing, "links")
 
     tolled_links_df = pd.read_csv(csv_input)
-    tolled_links_df = tolled_links_df.sort_values(by='osm_refs') # make sure all links from same toll are grouped together
+    # make sure all links from same toll are grouped together:
+    tolled_links_df = tolled_links_df.sort_values(by='osm_refs')
 
     # remove references to 'DPT', we will hard-code its paramters below
-    links_DPT = list(tolled_links_df[tolled_links_df['osm_refs']=='DPT']['network_id'].values)
-    tolled_links_df = tolled_links_df[tolled_links_df['osm_refs']!='DPT'] 
-    
-    commented_tolls = [] # list to keep track of which Toll names we added as comments
+    links_DPT = list(tolled_links_df[tolled_links_df['osm_refs'] == 'DPT']['network_id'].values)
+    tolled_links_df = tolled_links_df[tolled_links_df['osm_refs'] != 'DPT']
+
+    commented_tolls = []  # list to keep track of which Toll names we added as comments
 
     # all other tolls
     for index, row in tolled_links_df.iterrows():
@@ -237,9 +243,9 @@ def build_tree_from_csv(csv_input):
             commented_tolls.append(str(row['osm_refs']))
 
         link = SubElement(links, "link", id=str(row['network_id']))
-        SubElement(link, "cost", start_time=str(row['start_time']), end_time=str(row['end_time']), 
-                    amount=str(row['toll_amount'])
-                    )
+        SubElement(link, "cost", start_time=str(row['start_time']),
+                   end_time=str(row['end_time']), amount=str(row['toll_amount'])
+                   )
 
     # DPT    
     links.append(Comment(' === '+'DPT'+' === '))
@@ -252,6 +258,5 @@ def build_tree_from_csv(csv_input):
         SubElement(link, "cost", start_time="10:00", end_time="15:59", amount="3.00")
         SubElement(link, "cost", start_time="16:00", end_time="18:59", amount="10.00")
         SubElement(link, "cost", start_time="19:00", end_time="23:59", amount="3.00")
-
 
     return roadpricing
