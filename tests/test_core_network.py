@@ -896,7 +896,7 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
 
 
 def test_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):
-    mocker.patch.object(matsim_reader, 'read_network', return_value=(1, 3))
+    mocker.patch.object(matsim_reader, 'read_network', return_value=(1, 2, {}, {}))
 
     network = Network()
     network.read_matsim_network(pt2matsim_network_test_file, 'epsg:27700')
