@@ -111,9 +111,9 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
 
 def test_read_network_builds_graph_with_unique_links_given_matsim_netowork_with_clashing_link_ids():
     correct_nodes = {
-        '21667818': {'id': '21667818', 's2_id': 5221390302696205321, 'x': '528504.1342843144', 'y': '182155.7435136598',
+        '21667818': {'id': '21667818', 's2_id': 5221390302696205321, 'x': 528504.1342843144, 'y': 182155.7435136598,
                      'lon': -0.14910908709500162, 'lat': 51.52370573323939},
-        '25508485': {'id': '25508485', 's2_id': 5221390301001263407, 'x': '528489.467895946', 'y': '182206.20303669578',
+        '25508485': {'id': '25508485', 's2_id': 5221390301001263407, 'x': 528489.467895946, 'y': 182206.20303669578,
                      'lon': -0.14930198709481451, 'lat': 51.524162533239284}}
 
     correct_edges = {'25508485_21667818': {
@@ -149,6 +149,7 @@ def test_read_network_builds_graph_with_unique_links_given_matsim_netowork_with_
     g, link_id_mapping, duplicated_nodes, duplicated_link_ids = matsim_reader.read_network(
         pt2matsim_network_clashing_link_ids_test_file, transformer)
 
+    assert len(g.nodes) == len(correct_nodes)
     for u, data in g.nodes(data=True):
         assert str(u) in correct_nodes
         assert_semantically_equal(data, correct_nodes[str(u)])
@@ -167,9 +168,9 @@ def test_read_network_builds_graph_with_unique_links_given_matsim_netowork_with_
 
 def test_read_network_rejects_non_unique_nodes():
     correct_nodes = {
-        '21667818': {'id': '21667818', 's2_id': 5221390302696205321, 'x': '528504.1342843144', 'y': '182155.7435136598',
+        '21667818': {'id': '21667818', 's2_id': 5221390302696205321, 'x': 528504.1342843144, 'y': 182155.7435136598,
                      'lon': -0.14910908709500162, 'lat': 51.52370573323939},
-        '25508485': {'id': '25508485', 's2_id': 5221390301001263407, 'x': '528489.467895946', 'y': '182206.20303669578',
+        '25508485': {'id': '25508485', 's2_id': 5221390301001263407, 'x': 528489.467895946, 'y': 182206.20303669578,
                      'lon': -0.14930198709481451, 'lat': 51.524162533239284}}
 
     correct_edges = {'25508485_21667818': {
@@ -197,7 +198,7 @@ def test_read_network_rejects_non_unique_nodes():
         assert_semantically_equal(data, correct_nodes[str(u)])
 
     assert_semantically_equal(duplicated_nodes, {
-        '21667818': [{'id': '21667818', 'x': '528504.1342843144', 'y': '182155.7435136598', 'lon': -0.14910908709500162,
+        '21667818': [{'id': '21667818', 'x': 528504.1342843144, 'y': 182155.7435136598, 'lon': -0.14910908709500162,
                      'lat': 51.52370573323939, 's2_id': 5221390302696205321}]})
 
     assert len(g.edges) == len(correct_edges)
