@@ -410,7 +410,7 @@ def test_add_edge_generates_a_link_id_and_delegated_to_add_link_id(mocker):
     n.add_edge(1, 2, attribs={'a': 1})
 
     Network.generate_index_for_edge.assert_called_once()
-    Network.add_link.assert_called_once_with('12345', 1, 2, None, {'a': 1})
+    Network.add_link.assert_called_once_with('12345', 1, 2, None, {'a': 1}, False)
 
 
 def test_add_edge_generates_a_link_id_with_specified_multiidx(mocker):
@@ -420,7 +420,7 @@ def test_add_edge_generates_a_link_id_with_specified_multiidx(mocker):
     n.add_edge(1, 2, multi_edge_idx=10, attribs={'a': 1})
 
     Network.generate_index_for_edge.assert_called_once()
-    Network.add_link.assert_called_once_with('12345', 1, 2, 10, {'a': 1})
+    Network.add_link.assert_called_once_with('12345', 1, 2, 10, {'a': 1}, False)
 
 
 def test_add_link_adds_edge_to_graph_with_attribs():
@@ -863,14 +863,14 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
     osm_test_file = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml"))
     network = Network()
-    network.read_osm_to_network(osm_test_file, full_fat_default_config_path, 'epsg:27700', 1)
+    network.read_osm(osm_test_file, full_fat_default_config_path, 'epsg:27700', 1)
     assert_semantically_equal(dict(network.nodes()), {
-        '0': {'id': '0', 'x': 49.76680731128457, 'y': -7.557159824733108, 'lon': -0.0006545205888310243,
-              'lat': 0.008554364250688652, 's2_id': 1152921492875543713},
-        '1': {'id': '1', 'x': 49.766807452044425, 'y': -7.557159840875761, 'lon': -0.0006545205888310243,
-              'lat': 0.024278505899735615, 's2_id': 1152921335974974453},
-        '2': {'id': '2', 'x': 49.76680717052477, 'y': -7.557159808590456, 'lon': -0.0006545205888310243,
-              'lat': -0.00716977739835831, 's2_id': 384307157539499829}})
+        '0': {'id': '0', 'x': 49.766807234971715, 'y': -7.557159688006741, 'lat': -0.0006545205888310243,
+              'lon': 0.008554364250688652, 's2_id': 1152921492875543713},
+        '1': {'id': '1', 'x': 49.76680724542758, 'y': -7.5571594706895535, 'lat': -0.0006545205888310243,
+              'lon': 0.024278505899735615, 's2_id': 1152921335974974453},
+        '2': {'id': '2', 'x': 49.766807224515865, 'y': -7.557159905323929, 'lat': -0.0006545205888310243,
+              'lon': -0.00716977739835831, 's2_id': 384307157539499829}})
     assert len(list(network.links())) == 8
 
     number_of_0_multi_idx = 0
