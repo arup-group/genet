@@ -1,7 +1,6 @@
 import networkx as nx
 import pandas as pd
 import uuid
-import warnings
 import logging
 import os
 import osmnx as ox
@@ -23,7 +22,6 @@ class Network:
         self.schedule = Schedule()
         self.change_log = ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
-        self.modes = []
 
         self.epsg = ''
         self.transformer = ''
@@ -41,6 +39,31 @@ class Network:
 
     def __str__(self):
         return self.info()
+
+    def add(self, other):
+        """
+        This is deliberately not a magic function to discourage `new_network = network_1 + network_2` (and memory
+        goes out the window)
+        :param other:
+        :return:
+        """
+        # consolidate node ids
+        other = graph_operations.consolidate_node_indices(self, other)
+        # consolidate link ids
+        other = graph_operations.consolidate_link_indices(self, other)
+
+        # finally, once the node and link ids have been sorted, combine the graphs
+        # nx.compose(left, right) overwrites data in left with data in right under matching ids
+        self.graph = nx.compose(other.graph, self.graph)
+        # finally, combine link_id_mappings
+        self.link_id_mapping = {**other.link_id_mapping, **self.link_id_mapping}
+
+        # combine schedules
+        self.schedule = self.schedule + other.schedule
+
+        # merge change_log DataFrames
+        self.change_log.log = self.change_log.log.append(other.change_log.log)
+        self.change_log.log = self.change_log.log.sort_values(by='timestamp').reset_index(drop=True)
 
     def print(self):
         return self.info()
@@ -64,10 +87,39 @@ class Network:
     def node_attribute_data_under_key(self, key):
         """
         Generates a pandas.Series object index by node ids, with data stored on the nodes under `key`
-        :param key: e.g.
+        :param key: either a string e.g. 'x', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
         :return: pandas.Series
         """
         return pd.Series(graph_operations.get_attribute_data_under_key(self.nodes(), key))
+
+    def node_attribute_data_under_keys(self, keys: list, index_name=None):
+        """
+        Generates a pandas.DataFrame object index by link ids, with data stored on the nodes under `key`
+        :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        df = None
+        for key in keys:
+            if isinstance(key, dict):
+                # consolidate nestedness to get a name for the column
+                name = str(key)
+                name = name.replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
+            else:
+                name = key
+
+            col_series = self.node_attribute_data_under_key(key)
+            col_series.name = name
+
+            if df is not None:
+                df = df.merge(pd.DataFrame(col_series), left_index=True, right_index=True, how='outer')
+            else:
+                df = pd.DataFrame(col_series)
+        if index_name:
+            df.index = df.index.set_names([index_name])
+        return df
 
     def link_attribute_summary(self, data=False):
         """
@@ -79,13 +131,42 @@ class Network:
         root = graph_operations.get_attribute_schema(self.links(), data=data)
         graph_operations.render_tree(root, data)
 
-    def link_attribute_data_under_key(self, key):
+    def link_attribute_data_under_key(self, key: Union[str, dict]):
         """
         Generates a pandas.Series object index by link ids, with data stored on the links under `key`
-        :param key:
+        :param key: either a string e.g. 'modes', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
         :return: pandas.Series
         """
         return pd.Series(graph_operations.get_attribute_data_under_key(self.links(), key))
+
+    def link_attribute_data_under_keys(self, keys: list, index_name=None):
+        """
+        Generates a pandas.DataFrame object index by link ids, with data stored on the links under `key`
+        :param keys: list of either a string e.g. 'modes', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        df = None
+        for key in keys:
+            if isinstance(key, dict):
+                # consolidate nestedness to get a name for the column
+                name = str(key)
+                name = name.replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
+            else:
+                name = key
+
+            col_series = self.link_attribute_data_under_key(key)
+            col_series.name = name
+
+            if df is not None:
+                df = df.merge(pd.DataFrame(col_series), left_index=True, right_index=True, how='outer')
+            else:
+                df = pd.DataFrame(col_series)
+        if index_name:
+            df.index = df.index.set_names([index_name])
+        return df
 
     def add_node(self, node: Union[str, int], attribs: dict = None):
         if attribs is not None:
@@ -93,26 +174,101 @@ class Network:
         else:
             self.graph.add_node(node)
         self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
+        logging.info('Added Node with index `{}` and data={}'.format(node, attribs))
+        return node
 
-    def add_edge(self, u: Union[str, int], v: Union[str, int], attribs: dict = None):
+    def add_edge(self, u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None, attribs: dict = None):
+        """
+        Adds an edge between u and v. If an edge between u and v already exists, adds an additional one. Generates
+        link id. If you already have a link id, use the method to add_link.
+        :param u: node in the graph
+        :param v: node in the graph
+        :param multi_edge_idx: you can specify which multi index to use if there are other edges between u and v.
+        Will generate new index if already used.
+        :param attribs:
+        :return:
+        """
         link_id = self.generate_index_for_edge()
-        self.add_link(link_id, u, v, attribs)
-        logging.info('Added edge from {} to {} with link_id {}'.format(u, v, link_id))
+        self.add_link(link_id, u, v, multi_edge_idx, attribs)
+        logging.info('Added edge from `{}` to `{}` with link_id `{}`'.format(u, v, link_id))
         return link_id
 
-    def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], attribs: dict = None):
+    def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None,
+                 attribs: dict = None):
+        """
+        Adds an link between u and v with id link_id, if available. If a link between u and v already exists,
+        adds an additional one.
+        :param link_id:
+        :param u: node in the graph
+        :param v: node in the graph
+        :param multi_edge_idx: you can specify which multi index to use if there are other edges between u and v.
+        Will generate new index if already used.
+        :param attribs:
+        :return:
+        """
         if link_id in self.link_id_mapping:
             new_link_id = self.generate_index_for_edge()
-            warnings.warn('This link_id={} already exists. Generated a new unique_index: {}'.format(
+            logging.warning('This link_id=`{}` already exists. Generated a new unique_index: `{}`'.format(
                 link_id, new_link_id))
             link_id = new_link_id
 
-        self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': self.number_of_multi_edges(u, v)}
-        if attribs is not None:
-            self.graph.add_edge(u, v, **attribs)
+        if multi_edge_idx is None:
+            multi_edge_idx = self.graph.new_edge_key(u, v)
+        if self.graph.has_edge(u, v, multi_edge_idx):
+            old_idx = multi_edge_idx
+            multi_edge_idx = self.graph.new_edge_key(u, v)
+            logging.warning('Changing passed multi_edge_idx: `{}` as there already exists an edge stored under that '
+                            'index. New multi_edge_idx: `{}`'.format(old_idx, multi_edge_idx))
+        if not isinstance(multi_edge_idx, int):
+            raise RuntimeError('Multi index key needs to be an integer')
+
+        self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
+        compulsory_attribs = {'from': u, 'to': v, 'id': link_id}
+        if attribs is None:
+            attribs = compulsory_attribs
         else:
-            self.graph.add_edge(u, v)
+            attribs = {**attribs, **compulsory_attribs}
+        self.graph.add_edge(u, v, key=multi_edge_idx, **attribs)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
+        logging.info('Added Link with index {}, from node:{} to node:{}, under multi-index:{}, and data={}'.format(
+            link_id, u, v, multi_edge_idx, attribs))
+        return link_id
+
+    def reindex_node(self, node_id, new_node_id):
+        # check if new id is already occupied
+        if self.node_id_exists(new_node_id):
+            new_node_id = self.generate_index_for_node()
+        # extract link ids which will be affected byt the node relabel and change the from anf to attributes
+        from_links = graph_operations.extract_links_on_edge_attributes(self, conditions={'from': node_id})
+        self.apply_attributes_to_links(from_links, {'from': new_node_id})
+        to_links = graph_operations.extract_links_on_edge_attributes(self, conditions={'to': node_id})
+        self.apply_attributes_to_links(to_links, {'to': new_node_id})
+        # update link_id_mapping
+        for k in from_links:
+            self.link_id_mapping[k]['from'] = new_node_id
+        for k in to_links:
+            self.link_id_mapping[k]['to'] = new_node_id
+
+        new_attribs = deepcopy(self.node(node_id))
+        new_attribs['id'] = new_node_id
+        self.change_log.modify(object_type='node', old_id=node_id, new_id=new_node_id,
+                               old_attributes=self.node(node_id), new_attributes=new_attribs)
+        self.apply_attributes_to_node(node_id, new_attribs)
+        self.graph = nx.relabel_nodes(self.graph, {node_id: new_node_id})
+        logging.info('Changed Node index from {} to {}'.format(node_id, new_node_id))
+
+    def reindex_link(self, link_id, new_link_id):
+        # check if new id is already occupied
+        if self.link_id_exists(new_link_id):
+            new_link_id = self.generate_index_for_edge()
+        new_attribs = deepcopy(self.link(link_id))
+        new_attribs['id'] = new_link_id
+        self.change_log.modify(object_type='link', old_id=link_id, new_id=new_link_id,
+                               old_attributes=self.link(link_id), new_attributes=new_attribs)
+        self.apply_attributes_to_link(link_id, new_attribs)
+        self.link_id_mapping[new_link_id] = self.link_id_mapping[link_id]
+        del self.link_id_mapping[link_id]
+        logging.info('Changed Link index from {} to {}'.format(link_id, new_link_id))
 
     def subgraph_on_link_conditions(self, conditions):
         """
@@ -161,6 +317,7 @@ class Network:
             old_attributes=self.node(node_id),
             new_attributes=new_attributes)
         nx.set_node_attributes(self.graph, {node_id: new_attributes})
+        logging.info('Changed Node attributes under index: {}'.format(node_id))
 
     def apply_attributes_to_nodes(self, nodes: list, new_attributes: dict):
         """
@@ -198,6 +355,7 @@ class Network:
             new_attributes=new_attributes)
 
         nx.set_edge_attributes(self.graph, {(u, v, multi_idx): new_attributes})
+        logging.info('Changed Link attributes under index: {}'.format(link_id))
 
     def apply_attributes_to_links(self, links: list, new_attributes: dict):
         """
@@ -208,6 +366,45 @@ class Network:
         :return:
         """
         [self.apply_attributes_to_link(link, new_attributes) for link in links]
+
+    def remove_node(self, node_id):
+        """
+        Removes the node n and all adjacent edges
+        :param node_id:
+        :return:
+        """
+        self.change_log.remove(object_type='node', object_id=node_id, object_attributes=self.node(node_id))
+        self.graph.remove_node(node_id)
+        logging.info('Removed Node under index: {}'.format(node_id))
+
+    def remove_nodes(self, nodes):
+        """
+        Removes several nodes and all adjacent edges
+        :param nodes:
+        :return:
+        """
+        [self.remove_node(node) for node in nodes]
+
+    def remove_link(self, link_id):
+        """
+        Removes the multi edge pertaining to link given
+        :param link_id:
+        :return:
+        """
+        self.change_log.remove(object_type='link', object_id=link_id, object_attributes=self.link(link_id))
+        u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
+        multi_idx = self.link_id_mapping[link_id]['multi_edge_idx']
+        self.graph.remove_edge(u, v, multi_idx)
+        del self.link_id_mapping[link_id]
+        logging.info('Removed Link under index: {}'.format(link_id))
+
+    def remove_links(self, links):
+        """
+        Removes the multi edges pertaining to links given
+        :param links:
+        :return:
+        """
+        [self.remove_link(link) for link in links]
 
     def number_of_multi_edges(self, u, v):
         """
@@ -279,7 +476,25 @@ class Network:
 
     def read_matsim_network(self, path, epsg):
         self.initiate_crs_transformer(epsg)
-        self.graph, self.link_id_mapping = matsim_reader.read_network(path, self.transformer)
+        self.graph, self.link_id_mapping, duplicated_nodes, duplicated_links = \
+            matsim_reader.read_network(path, self.transformer)
+
+        for node_id, duplicated_node_attribs in duplicated_nodes.items():
+            for duplicated_node_attrib in duplicated_node_attribs:
+                self.change_log.remove(
+                    object_type='node',
+                    object_id=node_id,
+                    object_attributes=duplicated_node_attrib
+                )
+        for link_id, reindexed_duplicated_links in duplicated_links.items():
+            for duplicated_link in reindexed_duplicated_links:
+                self.change_log.modify(
+                    object_type='link',
+                    old_id=link_id,
+                    old_attributes=self.link(duplicated_link),
+                    new_id=duplicated_link,
+                    new_attributes=self.link(duplicated_link)
+                )
 
     def read_matsim_schedule(self, path, epsg=None):
         if epsg is None:
@@ -292,17 +507,46 @@ class Network:
             self.initiate_crs_transformer(epsg)
         self.schedule.read_matsim_schedule(path, self.epsg)
 
-    def generate_index_for_edge(self):
+    def node_id_exists(self, node_id):
+        if node_id in [i for i, attribs in self.nodes()]:
+            logging.warning('This node_id={} already exists.'.format(node_id))
+            return True
+        return False
+
+    def generate_index_for_node(self, avoid_keys: Union[list, set] = None):
+        existing_keys = set([i for i, attribs in self.nodes()])
+        if avoid_keys:
+            existing_keys = existing_keys | set(avoid_keys)
         try:
-            id = max([int(i) for i in self.link_id_mapping.keys()]) + 1
+            id = max([int(i) for i in existing_keys]) + 1
         except ValueError:
-            id = len(self.link_id_mapping) + 1
-        if (id in self.link_id_mapping) or (str(id) in self.link_id_mapping):
+            id = len(existing_keys) + 1
+        if (id in existing_keys) or (str(id) in existing_keys):
             id = uuid.uuid4()
+        logging.info('Generated node id {}.'.format(id))
+        return str(id)
+
+    def link_id_exists(self, link_id):
+        if link_id in self.link_id_mapping:
+            logging.warning('This link_id={} already exists.'.format(link_id))
+            return True
+        return False
+
+    def generate_index_for_edge(self, avoid_keys: Union[list, set] = None):
+        existing_keys = set(self.link_id_mapping.keys())
+        if avoid_keys:
+            existing_keys = existing_keys | set(avoid_keys)
+        try:
+            id = max([int(i) for i in existing_keys]) + 1
+        except ValueError:
+            id = len(existing_keys) + 1
+        if (id in existing_keys) or (str(id) in existing_keys):
+            id = uuid.uuid4()
+        logging.info('Generated link id {}.'.format(id))
         return str(id)
 
     def index_graph_edges(self):
-        warnings.warn('This method clears the existing link_id indexing')
+        logging.warning('This method clears the existing link_id indexing')
         self.link_id_mapping = {}
         i = 0
         for u, v, multi_edge_idx in self.graph.edges:
@@ -397,8 +641,10 @@ class Schedule:
         :return:
         """
         if not self.is_separable_from(other):
+            # have left and right indicies
             raise NotImplementedError('This method only supports adding non overlapping services.')
         elif self.epsg != other.epsg:
+            # TODO change to reprojection
             raise RuntimeError('You are merging two schedules with different coordinate systems.')
         else:
             return self.__class__(

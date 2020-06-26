@@ -1,3 +1,4 @@
+import logging
 import networkx as nx
 import xml.etree.cElementTree as ET
 from pyproj import Transformer, Proj
@@ -6,11 +7,118 @@ from genet.variables import MODE_TYPES_MAP
 from genet.schedule_elements import Route, Stop, Service
 
 
-def read_network(network_path, TRANSFORMER: Transformer):
+def read_node(elem, g, node_id_mapping, transformer):
+    """
+    Adds node elem of the stream to the network
+    :param elem:
+    :param g: nx.MultiDiGraph
+    :param node_id_mapping:
+    :param transformer:
+    :return:
+    """
+    duplicated_node_id = {}
+    attribs = elem.attrib
+    lat, lon = spatial.change_proj(attribs['x'], attribs['y'], transformer)
+    # ideally we would check if the transformer was created with always_xy=True and swap
+    # lat and long values if so, but there is no obvious way to interrogate the transformer
+    attribs['lon'], attribs['lat'] = lon, lat
+    attribs['s2_id'] = spatial.grab_index_s2(lat, lon)
+    node_id = attribs['id']
+    if node_id in node_id_mapping:
+        logging.warning('This MATSim network has a node that is not unique: {}. Generating a new id would'
+                        'be pointless as we don\'t know which links should be connected to this particular'
+                        'node. The node will cease to exist and the first encountered node with this id'
+                        'will be kept. Investigate the links connected to that node.'.format(node_id))
+        duplicated_node_id[node_id] = attribs
+    else:
+        node_id_mapping[node_id] = attribs['s2_id']
+        g.add_node(node_id, **attribs)
+    return g, duplicated_node_id
+
+
+def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
+    """
+    Reads link elem of the stream to the network
+    :param elem:
+    :param g: nx.MultiDiGraph
+    :param u: from node of the previous link
+    :param v: to node of the previous link
+    :param node_id_mapping:
+    :param link_id_mapping:
+    :param link_attribs: link attributes of the previous link
+    :return:
+    """
+    duplicated_link_id = {}
+    # update old link by link attributes (osm tags etc.)
+    if link_attribs:
+        # if multiple edges, add to the one added most recently
+        g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs  # noqa: F821
+
+    attribs = elem.attrib
+    attribs['s2_from'] = node_id_mapping[attribs['from']]
+    attribs['s2_to'] = node_id_mapping[attribs['to']]
+    attribs['modes'] = read_modes(attribs['modes'])
+
+    link_id, duplicated_link_id = unique_link_id(attribs['id'], link_id_mapping)
+    attribs['id'] = link_id
+    link_id_mapping[link_id] = {
+        'from': attribs['from'],
+        'to': attribs['to']
+    }
+
+    for key in ['freespeed', 'capacity', 'permlanes']:
+        try:
+            attribs[key] = float(attribs[key])
+        except KeyError:
+            logging.warning('Key: {} is not present in link: {}. This may lead to problems if using this'
+                            'network with MATSim.')
+
+    length = float(attribs['length'])
+    del attribs['length']
+
+    u = attribs['from']
+    v = attribs['to']
+    if g.has_edge(u, v):
+        link_id_mapping[link_id]['multi_edge_idx'] = len(g[u][v])
+    else:
+        link_id_mapping[link_id]['multi_edge_idx'] = 0
+    g.add_weighted_edges_from([(u, v, length)], weight='length', **attribs)
+    return g, u, v, link_id_mapping, duplicated_link_id
+
+
+def read_link_attrib(elem, link_attribs):
+    """
+    Reads link attributes
+    :param elem:
+    :param link_attribs: current link attributes
+    :return:
+    """
+    d = elem.attrib
+    d['text'] = elem.text
+    link_attribs[elem.attrib['name']] = d
+    return link_attribs
+
+
+def unique_link_id(link_id, link_id_mapping):
+    duplicated_link_id = {}
+    if link_id in link_id_mapping:
+        old_link_id = link_id
+        logging.warning('This MATSim network has a link that is not unique: {}'.format(old_link_id))
+        i = 1
+        link_id = old_link_id
+        while link_id in link_id_mapping:
+            link_id = '{}_{}'.format(old_link_id, i)
+            i += 1
+        logging.warning('Generated new link_id: {}'.format(link_id))
+        duplicated_link_id[old_link_id] = link_id
+    return link_id, duplicated_link_id
+
+
+def read_network(network_path, transformer: Transformer):
     """
     Read MATSim network
     :param network_path: path to the network.xml file
-    :param TRANSFORMER: pyproj crs transformer
+    :param transformer: pyproj crs transformer
     :return: g (nx.MultiDiGraph representing the multimodal network),
         node_id_mapping (dict {matsim network node ids : s2 spatial ids}),
         link_id_mapping (dict {matsim network link ids : {'from': matsim id from node, ,'to': matsim id to
@@ -21,63 +129,37 @@ def read_network(network_path, TRANSFORMER: Transformer):
     node_id_mapping = {}
     link_id_mapping = {}
     link_attribs = {}
+    duplicated_link_ids = {}
+    duplicated_node_ids = {}
+    u, v = None, None
 
     for event, elem in ET.iterparse(network_path, events=('start', 'end')):
         if event == 'start':
             if elem.tag == 'node':
-                attribs = elem.attrib
-                attribs['x'], attribs['y'] = float(attribs['x']), float(attribs['y'])
-                lat, lon = spatial.change_proj(attribs['x'], attribs['y'], TRANSFORMER)
-                # ideally we would check if the transformer was created with always_xy=True and swap
-                # lat and long values if so, but there is no obvious way to interrogate the transformer
-                attribs['lon'], attribs['lat'] = lon, lat
-                node_id = spatial.grab_index_s2(lat, lon)
-                attribs['s2_id'] = node_id
-                node_id_mapping[attribs['id']] = node_id
-                g.add_node(attribs['id'], **attribs)
+                g, duplicated_node_id = read_node(elem, g, node_id_mapping, transformer)
+                if duplicated_node_id:
+                    for key, val in duplicated_node_id.items():
+                        if key in duplicated_node_ids:
+                            duplicated_node_ids[key].append(val)
+                        else:
+                            duplicated_node_ids[key] = [val]
             elif elem.tag == 'link':
-                # update old link by link attributes (osm tags etc.)
-                if link_attribs:
-                    # if multiple edges, add to the one added most recently
-                    g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs  # noqa: F821
-
-                attribs = elem.attrib
-                attribs['s2_from'] = node_id_mapping[attribs['from']]
-                attribs['s2_to'] = node_id_mapping[attribs['to']]
-                attribs['modes'] = read_modes(attribs['modes'])
-
-                link_id_mapping[attribs['id']] = {
-                    'from': attribs['from'],
-                    'to': attribs['to']
-                }
-
-                try:
-                    attribs['freespeed'] = float(attribs['freespeed'])
-                    attribs['capacity'] = float(attribs['capacity'])
-                    attribs['permlanes'] = float(attribs['permlanes'])
-                except KeyError:
-                    pass
-
-                length = float(attribs['length'])
-                del attribs['length']
-
-                u = attribs['from']
-                v = attribs['to']
-                if g.has_edge(u, v):
-                    link_id_mapping[attribs['id']]['multi_edge_idx'] = len(g[u][v])
-                else:
-                    link_id_mapping[attribs['id']]['multi_edge_idx'] = 0
-                g.add_weighted_edges_from([(u, v, length)], weight='length', **attribs)
+                g, u, v, link_id_mapping, duplicated_link_id = read_link(
+                    elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs)
+                if duplicated_link_id:
+                    for key, val in duplicated_link_id.items():
+                        if key in duplicated_link_ids:
+                            duplicated_link_ids[key].append(val)
+                        else:
+                            duplicated_link_ids[key] = [val]
                 # reset link_attribs
                 link_attribs = {}
             elif elem.tag == 'attribute':
-                d = elem.attrib
-                d['text'] = elem.text
-                link_attribs[elem.attrib['name']] = d
+                link_attribs = read_link_attrib(elem, link_attribs)
     # update the attributes of the last link
     if link_attribs:
         g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs
-    return g, link_id_mapping
+    return g, link_id_mapping, duplicated_node_ids, duplicated_link_ids
 
 
 def read_modes(modes_string):
