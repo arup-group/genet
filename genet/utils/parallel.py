@@ -2,20 +2,20 @@ import logging
 import multiprocessing as mp
 
 
-def partition_list(l, k=100):
+def partition_list(_list, k=100):
     """
     Partitions list into list of subsets of l
-    :param l: any list
+    :param _list: any list
     :param k: batch size (number of items from the list)
     :return: list of lists
     """
-    if len(l) <= k:
-        return [l]
+    if len(_list) <= k:
+        return [_list]
     else:
-        n = len(l) // k
-        l_partitioned = [l[(k * i):(k * (i + 1))] for i in range(n)]
+        n = len(_list) // k
+        l_partitioned = [_list[(k * i):(k * (i + 1))] for i in range(n)]
         # leftovers
-        l_partitioned.append(l[(k * n):])
+        l_partitioned.append(_list[(k * n):])
         logging.info('{} or {} batches of size {} ish'.format(n, n + 1, k))
         return l_partitioned
 
