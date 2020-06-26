@@ -96,21 +96,14 @@ def get_path(element, config):
     return path
 
 
-def return_edges(paths, args):
+def return_edges(paths, config, bidirectional=False):
     """
     Makes graph edges from osm paths
     :param paths: dictionary {osm_way_id: {osmid: x, nodes:[a,b], osmtags: vals}}
-    :param args: dictionary of other inputs:
-    - config: genet.inputs_handler.osm_reader.Config object
-    - bidirectional: bool value if True, reads all paths as both ways
+    :param config: genet.inputs_handler.osm_reader.Config object
+    :param bidirectional: bool value if True, reads all paths as both ways
     :return:
     """
-    config = args['config']
-    if 'bidirectional' not in args:
-        bidirectional = False
-    else:
-        bidirectional = args['bidirectional']
-
     def extract_osm_data(data, es):
         d = {}
         for tag in (set(config.USEFUL_TAGS_PATH) | {'osmid', 'modes'}) - {'oneway'}:
