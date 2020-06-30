@@ -3,28 +3,26 @@ import pandas as pd
 import uuid
 import logging
 import os
-import osmnx as ox
 from copy import deepcopy
 from typing import Union, List
 from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.outputs_handler import matsim_xml_writer
 from genet.modify import ChangeLog
-from genet.utils import spatial, persistence, graph_operations
+from genet.utils import spatial, persistence, graph_operations, plot
 from genet.schedule_elements import Service
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 
 class Network:
-    def __init__(self):
-        self.graph = nx.MultiDiGraph()
-        self.schedule = Schedule()
+    def __init__(self, epsg):
+        self.epsg = epsg
+        self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+        self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg})
+        self.schedule = Schedule(epsg)
         self.change_log = ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
-
-        self.epsg = ''
-        self.transformer = ''
         # link_id_mapping maps between (usually string literal) index per edge to the from and to nodes that are
         # connected by the edge
         self.link_id_mapping = {}
@@ -66,13 +64,47 @@ class Network:
         self.change_log.log = self.change_log.log.sort_values(by='timestamp').reset_index(drop=True)
 
     def print(self):
-        return self.info()
+        print(self.info())
 
     def info(self):
         return "Graph info: {} \nSchedule info: {}".format(
             nx.info(self.graph),
             self.schedule.info()
         )
+
+    def plot(self, show=True, save=False, output_dir=''):
+        """
+        Plots the network graph and schedule
+        :param show: whether to display the plot
+        :param save: whether to save the plot
+        :param output_dir: output directory for the image
+        :return:
+        """
+        return plot.plot_graph_routes(self.graph, self.schedule_routes(), 'network_route_graph', show=show,
+                                      save=save, output_dir=output_dir)
+
+    def plot_graph(self, show=True, save=False, output_dir=''):
+        """
+        Plots the network graph only
+        :param show: whether to display the plot
+        :param save: whether to save the plot
+        :param output_dir: output directory for the image
+        :return:
+        """
+        return plot.plot_graph(self.graph, 'network_graph', show=show, save=save, output_dir=output_dir)
+
+    def plot_schedule(self, show=True, save=False, output_dir=''):
+        """
+        Plots original stop connections in the network's schedule over the network graph
+        :param show: whether to display the plot
+        :param save: whether to save the plot
+        :param output_dir: output directory for the image
+        :return:
+        """
+        fig, ax = self.plot_graph(show=False)
+        schedule_g = self.schedule.build_graph()
+        return plot.plot_non_routed_schedule_graph(
+            nx.MultiDiGraph(schedule_g), 'network_schedule.png', ax=ax, show=show, save=save, output_dir=output_dir)
 
     def node_attribute_summary(self, data=False):
         """
@@ -292,6 +324,7 @@ class Network:
 
         def modal_condition(modes_list):
             return set(modes_list) & modes
+
         return self.subgraph_on_link_conditions(conditions={'modes': modal_condition})
 
     def apply_attributes_to_node(self, node_id, new_attributes):
@@ -470,14 +503,24 @@ class Network:
         for id, service in self.schedule.services.items():
             yield service
 
-    def initiate_crs_transformer(self, epsg):
-        self.epsg = epsg
-        self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+    def schedule_routes(self):
+        routes = []
+        for route_id, _route in self.schedule.routes():
+            if _route.route:
+                route_nodes = graph_operations.convert_list_of_link_ids_to_network_nodes(self, _route.route)
+                if len(route_nodes) != 1:
+                    logging.warning('The route: {} is disconnected. Consists of {} chunks.'
+                                    ''.format(route_id, len(route_nodes)))
+                    routes.extend(route_nodes)
+                else:
+                    routes.append(route_nodes[0])
+        return routes
 
-    def read_matsim_network(self, path, epsg):
-        self.initiate_crs_transformer(epsg)
+    def read_matsim_network(self, path):
         self.graph, self.link_id_mapping, duplicated_nodes, duplicated_links = \
             matsim_reader.read_network(path, self.transformer)
+        self.graph.graph['name'] = 'Network graph'
+        self.graph.graph['crs'] = {'init': self.epsg}
 
         for node_id, duplicated_node_attribs in duplicated_nodes.items():
             for duplicated_node_attrib in duplicated_node_attribs:
@@ -496,16 +539,8 @@ class Network:
                     new_attributes=self.link(duplicated_link)
                 )
 
-    def read_matsim_schedule(self, path, epsg=None):
-        if epsg is None:
-            assert self.epsg
-            assert self.transformer
-        elif self.epsg and (epsg != self.epsg):
-            raise RuntimeError('The epsg you have given {} does not match the epsg currently stored for this network '
-                               '{}. Make sure you pass files with matching coordinate system.'.format(epsg, self.epsg))
-        else:
-            self.initiate_crs_transformer(epsg)
-        self.schedule.read_matsim_schedule(path, self.epsg)
+    def read_matsim_schedule(self, path):
+        self.schedule.read_matsim_schedule(path)
 
     def node_id_exists(self, node_id):
         if node_id in [i for i, attribs in self.nodes()]:
@@ -553,18 +588,6 @@ class Network:
             self.link_id_mapping[str(i)] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
             i += 1
 
-    def plot(self):
-        self.graph.graph['crs'] = {'init': self.epsg}
-        self.graph.graph['name'] = 'Graph_for_plotting'
-        ox.plot_graph(self.graph,
-                      filename='network_graph',
-                      node_color='#273746',
-                      node_size=1,
-                      edge_linewidth=0.5,
-                      edge_alpha=0.5,
-                      save=False,
-                      show=True)
-
     def generate_validation_report(self):
         report = {}
         # decribe network connectivity
@@ -595,8 +618,9 @@ class Schedule:
     :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     """
 
-    def __init__(self, services: List[Service] = None, epsg=''):
-        super().__init__()
+    def __init__(self, epsg, services: List[Service] = None):
+        self.epsg = epsg
+        self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
         if services is None:
             self.services = {}
             self.stops_mapping = pd.DataFrame(columns=['stop_id', 'stop', 'service_id', 'service'])
@@ -606,8 +630,6 @@ class Schedule:
             for service in services:
                 self.services[service.id] = service
             self.build_stops_mapping()
-        self.epsg = epsg
-        self.transformer = ''
         self.minimal_transfer_times = {}
 
     def __nonzero__(self):
@@ -655,10 +677,22 @@ class Schedule:
         return set(other.services.keys()) & set(self.services.keys()) == set()
 
     def print(self):
-        return self.info()
+        print(self.info())
 
     def info(self):
-        return 'Number of services: {}\nNumber of unique routes: {}'.format(self.__len__(), self.number_of_routes())
+        return 'Number of services: {}\nNumber of unique routes: {}\nNumber of stops:{}'.format(
+            self.__len__(), self.number_of_routes(), len(self.stops_mapping))
+
+    def plot(self, show=True, save=False, output_dir=''):
+        schedule_graph = self.build_graph()
+        return plot.plot_graph(
+            nx.MultiGraph(schedule_graph),
+            filename='schedule_graph',
+            show=show,
+            save=save,
+            output_dir=output_dir,
+            e_c='#EC7063'
+        )
 
     def service_ids(self):
         return list(self.services.keys())
@@ -698,13 +732,18 @@ class Schedule:
                 else:
                     self.stops_mapping[item] = [key]
 
+    def build_graph(self):
+        schedule_graph = nx.DiGraph(name='Service graph', crs={'init': self.epsg})
+        for service_id, service in self.services.items():
+            schedule_graph = nx.compose(service.build_graph(), schedule_graph)
+        return schedule_graph
+
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
         self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
 
-    def read_matsim_schedule(self, path, epsg):
-        self.initiate_crs_transformer(epsg)
-        services, self.minimal_transfer_times = matsim_reader.read_schedule(path, epsg)
+    def read_matsim_schedule(self, path):
+        services, self.minimal_transfer_times = matsim_reader.read_schedule(path, self.epsg)
         for service in services:
             self.services[service.id] = service
         self.build_stops_mapping()

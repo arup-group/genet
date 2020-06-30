@@ -2,11 +2,14 @@ import os
 import sys
 import uuid
 import pandas as pd
+import networkx as nx
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import network_object_from_test_data, assert_semantically_equal
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
+from genet.schedule_elements import Service
+from genet.utils import plot
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -17,8 +20,7 @@ pt2matsim_schedule_file = os.path.abspath(
 
 @pytest.fixture()
 def network1():
-    n1 = Network()
-    n1.epsg = 'epsg:27700'
+    n1 = Network('epsg:27700')
     n1.add_node('101982',
                 {'id': '101982',
                  'x': '528704.1425925883',
@@ -62,8 +64,7 @@ def network1():
 
 @pytest.fixture()
 def network2():
-    n2 = Network()
-    n2.epsg = 'epsg:4326'
+    n2 = Network('epsg:4326')
     n2.add_node('101982',
                 {'id': '101982',
                  'x': -0.14625948709424305,
@@ -106,31 +107,27 @@ def network2():
 
 
 def test__repr__shows_graph_info_and_schedule_info():
-    n = Network()
+    n = Network('epsg:4326')
     assert 'instance at' in n.__repr__()
     assert 'graph' in n.__repr__()
     assert 'schedule' in n.__repr__()
 
 
 def test__str__shows_info():
-    n = Network()
+    n = Network('epsg:4326')
     assert 'Graph info' in n.__str__()
     assert 'Schedule info' in n.__str__()
 
 
 def test_adding_the_same_networks():
-    n_left = Network()
-    n_left.epsg = 'epsg:27700'
-    n_left.schedule.epsg = 'epsg:27700'
+    n_left = Network('epsg:27700')
     n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
 
-    n_right = Network()
-    n_right.epsg = 'epsg:27700'
-    n_right.schedule.epsg = 'epsg:27700'
+    n_right = Network('epsg:27700')
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                            'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
@@ -147,18 +144,14 @@ def test_adding_the_same_networks():
 
 
 def test_adding_networks_with_clashing_node_ids():
-    n_left = Network()
-    n_left.epsg = 'epsg:27700'
-    n_left.schedule.epsg = 'epsg:27700'
+    n_left = Network('epsg:27700')
     n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
 
-    n_right = Network()
-    n_right.epsg = 'epsg:27700'
-    n_right.schedule.epsg = 'epsg:27700'
+    n_right = Network('epsg:27700')
     n_right.add_node('10', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                             'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.add_node('20', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
@@ -175,18 +168,14 @@ def test_adding_networks_with_clashing_node_ids():
 
 
 def test_adding_networks_with_clashing_link_ids():
-    n_left = Network()
-    n_left.epsg = 'epsg:27700'
-    n_left.schedule.epsg = 'epsg:27700'
+    n_left = Network('epsg:27700')
     n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
 
-    n_right = Network()
-    n_right.epsg = 'epsg:27700'
-    n_right.schedule.epsg = 'epsg:27700'
+    n_right = Network('epsg:27700')
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                            'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
@@ -203,18 +192,14 @@ def test_adding_networks_with_clashing_link_ids():
 
 
 def test_adding_networks_with_clashing_multiindices():
-    n_left = Network()
-    n_left.epsg = 'epsg:27700'
-    n_left.schedule.epsg = 'epsg:27700'
+    n_left = Network('epsg:27700')
     n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_left.add_link('1', '1', '2', 0, attribs={'modes': ['walk']})
 
-    n_right = Network()
-    n_right.epsg = 'epsg:27700'
-    n_right.schedule.epsg = 'epsg:27700'
+    n_right = Network('epsg:27700')
     n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
@@ -233,18 +218,14 @@ def test_adding_networks_with_clashing_multiindices():
 
 
 def test_adding_disjoint_networks_with_unique_ids():
-    n_left = Network()
-    n_left.epsg = 'epsg:27700'
-    n_left.schedule.epsg = 'epsg:27700'
+    n_left = Network('epsg:27700')
     n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
 
-    n_right = Network()
-    n_right.epsg = 'epsg:27700'
-    n_right.schedule.epsg = 'epsg:27700'
+    n_right = Network('epsg:27700')
     n_right.add_node('10', {'id': '1', 'x': 1, 'y': 1,
                             'lon': 1, 'lat': 1, 's2_id': 1})
     n_right.add_node('20', {'id': '2', 'x': 1, 'y': 1,
@@ -265,18 +246,14 @@ def test_adding_disjoint_networks_with_unique_ids():
 
 
 def test_adding_disjoint_networks_with_clashing_ids():
-    n_left = Network()
-    n_left.epsg = 'epsg:27700'
-    n_left.schedule.epsg = 'epsg:27700'
+    n_left = Network('epsg:27700')
     n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
 
-    n_right = Network()
-    n_right.epsg = 'epsg:27700'
-    n_right.schedule.epsg = 'epsg:27700'
+    n_right = Network('epsg:27700')
     n_right.add_node('1', {'id': '1', 'x': 1, 'y': 1,
                            'lon': 1, 'lat': 1, 's2_id': 1})
     n_right.add_node('2', {'id': '2', 'x': 1, 'y': 1,
@@ -295,13 +272,34 @@ def test_adding_disjoint_networks_with_clashing_ids():
 
 def test_print_shows_info(mocker):
     mocker.patch.object(Network, 'info')
-    n = Network()
+    n = Network('epsg:27700')
     n.print()
     n.info.assert_called_once()
 
 
+def test_plot_delegates_to_util_plot_plot_graph_routes(mocker):
+    mocker.patch.object(plot, 'plot_graph_routes')
+    n = Network('epsg:27700')
+    n.plot()
+    plot.plot_graph_routes.assert_called_once()
+
+
+def test_plot_graph_delegates_to_util_plot_plot_graph(mocker):
+    mocker.patch.object(plot, 'plot_graph')
+    n = Network('epsg:27700')
+    n.plot_graph()
+    plot.plot_graph.assert_called_once()
+
+
+def test_plot_schedule_delegates_to_util_plot_plot_non_routed_schedule_graph(mocker, network_object_from_test_data):
+    mocker.patch.object(plot, 'plot_non_routed_schedule_graph')
+    n = network_object_from_test_data
+    n.plot_schedule()
+    plot.plot_non_routed_schedule_graph.assert_called_once()
+
+
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1, {'a': {'b': 1}})
     n.add_node(2, {'a': {'b': 4}})
 
@@ -310,7 +308,7 @@ def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_key
 
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_flat_keys():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1, {'b': 1})
     n.add_node(2, {'b': 4})
 
@@ -346,7 +344,7 @@ def test_node_attribute_data_under_keys_returns_dataframe_with_one_col_if_passed
 
 
 def test_link_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': {'b': 1}})
     n.add_link('1', 1, 2, attribs={'a': {'b': 4}})
 
@@ -355,7 +353,7 @@ def test_link_attribute_data_under_key_returns_correct_pd_series_with_nested_key
 
 
 def test_link_attribute_data_under_key_returns_correct_pd_series_with_flat_keys():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'b': 1})
     n.add_link('1', 1, 2, attribs={'b': 4})
 
@@ -390,14 +388,14 @@ def test_link_attribute_data_under_keys_generates_key_for_nested_data(network1):
 
 
 def test_add_node_adds_node_to_graph_with_attribs():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1, {'a': 1})
     assert n.graph.has_node(1)
     assert n.node(1) == {'a': 1}
 
 
 def test_add_node_adds_node_to_graph_without_attribs():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1)
     assert n.node(1) == {}
     assert n.graph.has_node(1)
@@ -406,7 +404,7 @@ def test_add_node_adds_node_to_graph_without_attribs():
 def test_add_edge_generates_a_link_id_and_delegated_to_add_link_id(mocker):
     mocker.patch.object(Network, 'add_link')
     mocker.patch.object(Network, 'generate_index_for_edge', return_value='12345')
-    n = Network()
+    n = Network('epsg:27700')
     n.add_edge(1, 2, attribs={'a': 1})
 
     Network.generate_index_for_edge.assert_called_once()
@@ -416,7 +414,7 @@ def test_add_edge_generates_a_link_id_and_delegated_to_add_link_id(mocker):
 def test_add_edge_generates_a_link_id_with_specified_multiidx(mocker):
     mocker.patch.object(Network, 'add_link')
     mocker.patch.object(Network, 'generate_index_for_edge', return_value='12345')
-    n = Network()
+    n = Network('epsg:27700')
     n.add_edge(1, 2, multi_edge_idx=10, attribs={'a': 1})
 
     Network.generate_index_for_edge.assert_called_once()
@@ -424,7 +422,7 @@ def test_add_edge_generates_a_link_id_with_specified_multiidx(mocker):
 
 
 def test_add_link_adds_edge_to_graph_with_attribs():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': 1})
     assert n.graph.has_edge(1, 2)
     assert '0' in n.link_id_mapping
@@ -432,7 +430,7 @@ def test_add_link_adds_edge_to_graph_with_attribs():
 
 
 def test_add_link_adds_edge_to_graph_without_attribs():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2)
     n.graph.has_edge(1, 2)
     assert '0' in n.link_id_mapping
@@ -443,7 +441,7 @@ def test_network_modal_subgraph_using_general_subgraph_on_link_attribs():
     def modal_condition(modes_list):
         return set(modes_list) & {'car'}
 
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike']})
     n.add_link('1', 2, 3, attribs={'modes': ['car']})
     n.add_link('2', 2, 3, attribs={'modes': ['bike']})
@@ -453,7 +451,7 @@ def test_network_modal_subgraph_using_general_subgraph_on_link_attribs():
 
 
 def test_network_modal_subgraph_using_specific_modal_subgraph_method_single_mode():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike']})
     n.add_link('1', 2, 3, attribs={'modes': ['car']})
     n.add_link('2', 2, 3, attribs={'modes': ['bike']})
@@ -463,7 +461,7 @@ def test_network_modal_subgraph_using_specific_modal_subgraph_method_single_mode
 
 
 def test_network_modal_subgraph_using_specific_modal_subgraph_method_several_modes():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike']})
     n.add_link('1', 2, 3, attribs={'modes': ['car']})
     n.add_link('2', 2, 3, attribs={'modes': ['bike']})
@@ -474,7 +472,7 @@ def test_network_modal_subgraph_using_specific_modal_subgraph_method_several_mod
 
 
 def test_add_link_adds_link_with_specific_multi_idx():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, 0)
     assert '0' in n.link_id_mapping
     assert n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
@@ -482,7 +480,7 @@ def test_add_link_adds_link_with_specific_multi_idx():
 
 
 def test_add_link_generates_new_multi_idx_if_already_exists():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, 0)
     n.add_link('1', 1, 2, 0)
     assert '0' in n.link_id_mapping
@@ -599,7 +597,7 @@ def test_reindex_link_when_link_id_already_exists(network1):
 
 
 def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1, {'a': 1})
     n.apply_attributes_to_node(1, {'b': 1})
 
@@ -617,7 +615,7 @@ def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_chan
 
 
 def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1, {'a': 1})
     n.apply_attributes_to_node(1, {'a': 4})
 
@@ -634,7 +632,7 @@ def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_r
 
 
 def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_recorded_by_change_log():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1, {'a': 1})
     n.add_node(2, {'b': 1})
     n.apply_attributes_to_nodes([1, 2], {'a': 4})
@@ -657,7 +655,7 @@ def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_rec
 
 
 def test_modify_link_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': 1})
     n.apply_attributes_to_link('0', {'b': 1})
 
@@ -677,7 +675,7 @@ def test_modify_link_adds_attributes_in_the_graph_and_change_is_recorded_by_chan
 
 
 def test_modify_link_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': 1})
     n.apply_attributes_to_link('0', {'a': 4})
 
@@ -696,7 +694,7 @@ def test_modify_link_overwrites_existing_attributes_in_the_graph_and_change_is_r
 
 
 def test_modify_link_adds_attributes_in_the_graph_with_multiple_edges():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': 1})
     n.add_link('1', 1, 2, attribs={'c': 100})
     n.apply_attributes_to_link('0', {'b': 1})
@@ -706,7 +704,7 @@ def test_modify_link_adds_attributes_in_the_graph_with_multiple_edges():
 
 
 def test_modify_links_adds_and_changes_attributes_in_the_graph_with_multiple_edges_and_change_is_recorded_by_change_log():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': {'b': 1}})
     n.add_link('1', 1, 2, attribs={'c': 100})
     n.apply_attributes_to_links(['0', '1'], {'a': {'b': 100}})
@@ -730,7 +728,7 @@ def test_modify_links_adds_and_changes_attributes_in_the_graph_with_multiple_edg
 
 def test_resolves_link_id_clashes_by_mapping_clashing_link_to_a_new_id(mocker):
     mocker.patch.object(Network, 'generate_index_for_edge', return_value='1')
-    n = Network()
+    n = Network('epsg:27700')
 
     n.add_link('0', 1, 2)
     assert n.graph.has_edge(1, 2)
@@ -746,7 +744,7 @@ def test_resolves_link_id_clashes_by_mapping_clashing_link_to_a_new_id(mocker):
 
 
 def test_removing_single_node():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': 1})
     n.add_link('1', 1, 2, attribs={'b': 4})
     n.add_link('2', 2, 3, attribs={'a': 1})
@@ -766,7 +764,7 @@ def test_removing_single_node():
 
 
 def test_removing_multiple_nodes():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': 1})
     n.add_link('1', 1, 2, attribs={'b': 4})
     n.add_link('2', 2, 3, attribs={'a': 1})
@@ -787,7 +785,7 @@ def test_removing_multiple_nodes():
 
 
 def test_removing_single_link():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': 1})
     n.add_link('1', 1, 2, attribs={'b': 4})
     n.add_link('2', 2, 3, attribs={'a': 1})
@@ -810,7 +808,7 @@ def test_removing_single_link():
 
 
 def test_removing_multiple_links():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': 1})
     n.add_link('1', 1, 2, attribs={'b': 4})
     n.add_link('2', 2, 3, attribs={'a': 1})
@@ -837,49 +835,49 @@ def test_removing_multiple_links():
 
 
 def test_number_of_multi_edges_counts_multi_edges_on_single_edge():
-    n = Network()
+    n = Network('epsg:27700')
     n.graph.add_edges_from([(1, 2), (2, 3), (3, 4)])
     assert n.number_of_multi_edges(1, 2) == 1
 
 
 def test_number_of_multi_edges_counts_multi_edges_on_multi_edge():
-    n = Network()
+    n = Network('epsg:27700')
     n.graph.add_edges_from([(1, 2), (1, 2), (3, 4)])
     assert n.number_of_multi_edges(1, 2) == 2
 
 
 def test_number_of_multi_edges_counts_multi_edges_on_non_existing_edge():
-    n = Network()
+    n = Network('epsg:27700')
     n.graph.add_edges_from([(1, 2), (1, 2), (3, 4)])
     assert n.number_of_multi_edges(1214, 21321) == 0
 
 
 def test_nodes_gives_iterator_of_node_id_and_attribs():
-    n = Network()
+    n = Network('epsg:27700')
     n.graph.add_edges_from([(1, 2), (2, 3), (3, 4)])
     assert list(n.nodes()) == [(1, {}), (2, {}), (3, {}), (4, {})]
 
 
 def test_node_gives_node_attribss():
-    n = Network()
+    n = Network('epsg:27700')
     n.graph.add_node(1, **{'attrib': 1})
     assert n.node(1) == {'attrib': 1}
 
 
 def test_edges_gives_iterator_of_edge_from_to_nodes_and_attribs():
-    n = Network()
+    n = Network('epsg:27700')
     n.graph.add_edges_from([(1, 2), (2, 3), (3, 4)])
     assert list(n.edges()) == [(1, 2, {}), (2, 3, {}), (3, 4, {})]
 
 
 def test_edge_method_gives_attributes_for_given_from_and_to_nodes():
-    n = Network()
+    n = Network('epsg:27700')
     n.graph.add_edge(1, 2, **{'attrib': 1})
     assert n.edge(1, 2) == {0: {'attrib': 1}}
 
 
 def test_links_gives_iterator_of_link_id_and_edge_attribs():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'f': 's'})
     n.add_link('1', 2, 3, attribs={'h': 1})
     assert list(n.links()) == [('0', {'f': 's', 'from': 1, 'to': 2, 'id': '0'}),
@@ -887,65 +885,78 @@ def test_links_gives_iterator_of_link_id_and_edge_attribs():
 
 
 def test_link_gives_link_attribs():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'attrib': 1})
     n.add_link('0', 1, 2, attribs={'attrib': 1})
     assert n.link('0') == {'attrib': 1, 'from': 1, 'to': 2, 'id': '0'}
 
 
-def test_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):
-    mocker.patch.object(matsim_reader, 'read_network', return_value=(1, 2, {}, {}))
+def test_schedule_routes(network_object_from_test_data):
+    n = network_object_from_test_data
+    correct_routes = [['25508485', '21667818']]
+    routes = n.schedule_routes()
+    assert  correct_routes == routes
 
-    network = Network()
-    network.read_matsim_network(pt2matsim_network_test_file, 'epsg:27700')
-    network.epsg = 'epsg:27700'
+
+def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
+    n = network_object_from_test_data
+    n.schedule = n.schedule + Schedule('epsg:27700', [Service('1', [])])
+    assert set(n.schedule.service_ids()) == {'1', '10314'}
+    correct_routes = [['25508485', '21667818']]
+    routes = n.schedule_routes()
+    assert  correct_routes == routes
+
+
+def test_schedule_routes_with_disconnected_routes(network_object_from_test_data):
+    n = network_object_from_test_data
+    n.add_link('2', 2345678, 987875)
+    n.schedule['10314'].routes[0].route.append('2')
+    correct_routes = [['25508485', '21667818'], [2345678, 987875]]
+    routes = n.schedule_routes()
+    assert  correct_routes == routes
+
+
+def test_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):
+    mocker.patch.object(matsim_reader, 'read_network', return_value=(nx.MultiDiGraph(), 2, {}, {}))
+
+    network = Network('epsg:27700')
+    network.read_matsim_network(pt2matsim_network_test_file)
 
     matsim_reader.read_network.assert_called_once_with(pt2matsim_network_test_file, network.transformer)
 
 
 def test_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_epsg_from_earlier_network_run(mocker):
     mocker.patch.object(Schedule, 'read_matsim_schedule')
-    network = Network()
-    network.read_matsim_network(pt2matsim_network_test_file, 'epsg:27700')
-    network.epsg = 'epsg:27700'
+    network = Network('epsg:27700')
+    network.read_matsim_network(pt2matsim_network_test_file)
     network.read_matsim_schedule(pt2matsim_schedule_file)
 
-    Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file, 'epsg:27700')
+    Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file)
 
 
 def test_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_given_epsg_independent_of_network(mocker):
     mocker.patch.object(Schedule, 'read_matsim_schedule')
-    network = Network()
-    network.read_matsim_schedule(pt2matsim_schedule_file, 'epsg:27700')
+    network = Network('epsg:27700')
+    network.read_matsim_schedule(pt2matsim_schedule_file)
 
-    Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file, 'epsg:27700')
-
-
-def test_read_matsim_schedule_throws_error_when_asked_to_use_different_epsg_than_stored():
-    network = Network()
-    network.epsg = 'blop'
-
-    with pytest.raises(RuntimeError) as e:
-        network.read_matsim_schedule(pt2matsim_schedule_file, 'epsg:27700')
-    assert 'The epsg you have given epsg:27700 does not match the epsg currently stored for this network' in str(
-        e.value)
+    Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file)
 
 
 def test_generate_index_for_node_gives_next_integer_string_when_you_have_matsim_usual_integer_index():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node('1')
     assert n.generate_index_for_node() == '2'
 
 
 def test_generate_index_for_node_gives_string_based_on_length_node_ids_when_you_have_mixed_index():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node('1')
     n.add_node('1x')
     assert n.generate_index_for_node() == '3'
 
 
 def test_generate_index_for_node_gives_string_based_on_length_node_ids_when_you_have_all_non_int_index():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node('1w')
     n.add_node('1x')
     assert n.generate_index_for_node() == '3'
@@ -953,7 +964,7 @@ def test_generate_index_for_node_gives_string_based_on_length_node_ids_when_you_
 
 def test_generate_index_for_node_gives_uuid4_as_last_resort(mocker):
     mocker.patch.object(uuid, 'uuid4')
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node('1w')
     n.add_node('1x')
     n.add_node('4')
@@ -962,26 +973,26 @@ def test_generate_index_for_node_gives_uuid4_as_last_resort(mocker):
 
 
 def test_generate_index_for_edge_gives_next_integer_string_when_you_have_matsim_usual_integer_index():
-    n = Network()
+    n = Network('epsg:27700')
     n.link_id_mapping = {'1': {}, '2': {}}
     assert n.generate_index_for_edge() == '3'
 
 
 def test_generate_index_for_edge_gives_string_based_on_length_link_id_mapping_when_you_have_mixed_index():
-    n = Network()
+    n = Network('epsg:27700')
     n.link_id_mapping = {'1': {}, 'x2': {}}
     assert n.generate_index_for_edge() == '3'
 
 
 def test_generate_index_for_edge_gives_string_based_on_length_link_id_mapping_when_you_have_all_non_int_index():
-    n = Network()
+    n = Network('epsg:27700')
     n.link_id_mapping = {'1x': {}, 'x2': {}}
     assert n.generate_index_for_edge() == '3'
 
 
 def test_generate_index_for_edge_gives_uuid4_as_last_resort(mocker):
     mocker.patch.object(uuid, 'uuid4')
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('1x', 1, 2)
     n.add_link('3', 1, 2)
     n.generate_index_for_edge()
@@ -989,7 +1000,7 @@ def test_generate_index_for_edge_gives_uuid4_as_last_resort(mocker):
 
 
 def test_index_graph_edges_generates_completely_new_index():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('1x', 1, 2)
     n.add_link('x2', 1, 2)
     n.index_graph_edges()
@@ -1035,7 +1046,7 @@ def test_write_to_matsim_generates_network_matsim_file_if_network_is_car_only(ne
     assert not os.path.exists(expected_vehicle_xml)
 
     n = network_object_from_test_data
-    n.schedule = Schedule()
+    n.schedule = Schedule('epsg:27700')
     assert not n.schedule
     n.write_to_matsim(tmpdir)
 

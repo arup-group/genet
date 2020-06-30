@@ -1,6 +1,8 @@
 from typing import Union, Dict, List
 from pyproj import Proj, Transformer
 from genet.utils import spatial
+import networkx as nx
+from genet.utils import plot
 
 # number of decimal places to consider when comparing lat lons
 SPATIAL_TOLERANCE = 8
@@ -44,6 +46,22 @@ class Stop:
 
     def __hash__(self):
         return hash((self.id, round(self.lat, SPATIAL_TOLERANCE), round(self.lon, SPATIAL_TOLERANCE)))
+
+    def __repr__(self):
+        return "<{} instance at {}: in {}>".format(
+            self.__class__.__name__,
+            id(self),
+            len(self.epsg))
+
+    def __str__(self):
+        return self.info()
+
+    def print(self):
+        print(self.info())
+
+    def info(self):
+        return 'ID: {}\nProjection: {}\nLat, Lon: {}, {}'.format(
+            self.id, self.epsg, self.lat, self.lon)
 
     def add_additional_attributes(self, attribs: dict):
         """
@@ -122,6 +140,40 @@ class Route:
         same_stops = self.stops == other.stops
         return same_route_name and same_mode and same_stops
 
+    def __repr__(self):
+        return "<{} instance at {}: with {} stops and {} trips>".format(
+            self.__class__.__name__,
+            id(self),
+            len(self.stops),
+            len(self.trips))
+
+    def __str__(self):
+        return self.info()
+
+    def print(self):
+        print(self.info())
+
+    def info(self):
+        return 'ID: {}\nName: {}\nNumber of stops: {}\nNumber of trips: {}'.format(
+            self.id, self.route_short_name, len(self.stops), len(self.trips))
+
+    def plot(self, show=True, save=False, output_dir=''):
+        route_graph = self.build_graph()
+        if self.stops:
+            return plot.plot_graph(
+                nx.MultiGraph(route_graph),
+                filename='route_{}_graph'.format(self.id),
+                show=show,
+                save=save,
+                output_dir=output_dir,
+                e_c='#EC7063'
+            )
+
+    def find_epsg(self):
+        for stop in self.stops:
+            return stop.epsg
+        return None
+
     def is_exact(self, other):
         same_route_name = self.route_short_name == other.route_short_name
         same_mode = self.mode.lower() == other.mode.lower()
@@ -140,6 +192,14 @@ class Route:
                 return True
         return False
 
+    def build_graph(self):
+        route_graph = nx.DiGraph(name='Route graph', crs={'init': self.find_epsg()})
+        route_nodes = [(stop.id, {'x': stop.x, 'y': stop.y, 'lat': stop.lat, 'lon': stop.lon}) for stop in self.stops]
+        route_graph.add_nodes_from(route_nodes)
+        stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(self.stops[:-1], self.stops[1:])]
+        route_graph.add_edges_from(stop_edges)
+        return route_graph
+
 
 class Service:
     """
@@ -157,14 +217,53 @@ class Service:
         self.routes = routes
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
-        if routes[0].route_short_name:
-            name = routes[0].route_short_name
+        if routes:
+            if routes[0].route_short_name:
+                name = routes[0].route_short_name
+            else:
+                name = routes[0].route_long_name
+            self.name = str(name)
         else:
-            name = routes[0].route_long_name
-        self.name = str(name)
+            self.name = ''
 
     def __eq__(self, other):
         return self.id == other.id
+
+    def __repr__(self):
+        return "<{} instance at {}: with {} routes>".format(
+            self.__class__.__name__,
+            id(self),
+            len(self))
+
+    def __str__(self):
+        return self.info()
+
+    def __len__(self):
+        return len(self.routes)
+
+    def print(self):
+        print(self.info())
+
+    def info(self):
+        return 'ID: {}\nName: {}\nNumber of routes: {}\nNumber of unique stops: {}'.format(
+            self.id, self.name, len(self), len(list(self.stops())))
+
+    def plot(self, show=True, save=False, output_dir=''):
+        service_graph = self.build_graph()
+        if self.stops:
+            return plot.plot_graph(
+                nx.MultiGraph(service_graph),
+                filename='service_{}_graph'.format(self.id),
+                show=show,
+                save=save,
+                output_dir=output_dir,
+                e_c='#EC7063'
+            )
+
+    def find_epsg(self):
+        for stop in self.stops():
+            return stop.epsg
+        return None
 
     def is_exact(self, other):
         return (self.id == other.id) and (self.routes == other.routes)
@@ -185,3 +284,9 @@ class Service:
             all_stops = all_stops | set(route.stops)
         for stop in all_stops:
             yield stop
+
+    def build_graph(self):
+        service_graph = nx.DiGraph(name='Service graph', crs={'init': self.find_epsg()})
+        for route in self.routes:
+            service_graph = nx.compose(route.build_graph(), service_graph)
+        return service_graph

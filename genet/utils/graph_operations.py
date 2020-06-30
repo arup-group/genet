@@ -9,7 +9,7 @@ from genet.utils import spatial
 from itertools import count, filterfalse
 
 
-class Filter():
+class Filter:
     """
     Helps filtering on specified attributes
 
@@ -183,7 +183,7 @@ def render_tree(root, data=False):
 
 def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
     """
-    Returns all data stored under key in attribute dictionaries for interators yielding (index, attribute_dictionary),
+    Returns all data stored under key in attribute dictionaries for iterators yielding (index, attribute_dictionary),
     inherits index from the iterator.
     :param iterator: list or iterator yielding (index, attribute_dictionary)
     :param key: either a string e.g. 'modes', or if accessing nested information, a dictionary
@@ -409,3 +409,25 @@ def consolidate_link_indices(left, right):
 
     logging.info('Finished consolidating link indexing between the two graphs')
     return right
+
+
+def convert_list_of_link_ids_to_network_nodes(network, link_ids: list):
+    """
+    Extracts nodes corresponding to link ids in the order of given link_ids list. Useful for extracting network routes.
+    :param network:
+    :param link_ids:
+    :return:
+    """
+    paths = []
+    connected_path = []
+    for link_id in link_ids:
+        x, y = network.link_id_mapping[link_id]['from'], network.link_id_mapping[link_id]['to']
+        if not connected_path:
+            connected_path = [x, y]
+        elif connected_path[-1] != x:
+            paths.append(connected_path)
+            connected_path = [x, y]
+        else:
+            connected_path.append(y)
+    paths.append(connected_path)
+    return paths

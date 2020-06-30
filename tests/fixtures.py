@@ -46,9 +46,9 @@ def assert_semantically_equal(dict1, dict2):
 ###########################################################
 @pytest.fixture()
 def network_object_from_test_data():
-    n = Network()
-    n.read_matsim_network(pt2matsim_network_test_file, 'epsg:27700')
-    n.read_matsim_schedule(pt2matsim_schedule_file, 'epsg:27700')
+    n = Network('epsg:27700')
+    n.read_matsim_network(pt2matsim_network_test_file)
+    n.read_matsim_schedule(pt2matsim_schedule_file)
     return n
 
 
@@ -94,7 +94,7 @@ def different_test_service(route):
 
 @pytest.fixture()
 def test_schedule(test_service):
-    return Schedule(services=[test_service])
+    return Schedule(epsg='epsg:27700', services=[test_service])
 
 
 ###########################################################
