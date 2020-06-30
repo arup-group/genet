@@ -516,37 +516,31 @@ class Network:
                     routes.append(route_nodes[0])
         return routes
 
-    def read_matsim_network(self, path):
-        self.graph, self.link_id_mapping, duplicated_nodes, duplicated_links = \
-            matsim_reader.read_network(path, self.transformer)
-        self.graph.graph['name'] = 'Network graph'
-        self.graph.graph['crs'] = {'init': self.epsg}
-
-        for node_id, duplicated_node_attribs in duplicated_nodes.items():
-            for duplicated_node_attrib in duplicated_node_attribs:
-                self.change_log.remove(
-                    object_type='node',
-                    object_id=node_id,
-                    object_attributes=duplicated_node_attrib
-                )
-        for link_id, reindexed_duplicated_links in duplicated_links.items():
-            for duplicated_link in reindexed_duplicated_links:
-                self.change_log.modify(
-                    object_type='link',
-                    old_id=link_id,
-                    old_attributes=self.link(duplicated_link),
-                    new_id=duplicated_link,
-                    new_attributes=self.link(duplicated_link)
-                )
-
-    def read_matsim_schedule(self, path):
-        self.schedule.read_matsim_schedule(path)
-
     def node_id_exists(self, node_id):
         if node_id in [i for i, attribs in self.nodes()]:
             logging.warning('This node_id={} already exists.'.format(node_id))
             return True
         return False
+
+    def has_node(self, node_id):
+        return self.graph.has_node(node_id)
+
+    def has_edge(self, u, v):
+        return self.graph.has_edge(u, v)
+
+    def has_link(self, link_id):
+        if link_id in self.link_id_mapping:
+            link_edge = self.link_id_mapping[link_id]
+            u, v, multi_idx = link_edge['from'], link_edge['to'], link_edge['multi_edge_idx']
+            if self.graph.has_edge(u, v, multi_idx):
+                return True
+            else:
+                logging.info('Link with id {} is declared in the network with from_node: {}, to_node: {} and '
+                             'multi_index: {} but this edge is not in the graph.'.format(link_id, u, v, multi_idx))
+                return False
+        else:
+            logging.info('Link with id {} is not in the network.'.format(link_id))
+            return False
 
     def generate_index_for_node(self, avoid_keys: Union[list, set] = None):
         existing_keys = set([i for i, attribs in self.nodes()])
@@ -589,6 +583,8 @@ class Network:
             i += 1
 
     def generate_validation_report(self):
+        logging.info('Checking validity of the Network')
+        logging.info('Checking validity of the Network graph')
         report = {}
         # decribe network connectivity
         modes = ['car', 'walk', 'bike']
@@ -600,6 +596,32 @@ class Network:
             # calculate how many connected subgraphs there are
             report['graph_connectivity'][mode] = graph_operations.describe_graph_connectivity(G_mode)
         return report
+
+    def read_matsim_network(self, path):
+        self.graph, self.link_id_mapping, duplicated_nodes, duplicated_links = \
+            matsim_reader.read_network(path, self.transformer)
+        self.graph.graph['name'] = 'Network graph'
+        self.graph.graph['crs'] = {'init': self.epsg}
+
+        for node_id, duplicated_node_attribs in duplicated_nodes.items():
+            for duplicated_node_attrib in duplicated_node_attribs:
+                self.change_log.remove(
+                    object_type='node',
+                    object_id=node_id,
+                    object_attributes=duplicated_node_attrib
+                )
+        for link_id, reindexed_duplicated_links in duplicated_links.items():
+            for duplicated_link in reindexed_duplicated_links:
+                self.change_log.modify(
+                    object_type='link',
+                    old_id=link_id,
+                    old_attributes=self.link(duplicated_link),
+                    new_id=duplicated_link,
+                    new_attributes=self.link(duplicated_link)
+                )
+
+    def read_matsim_schedule(self, path):
+        self.schedule.read_matsim_schedule(path)
 
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)

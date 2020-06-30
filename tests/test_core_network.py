@@ -8,7 +8,7 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import network_object_from_test_data, assert_semantically_equal
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
-from genet.schedule_elements import Service
+from genet.schedule_elements import Route
 from genet.utils import plot
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -900,8 +900,9 @@ def test_schedule_routes(network_object_from_test_data):
 
 def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
     n = network_object_from_test_data
-    n.schedule = n.schedule + Schedule('epsg:27700', [Service('1', [])])
-    assert set(n.schedule.service_ids()) == {'1', '10314'}
+    n.schedule['10314'].routes.append(Route(arrival_offsets=[], departure_offsets=[], mode='bus', trips={},
+                                            route_short_name='', stops=[]))
+    assert set(n.schedule.service_ids()) == {'10314'}
     correct_routes = [['25508485', '21667818']]
     routes = n.schedule_routes()
     assert  correct_routes == routes
@@ -940,6 +941,45 @@ def test_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_given_eps
     network.read_matsim_schedule(pt2matsim_schedule_file)
 
     Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file)
+
+
+def test_has_node_when_node_is_in_the_graph():
+    n = Network('epsg:27700')
+    n.add_node('1')
+    assert n.has_node('1')
+
+def test_has_node_when_node_is_not_in_the_graph():
+    n = Network('epsg:27700')
+    assert not n.has_node('1')
+
+
+def test_has_edge_when_edge_is_in_the_graph():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    assert n.has_edge(1, 2)
+
+
+def test_has_edge_when_edge_is_not_in_the_graph():
+    n = Network('epsg:27700')
+    assert not n.has_edge(1, 2)
+
+
+def test_has_link_when_link_is_in_the_graph():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    assert n.has_link('1')
+
+
+def test_has_link_when_link_is_not_in_the_graph():
+    n = Network('epsg:27700')
+    assert not n.has_link('1')
+
+
+def test_has_link_when_link_id_is_in_the_network_but_corresponding_edge_is_not():
+    # unlikely scenario but possible if someone uses a non genet method to play with the graph
+    n = Network('epsg:27700')
+    n.link_id_mapping['1'] = {'from': 1, 'to': 2, 'multi_edge_idx': 0}
+    assert not n.has_link('1')
 
 
 def test_generate_index_for_node_gives_next_integer_string_when_you_have_matsim_usual_integer_index():
