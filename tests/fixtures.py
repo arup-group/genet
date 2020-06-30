@@ -53,6 +53,13 @@ def network_object_from_test_data():
 
 
 @pytest.fixture()
+def schedule_object_from_test_data():
+    s = Schedule('epsg:27700')
+    s.read_matsim_schedule(pt2matsim_schedule_file)
+    return s
+
+
+@pytest.fixture()
 def stop_epsg_27700():
     return Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')
 

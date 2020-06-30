@@ -2,12 +2,51 @@ import os
 import sys
 import pytest
 from tests.fixtures import *
+from tests.test_core_route import self_looping_route, route
+from tests.test_core_service import service
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.core import Schedule
+from genet.schedule_elements import Service, Route, Stop
+from genet.utils import plot, schedule_operations
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_schedule_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
 gtfs_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs"))
+
+@pytest.fixture()
+def schedule():
+    route_1 = Route(route_short_name='name',
+                    mode='bus',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
+    route_2 = Route(route_short_name='name_2',
+                    mode='bus',
+                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
+                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2', '3', '4'],
+                    departure_offsets=['1', '2', '3', '4'])
+    service = Service(id='service', routes=[route_1, route_2])
+    return Schedule(epsg='epsg:27700', services=[service])
+
+
+@pytest.fixture()
+def strongly_connected_schedule():
+    route_1 = Route(route_short_name='name',
+                    mode='bus',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700'),
+                           Stop(id='1', x=4, y=2, epsg='epsg:27700')],
+                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
+    route_2 = Route(route_short_name='name_2',
+                    mode='bus',
+                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700'),
+                           Stop(id='5', x=4, y=2, epsg='epsg:27700')],
+                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2', '3', '4', '5'],
+                    departure_offsets=['1', '2', '3', '4', '5'])
+    service =  Service(id='service', routes=[route_1, route_2])
+    return Schedule(epsg='epsg:27700', services=[service])
 
 
 def test__getitem__returns_a_service(test_service):
@@ -51,6 +90,12 @@ def test_info_shows_number_of_services_and_routes(mocker):
     schedule.print()
     Schedule.__len__.assert_called_once()
     Schedule.number_of_routes.assert_called_once()
+
+
+def test_plot_delegates_to_util_plot_plot_graph_routes(mocker, schedule):
+    mocker.patch.object(plot, 'plot_graph')
+    schedule.plot()
+    plot.plot_graph.assert_called_once()
 
 
 def test_adding_merges_separable_schedules(route):
@@ -104,22 +149,22 @@ def test_number_of_routes_counts_routes(test_service, different_test_service):
     assert schedule.number_of_routes() == 3
 
 
-def test_iter_stops_returns_stops_with_attribs(test_service, different_test_service, stop_epsg_27700):
+def test_iter_stops_returns_stops_with_ids(test_service, different_test_service):
     schedule = Schedule(services=[test_service, different_test_service], epsg='epsg:4326')
-    assert [stop for stop, attrib in schedule.stops()] == ['0']
-    assert [attrib for stop, attrib in schedule.stops()] == [stop_epsg_27700]
+    assert set([stop_id for stop_id, stop in schedule.stops()]) == {'0', '1', '2', '3', '4'}
+    assert all([isinstance(stop, Stop) for stop_id, stop in schedule.stops()])
 
 
 def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker):
-    mocker.patch.object(matsim_reader, 'read_schedule', return_value = ({'1': []}, {}))
+    mocker.patch.object(matsim_reader, 'read_schedule', return_value = ([Service(id='1', routes=[])], {}))
 
     schedule = Schedule('epsg:27700')
     schedule.read_matsim_schedule(pt2matsim_schedule_file)
 
-    matsim_reader.read_schedule.assert_called_once_with(pt2matsim_schedule_file, schedule.transformer)
+    matsim_reader.read_schedule.assert_called_once_with(pt2matsim_schedule_file, schedule.epsg)
 
 
-def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker, test_service):
+def test_read_matsim_schedule_delegates_to_read_to_list_of_service_objects_when_reading_gtfs(mocker, test_service):
     mocker.patch.object(gtfs_reader, 'read_to_list_of_service_objects', return_value = [test_service])
 
     schedule = Schedule('epsg:4326')
@@ -177,3 +222,69 @@ def test_read_gtfs_returns_expected_schedule(correct_stops_mapping_from_test_gtf
             departure_offsets=['0:00:00', '0:02:00']
         )])
     assert_semantically_equal(schedule.stops_mapping, correct_stops_mapping_from_test_gtfs)
+
+
+def test_is_strongly_connected_with_strongly_connected_schedule(strongly_connected_schedule):
+    assert strongly_connected_schedule.is_strongly_connected()
+
+
+def test_is_strongly_connected_with_not_strongly_connected_schedule(schedule):
+    assert not schedule.is_strongly_connected()
+
+
+def test_has_self_loops_with_self_has_self_looping_schedule(self_looping_route):
+    s = Schedule('epsg:27700', [Service(id='service', routes=[self_looping_route])])
+    assert s.has_self_loops()
+
+
+def test_has_self_loops_returns_self_looping_stops(self_looping_route):
+    s = Schedule('epsg:27700', [Service(id='service', routes=[self_looping_route])])
+    loop_nodes = s.has_self_loops()
+    assert loop_nodes == ['1']
+
+
+def test_has_self_loops_with_non_looping_routes(schedule):
+    assert not schedule.has_self_loops()
+
+
+def test_validity_of_services(self_looping_route, route):
+    s = Schedule('epsg:27700', [Service(id='1', routes=[self_looping_route]),
+                                Service(id='2', routes=[route])])
+    assert s.validity_of_services() == [False, True]
+
+
+def test_has_valid_services(schedule):
+    assert not schedule.has_valid_services()
+
+
+def test_has_valid_services_with_only_valid_services(service):
+    service.routes[0].id = '1'
+    service.routes[1].id = '2'
+    service.routes[0].route = ['1']
+    service.routes[1].route = ['2']
+    s = Schedule('epsg:27700', [service])
+    assert s.has_valid_services()
+
+
+def test_invalid_services_shows_invalid_services(service):
+    s = Schedule('epsg:27700', [service])
+    assert s.invalid_services() == [service]
+
+
+def test_has_uniquely_indexed_routes_with_uniquely_indexed_service(schedule):
+    assert schedule.has_uniquely_indexed_services()
+
+
+def test_is_valid_with_valid_schedule(service):
+    service.routes[0].id = '1'
+    service.routes[1].id = '2'
+    service.routes[0].route = ['1']
+    service.routes[1].route = ['2']
+    s = Schedule('epsg:27700', [service])
+    assert s.is_valid_schedule()
+
+
+def test_generate_validation_report_delegates_to_method_in_schedule_operations(mocker, schedule):
+    mocker.patch.object(schedule_operations, 'generate_validation_report')
+    schedule.generate_validation_report()
+    schedule_operations.generate_validation_report.assert_called_once()

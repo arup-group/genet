@@ -1,5 +1,66 @@
+import pytest
 from genet.schedule_elements import Route, Stop
+from  genet.utils import plot
 from tests.fixtures import stop_epsg_27700, route, assert_semantically_equal
+
+
+@pytest.fixture()
+def route():
+    return Route(route_short_name='name',
+                  mode='bus',
+                  stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                         Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                  trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+                  route=['1', '2', '3'], id='1')
+
+
+@pytest.fixture()
+def strongly_connected_route():
+    return Route(route_short_name='name',
+                  mode='bus',
+                  stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                         Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700'),
+                         Stop(id='1', x=4, y=2, epsg='epsg:27700')],
+                  trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
+
+
+@pytest.fixture()
+def self_looping_route():
+    return Route(route_short_name='name',
+                  mode='bus',
+                  stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='1', x=4, y=2, epsg='epsg:27700'),
+                         Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                  trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
+
+
+def test__repr__shows_stops_and_trips_length(route):
+    assert str(len(route.stops)) in route.__repr__()
+    assert str(len(route.trips)) in route.__repr__()
+
+
+def test__str__shows_info(route):
+    assert route.id in route.__str__()
+    assert route.route_short_name in route.__str__()
+
+
+def test_print_shows_info(mocker, route):
+    mocker.patch.object(Route, 'info')
+    route.print()
+    Route.info.assert_called_once()
+
+
+def test_info_shows_id_name_and_len_of_stops_and_trips(route):
+    info = route.info()
+    assert route.id in info
+    assert route.route_short_name in info
+    assert str(len(route.stops)) in info
+    assert str(len(route.trips)) in info
+
+
+def test_plot_delegates_to_util_plot_plot_graph_routes(mocker, route):
+    mocker.patch.object(plot, 'plot_graph')
+    route.plot()
+    plot.plot_graph.assert_called_once()
 
 
 def test_build_graph_builds_correct_graph():
@@ -68,3 +129,70 @@ def test_route_is_not_in_exact_list(route, stop_epsg_27700):
         departure_offsets=[])
 
     assert not a.isin_exact([route, route, route])
+
+
+def test_is_strongly_connected_with_strongly_connected_route(strongly_connected_route):
+    assert strongly_connected_route.is_strongly_connected()
+
+
+def test_is_strongly_connected_with_not_strongly_connected_route(route):
+    assert not route.is_strongly_connected()
+
+
+def test_has_self_loops_with_self_has_self_looping_route(self_looping_route):
+    assert self_looping_route.has_self_loops()
+
+
+def test_has_self_loops_returns_self_looping_stops(self_looping_route):
+    loop_nodes = self_looping_route.has_self_loops()
+    assert loop_nodes == ['1']
+
+
+def test_has_self_loops_with_non_looping_route(route):
+    assert not route.has_self_loops()
+
+
+def test_has_more_than_one_stop_with_regular_route(route):
+    assert route.has_more_than_one_stop()
+
+
+def test_has_more_than_one_stop_with_route_with_single_stop():
+    route = Route(route_short_name='name',
+                  mode='bus',
+                  stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700')],
+                  trips={}, arrival_offsets=[], departure_offsets=[])
+    assert not route.has_more_than_one_stop()
+
+
+def test_has_network_route_with_route_that_has_a_network_route(route):
+    assert route.has_network_route()
+
+
+def test_has_network_route_with_route_without_a_network_route(route):
+    route.route = []
+    assert not route.has_network_route()
+
+
+def test_has_id(route):
+    assert route.has_id()
+
+
+def test_is_valid_with_valid_route(route):
+    assert route.is_valid_route()
+
+
+def test_is_valid_with_looping_route(self_looping_route):
+    assert not self_looping_route.is_valid_route()
+
+
+def test_is_valid_with_non_network_route(route):
+    route.route = []
+    assert not route.is_valid_route()
+
+
+def test_is_valid_with_sinlge_stop_network():
+    route = Route(route_short_name='name',
+                  mode='bus',
+                  stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700')],
+                  trips={}, arrival_offsets=[], departure_offsets=[])
+    assert not route.is_valid_route()

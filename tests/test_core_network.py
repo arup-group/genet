@@ -895,7 +895,7 @@ def test_schedule_routes(network_object_from_test_data):
     n = network_object_from_test_data
     correct_routes = [['25508485', '21667818']]
     routes = n.schedule_routes()
-    assert  correct_routes == routes
+    assert correct_routes == routes
 
 
 def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
@@ -905,7 +905,7 @@ def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
     assert set(n.schedule.service_ids()) == {'10314'}
     correct_routes = [['25508485', '21667818']]
     routes = n.schedule_routes()
-    assert  correct_routes == routes
+    assert correct_routes == routes
 
 
 def test_schedule_routes_with_disconnected_routes(network_object_from_test_data):
@@ -914,7 +914,7 @@ def test_schedule_routes_with_disconnected_routes(network_object_from_test_data)
     n.schedule['10314'].routes[0].route.append('2')
     correct_routes = [['25508485', '21667818'], [2345678, 987875]]
     routes = n.schedule_routes()
-    assert  correct_routes == routes
+    assert correct_routes == routes
 
 
 def test_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):
@@ -947,6 +947,7 @@ def test_has_node_when_node_is_in_the_graph():
     n = Network('epsg:27700')
     n.add_node('1')
     assert n.has_node('1')
+
 
 def test_has_node_when_node_is_not_in_the_graph():
     n = Network('epsg:27700')
@@ -1050,13 +1051,19 @@ def test_index_graph_edges_generates_completely_new_index():
 def test_generate_validation_report(network_object_from_test_data):
     n = network_object_from_test_data
     report = n.generate_validation_report()
-    correct_report = {'graph_connectivity': {
+    correct_report = {'graph': {'graph_connectivity': {
         'car': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
                 'number_of_connected_subgraphs': 2, 'connected_subgraphs': [(['21667818'], 1), (['25508485'], 1)]},
         'walk': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
                  'number_of_connected_subgraphs': 2, 'connected_subgraphs': [(['21667818'], 1), (['25508485'], 1)]},
         'bike': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
-                 'number_of_connected_subgraphs': 2, 'connected_subgraphs': [(['21667818'], 1), (['25508485'], 1)]}}}
+                 'number_of_connected_subgraphs': 2, 'connected_subgraphs': [(['21667818'], 1), (['25508485'], 1)]}}},
+                      'schedule': {
+                          'schedule_level': {'is_valid': True, 'has_valid_services': True, 'invalid_services': []},
+                          'service_level': {
+                              '10314': {'is_valid': True, 'has_valid_routes': True, 'invalid_routes': []}},
+                          'route_level': {
+                              '10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'is_valid_route': True}}}}}
     assert_semantically_equal(report, correct_report)
 
 

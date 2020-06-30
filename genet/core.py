@@ -9,7 +9,7 @@ from pyproj import Proj, Transformer
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.outputs_handler import matsim_xml_writer
 from genet.modify import ChangeLog
-from genet.utils import spatial, persistence, graph_operations, plot
+from genet.utils import spatial, persistence, graph_operations, schedule_operations, plot
 from genet.schedule_elements import Service
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
@@ -588,13 +588,15 @@ class Network:
         report = {}
         # decribe network connectivity
         modes = ['car', 'walk', 'bike']
-        report['graph_connectivity'] = {}
+        report['graph'] = {'graph_connectivity': {}}
         for mode in modes:
             logging.info('Checking network connectivity for mode: {}'.format(mode))
             # subgraph for the mode to be tested
             G_mode = self.modal_subgraph('car')
             # calculate how many connected subgraphs there are
-            report['graph_connectivity'][mode] = graph_operations.describe_graph_connectivity(G_mode)
+            report['graph']['graph_connectivity'][mode] = graph_operations.describe_graph_connectivity(G_mode)
+
+        report['schedule'] = self.schedule.generate_validation_report()
         return report
 
     def read_matsim_network(self, path):
@@ -763,6 +765,37 @@ class Schedule:
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
         self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+
+    def is_strongly_connected(self):
+        g = self.build_graph()
+        if nx.number_strongly_connected_components(g) == 1:
+            return True
+        return False
+
+    def has_self_loops(self):
+        g = self.build_graph()
+        return list(nx.nodes_with_selfloops(g))
+
+    def validity_of_services(self):
+        return [service.is_valid_service() for service_id, service in self.services.items()]
+
+    def has_valid_services(self):
+        return all(self.validity_of_services())
+
+    def invalid_services(self):
+        return [service for service_id, service in self.services.items() if not service.is_valid_service()]
+
+    def has_uniquely_indexed_services(self):
+        indices = set([service.id for service_id, service in self.services.items()])
+        if len(indices) != len(self.services):
+            return False
+        return True
+
+    def is_valid_schedule(self):
+        return self.has_valid_services() and self.has_uniquely_indexed_services()
+
+    def generate_validation_report(self):
+        return schedule_operations.generate_validation_report(schedule=self)
 
     def read_matsim_schedule(self, path):
         services, self.minimal_transfer_times = matsim_reader.read_schedule(path, self.epsg)

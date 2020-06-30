@@ -41,27 +41,32 @@ class Stop:
         self.additional_attributes = []
 
     def __eq__(self, other):
-        return (round(self.lat, SPATIAL_TOLERANCE) == round(other.lat, SPATIAL_TOLERANCE)) \
-               and (round(self.lon, SPATIAL_TOLERANCE) == round(other.lon, SPATIAL_TOLERANCE))
+        return (self._round_lat() == other._round_lat()) and (self._round_lon() == other._round_lon())
 
     def __hash__(self):
-        return hash((self.id, round(self.lat, SPATIAL_TOLERANCE), round(self.lon, SPATIAL_TOLERANCE)))
+        return hash((self.id, self._round_lat(), self._round_lon()))
 
     def __repr__(self):
         return "<{} instance at {}: in {}>".format(
             self.__class__.__name__,
             id(self),
-            len(self.epsg))
+            self.epsg)
 
     def __str__(self):
         return self.info()
+
+    def _round_lat(self):
+        return round(self.lat, SPATIAL_TOLERANCE)
+
+    def _round_lon(self):
+        return round(self.lon, SPATIAL_TOLERANCE)
 
     def print(self):
         print(self.info())
 
     def info(self):
         return 'ID: {}\nProjection: {}\nLat, Lon: {}, {}'.format(
-            self.id, self.epsg, self.lat, self.lon)
+            self.id, self.epsg, self._round_lat(), self._round_lon())
 
     def add_additional_attributes(self, attribs: dict):
         """
@@ -91,6 +96,12 @@ class Stop:
             if self.is_exact(other):
                 return True
         return False
+
+    def has_linkRefId(self):
+        return 'linkRefId' in self.__dict__
+
+    def has_id(self):
+        return self.id
 
 
 class Route:
@@ -200,6 +211,31 @@ class Route:
         route_graph.add_edges_from(stop_edges)
         return route_graph
 
+    def is_strongly_connected(self):
+        g = self.build_graph()
+        if nx.number_strongly_connected_components(g) == 1:
+            return True
+        return False
+
+    def has_self_loops(self):
+        # means that there are two consecutive stops that are the same
+        g = self.build_graph()
+        return list(nx.nodes_with_selfloops(g))
+
+    def has_more_than_one_stop(self):
+        if len(self.stops) > 1:
+            return True
+        return False
+
+    def has_network_route(self):
+        return self.route
+
+    def has_id(self):
+        return self.id
+
+    def is_valid_route(self):
+        return self.has_more_than_one_stop() and bool(self.has_network_route()) and bool(not self.has_self_loops())
+
 
 class Service:
     """
@@ -290,3 +326,34 @@ class Service:
         for route in self.routes:
             service_graph = nx.compose(route.build_graph(), service_graph)
         return service_graph
+
+    def is_strongly_connected(self):
+        g = self.build_graph()
+        if nx.number_strongly_connected_components(g) == 1:
+            return True
+        return False
+
+    def has_self_loops(self):
+        g = self.build_graph()
+        return list(nx.nodes_with_selfloops(g))
+
+    def validity_of_routes(self):
+        return [route.is_valid_route() for route in self.routes]
+
+    def has_valid_routes(self):
+        return all(self.validity_of_routes())
+
+    def invalid_routes(self):
+        return [route for route in self.routes if not route.is_valid_route()]
+
+    def has_uniquely_indexed_routes(self):
+        indices = set([route.id for route in self.routes])
+        if len(indices) != len(self.routes):
+            return False
+        return True
+
+    def has_id(self):
+        return self.id
+
+    def is_valid_service(self):
+        return self.has_valid_routes() and  self.has_uniquely_indexed_routes()
