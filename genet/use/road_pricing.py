@@ -136,7 +136,8 @@ def extract_network_id_from_osm_csv(network, osm_csv_path, outpath):
     for link_id, link_attribs in network.links():
         if 'attributes' in link_attribs.keys():
             # extract the OSM id associated to that Network link
-            edge_osm_id = link_attribs['attributes']['osm:way:id']['text']
+            # edge_osm_id = link_attribs['attributes']['osm:way:id']['text']
+            edge_osm_id = link_attribs['attributes']['osm:osmid']['text']
             if str(edge_osm_id) in osm_ids:
                 # if the OSM id associated to that Network link is one of the OSM toll ways we are interested in
                 # then we extract the indices of all rows in the .csv where that OSM toll way appears
