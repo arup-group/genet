@@ -894,7 +894,7 @@ def test_link_gives_link_attribs():
 def test_schedule_routes(network_object_from_test_data):
     n = network_object_from_test_data
     correct_routes = [['25508485', '21667818']]
-    routes = n.schedule_routes()
+    routes = n.schedule_routes_nodes()
     assert correct_routes == routes
 
 
@@ -904,7 +904,7 @@ def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
                                             route_short_name='', stops=[]))
     assert set(n.schedule.service_ids()) == {'10314'}
     correct_routes = [['25508485', '21667818']]
-    routes = n.schedule_routes()
+    routes = n.schedule_routes_nodes()
     assert correct_routes == routes
 
 
@@ -913,7 +913,7 @@ def test_schedule_routes_with_disconnected_routes(network_object_from_test_data)
     n.add_link('2', 2345678, 987875)
     n.schedule['10314'].routes[0].route.append('2')
     correct_routes = [['25508485', '21667818'], [2345678, 987875]]
-    routes = n.schedule_routes()
+    routes = n.schedule_routes_nodes()
     assert correct_routes == routes
 
 
@@ -1051,19 +1051,19 @@ def test_index_graph_edges_generates_completely_new_index():
 def test_generate_validation_report(network_object_from_test_data):
     n = network_object_from_test_data
     report = n.generate_validation_report()
-    correct_report = {'graph': {'graph_connectivity': {
-        'car': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
-                'number_of_connected_subgraphs': 2, 'connected_subgraphs': [(['21667818'], 1), (['25508485'], 1)]},
-        'walk': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
-                 'number_of_connected_subgraphs': 2, 'connected_subgraphs': [(['21667818'], 1), (['25508485'], 1)]},
-        'bike': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
-                 'number_of_connected_subgraphs': 2, 'connected_subgraphs': [(['21667818'], 1), (['25508485'], 1)]}}},
-                      'schedule': {
-                          'schedule_level': {'is_valid': True, 'has_valid_services': True, 'invalid_services': []},
-                          'service_level': {
-                              '10314': {'is_valid': True, 'has_valid_routes': True, 'invalid_routes': []}},
-                          'route_level': {
-                              '10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'is_valid_route': True}}}}}
+    correct_report = {
+        'graph': {'graph_connectivity': {
+            'car': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
+                    'number_of_connected_subgraphs': 2},
+            'walk': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
+                     'number_of_connected_subgraphs': 2},
+            'bike': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
+                     'number_of_connected_subgraphs': 2}}},
+        'schedule': {'schedule_level': {'is_valid': True, 'has_valid_services': True, 'invalid_services': []},
+                     'service_level': {'10314': {'is_valid': True, 'has_valid_routes': True, 'invalid_routes': []}},
+                     'route_level': {
+                         '10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'is_valid_route': True}}}},
+        'routing': {'services_have_routes_in_the_graph': True, 'service_routes_with_invalid_network_route': []}}
     assert_semantically_equal(report, correct_report)
 
 

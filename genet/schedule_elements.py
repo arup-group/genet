@@ -65,8 +65,8 @@ class Stop:
         print(self.info())
 
     def info(self):
-        return 'ID: {}\nProjection: {}\nLat, Lon: {}, {}'.format(
-            self.id, self.epsg, self._round_lat(), self._round_lon())
+        return '{} ID: {}\nProjection: {}\nLat, Lon: {}, {}'.format(
+            self.__class__.__name__, self.id, self.epsg, self._round_lat(), self._round_lon())
 
     def add_additional_attributes(self, attribs: dict):
         """
@@ -165,8 +165,8 @@ class Route:
         print(self.info())
 
     def info(self):
-        return 'ID: {}\nName: {}\nNumber of stops: {}\nNumber of trips: {}'.format(
-            self.id, self.route_short_name, len(self.stops), len(self.trips))
+        return '{} ID: {}\nName: {}\nNumber of stops: {}\nNumber of trips: {}'.format(
+            self.__class__.__name__, self.id, self.route_short_name, len(self.stops), len(self.trips))
 
     def plot(self, show=True, save=False, output_dir=''):
         route_graph = self.build_graph()
@@ -218,7 +218,10 @@ class Route:
         return False
 
     def has_self_loops(self):
-        # means that there are two consecutive stops that are the same
+        """
+        means that there are two consecutive stops that are the same
+        :return:
+        """
         g = self.build_graph()
         return list(nx.nodes_with_selfloops(g))
 
@@ -281,8 +284,8 @@ class Service:
         print(self.info())
 
     def info(self):
-        return 'ID: {}\nName: {}\nNumber of routes: {}\nNumber of unique stops: {}'.format(
-            self.id, self.name, len(self), len(list(self.stops())))
+        return '{} ID: {}\nName: {}\nNumber of routes: {}\nNumber of unique stops: {}'.format(
+            self.__class__.__name__, self.id, self.name, len(self), len(list(self.stops())))
 
     def plot(self, show=True, save=False, output_dir=''):
         service_graph = self.build_graph()
@@ -356,4 +359,4 @@ class Service:
         return self.id
 
     def is_valid_service(self):
-        return self.has_valid_routes() and  self.has_uniquely_indexed_routes()
+        return self.has_valid_routes() and self.has_uniquely_indexed_routes()

@@ -80,7 +80,7 @@ class Network:
         :param output_dir: output directory for the image
         :return:
         """
-        return plot.plot_graph_routes(self.graph, self.schedule_routes(), 'network_route_graph', show=show,
+        return plot.plot_graph_routes(self.graph, self.schedule_routes_nodes(), 'network_route_graph', show=show,
                                       save=save, output_dir=output_dir)
 
     def plot_graph(self, show=True, save=False, output_dir=''):
@@ -503,7 +503,7 @@ class Network:
         for id, service in self.schedule.services.items():
             yield service
 
-    def schedule_routes(self):
+    def schedule_routes_nodes(self):
         routes = []
         for route_id, _route in self.schedule.routes():
             if _route.route:
@@ -516,6 +516,13 @@ class Network:
                     routes.append(route_nodes[0])
         return routes
 
+    def schedule_routes_links(self):
+        routes = []
+        for route_id, _route in self.schedule.routes():
+            if _route.route:
+                routes.append(_route.route)
+        return routes
+
     def node_id_exists(self, node_id):
         if node_id in [i for i, attribs in self.nodes()]:
             logging.warning('This node_id={} already exists.'.format(node_id))
@@ -525,10 +532,13 @@ class Network:
     def has_node(self, node_id):
         return self.graph.has_node(node_id)
 
+    def has_nodes(self, node_id: list):
+        return all([self.has_node(node_id) for node_id in node_id])
+
     def has_edge(self, u, v):
         return self.graph.has_edge(u, v)
 
-    def has_link(self, link_id):
+    def has_link(self, link_id: str):
         if link_id in self.link_id_mapping:
             link_edge = self.link_id_mapping[link_id]
             u, v, multi_idx = link_edge['from'], link_edge['to'], link_edge['multi_edge_idx']
@@ -541,6 +551,9 @@ class Network:
         else:
             logging.info('Link with id {} is not in the network.'.format(link_id))
             return False
+
+    def has_links(self, link_ids: list):
+        return all([self.has_link(link_id) for link_id in link_ids])
 
     def generate_index_for_node(self, avoid_keys: Union[list, set] = None):
         existing_keys = set([i for i, attribs in self.nodes()])
@@ -582,6 +595,15 @@ class Network:
             self.link_id_mapping[str(i)] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
             i += 1
 
+    def has_schedule_with_valid_network_routes(self):
+        if all([route.has_network_route() for service_id, route in self.schedule.routes()]):
+            return all([self.has_links(route) for route in self.schedule_routes_links()])
+        return False
+
+    def invalid_network_routes(self):
+        return [(service_id, route.id) for service_id, route in self.schedule.routes() if not
+                self.has_links(route.route)]
+
     def generate_validation_report(self):
         logging.info('Checking validity of the Network')
         logging.info('Checking validity of the Network graph')
@@ -597,6 +619,11 @@ class Network:
             report['graph']['graph_connectivity'][mode] = graph_operations.describe_graph_connectivity(G_mode)
 
         report['schedule'] = self.schedule.generate_validation_report()
+
+        report['routing'] = {
+            'services_have_routes_in_the_graph': self.has_schedule_with_valid_network_routes(),
+            'service_routes_with_invalid_network_route': self.invalid_network_routes(),
+        }
         return report
 
     def read_matsim_network(self, path):
@@ -704,7 +731,7 @@ class Schedule:
         print(self.info())
 
     def info(self):
-        return 'Number of services: {}\nNumber of unique routes: {}\nNumber of stops:{}'.format(
+        return 'Number of services: {}\nNumber of unique routes: {}\nNumber of stops: {}'.format(
             self.__len__(), self.number_of_routes(), len(self.stops_mapping))
 
     def plot(self, show=True, save=False, output_dir=''):

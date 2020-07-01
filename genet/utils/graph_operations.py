@@ -211,6 +211,22 @@ def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
     return data
 
 
+def find_problem_nodes(G):
+    problem_nodes = {}
+    problem_nodes['dead_ends'] = []
+    problem_nodes['unreachable_node'] = []
+    for node in G.nodes:
+        if (G.in_degree(node) == 0):
+            problem_nodes['unreachable_node'].append(node)
+        if (G.out_degree(node) == 0):
+            problem_nodes['dead_ends'].append(node)
+    return problem_nodes
+
+
+def find_connected_subgraphs(G):
+    return [(list(c), len(c)) for c in sorted(nx.strongly_connected_components(G), key=len, reverse=True)]
+
+
 def describe_graph_connectivity(G):
     """
     Computes dead ends and unreachable nodes in G. Computes strongly connected components of G
@@ -219,20 +235,9 @@ def describe_graph_connectivity(G):
     """
     dict_to_return = {}
     # find dead ends or unreachable nodes
-    dict_to_return['problem_nodes'] = {}
-    dict_to_return['problem_nodes']['dead_ends'] = []
-    dict_to_return['problem_nodes']['unreachable_node'] = []
-    for node in G.nodes:
-        if (G.in_degree(node) == 0):
-            dict_to_return['problem_nodes']['unreachable_node'].append(node)
-        if (G.out_degree(node) == 0):
-            dict_to_return['problem_nodes']['dead_ends'].append(node)
-
-    # find connected subgraphs
-    connected_subgraphs = list(nx.strongly_connected_components(G))
-    dict_to_return['number_of_connected_subgraphs'] = len(connected_subgraphs)
-    dict_to_return['connected_subgraphs'] = \
-        [(list(c), len(c)) for c in sorted(nx.strongly_connected_components(G), key=len, reverse=True)]
+    dict_to_return['problem_nodes'] = find_problem_nodes(G)
+    # find number of connected subgraphs
+    dict_to_return['number_of_connected_subgraphs'] = len(find_connected_subgraphs(G))
     return dict_to_return
 
 
