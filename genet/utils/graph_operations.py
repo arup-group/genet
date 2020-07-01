@@ -356,7 +356,7 @@ def consolidate_link_indices(left, right):
             'link_id_left'].isna()].apply(
             lambda row: append_data_to_unique_clashing_links_data(row), axis=1)
 
-        right.remove_links(set(clashing_overlapping_edges['link_id_right'].dropna()))
+        right.remove_links(set(clashing_overlapping_edges['link_id_right'].dropna()), silent=True)
 
     # resolve clashing link ids for links in right which don't exist in left
     clashing_right_link_ids = set(df[df['left'].isna()]['link_id_right']) & set(df['link_id_left'].dropna())
@@ -372,7 +372,7 @@ def consolidate_link_indices(left, right):
     for left_link_id, data in overlapping_links_data.items():
         u, v = left.link_id_mapping[left_link_id]['from'], left.link_id_mapping[left_link_id]['to']
         multi_idx = left.link_id_mapping[left_link_id]['multi_edge_idx']
-        right.add_link(left_link_id, u, v, multi_idx, data)
+        right.add_link(left_link_id, u, v, multi_idx, data, silent=True)
 
     for right_link_id, data in unique_clashing_links_data.items():
         u, v = data['from'], data['to']
@@ -387,7 +387,7 @@ def consolidate_link_indices(left, right):
         multi_idx = next(filterfalse(set(existing_multi_edge_ids).__contains__, count(1)))
         if right_link_id in set(left.link_id_mapping.keys()) | set(right.link_id_mapping.keys()):
             right_link_id = right.generate_index_for_edge(set(left.link_id_mapping.keys()))
-        right.add_link(right_link_id, u, v, multi_idx, data)
+        right.add_link(right_link_id, u, v, multi_idx, data, silent=True)
 
     logging.info('Finished consolidating link indexing between the two graphs')
     return right
