@@ -3,9 +3,6 @@ from anytree import Node, RenderTree
 import networkx as nx
 import pandas as pd
 import logging
-from copy import deepcopy
-from pyproj import Proj, Transformer
-from genet.utils import spatial
 from itertools import count, filterfalse
 
 
@@ -244,15 +241,11 @@ def describe_graph_connectivity(G):
 def consolidate_node_indices(left, right):
     """
     Changes the node indexing in right to match left spatially and resolves clashing node ids if they don't match
-    spatially.
+    spatially. The two networks need to be in matching coordinate systems.
     :param left: genet.core.Network
     :param right: genet.core.Network that needs to be updated to match left network
     :return: updated right
     """
-    # right will change projection to left's if not the same
-    # only the nodes hold spatial information and only the ones that dont exist in
-    # left will need to be reprojected, we impose left.graph's data on right.graph
-
     # find spatially overlapping nodes by extracting all of the s2 spatial ids from right
     s2_ids_right = right.node_attribute_data_under_key('s2_id')
     if len(s2_ids_right) != len(s2_ids_right.unique()):
@@ -268,22 +261,6 @@ def consolidate_node_indices(left, right):
     # combine spatial info on nodes in left and right into a dataframe, join on s2 ids
     s2_id_df = pd.DataFrame(s2_ids_right).reset_index().merge(
         pd.DataFrame(s2_ids_left).reset_index(), on='s2_id', how='outer')
-
-    # update the data dict of those nodes which overlap
-    [right.apply_attributes_to_node(s2_id_df.loc[idx, 'right'], left.node(s2_id_df.loc[idx, 'left']))
-     for idx in s2_id_df.dropna().index]
-
-    # change x,y coordinates for right nodes if the projections dont match
-    if left.epsg != right.epsg:
-        logging.info('Adding two Networks with different projections may require less strict spatial matching.'
-                     'Please check your output network for duplication of nodes and edges very close together.')
-        transformer = Transformer.from_proj(Proj(init=right.epsg), Proj(init=left.epsg))
-        # re-project the rest of right's nodes if do not match
-        for idx in s2_id_df[s2_id_df['left'].isna()].index:
-            node_attribs = deepcopy(right.node(s2_id_df.loc[idx, 'right']))
-            node_attribs['x'], node_attribs['y'] = spatial.change_proj(
-                node_attribs['x'], node_attribs['y'], transformer)
-            right.apply_attributes_to_node(s2_id_df.loc[idx, 'right'], node_attribs)
 
     # check uniqueness of the node indices that are left in right
     clashing_right_node_ids = \

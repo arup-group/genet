@@ -5,10 +5,10 @@ import pandas as pd
 import networkx as nx
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
-from tests.fixtures import network_object_from_test_data, assert_semantically_equal
+from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, full_fat_default_config_path
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
-from genet.schedule_elements import Route
+from genet.schedule_elements import Route, Service
 from genet.utils import plot
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -119,6 +119,24 @@ def test__str__shows_info():
     assert 'Schedule info' in n.__str__()
 
 
+def test_reproject_changes_x_y_values_for_all_nodes(network1):
+    network1.reproject('epsg:4326')
+    nodes = dict(network1.nodes())
+    correct_nodes = {
+        '101982': {'id': '101982', 'x': 51.52287873323954, 'y': -0.14625948709424305, 'lon': -0.14625948709424305,
+                   'lat': 51.52287873323954, 's2_id': 5221390329378179879},
+        '101986': {'id': '101986', 'x': 51.52228713323965, 'y': -0.14439428709377497, 'lon': -0.14439428709377497,
+                   'lat': 51.52228713323965, 's2_id': 5221390328605860387}}
+    assert_semantically_equal(nodes, correct_nodes)
+
+
+def test_reproject_delegates_reprojection_to_schedules_own_method(network1, route, mocker):
+    mocker.patch.object(Schedule, 'reproject')
+    network1.schedule = Schedule([Service(id='id', routes=[route])], epsg='epsg:27700')
+    network1.reproject('epsg:4326')
+    network1.schedule.reproject.assert_called_once_with('epsg:4326')
+
+
 def test_adding_the_same_networks():
     n_left = Network('epsg:27700')
     n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
@@ -130,9 +148,38 @@ def test_adding_the_same_networks():
     n_right = Network('epsg:27700')
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                            'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
-    n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
+    n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
+
+    n_left.add(n_right)
+    assert_semantically_equal(dict(n_left.nodes()), {
+        '1': {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118, 'lon': -0.14625948709424305,
+              'lat': 51.52287873323954, 's2_id': 5221390329378179879},
+        '2': {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392, 'lon': -0.14439428709377497,
+              'lat': 51.52228713323965, 's2_id': 5221390328605860387}})
+    assert_semantically_equal(dict(n_left.links()), {'1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}})
+
+
+def test_adding_the_same_networks_but_with_differing_projections():
+    n_left = Network()
+    n_left.epsg = 'epsg:27700'
+    n_left.schedule.epsg = 'epsg:27700'
+    n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
+                          'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
+    n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
+                          'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
+    n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
+
+    n_right = Network()
+    n_right.epsg = 'epsg:27700'
+    n_right.schedule.epsg = 'epsg:27700'
+    n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
+                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
+    n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
+                          'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
+    n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
+    n_right.reproject('epsg:4326')
 
     n_left.add(n_right)
     assert_semantically_equal(dict(n_left.nodes()), {
@@ -408,7 +455,7 @@ def test_add_edge_generates_a_link_id_and_delegated_to_add_link_id(mocker):
     n.add_edge(1, 2, attribs={'a': 1})
 
     Network.generate_index_for_edge.assert_called_once()
-    Network.add_link.assert_called_once_with('12345', 1, 2, None, {'a': 1})
+    Network.add_link.assert_called_once_with('12345', 1, 2, None, {'a': 1}, False)
 
 
 def test_add_edge_generates_a_link_id_with_specified_multiidx(mocker):
@@ -418,7 +465,7 @@ def test_add_edge_generates_a_link_id_with_specified_multiidx(mocker):
     n.add_edge(1, 2, multi_edge_idx=10, attribs={'a': 1})
 
     Network.generate_index_for_edge.assert_called_once()
-    Network.add_link.assert_called_once_with('12345', 1, 2, 10, {'a': 1})
+    Network.add_link.assert_called_once_with('12345', 1, 2, 10, {'a': 1}, False)
 
 
 def test_add_link_adds_edge_to_graph_with_attribs():
@@ -867,7 +914,7 @@ def test_node_gives_node_attribss():
 def test_edges_gives_iterator_of_edge_from_to_nodes_and_attribs():
     n = Network('epsg:27700')
     n.graph.add_edges_from([(1, 2), (2, 3), (3, 4)])
-    assert list(n.edges()) == [(1, 2, {}), (2, 3, {}), (3, 4, {})]
+    assert list(n.edges()) == [(1, 2, {0: {}}), (2, 3, {0: {}}), (3, 4, {0: {}})]
 
 
 def test_edge_method_gives_attributes_for_given_from_and_to_nodes():
@@ -915,6 +962,42 @@ def test_schedule_routes_with_disconnected_routes(network_object_from_test_data)
     correct_routes = [['25508485', '21667818'], [2345678, 987875]]
     routes = n.schedule_routes_nodes()
     assert correct_routes == routes
+
+
+def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
+    osm_test_file = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml"))
+    network = Network('epsg:27700')
+    network.read_osm(osm_test_file, full_fat_default_config_path, 1)
+    assert_semantically_equal(dict(network.nodes()), {
+        '0': {'id': '0', 'x': 49.766807234971715, 'y': -7.557159688006741, 'lat': -0.0006545205888310243,
+              'lon': 0.008554364250688652, 's2_id': 1152921492875543713},
+        '1': {'id': '1', 'x': 49.76680724542758, 'y': -7.5571594706895535, 'lat': -0.0006545205888310243,
+              'lon': 0.024278505899735615, 's2_id': 1152921335974974453},
+        '2': {'id': '2', 'x': 49.766807224515865, 'y': -7.557159905323929, 'lat': -0.0006545205888310243,
+              'lon': -0.00716977739835831, 's2_id': 384307157539499829}})
+    assert len(list(network.links())) == 8
+
+    number_of_0_multi_idx = 0
+    number_of_1_multi_idx = 0
+    for link_id, edge_map in network.link_id_mapping.items():
+        if edge_map['multi_edge_idx'] == 0:
+            number_of_0_multi_idx += 1
+        elif edge_map['multi_edge_idx'] == 1:
+            number_of_1_multi_idx += 1
+    assert number_of_0_multi_idx == 4
+    assert number_of_1_multi_idx == 4
+
+    assert_semantically_equal(network.link('1'),
+                              {'id': '1', 'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0,
+                               'oneway': '1',
+                               'modes': ['walk', 'bike', 'car'], 'from': '0', 'to': '1', 's2_from': 1152921492875543713,
+                               's2_to': 1152921335974974453, 'length': 1748.4487354464366,
+                               'attributes': {
+                                   'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                                       'text': 'unclassified'},
+                                   'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
+                                                     'text': '0'}}})
 
 
 def test_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):

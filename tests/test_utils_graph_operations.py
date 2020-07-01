@@ -367,18 +367,19 @@ def test_consolidating_node_ids_does_nothing_to_matching_nodes_in_matching_coord
 def test_consolidating_node_ids_updates_nodes_data_for_overlapping_nodes_of_different_coordinate_system():
     n_left = Network('epsg:27700')
     n_left.epsg = 'epsg:27700'
-    n_left.add_node('101982', {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118',
+    n_left.add_node('101982', {'id': '101982', 'x': '528704.1434730452', 'y': '182068.78144827875',
                                'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:4326'
-    n_right.add_node('101982', {'id': '101982', 'x': -0.14625948709424305, 'y': 51.52287873323954,
+    n_right.add_node('101982', {'id': '101982', 'x': 51.52287873323954, 'y': -0.14625948709424305,
                                 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
+    n_right.reproject('epsg:27700')
 
     output_n_right = graph_operations.consolidate_node_indices(n_left, n_right)
 
-    assert output_n_right.node('101982') == {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118',
-                                             'lon': -0.14625948709424305, 'lat': 51.52287873323954,
-                                             's2_id': 5221390329378179879}
+    assert_semantically_equal(output_n_right.node('101982'),
+                              {'id': '101982', 'x': 528704.1434730452, 'y': 182068.78144827875,
+                               'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
 
 
 def test_consolidating_node_ids_reprojects_non_overlapping_nodes():
@@ -388,33 +389,37 @@ def test_consolidating_node_ids_reprojects_non_overlapping_nodes():
                                'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:4326'
-    n_right.add_node('101990', {'id': '101990', 'x': -0.14770188709624754, 'y': 51.5205729332399,
+    n_right.add_node('101990', {'id': '101990', 'x': 51.5205729332399, 'y': -0.14770188709624754,
                                 'lon': -0.14770188709624754, 'lat': 51.5205729332399, 's2_id': 5221390304444511271})
+    n_right.reproject('epsg:27700')
 
     output_n_right = graph_operations.consolidate_node_indices(n_left, n_right)
 
-    assert_semantically_equal(output_n_right.node('101990'), {'id': '101990', 'x': 528610.5722059759, 'y': 181809.83345613896,
-                                             'lon': -0.14770188709624754, 'lat': 51.5205729332399,
-                                             's2_id': 5221390304444511271})
+    assert_semantically_equal(output_n_right.node('101990'),
+                              {'id': '101990', 'x': 528610.5722059759, 'y': 181809.83345613896,
+                               'lon': -0.14770188709624754, 'lat': 51.5205729332399,
+                               's2_id': 5221390304444511271})
 
 
 def test_add_reindexes_node_if_clashes_with_spatially_matched_nodes():
     n_left = Network('epsg:27700')
     n_left.epsg = 'epsg:27700'
-    n_left.add_node('101982', {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118',
+    n_left.add_node('101982', {'id': '101982', 'x': '528704.1434730452', 'y': '182068.78144827875',
                                'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:4326'
-    n_right.add_node('101990', {'id': '101990', 'x': -0.14625948709424305, 'y': 51.52287873323954,
+    n_right.add_node('101990', {'id': '101990', 'x': 51.52287873323954, 'y': -0.14625948709424305,
                                 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
+    n_right.reproject('epsg:27700')
 
     output_n_right = graph_operations.consolidate_node_indices(n_left, n_right)
 
     assert output_n_right.graph.has_node('101982')
     assert not output_n_right.graph.has_node('101990')
-    assert output_n_right.node('101982') == {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118',
-                                             'lon': -0.14625948709424305, 'lat': 51.52287873323954,
-                                             's2_id': 5221390329378179879}
+    assert_semantically_equal(output_n_right.node('101982'),
+                              {'id': '101982', 'x': 528704.1434730452, 'y': 182068.78144827875,
+                               'lon': -0.14625948709424305, 'lat': 51.52287873323954,
+                               's2_id': 5221390329378179879})
 
 
 def test_add_reindexes_node_if_clashes_with_spatially_unmatched_nodes():
@@ -424,16 +429,18 @@ def test_add_reindexes_node_if_clashes_with_spatially_unmatched_nodes():
                                'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:4326'
-    n_right.add_node('101982', {'id': '101982', 'x': -0.14770188709624754, 'y': 51.5205729332399,
+    n_right.add_node('101982', {'id': '101982', 'x': 51.5205729332399, 'y': -0.14770188709624754,
                                 'lon': -0.14770188709624754, 'lat': 51.5205729332399, 's2_id': 5221390304444511271})
+    n_right.reproject('epsg:27700')
 
     output_n_right = graph_operations.consolidate_node_indices(n_left, n_right)
 
     assert not output_n_right.graph.has_node('101982')
     the_node = [i for i, a in output_n_right.nodes()][0]
-    assert_semantically_equal(output_n_right.node(the_node), {'id': the_node, 'x': 528610.5722059759, 'y': 181809.83345613896,
-                                             'lon': -0.14770188709624754, 'lat': 51.5205729332399,
-                                             's2_id': 5221390304444511271})
+    assert_semantically_equal(output_n_right.node(the_node),
+                              {'id': the_node, 'x': 528610.5722059759, 'y': 181809.83345613896,
+                               'lon': -0.14770188709624754, 'lat': 51.5205729332399,
+                               's2_id': 5221390304444511271})
 
 
 def test_consolidating_link_ids_does_nothing_to_completely_matching_links():

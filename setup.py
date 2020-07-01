@@ -26,6 +26,8 @@ setup(
         'lxml',
         'xmltodict',
         'anytree',
-        'osmnx'
+        'osmnx',
+        'osmread',
+        'PyYAML'
     ],
 )

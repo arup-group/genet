@@ -98,6 +98,28 @@ def test_plot_delegates_to_util_plot_plot_graph_routes(mocker, schedule):
     plot.plot_graph.assert_called_once()
 
 
+def test_reproject_changes_projection_for_all_stops_in_route():
+    correct_x_y = {'x': 51.52393050617373, 'y': -0.14967658860132668}
+    schedule = Schedule(
+        'epsg:27700',
+        [Service(id='10314', routes=[
+            Route(
+                route_short_name='12',
+                mode='bus',
+                stops=[Stop(id='26997928P', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700'),
+                       Stop(id='26997928P.link:1', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700')],
+                route=['1'],
+                trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+                arrival_offsets=['00:00:00', '00:02:00'],
+                departure_offsets=['00:00:00', '00:02:00']
+            )
+        ])])
+    schedule.reproject('epsg:4326')
+    stops = dict(schedule.stops())
+    assert_semantically_equal({'x': stops['26997928P'].x, 'y': stops['26997928P'].y}, correct_x_y)
+    assert_semantically_equal({'x': stops['26997928P.link:1'].x, 'y': stops['26997928P.link:1'].y}, correct_x_y)
+
+
 def test_adding_merges_separable_schedules(route):
     schedule = Schedule(epsg='epsg:4326', services=[Service(id='1', routes=[route])])
     schedule_to_be_added = Schedule(epsg='epsg:4326', services=[Service(id='2', routes=[route])])
@@ -121,14 +143,14 @@ def test_adding_throws_error_when_schedules_not_separable(test_service):
     assert 'This method only supports adding non overlapping services' in str(e.value)
 
 
-def test_adding_throws_error_when_schedules_dont_have_matching_epsg(test_service, different_test_service):
-    schedule = Schedule(services=[test_service], epsg='epsg:4326')
+def test_adding_calls_on_reproject_when_schedules_dont_have_matching_epsg(test_service, different_test_service, mocker):
+    mocker.patch.object(Schedule, 'reproject')
+    schedule = Schedule(services=[test_service], epsg='epsg:27700')
     assert 'service' in schedule.services
-    schedule_to_be_added = Schedule(services=[different_test_service], epsg='epsg:27700')
+    schedule_to_be_added = Schedule(services=[different_test_service], epsg='epsg:4326')
 
-    with pytest.raises(RuntimeError) as e:
-        schedule + schedule_to_be_added
-    assert 'You are merging two schedules with different coordinate systems' in str(e.value)
+    schedule + schedule_to_be_added
+    schedule_to_be_added.reproject.assert_called_once_with('epsg:27700')
 
 
 def test_service_ids_returns_keys_of_the_services_dict(test_service):
