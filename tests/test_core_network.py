@@ -1033,6 +1033,30 @@ def test_has_node_when_node_is_not_in_the_graph():
     assert not n.has_node('1')
 
 
+def test_has_nodes_when_nodes_in_the_graph():
+    n = Network('epsg:27700')
+    n.add_node('1')
+    n.add_node('2')
+    n.add_node('3')
+    assert n.has_nodes(['1', '2'])
+
+
+def test_has_nodes_when_only_some_nodes_in_the_graph():
+    n = Network('epsg:27700')
+    n.add_node('1')
+    n.add_node('2')
+    n.add_node('3')
+    assert not n.has_nodes(['1', '4'])
+
+
+def test_has_nodes_when_none_of_the_nodes_in_the_graph():
+    n = Network('epsg:27700')
+    n.add_node('1')
+    n.add_node('2')
+    n.add_node('3')
+    assert not n.has_nodes(['10', '20'])
+
+
 def test_has_edge_when_edge_is_in_the_graph():
     n = Network('epsg:27700')
     n.add_link('1', 1, 2)
@@ -1060,6 +1084,30 @@ def test_has_link_when_link_id_is_in_the_network_but_corresponding_edge_is_not()
     n = Network('epsg:27700')
     n.link_id_mapping['1'] = {'from': 1, 'to': 2, 'multi_edge_idx': 0}
     assert not n.has_link('1')
+
+
+def test_has_links_when_links_in_the_graph():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 1, 2)
+    n.add_link('3', 1, 2)
+    assert n.has_links(['1', '2'])
+
+
+def test_has_links_when_only_some_links_in_the_graph():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 1, 2)
+    n.add_link('3', 1, 2)
+    assert not n.has_links(['1', '4'])
+
+
+def test_has_links_when_none_of_the_links_in_the_graph():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 1, 2)
+    n.add_link('3', 1, 2)
+    assert not n.has_links(['10', '20'])
 
 
 def test_generate_index_for_node_gives_next_integer_string_when_you_have_matsim_usual_integer_index():
