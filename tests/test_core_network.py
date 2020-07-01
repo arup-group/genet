@@ -5,7 +5,8 @@ import pandas as pd
 import networkx as nx
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
-from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, full_fat_default_config_path
+from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
+    full_fat_default_config_path
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
 from genet.schedule_elements import Route, Service
@@ -149,7 +150,7 @@ def test_adding_the_same_networks():
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                            'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
-                          'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
+                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
 
     n_left.add(n_right)
@@ -173,7 +174,7 @@ def test_adding_the_same_networks_but_with_differing_projections():
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                            'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
-                          'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
+                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
     n_right.reproject('epsg:4326')
 
@@ -1173,6 +1174,44 @@ def test_index_graph_edges_generates_completely_new_index():
     n.add_link('x2', 1, 2)
     n.index_graph_edges()
     assert list(n.link_id_mapping.keys()) == ['0', '1']
+
+
+def test_has_schedule_with_valid_network_routes_with_valid_routes(route):
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 2, 3)
+    route.route = ['1', '2']
+    n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route, route])])
+    assert n.has_schedule_with_valid_network_routes()
+
+
+def test_has_schedule_with_valid_network_routes_with_some_valid_routes(route):
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 2, 3)
+    route.route = ['1', '2']
+    route_2 = Route(route_short_name='', mode='', stops=[], trips={},
+                    arrival_offsets=[], departure_offsets=[], route=['10000'])
+    n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route, route_2])])
+    assert not n.has_schedule_with_valid_network_routes()
+
+
+def test_has_schedule_with_valid_network_routes_with_invalid_routes(route):
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 2, 3)
+    route.route = ['3', '4']
+    n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route, route])])
+    assert not n.has_schedule_with_valid_network_routes()
+
+
+def test_has_schedule_with_valid_network_routes_with_empty_routes(route):
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 2, 3)
+    route.route = []
+    n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route, route])])
+    assert not n.has_schedule_with_valid_network_routes()
 
 
 def test_invalid_network_routes_with_valid_route(route):
