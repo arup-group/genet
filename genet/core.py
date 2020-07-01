@@ -50,6 +50,11 @@ class Network:
         :param other:
         :return:
         """
+        # consolidate coordinate systems
+        if other.epsg != self.epsg:
+            logging.info('Attempting to merge two networks in different coordinate systems. '
+                         'Reprojecting from {} to {}'.format(other.epsg, self.epsg))
+            other.reproject(other.epsg)
         # consolidate node ids
         other = graph_operations.consolidate_node_indices(self, other)
         # consolidate link ids
@@ -76,6 +81,21 @@ class Network:
             nx.info(self.graph),
             self.schedule.info()
         )
+
+    def reproject(self, new_epsg):
+        """
+        Changes projection of the network to new_epsg
+        :param new_epsg: 'epsg:1234'
+        :return:
+        """
+        old_to_new_transformer = Transformer.from_proj(Proj(self.epsg), Proj(new_epsg))
+        for node_id, node_attribs in self.nodes():
+            x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], old_to_new_transformer)
+            reprojected_node_attribs = {'x': x, 'y': y}
+            self.apply_attributes_to_node(node_id, reprojected_node_attribs)
+        if self.schedule:
+            self.schedule.reproject(new_epsg)
+        self.initiate_crs_transformer(new_epsg)
 
     def node_attribute_summary(self, data=False):
         """
@@ -479,7 +499,10 @@ class Network:
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
-        self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+        if epsg != 'epsg:4326':
+            self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+        else:
+            self.transformer = None
 
     def read_osm(self, osm_file_path, osm_read_config, output_epsg, num_processes: int = 1):
         self.initiate_crs_transformer(output_epsg)
@@ -669,12 +692,10 @@ class Schedule:
             # have left and right indicies
             raise NotImplementedError('This method only supports adding non overlapping services.')
         elif self.epsg != other.epsg:
-            # TODO change to reprojection
-            raise RuntimeError('You are merging two schedules with different coordinate systems.')
-        else:
-            return self.__class__(
-                services=list(self.services.values()) + list(other.services.values()),
-                epsg=self.epsg)
+            other.reproject(self.epsg)
+        return self.__class__(
+            services=list(self.services.values()) + list(other.services.values()),
+            epsg=self.epsg)
 
     def is_separable_from(self, other):
         return set(other.services.keys()) & set(self.services.keys()) == set()
@@ -684,6 +705,19 @@ class Schedule:
 
     def info(self):
         return 'Number of services: {}\nNumber of unique routes: {}'.format(self.__len__(), self.number_of_routes())
+
+    def reproject(self, new_epsg):
+        """
+        Changes projection of the schedule to new_epsg
+        :param new_epsg: 'epsg:1234'
+        :return:
+        """
+        old_to_new_transformer = Transformer.from_proj(Proj(self.epsg), Proj(new_epsg))
+        # need to go through all instances of all the stops
+        for service_id, route in self.routes():
+            for stop in route.stops:
+                stop.reproject(new_epsg, old_to_new_transformer)
+        self.initiate_crs_transformer(new_epsg)
 
     def service_ids(self):
         return list(self.services.keys())
@@ -725,7 +759,10 @@ class Schedule:
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
-        self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+        if epsg != 'epsg:4326':
+            self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+        else:
+            self.transformer = None
 
     def read_matsim_schedule(self, path, epsg):
         self.initiate_crs_transformer(epsg)
