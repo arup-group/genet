@@ -264,7 +264,7 @@ class Network:
         :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        link_id = self.generate_index_for_edge()
+        link_id = self.generate_index_for_edge(silent=silent)
         self.add_link(link_id, u, v, multi_edge_idx, attribs, silent)
         if not silent:
             logging.info('Added edge from `{}` to `{}` with link_id `{}`'.format(u, v, link_id))
@@ -285,7 +285,7 @@ class Network:
         :return:
         """
         if link_id in self.link_id_mapping:
-            new_link_id = self.generate_index_for_edge()
+            new_link_id = self.generate_index_for_edge(silent=silent)
             logging.warning('This link_id=`{}` already exists. Generated a new unique_index: `{}`'.format(
                 link_id, new_link_id))
             link_id = new_link_id
@@ -616,7 +616,7 @@ class Network:
     def has_links(self, link_ids: list):
         return all([self.has_link(link_id) for link_id in link_ids])
 
-    def generate_index_for_node(self, avoid_keys: Union[list, set] = None):
+    def generate_index_for_node(self, avoid_keys: Union[list, set] = None, silent: bool = False):
         existing_keys = set([i for i, attribs in self.nodes()])
         if avoid_keys:
             existing_keys = existing_keys | set(avoid_keys)
@@ -626,7 +626,8 @@ class Network:
             id = len(existing_keys) + 1
         if (id in existing_keys) or (str(id) in existing_keys):
             id = uuid.uuid4()
-        logging.info('Generated node id {}.'.format(id))
+        if not silent:
+            logging.info('Generated node id {}.'.format(id))
         return str(id)
 
     def link_id_exists(self, link_id):
@@ -635,7 +636,7 @@ class Network:
             return True
         return False
 
-    def generate_index_for_edge(self, avoid_keys: Union[list, set] = None):
+    def generate_index_for_edge(self, avoid_keys: Union[list, set] = None, silent: bool = False):
         existing_keys = set(self.link_id_mapping.keys())
         if avoid_keys:
             existing_keys = existing_keys | set(avoid_keys)
@@ -645,7 +646,8 @@ class Network:
             id = len(existing_keys) + 1
         if (id in existing_keys) or (str(id) in existing_keys):
             id = uuid.uuid4()
-        logging.info('Generated link id {}.'.format(id))
+        if not silent:
+            logging.info('Generated link id {}.'.format(id))
         return str(id)
 
     def index_graph_edges(self):
@@ -831,7 +833,7 @@ class Schedule:
         print(self.info())
 
     def info(self):
-        return 'Number of services: {}\nNumber of unique routes: {}\nNumber of stops: {}'.format(
+        return 'Schedule:\nNumber of services: {}\nNumber of unique routes: {}\nNumber of stops: {}'.format(
             self.__len__(), self.number_of_routes(), len(self.stops_mapping))
 
     def plot(self, show=True, save=False, output_dir=''):
@@ -953,9 +955,12 @@ class Schedule:
         :param day: 'YYYYMMDD' to use form the gtfs
         :return:
         """
-        self.initiate_crs_transformer(epsg='epsg:4326')
+        old_to_new_transformer = Transformer.from_crs('epsg:4326', self.epsg)
         services = gtfs_reader.read_to_list_of_service_objects(path, day)
         for service in services:
+            for route in service.routes:
+                for stop in route.stops:
+                    stop.reproject(self.epsg, old_to_new_transformer)
             self.services[service.id] = service
         self.build_stops_mapping()
 
