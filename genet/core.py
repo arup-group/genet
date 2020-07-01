@@ -663,7 +663,7 @@ class Network:
 
     def invalid_network_routes(self):
         return [(service_id, route.id) for service_id, route in self.schedule.routes() if not
-                self.has_links(route.route)]
+                self.has_links(route.route) or not route.has_network_route()]
 
     def generate_validation_report(self):
         logging.info('Checking validity of the Network')

@@ -1127,6 +1127,35 @@ def test_index_graph_edges_generates_completely_new_index():
     assert list(n.link_id_mapping.keys()) == ['0', '1']
 
 
+def test_invalid_network_routes_with_valid_route(route):
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 2, 3)
+    route.route = ['1', '2']
+    n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route])])
+    assert n.invalid_network_routes() == []
+
+
+def test_invalid_network_routes_with_invalid_route(route):
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 2, 3)
+    route.route = ['3', '4']
+    route.id = 'route'
+    n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route])])
+    assert n.invalid_network_routes() == [('service', 'route')]
+
+
+def test_invalid_network_routes_with_empty_route(route):
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 2, 3)
+    route.route = []
+    route.id = 'route'
+    n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route])])
+    assert n.invalid_network_routes() == [('service', 'route')]
+
+
 def test_generate_validation_report(network_object_from_test_data):
     n = network_object_from_test_data
     report = n.generate_validation_report()
