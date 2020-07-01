@@ -6,11 +6,15 @@ import os
 from copy import deepcopy
 from typing import Union, List
 from pyproj import Proj, Transformer
-from genet.inputs_handler import matsim_reader, gtfs_reader
-from genet.outputs_handler import matsim_xml_writer
-from genet.modify import ChangeLog
-from genet.utils import spatial, persistence, graph_operations
-from genet.schedule_elements import Service
+import genet.inputs_handler.matsim_reader as matsim_reader
+import genet.inputs_handler.gtfs_reader as gtfs_reader
+import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
+import genet.modify.change_log as change_log
+import genet.utils.spatial as spatial
+import genet.utils.persistence as persistence
+import genet.utils.graph_operations as graph_operations
+import genet.schedule_elements as schedule_elements
+import genet.inputs_handler.osm_reader as osm_reader
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -19,7 +23,7 @@ class Network:
     def __init__(self):
         self.graph = nx.MultiDiGraph()
         self.schedule = Schedule()
-        self.change_log = ChangeLog()
+        self.change_log = change_log.ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
 
         self.epsg = ''
@@ -187,16 +191,26 @@ class Network:
             df.index = df.index.set_names([index_name])
         return df
 
-    def add_node(self, node: Union[str, int], attribs: dict = None):
+    def add_node(self, node: Union[str, int], attribs: dict = None, silent: bool = False):
+        """
+        Adds a node.
+        :param node:
+        :param attribs: should include spatial information x,y in epsg cosistent with the network or lat lon in
+        epsg:4326
+        :param silent: whether to mute stdout logging messages, useful for big batches
+        :return:
+        """
         if attribs is not None:
             self.graph.add_node(node, **attribs)
         else:
             self.graph.add_node(node)
         self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
-        logging.info('Added Node with index `{}` and data={}'.format(node, attribs))
+        if not silent:
+            logging.info('Added Node with index `{}` and data={}'.format(node, attribs))
         return node
 
-    def add_edge(self, u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None, attribs: dict = None):
+    def add_edge(self, u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None, attribs: dict = None,
+                 silent: bool = False):
         """
         Adds an edge between u and v. If an edge between u and v already exists, adds an additional one. Generates
         link id. If you already have a link id, use the method to add_link.
@@ -205,15 +219,17 @@ class Network:
         :param multi_edge_idx: you can specify which multi index to use if there are other edges between u and v.
         Will generate new index if already used.
         :param attribs:
+        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
         link_id = self.generate_index_for_edge()
-        self.add_link(link_id, u, v, multi_edge_idx, attribs)
-        logging.info('Added edge from `{}` to `{}` with link_id `{}`'.format(u, v, link_id))
+        self.add_link(link_id, u, v, multi_edge_idx, attribs, silent)
+        if not silent:
+            logging.info('Added edge from `{}` to `{}` with link_id `{}`'.format(u, v, link_id))
         return link_id
 
     def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None,
-                 attribs: dict = None):
+                 attribs: dict = None, silent: bool = False):
         """
         Adds an link between u and v with id link_id, if available. If a link between u and v already exists,
         adds an additional one.
@@ -223,6 +239,7 @@ class Network:
         :param multi_edge_idx: you can specify which multi index to use if there are other edges between u and v.
         Will generate new index if already used.
         :param attribs:
+        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
         if link_id in self.link_id_mapping:
@@ -249,11 +266,12 @@ class Network:
             attribs = {**attribs, **compulsory_attribs}
         self.graph.add_edge(u, v, key=multi_edge_idx, **attribs)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
-        logging.info('Added Link with index {}, from node:{} to node:{}, under multi-index:{}, and data={}'.format(
-            link_id, u, v, multi_edge_idx, attribs))
+        if not silent:
+            logging.info('Added Link with index {}, from node:{} to node:{}, under multi-index:{}, and data={}'.format(
+                link_id, u, v, multi_edge_idx, attribs))
         return link_id
 
-    def reindex_node(self, node_id, new_node_id):
+    def reindex_node(self, node_id, new_node_id, silent: bool = False):
         # check if new id is already occupied
         if self.node_id_exists(new_node_id):
             new_node_id = self.generate_index_for_node()
@@ -274,9 +292,10 @@ class Network:
                                old_attributes=self.node(node_id), new_attributes=new_attribs)
         self.apply_attributes_to_node(node_id, new_attribs)
         self.graph = nx.relabel_nodes(self.graph, {node_id: new_node_id})
-        logging.info('Changed Node index from {} to {}'.format(node_id, new_node_id))
+        if not silent:
+            logging.info('Changed Node index from {} to {}'.format(node_id, new_node_id))
 
-    def reindex_link(self, link_id, new_link_id):
+    def reindex_link(self, link_id, new_link_id, silent: bool = False):
         # check if new id is already occupied
         if self.link_id_exists(new_link_id):
             new_link_id = self.generate_index_for_edge()
@@ -287,14 +306,16 @@ class Network:
         self.apply_attributes_to_link(link_id, new_attribs)
         self.link_id_mapping[new_link_id] = self.link_id_mapping[link_id]
         del self.link_id_mapping[link_id]
-        logging.info('Changed Link index from {} to {}'.format(link_id, new_link_id))
+        if not silent:
+            logging.info('Changed Link index from {} to {}'.format(link_id, new_link_id))
 
-    def apply_attributes_to_node(self, node_id, new_attributes):
+    def apply_attributes_to_node(self, node_id, new_attributes, silent: bool = False):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the node currently so no data is lost, unless it is being overwritten.
         :param node_id: node id to perform the change to
         :param new_attributes: dictionary of data to add/replace if present
+        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
         old_attributes = deepcopy(self.node(node_id))
@@ -312,24 +333,27 @@ class Network:
             old_attributes=self.node(node_id),
             new_attributes=new_attributes)
         nx.set_node_attributes(self.graph, {node_id: new_attributes})
-        logging.info('Changed Node attributes under index: {}'.format(node_id))
+        if not silent:
+            logging.info('Changed Node attributes under index: {}'.format(node_id))
 
-    def apply_attributes_to_nodes(self, nodes: list, new_attributes: dict):
+    def apply_attributes_to_nodes(self, nodes: list, new_attributes: dict, silent: bool = False):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the node currently so no data is lost, unless it is being overwritten.
         :param nodes: list of node ids
         :param new_attributes: dictionary of data to add/replace if present
+        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        [self.apply_attributes_to_node(node, new_attributes) for node in nodes]
+        [self.apply_attributes_to_node(node, new_attributes, silent) for node in nodes]
 
-    def apply_attributes_to_link(self, link_id, new_attributes):
+    def apply_attributes_to_link(self, link_id, new_attributes, silent: bool = False):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the link currently so no data is lost, unless it is being overwritten.
         :param link_id: link id to perform the change to
         :param new_attributes: dictionary of data to add/replace if present
+        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
         u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
@@ -350,40 +374,46 @@ class Network:
             new_attributes=new_attributes)
 
         nx.set_edge_attributes(self.graph, {(u, v, multi_idx): new_attributes})
-        logging.info('Changed Link attributes under index: {}'.format(link_id))
+        if not silent:
+            logging.info('Changed Link attributes under index: {}'.format(link_id))
 
-    def apply_attributes_to_links(self, links: list, new_attributes: dict):
+    def apply_attributes_to_links(self, links: list, new_attributes: dict, silent: bool = False):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the link currently so no data is lost, unless it is being overwritten.
         :param links: list of link ids
         :param new_attributes: dictionary of data to add/replace if present
+        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        [self.apply_attributes_to_link(link, new_attributes) for link in links]
+        [self.apply_attributes_to_link(link, new_attributes, silent) for link in links]
 
-    def remove_node(self, node_id):
+    def remove_node(self, node_id, silent: bool = False):
         """
         Removes the node n and all adjacent edges
         :param node_id:
+        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
         self.change_log.remove(object_type='node', object_id=node_id, object_attributes=self.node(node_id))
         self.graph.remove_node(node_id)
-        logging.info('Removed Node under index: {}'.format(node_id))
+        if not silent:
+            logging.info('Removed Node under index: {}'.format(node_id))
 
-    def remove_nodes(self, nodes):
+    def remove_nodes(self, nodes, silent: bool = False):
         """
         Removes several nodes and all adjacent edges
         :param nodes:
+        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        [self.remove_node(node) for node in nodes]
+        [self.remove_node(node, silent) for node in nodes]
 
-    def remove_link(self, link_id):
+    def remove_link(self, link_id, silent: bool = False):
         """
         Removes the multi edge pertaining to link given
         :param link_id:
+        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
         self.change_log.remove(object_type='link', object_id=link_id, object_attributes=self.link(link_id))
@@ -391,15 +421,17 @@ class Network:
         multi_idx = self.link_id_mapping[link_id]['multi_edge_idx']
         self.graph.remove_edge(u, v, multi_idx)
         del self.link_id_mapping[link_id]
-        logging.info('Removed Link under index: {}'.format(link_id))
+        if not silent:
+            logging.info('Removed Link under index: {}'.format(link_id))
 
-    def remove_links(self, links):
+    def remove_links(self, links, silent: bool = False):
         """
         Removes the multi edges pertaining to links given
         :param links:
+        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        [self.remove_link(link) for link in links]
+        [self.remove_link(link, silent) for link in links]
 
     def number_of_multi_edges(self, u, v):
         """
@@ -430,8 +462,8 @@ class Network:
         """
         :return: Iterator through each edge's from, to nodes and its attrib (three-tuple)
         """
-        for u, v, attrib in self.graph.edges(data=True):
-            yield u, v, attrib
+        for u, v in self.graph.edges():
+            yield u, v, self.edge(u, v)
 
     def edge(self, u, v):
         """
@@ -471,6 +503,49 @@ class Network:
             self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
         else:
             self.transformer = None
+
+    def read_osm(self, osm_file_path, osm_read_config, output_epsg, num_processes: int = 1):
+        self.initiate_crs_transformer(output_epsg)
+        input_to_output_transformer = Transformer.from_proj(Proj(output_epsg), Proj('epsg:4326'))
+        config = osm_reader.Config(osm_read_config)
+        nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
+            osm_file_path, config, num_processes)
+        for node_id, attribs in nodes.items():
+            x, y = spatial.change_proj(attribs['x'], attribs['y'], input_to_output_transformer)
+            self.add_node(str(node_id), {
+                'id': str(node_id),
+                'x': x,
+                'y': y,
+                'lon': attribs['x'],
+                'lat': attribs['y'],
+                's2_id': attribs['s2id']
+            }, silent=True)
+
+        for edge, attribs in edges:
+            u, v = str(edge[0]), str(edge[1])
+            link_attributes = osm_reader.find_matsim_link_values(attribs, config)
+            link_attributes['oneway'] = '1'
+            link_attributes['modes'] = attribs['modes']
+            link_attributes['from'] = self.node(u)['id']
+            link_attributes['to'] = self.node(v)['id']
+            link_attributes['s2_from'] = self.node(u)['s2_id']
+            link_attributes['s2_to'] = self.node(v)['s2_id']
+            link_attributes['length'] = attribs['length']
+
+            # the rest of the keys are osm attributes
+            link_attributes['attributes'] = {}
+            for key, val in attribs.items():
+                if key not in link_attributes:
+                    link_attributes['attributes']['osm:way:{}'.format(key)] = {
+                            'name': 'osm:way:{}'.format(key),
+                            'class': 'java.lang.String',
+                            'text': str(val),
+                        }
+
+            self.add_edge(u, v, attribs=link_attributes, silent=True)
+
+        logging.info('Deleting isolated nodes which have no edges.')
+        self.remove_nodes(list(nx.isolates(self.graph)), silent=True)
 
     def read_matsim_network(self, path, epsg):
         self.initiate_crs_transformer(epsg)
@@ -568,7 +643,7 @@ class Schedule:
     :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     """
 
-    def __init__(self, services: List[Service] = None, epsg=''):
+    def __init__(self, services: List[schedule_elements.Service] = None, epsg=''):
         super().__init__()
         if services is None:
             self.services = {}

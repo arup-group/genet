@@ -4,7 +4,7 @@ import uuid
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
-from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal
+from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, full_fat_default_config_path
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
 from genet.schedule_elements import Service
@@ -458,7 +458,7 @@ def test_add_edge_generates_a_link_id_and_delegated_to_add_link_id(mocker):
     n.add_edge(1, 2, attribs={'a': 1})
 
     Network.generate_index_for_edge.assert_called_once()
-    Network.add_link.assert_called_once_with('12345', 1, 2, None, {'a': 1})
+    Network.add_link.assert_called_once_with('12345', 1, 2, None, {'a': 1}, False)
 
 
 def test_add_edge_generates_a_link_id_with_specified_multiidx(mocker):
@@ -468,7 +468,7 @@ def test_add_edge_generates_a_link_id_with_specified_multiidx(mocker):
     n.add_edge(1, 2, multi_edge_idx=10, attribs={'a': 1})
 
     Network.generate_index_for_edge.assert_called_once()
-    Network.add_link.assert_called_once_with('12345', 1, 2, 10, {'a': 1})
+    Network.add_link.assert_called_once_with('12345', 1, 2, 10, {'a': 1}, False)
 
 
 def test_add_link_adds_edge_to_graph_with_attribs():
@@ -883,7 +883,7 @@ def test_node_gives_node_attribss():
 def test_edges_gives_iterator_of_edge_from_to_nodes_and_attribs():
     n = Network()
     n.graph.add_edges_from([(1, 2), (2, 3), (3, 4)])
-    assert list(n.edges()) == [(1, 2, {}), (2, 3, {}), (3, 4, {})]
+    assert list(n.edges()) == [(1, 2, {0: {}}), (2, 3, {0: {}}), (3, 4, {0: {}})]
 
 
 def test_edge_method_gives_attributes_for_given_from_and_to_nodes():
@@ -905,6 +905,42 @@ def test_link_gives_link_attribs():
     n.add_link('0', 1, 2, attribs={'attrib': 1})
     n.add_link('0', 1, 2, attribs={'attrib': 1})
     assert n.link('0') == {'attrib': 1, 'from': 1, 'to': 2, 'id': '0'}
+
+
+def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
+    osm_test_file = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml"))
+    network = Network()
+    network.read_osm(osm_test_file, full_fat_default_config_path, 'epsg:27700', 1)
+    assert_semantically_equal(dict(network.nodes()), {
+        '0': {'id': '0', 'x': 49.766807234971715, 'y': -7.557159688006741, 'lat': -0.0006545205888310243,
+              'lon': 0.008554364250688652, 's2_id': 1152921492875543713},
+        '1': {'id': '1', 'x': 49.76680724542758, 'y': -7.5571594706895535, 'lat': -0.0006545205888310243,
+              'lon': 0.024278505899735615, 's2_id': 1152921335974974453},
+        '2': {'id': '2', 'x': 49.766807224515865, 'y': -7.557159905323929, 'lat': -0.0006545205888310243,
+              'lon': -0.00716977739835831, 's2_id': 384307157539499829}})
+    assert len(list(network.links())) == 8
+
+    number_of_0_multi_idx = 0
+    number_of_1_multi_idx = 0
+    for link_id, edge_map in network.link_id_mapping.items():
+        if edge_map['multi_edge_idx'] == 0:
+            number_of_0_multi_idx += 1
+        elif edge_map['multi_edge_idx'] == 1:
+            number_of_1_multi_idx += 1
+    assert number_of_0_multi_idx == 4
+    assert number_of_1_multi_idx == 4
+
+    assert_semantically_equal(network.link('1'),
+                              {'id': '1', 'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0,
+                               'oneway': '1',
+                               'modes': ['walk', 'bike', 'car'], 'from': '0', 'to': '1', 's2_from': 1152921492875543713,
+                               's2_to': 1152921335974974453, 'length': 1748.4487354464366,
+                               'attributes': {
+                                   'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                                       'text': 'unclassified'},
+                                   'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
+                                                     'text': '0'}}})
 
 
 def test_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):
