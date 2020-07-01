@@ -1,5 +1,5 @@
 from typing import Union, Dict, List
-from pyproj import Proj, Transformer
+from pyproj import Transformer
 from genet.utils import spatial
 
 # number of decimal places to consider when comparing lat lons
@@ -45,7 +45,7 @@ class Stop:
         self.epsg = epsg
         if transformer is None:
             if epsg != 'epsg:4326':
-                self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+                self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
             else:
                 self.transformer = None
         else:
@@ -59,11 +59,11 @@ class Stop:
         :return:
         """
         if transformer is None:
-            transformer = Transformer.from_proj(Proj(self.epsg), Proj(new_epsg))
+            transformer = Transformer.from_crs(self.epsg, new_epsg)
         self.x, self.y = spatial.change_proj(self.x, self.y, transformer)
 
         self.epsg = new_epsg
-        self.transformer = Transformer.from_proj(Proj(self.epsg), Proj('epsg:4326'))
+        self.transformer = Transformer.from_crs(self.epsg, 'epsg:4326')
 
     def add_additional_attributes(self, attribs: dict):
         """

@@ -5,7 +5,7 @@ import logging
 import os
 from copy import deepcopy
 from typing import Union, List
-from pyproj import Proj, Transformer
+from pyproj import Transformer
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.gtfs_reader as gtfs_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
@@ -88,7 +88,7 @@ class Network:
         :param new_epsg: 'epsg:1234'
         :return:
         """
-        old_to_new_transformer = Transformer.from_proj(Proj(self.epsg), Proj(new_epsg))
+        old_to_new_transformer = Transformer.from_crs(self.epsg, new_epsg)
         for node_id, node_attribs in self.nodes():
             x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], old_to_new_transformer)
             reprojected_node_attribs = {'x': x, 'y': y}
@@ -500,13 +500,13 @@ class Network:
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
         if epsg != 'epsg:4326':
-            self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+            self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
         else:
             self.transformer = None
 
     def read_osm(self, osm_file_path, osm_read_config, output_epsg, num_processes: int = 1):
         self.initiate_crs_transformer(output_epsg)
-        input_to_output_transformer = Transformer.from_proj(Proj(output_epsg), Proj('epsg:4326'))
+        input_to_output_transformer = Transformer.from_crs(output_epsg, 'epsg:4326')
         config = osm_reader.Config(osm_read_config)
         nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
             osm_file_path, config, num_processes)
@@ -712,7 +712,7 @@ class Schedule:
         :param new_epsg: 'epsg:1234'
         :return:
         """
-        old_to_new_transformer = Transformer.from_proj(Proj(self.epsg), Proj(new_epsg))
+        old_to_new_transformer = Transformer.from_crs(self.epsg, new_epsg)
         # need to go through all instances of all the stops
         for service_id, route in self.routes():
             for stop in route.stops:
@@ -760,7 +760,7 @@ class Schedule:
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
         if epsg != 'epsg:4326':
-            self.transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+            self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
         else:
             self.transformer = None
 
