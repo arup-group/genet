@@ -132,7 +132,7 @@ def test_reproject_changes_x_y_values_for_all_nodes(network1):
 
 def test_reproject_delegates_reprojection_to_schedules_own_method(network1, route, mocker):
     mocker.patch.object(Schedule, 'reproject')
-    network1.schedule = Schedule([Service(id='id', routes=[route])], epsg='epsg:27700')
+    network1.schedule = Schedule(epsg='epsg:27700', services=[Service(id='id', routes=[route])])
     network1.reproject('epsg:4326')
     network1.schedule.reproject.assert_called_once_with('epsg:4326')
 
@@ -162,18 +162,14 @@ def test_adding_the_same_networks():
 
 
 def test_adding_the_same_networks_but_with_differing_projections():
-    n_left = Network()
-    n_left.epsg = 'epsg:27700'
-    n_left.schedule.epsg = 'epsg:27700'
+    n_left = Network('epsg:27700')
     n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
 
-    n_right = Network()
-    n_right.epsg = 'epsg:27700'
-    n_right.schedule.epsg = 'epsg:27700'
+    n_right = Network('epsg:27700')
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                            'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
