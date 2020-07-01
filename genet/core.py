@@ -92,7 +92,7 @@ class Network:
         for node_id, node_attribs in self.nodes():
             x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], old_to_new_transformer)
             reprojected_node_attribs = {'x': x, 'y': y}
-            self.apply_attributes_to_node(node_id, reprojected_node_attribs)
+            self.apply_attributes_to_node(node_id, reprojected_node_attribs, silent=True)
         if self.schedule:
             self.schedule.reproject(new_epsg)
         self.initiate_crs_transformer(new_epsg)
