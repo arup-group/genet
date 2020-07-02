@@ -277,7 +277,8 @@ class Route:
         return self.id
 
     def is_valid_route(self):
-        return self.has_more_than_one_stop() and bool(self.has_correctly_ordered_route()) and bool(not self.has_self_loops())
+        return self.has_more_than_one_stop() and bool(self.has_correctly_ordered_route()) and bool(
+            not self.has_self_loops())
 
 
 class Service:

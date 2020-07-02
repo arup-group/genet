@@ -14,13 +14,25 @@ def test_plot_graph_gets_saved_to_the_specified_directory(tmpdir, network_object
     assert os.path.exists(expected_plot_path)
 
 
-def test_plot_graph_routes_gets_saved_to_the_specified_directory(tmpdir, network_object_from_test_data):
+def test_plot_graph_routes_with_single_route_gets_saved_to_the_specified_directory(tmpdir, network_object_from_test_data):
     filename = 'filename'
     expected_plot_path = os.path.join(tmpdir, filename+'.png')
     assert not os.path.exists(expected_plot_path)
 
     n = network_object_from_test_data
-    plot.plot_graph_routes(n.graph, [], filename, show=False, save=True, output_dir=tmpdir)
+    plot.plot_graph_routes(n.graph, [['25508485', '21667818']], filename, show=False, save=True, output_dir=tmpdir)
+
+    assert os.path.exists(expected_plot_path)
+
+
+def test_plot_graph_routes_with_multiple_routes_gets_saved_to_the_specified_directory(tmpdir, network_object_from_test_data):
+    filename = 'filename'
+    expected_plot_path = os.path.join(tmpdir, filename+'.png')
+    assert not os.path.exists(expected_plot_path)
+
+    n = network_object_from_test_data
+    plot.plot_graph_routes(n.graph, [['25508485', '21667818'], ['25508485', '21667818']], filename, show=False,
+                           save=True, output_dir=tmpdir)
 
     assert os.path.exists(expected_plot_path)
 
