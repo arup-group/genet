@@ -7,17 +7,22 @@ from tests.test_core_route import self_looping_route, route
 
 @pytest.fixture()
 def service():
-    route_1 = Route(route_short_name='name',
+    route_1 = Route(id='1', route_short_name='name',
                     mode='bus',
-                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
-                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
-    route_2 = Route(route_short_name='name_2',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700', linkRefId='1'),
+                           Stop(id='2', x=1, y=2, epsg='epsg:27700', linkRefId='2'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700', linkRefId='3'),
+                           Stop(id='4', x=7, y=5, epsg='epsg:27700', linkRefId='4')],
+                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+                    route=['1', '2', '3', '4'])
+    route_2 = Route(id='2', route_short_name='name_2',
                     mode='bus',
-                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
-                           Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
+                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700', linkRefId='5'),
+                           Stop(id='6', x=1, y=2, epsg='epsg:27700', linkRefId='6'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700', linkRefId='7'),
+                           Stop(id='8', x=7, y=5, epsg='epsg:27700', linkRefId='8')],
                     trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2', '3', '4'],
-                    departure_offsets=['1', '2', '3', '4'])
+                    departure_offsets=['1', '2', '3', '4'], route=['5', '6', '7', '8'])
     return Service(id='service', routes=[route_1, route_2])
 
 
@@ -216,10 +221,6 @@ def test_has_id(service):
 
 
 def test_is_valid_with_valid_service(service):
-    service.routes[0].id = '1'
-    service.routes[1].id = '2'
-    service.routes[0].route = ['1']
-    service.routes[1].route = ['2']
     assert service.is_valid_service()
 
 
@@ -229,7 +230,7 @@ def test_is_valid_with_looping_route(self_looping_route, route):
 
 
 def test_is_valid_with_non_network_route(service):
-    service.routes[0].id = '1'
-    service.routes[1].id = '2'
+    service.routes[0].route = []
+    service.routes[1].route = []
     assert not service.is_valid_service()
 

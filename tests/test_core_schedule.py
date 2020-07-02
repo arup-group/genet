@@ -280,15 +280,13 @@ def test_has_valid_services(schedule):
 
 
 def test_has_valid_services_with_only_valid_services(service):
-    service.routes[0].id = '1'
-    service.routes[1].id = '2'
-    service.routes[0].route = ['1']
-    service.routes[1].route = ['2']
     s = Schedule('epsg:27700', [service])
     assert s.has_valid_services()
 
 
 def test_invalid_services_shows_invalid_services(service):
+    service.routes[0].route = ['1']
+    service.routes[1].route = ['2']
     s = Schedule('epsg:27700', [service])
     assert s.invalid_services() == [service]
 
@@ -298,10 +296,6 @@ def test_has_uniquely_indexed_routes_with_uniquely_indexed_service(schedule):
 
 
 def test_is_valid_with_valid_schedule(service):
-    service.routes[0].id = '1'
-    service.routes[1].id = '2'
-    service.routes[0].route = ['1']
-    service.routes[1].route = ['2']
     s = Schedule('epsg:27700', [service])
     assert s.is_valid_schedule()
 

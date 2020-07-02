@@ -6,12 +6,19 @@ from tests.fixtures import stop_epsg_27700, route, assert_semantically_equal
 
 @pytest.fixture()
 def route():
+    a = Stop(id='1', x=4, y=2, epsg='epsg:27700')
+    a.add_additional_attributes({'linkRefId': '1'})
+    b = Stop(id='2', x=1, y=2, epsg='epsg:27700')
+    b.add_additional_attributes({'linkRefId': '2'})
+    c = Stop(id='3', x=3, y=3, epsg='epsg:27700')
+    c.add_additional_attributes({'linkRefId': '3'})
+    d = Stop(id='4', x=7, y=5, epsg='epsg:27700')
+    d.add_additional_attributes({'linkRefId': '4'})
     return Route(route_short_name='name',
                   mode='bus',
-                  stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
-                         Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                  stops=[a, b, c, d],
                   trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
-                  route=['1', '2', '3'], id='1')
+                  route=['1', '2', '3', '4'], id='1')
 
 
 @pytest.fixture()
@@ -171,6 +178,69 @@ def test_has_network_route_with_route_that_has_a_network_route(route):
 def test_has_network_route_with_route_without_a_network_route(route):
     route.route = []
     assert not route.has_network_route()
+
+
+def test_has_correctly_ordered_route_with_a_correct_route():
+    a = Stop(id='1', x=4, y=2, epsg='epsg:27700')
+    a.add_additional_attributes({'linkRefId': '10'})
+    b = Stop(id='2', x=4, y=2, epsg='epsg:27700')
+    b.add_additional_attributes({'linkRefId': '20'})
+    c = Stop(id='3', x=4, y=2, epsg='epsg:27700')
+    c.add_additional_attributes({'linkRefId': '30'})
+
+    r = Route(route_short_name='name',
+          mode='bus',
+          stops=[a, b, c],
+          trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+          route=['10', '15', '20', '25', '30'], id='1')
+    assert r.has_correctly_ordered_route()
+
+
+def test_has_correctly_ordered_route_with_disordered_route():
+    a = Stop(id='1', x=4, y=2, epsg='epsg:27700')
+    a.add_additional_attributes({'linkRefId': '10'})
+    b = Stop(id='2', x=4, y=2, epsg='epsg:27700')
+    b.add_additional_attributes({'linkRefId': '20'})
+    c = Stop(id='3', x=4, y=2, epsg='epsg:27700')
+    c.add_additional_attributes({'linkRefId': '30'})
+
+    r = Route(route_short_name='name',
+          mode='bus',
+          stops=[a, b, c],
+          trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+          route=['10', '15', '30', '25', '20'], id='1')
+    assert not r.has_correctly_ordered_route()
+
+
+def test_has_correctly_ordered_route_with_stop_missing_linkrefid():
+    a = Stop(id='1', x=4, y=2, epsg='epsg:27700')
+    a.add_additional_attributes({'linkRefId': '10'})
+    b = Stop(id='2', x=4, y=2, epsg='epsg:27700')
+    b.add_additional_attributes({'linkRefId': '20'})
+    c = Stop(id='3', x=4, y=2, epsg='epsg:27700')
+
+    r = Route(route_short_name='name',
+          mode='bus',
+          stops=[a, b, c],
+          trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+          route=['10', '15', '30', '25', '20'], id='1')
+    assert not r.has_correctly_ordered_route()
+
+
+def test_has_correctly_ordered_route_with_no_route():
+    a = Stop(id='1', x=4, y=2, epsg='epsg:27700')
+    a.add_additional_attributes({'linkRefId': '10'})
+    b = Stop(id='2', x=4, y=2, epsg='epsg:27700')
+    b.add_additional_attributes({'linkRefId': '20'})
+    c = Stop(id='3', x=4, y=2, epsg='epsg:27700')
+    c.add_additional_attributes({'linkRefId': '30'})
+
+    r = Route(route_short_name='name',
+          mode='bus',
+          stops=[a, b, c],
+          trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+          route=[], id='1')
+    assert not r.has_correctly_ordered_route()
 
 
 def test_has_id(route):

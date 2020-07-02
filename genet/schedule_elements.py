@@ -2,6 +2,7 @@ from typing import Union, Dict, List
 from pyproj import Transformer
 from genet.utils import spatial
 import networkx as nx
+import logging
 from genet.utils import plot
 
 # number of decimal places to consider when comparing lat lons
@@ -23,7 +24,7 @@ class Stop:
     """
 
     def __init__(self, id: Union[str, int], x: Union[str, int, float], y: Union[str, int, float], epsg: str,
-                 transformer: Transformer = None):
+                 transformer: Transformer = None, **kwargs):
         self.id = id
         self.x = float(x)
         self.y = float(y)
@@ -35,6 +36,8 @@ class Stop:
             self.lat, self.lon = spatial.change_proj(x, y, self.transformer)
 
         self.additional_attributes = []
+        if kwargs:
+            self.add_additional_attributes(kwargs)
 
     def __eq__(self, other):
         return (self._round_lat() == other._round_lat()) and (self._round_lon() == other._round_lon())
@@ -61,8 +64,12 @@ class Stop:
         print(self.info())
 
     def info(self):
-        return '{} ID: {}\nProjection: {}\nLat, Lon: {}, {}'.format(
-            self.__class__.__name__, self.id, self.epsg, self._round_lat(), self._round_lon())
+        if self.has_linkRefId():
+            return '{} ID: {}\nProjection: {}\nLat, Lon: {}, {}\nlinkRefId: {}'.format(
+                self.__class__.__name__, self.id, self.epsg, self._round_lat(), self._round_lon(), self.linkRefId)
+        else:
+            return '{} ID: {}\nProjection: {}\nLat, Lon: {}, {}'.format(
+                self.__class__.__name__, self.id, self.epsg, self._round_lat(), self._round_lon())
 
     def initiate_crs_transformer(self, epsg, transformer):
         self.epsg = epsg
@@ -253,11 +260,24 @@ class Route:
     def has_network_route(self):
         return self.route
 
+    def has_correctly_ordered_route(self):
+        if self.has_network_route():
+            stops_linkrefids = [stop.linkRefId for stop in self.stops if stop.has_linkRefId()]
+            if len(stops_linkrefids) != len(self.stops):
+                logging.warning('Not all stops reference network link ids.')
+                return False
+            for link_id in self.route:
+                if link_id == stops_linkrefids[0]:
+                    stops_linkrefids = stops_linkrefids[1:]
+            if not stops_linkrefids:
+                return True
+        return False
+
     def has_id(self):
         return self.id
 
     def is_valid_route(self):
-        return self.has_more_than_one_stop() and bool(self.has_network_route()) and bool(not self.has_self_loops())
+        return self.has_more_than_one_stop() and bool(self.has_correctly_ordered_route()) and bool(not self.has_self_loops())
 
 
 class Service:

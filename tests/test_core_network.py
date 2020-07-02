@@ -1017,14 +1017,15 @@ def test_read_matsim_network_with_duplicated_node_ids_records_removal_in_changel
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {0: '2020-07-02 11:36:54'}, 'change_event': {0: 'remove'}, 'object_type': {0: 'node'},
          'old_id': {0: '21667818'}, 'new_id': {0: None},
-         'old_attributes': {0: "{'id': '21667818', 'x': 528504.1342843144, 'y': 182155.7435136598, 'lon': -0.14910908709500162, 'lat': 51.52370573323939, 's2_id': 5221390302696205321}"},
+         'old_attributes': {
+             0: "{'id': '21667818', 'x': 528504.1342843144, 'y': 182155.7435136598, 'lon': -0.14910908709500162, 'lat': 51.52370573323939, 's2_id': 5221390302696205321}"},
          'new_attributes': {0: None},
          'diff': {0: [('remove', '', [('id', '21667818'), ('x', 528504.1342843144),
-                                                           ('y', 182155.7435136598),
-                                                           ('lon', -0.14910908709500162),
-                                                           ('lat', 51.52370573323939),
-                                                           ('s2_id', 5221390302696205321)]),
-                                                           ('remove', 'id', '21667818')]}}
+                                      ('y', 182155.7435136598),
+                                      ('lon', -0.14910908709500162),
+                                      ('lat', 51.52370573323939),
+                                      ('s2_id', 5221390302696205321)]),
+                      ('remove', 'id', '21667818')]}}
     )
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
     assert_frame_equal(network.change_log.log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
@@ -1036,7 +1037,8 @@ def test_read_matsim_network_with_duplicated_link_ids_records_reindexing_in_chan
     dup_links = {'1': ['1_1']}
     correct_link_id_map = {'1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 0},
                            '1_1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 1}}
-    mocker.patch.object(matsim_reader, 'read_network', return_value=(nx.MultiDiGraph(), correct_link_id_map, {}, dup_links))
+    mocker.patch.object(matsim_reader, 'read_network',
+                        return_value=(nx.MultiDiGraph(), correct_link_id_map, {}, dup_links))
     mocker.patch.object(Network, 'link', return_value={'heyooo': '1'})
     network = Network('epsg:27700')
     network.read_matsim_network(pt2matsim_network_test_file)
@@ -1291,11 +1293,11 @@ def test_generate_validation_report(network_object_from_test_data):
             'walk': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
                      'number_of_connected_subgraphs': 2},
             'bike': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
-                     'number_of_connected_subgraphs': 2}}},
-        'schedule': {'schedule_level': {'is_valid': True, 'has_valid_services': True, 'invalid_services': []},
-                     'service_level': {'10314': {'is_valid': True, 'has_valid_routes': True, 'invalid_routes': []}},
-                     'route_level': {
-                         '10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'is_valid_route': True}}}},
+                     'number_of_connected_subgraphs': 2}}}, 'schedule': {
+            'schedule_level': {'is_valid_schedule': False, 'has_valid_services': False, 'invalid_services': ['10314']},
+            'service_level': {'10314': {'is_valid_service': False, 'has_valid_routes': False,
+                                        'invalid_routes': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']}},
+            'route_level': {'10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'is_valid_route': False}}}},
         'routing': {'services_have_routes_in_the_graph': True, 'service_routes_with_invalid_network_route': []}}
     assert_semantically_equal(report, correct_report)
 
