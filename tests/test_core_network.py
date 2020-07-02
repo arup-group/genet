@@ -1006,18 +1006,56 @@ def test_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):
     matsim_reader.read_network.assert_called_once_with(pt2matsim_network_test_file, network.transformer)
 
 
+def test_read_matsim_network_with_duplicated_node_ids_records_removal_in_changelog(mocker):
+    dup_nodes = {'21667818': [
+        {'id': '21667818', 'x': 528504.1342843144, 'y': 182155.7435136598, 'lon': -0.14910908709500162,
+         'lat': 51.52370573323939, 's2_id': 5221390302696205321}]}
+    mocker.patch.object(matsim_reader, 'read_network', return_value=(nx.MultiDiGraph(), 2, dup_nodes, {}))
+    network = Network('epsg:27700')
+    network.read_matsim_network(pt2matsim_network_test_file)
+
+    correct_change_log_df = pd.DataFrame(
+        {'timestamp': {0: '2020-07-02 11:36:54'}, 'change_event': {0: 'remove'}, 'object_type': {0: 'node'},
+         'old_id': {0: '21667818'}, 'new_id': {0: None},
+         'old_attributes': {0: "{'id': '21667818', 'x': 528504.1342843144, 'y': 182155.7435136598, 'lon': -0.14910908709500162, 'lat': 51.52370573323939, 's2_id': 5221390302696205321}"},
+         'new_attributes': {0: None},
+         'diff': {0: [('remove', '', [('id', '21667818'), ('x', 528504.1342843144),
+                                                           ('y', 182155.7435136598),
+                                                           ('lon', -0.14910908709500162),
+                                                           ('lat', 51.52370573323939),
+                                                           ('s2_id', 5221390302696205321)]),
+                                                           ('remove', 'id', '21667818')]}}
+    )
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(network.change_log.log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
+                       check_names=False,
+                       check_dtype=False)
+
+
+def test_read_matsim_network_with_duplicated_link_ids_records_reindexing_in_changelog(mocker):
+    dup_links = {'1': ['1_1']}
+    correct_link_id_map = {'1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 0},
+                           '1_1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 1}}
+    mocker.patch.object(matsim_reader, 'read_network', return_value=(nx.MultiDiGraph(), correct_link_id_map, {}, dup_links))
+    mocker.patch.object(Network, 'link', return_value={'heyooo': '1'})
+    network = Network('epsg:27700')
+    network.read_matsim_network(pt2matsim_network_test_file)
+
+    correct_change_log_df = pd.DataFrame(
+        {'timestamp': {0: '2020-07-02 11:59:00'}, 'change_event': {0: 'modify'}, 'object_type': {0: 'link'},
+         'old_id': {0: '1'}, 'new_id': {0: '1_1'}, 'old_attributes': {0: "{'heyooo': '1'}"},
+         'new_attributes': {0: "{'heyooo': '1'}"}, 'diff': {0: [('change', 'id', ('1', '1_1'))]}}
+    )
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(network.change_log.log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
+                       check_names=False,
+                       check_dtype=False)
+
+
 def test_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_epsg_from_earlier_network_run(mocker):
     mocker.patch.object(Schedule, 'read_matsim_schedule')
     network = Network('epsg:27700')
     network.read_matsim_network(pt2matsim_network_test_file)
-    network.read_matsim_schedule(pt2matsim_schedule_file)
-
-    Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file)
-
-
-def test_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_given_epsg_independent_of_network(mocker):
-    mocker.patch.object(Schedule, 'read_matsim_schedule')
-    network = Network('epsg:27700')
     network.read_matsim_schedule(pt2matsim_schedule_file)
 
     Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file)

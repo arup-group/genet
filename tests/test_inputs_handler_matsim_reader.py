@@ -109,7 +109,7 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
     assert_semantically_equal(duplicated_link_ids, {})
 
 
-def test_read_network_builds_graph_with_unique_links_given_matsim_netowork_with_clashing_link_ids():
+def test_read_network_builds_graph_with_unique_links_given_matsim_network_with_clashing_link_ids():
     correct_nodes = {
         '21667818': {'id': '21667818', 's2_id': 5221390302696205321, 'x': 528504.1342843144, 'y': 182155.7435136598,
                      'lon': -0.14910908709500162, 'lat': 51.52370573323939},

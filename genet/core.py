@@ -759,7 +759,9 @@ class Network:
 
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)
-        matsim_xml_writer.write_to_matsim_xmls(output_dir, self)
+        matsim_xml_writer.write_matsim_network(output_dir, self)
+        if self.schedule:
+            self.schedule.write_to_matsim(output_dir)
         self.change_log.export(os.path.join(output_dir, 'change_log.csv'))
 
 
