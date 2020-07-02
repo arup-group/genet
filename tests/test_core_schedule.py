@@ -173,7 +173,7 @@ def test_number_of_routes_counts_routes(test_service, different_test_service):
 
 def test_iter_stops_returns_stops_with_ids(test_service, different_test_service):
     schedule = Schedule(services=[test_service, different_test_service], epsg='epsg:4326')
-    assert set([stop_id for stop_id, stop in schedule.stops()]) == {'0', '1', '2', '3', '4'}
+    assert set([stop_id for stop_id, stop in schedule.stops()]) == {'0'}
     assert all([isinstance(stop, Stop) for stop_id, stop in schedule.stops()])
 
 
