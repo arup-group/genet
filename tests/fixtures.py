@@ -45,6 +45,10 @@ def assert_semantically_equal(dict1, dict2):
 ###########################################################
 # core data  structure examples
 ###########################################################
+
+###########################################################
+# networks
+###########################################################
 @pytest.fixture()
 def network_object_from_test_data():
     n = Network('epsg:27700')
@@ -53,6 +57,9 @@ def network_object_from_test_data():
     return n
 
 
+###########################################################
+# schedule
+###########################################################
 @pytest.fixture()
 def schedule_object_from_test_data():
     s = Schedule('epsg:27700')

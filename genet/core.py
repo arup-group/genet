@@ -938,8 +938,21 @@ class Schedule:
             return False
         return True
 
-    def is_valid_schedule(self):
-        return self.has_valid_services() and self.has_uniquely_indexed_services()
+    def is_valid_schedule(self, return_reason=False):
+        invalid_stages = []
+        valid = True
+
+        valid = valid and self.has_valid_services()
+        if not valid:
+            invalid_stages.append('has_valid_services')
+
+        valid = valid and self.has_uniquely_indexed_services()
+        if not valid:
+            invalid_stages.append('has_uniquely_indexed_services')
+
+        if return_reason:
+            return valid, invalid_stages
+        return valid
 
     def generate_validation_report(self):
         return schedule_operations.generate_validation_report(schedule=self)

@@ -2,8 +2,8 @@ import os
 import sys
 import pytest
 from tests.fixtures import *
-from tests.test_core_route import self_looping_route, route
-from tests.test_core_service import service
+from tests.test_core_components_route import self_looping_route, route
+from tests.test_core_components_service import service
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.core import Schedule
 from genet.schedule_elements import Service, Route, Stop
@@ -19,13 +19,16 @@ def schedule():
                     mode='bus',
                     stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
                            Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
+                    trips={'1': '1', '2': '2'},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     route_2 = Route(route_short_name='name_2',
                     mode='bus',
                     stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
                            Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2', '3', '4'],
-                    departure_offsets=['1', '2', '3', '4'])
+                    trips={'1': '1', '2': '2'},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     service = Service(id='service', routes=[route_1, route_2])
     return Schedule(epsg='epsg:27700', services=[service])
 

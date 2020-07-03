@@ -1,43 +1,48 @@
 import pytest
 from genet.schedule_elements import Route, Stop
 from  genet.utils import plot
-from tests.fixtures import stop_epsg_27700, route, assert_semantically_equal
+from tests.fixtures import stop_epsg_27700, assert_semantically_equal
 
 
 @pytest.fixture()
 def route():
-    a = Stop(id='1', x=4, y=2, epsg='epsg:27700')
-    a.add_additional_attributes({'linkRefId': '1'})
-    b = Stop(id='2', x=1, y=2, epsg='epsg:27700')
-    b.add_additional_attributes({'linkRefId': '2'})
-    c = Stop(id='3', x=3, y=3, epsg='epsg:27700')
-    c.add_additional_attributes({'linkRefId': '3'})
-    d = Stop(id='4', x=7, y=5, epsg='epsg:27700')
-    d.add_additional_attributes({'linkRefId': '4'})
-    return Route(route_short_name='name',
-                  mode='bus',
-                  stops=[a, b, c, d],
-                  trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
-                  route=['1', '2', '3', '4'], id='1')
+    a = Stop(id='1', x=4, y=2, epsg='epsg:27700', linkRefId='1')
+    b = Stop(id='2', x=1, y=2, epsg='epsg:27700', linkRefId='2')
+    c = Stop(id='3', x=3, y=3, epsg='epsg:27700', linkRefId='3')
+    d = Stop(id='4', x=7, y=5, epsg='epsg:27700', linkRefId='4')
+    return Route(
+        route_short_name='name',
+        mode='bus',
+        stops=[a, b, c, d],
+        trips={'1': '1', '2': '2'},
+        arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+        departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'],
+        route=['1', '2', '3', '4'], id='1')
 
 
 @pytest.fixture()
 def strongly_connected_route():
-    return Route(route_short_name='name',
-                  mode='bus',
-                  stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
-                         Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700'),
-                         Stop(id='1', x=4, y=2, epsg='epsg:27700')],
-                  trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
+    return Route(
+        route_short_name='name',
+        mode='bus',
+        stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+               Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700'),
+               Stop(id='1', x=4, y=2, epsg='epsg:27700')],
+        trips={'1': '1', '2': '2'},
+        arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00', '00:17:00'],
+        departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00', '00:18:00'])
 
 
 @pytest.fixture()
 def self_looping_route():
-    return Route(route_short_name='name',
-                  mode='bus',
-                  stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='1', x=4, y=2, epsg='epsg:27700'),
-                         Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                  trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
+    return Route(
+        route_short_name='name',
+        mode='bus',
+        stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='1', x=4, y=2, epsg='epsg:27700'),
+               Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+        trips={'1': '1', '2': '2'},
+        arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+        departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
 
 
 def test__repr__shows_stops_and_trips_length(route):
@@ -241,6 +246,28 @@ def test_has_correctly_ordered_route_with_no_route():
           trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
           route=[], id='1')
     assert not r.has_correctly_ordered_route()
+
+
+def test_has_valid_offsets_with_valid_route(route):
+    assert route.has_valid_offsets()
+
+
+def test_has_valid_offsets_with_route_with_invalid_offsets(route):
+    route.departure_offsets = []
+    route.arrival_offsets = []
+    assert not route.has_valid_offsets()
+
+
+def test_has_valid_offsets_with_route_with_wrong_number_of_offsets(route):
+    route.departure_offsets = ['00:00:00', '00:03:00', '00:07:00']
+    route.arrival_offsets = ['00:00:00', '00:03:00', '00:07:00']
+    assert not route.has_valid_offsets()
+
+
+def test_has_valid_offsets_with_route_with_empty_offsets(route):
+    route.departure_offsets = []
+    route.arrival_offsets = []
+    assert not route.has_valid_offsets()
 
 
 def test_has_id(route):

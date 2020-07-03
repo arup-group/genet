@@ -2,7 +2,7 @@ import pytest
 from genet.schedule_elements import Service
 from genet.utils import plot
 from tests.fixtures import *
-from tests.test_core_route import self_looping_route, route
+from tests.test_core_components_route import self_looping_route, route
 
 
 @pytest.fixture()
@@ -13,7 +13,9 @@ def service():
                            Stop(id='2', x=1, y=2, epsg='epsg:27700', linkRefId='2'),
                            Stop(id='3', x=3, y=3, epsg='epsg:27700', linkRefId='3'),
                            Stop(id='4', x=7, y=5, epsg='epsg:27700', linkRefId='4')],
-                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+                    trips={'1': '1', '2': '2'},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'],
                     route=['1', '2', '3', '4'])
     route_2 = Route(id='2', route_short_name='name_2',
                     mode='bus',
@@ -21,8 +23,10 @@ def service():
                            Stop(id='6', x=1, y=2, epsg='epsg:27700', linkRefId='6'),
                            Stop(id='7', x=3, y=3, epsg='epsg:27700', linkRefId='7'),
                            Stop(id='8', x=7, y=5, epsg='epsg:27700', linkRefId='8')],
-                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2', '3', '4'],
-                    departure_offsets=['1', '2', '3', '4'], route=['5', '6', '7', '8'])
+                    trips={'1': '1', '2': '2'},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'],
+                    route=['5', '6', '7', '8'])
     return Service(id='service', routes=[route_1, route_2])
 
 

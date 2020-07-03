@@ -3,6 +3,7 @@ from pyproj import Transformer
 from genet.utils import spatial
 import networkx as nx
 import logging
+from datetime import datetime
 from genet.utils import plot
 
 # number of decimal places to consider when comparing lat lons
@@ -273,12 +274,49 @@ class Route:
                 return True
         return False
 
+    def has_valid_offsets(self):
+        if not self.arrival_offsets or not self.departure_offsets:
+            return False
+        elif len(self.arrival_offsets) != len(self.stops) or len(self.departure_offsets) != len(self.stops):
+            return False
+        for arr_offset, dep_offset in zip(self.arrival_offsets, self.departure_offsets):
+            dt_arr_offset = datetime.strptime(arr_offset, '%H:%M:%S')
+            dt_dep_offset = datetime.strptime(dep_offset, '%H:%M:%S')
+            if dt_arr_offset > dt_dep_offset:
+                return False
+        for next_arr_offset, prev_dep_offset in zip(self.arrival_offsets[1:], self.departure_offsets[:-1]):
+            dt_next_arr_offset = datetime.strptime(next_arr_offset, '%H:%M:%S')
+            dt_prev_dep_offset = datetime.strptime(prev_dep_offset, '%H:%M:%S')
+            if dt_next_arr_offset < dt_prev_dep_offset:
+                return False
+        return True
+
     def has_id(self):
         return self.id
 
-    def is_valid_route(self):
-        return self.has_more_than_one_stop() and bool(self.has_correctly_ordered_route()) and bool(
-            not self.has_self_loops())
+    def is_valid_route(self, return_reason=False):
+        invalid_stages = []
+        valid = True
+
+        valid = valid and self.has_more_than_one_stop()
+        if not valid:
+            invalid_stages.append('has_more_than_one_stop')
+
+        valid = valid and bool(self.has_correctly_ordered_route())
+        if not valid:
+            invalid_stages.append('has_correctly_ordered_route')
+
+        valid = valid and bool(self.has_valid_offsets())
+        if not valid:
+            invalid_stages.append('has_valid_offsets')
+
+        valid = valid and bool(not self.has_self_loops())
+        if not valid:
+            invalid_stages.append('has_self_loops')
+
+        if return_reason:
+            return valid, invalid_stages
+        return valid
 
 
 class Service:
@@ -399,5 +437,18 @@ class Service:
     def has_id(self):
         return self.id
 
-    def is_valid_service(self):
-        return self.has_valid_routes() and self.has_uniquely_indexed_routes()
+    def is_valid_service(self, return_reason=False):
+        invalid_stages = []
+        valid = True
+
+        valid = valid and self.has_valid_routes()
+        if not valid:
+            invalid_stages.append('has_valid_routes')
+
+        valid = valid and self.has_uniquely_indexed_routes()
+        if not valid:
+            invalid_stages.append('has_uniquely_indexed_routes')
+
+        if return_reason:
+            return valid, invalid_stages
+        return valid
