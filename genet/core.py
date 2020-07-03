@@ -13,7 +13,8 @@ import genet.modify.change_log as change_log
 import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
-import genet.utils.schedule_operations as schedule_operations
+import genet.validate.network_validation as network_validation
+import genet.validate.schedule_validation as schedule_validation
 import genet.utils.plot as plot
 import genet.schedule_elements as schedule_elements
 import genet.inputs_handler.osm_reader as osm_reader
@@ -679,7 +680,7 @@ class Network:
             # subgraph for the mode to be tested
             G_mode = self.modal_subgraph('car')
             # calculate how many connected subgraphs there are
-            report['graph']['graph_connectivity'][mode] = graph_operations.describe_graph_connectivity(G_mode)
+            report['graph']['graph_connectivity'][mode] = network_validation.describe_graph_connectivity(G_mode)
 
         report['schedule'] = self.schedule.generate_validation_report()
 
@@ -955,7 +956,7 @@ class Schedule:
         return valid
 
     def generate_validation_report(self):
-        return schedule_operations.generate_validation_report(schedule=self)
+        return schedule_validation.generate_validation_report(schedule=self)
 
     def read_matsim_schedule(self, path):
         services, self.minimal_transfer_times = matsim_reader.read_schedule(path, self.epsg)

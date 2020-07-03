@@ -7,7 +7,8 @@ from tests.test_core_components_service import service
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.core import Schedule
 from genet.schedule_elements import Service, Route, Stop
-from genet.utils import plot, schedule_operations
+from genet.utils import plot
+from genet.validate import schedule_validation
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_schedule_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
@@ -304,6 +305,6 @@ def test_is_valid_with_valid_schedule(service):
 
 
 def test_generate_validation_report_delegates_to_method_in_schedule_operations(mocker, schedule):
-    mocker.patch.object(schedule_operations, 'generate_validation_report')
+    mocker.patch.object(schedule_validation, 'generate_validation_report')
     schedule.generate_validation_report()
-    schedule_operations.generate_validation_report.assert_called_once()
+    schedule_validation.generate_validation_report.assert_called_once()

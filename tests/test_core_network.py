@@ -1293,11 +1293,29 @@ def test_generate_validation_report(network_object_from_test_data):
             'walk': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
                      'number_of_connected_subgraphs': 2},
             'bike': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
-                     'number_of_connected_subgraphs': 2}}}, 'schedule': {
-            'schedule_level': {'is_valid_schedule': False, 'has_valid_services': False, 'invalid_services': ['10314']},
-            'service_level': {'10314': {'is_valid_service': False, 'has_valid_routes': False,
-                                        'invalid_routes': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']}},
-            'route_level': {'10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'is_valid_route': False}}}},
+                     'number_of_connected_subgraphs': 2}}},
+        'schedule': {'schedule_level': {'is_valid_schedule': False,
+                                        'invalid_stages': [
+                                            'has_valid_services',
+                                            'has_uniquely_indexed_services'],
+                                        'has_valid_services': False,
+                                        'invalid_services': [
+                                            '10314']},
+                     'service_level': {
+                         '10314': {'is_valid_service': False,
+                                   'invalid_stages': [
+                                       'has_valid_routes',
+                                       'has_uniquely_indexed_routes'],
+                                   'has_valid_routes': False,
+                                   'invalid_routes': [
+                                       'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']}},
+                     'route_level': {'10314': {
+                         'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {
+                             'is_valid_route': False,
+                             'invalid_stages': [
+                                 'has_correctly_ordered_route',
+                                 'has_valid_offsets',
+                                 'has_self_loops']}}}},
         'routing': {'services_have_routes_in_the_graph': True, 'service_routes_with_invalid_network_route': []}}
     assert_semantically_equal(report, correct_report)
 
