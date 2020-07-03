@@ -6,7 +6,7 @@ import networkx as nx
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
-    full_fat_default_config_path
+    full_fat_default_config_path, correct_schedule
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
 from genet.schedule_elements import Route, Service
@@ -1151,6 +1151,53 @@ def test_has_links_when_none_of_the_links_in_the_graph():
     assert not n.has_links(['10', '20'])
 
 
+def test_has_valid_link_chain_with_a_valid_link_chain():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 3)
+    n.add_link('2', 3, 4)
+    assert n.has_valid_link_chain(['1', '2'])
+
+
+def test_has_valid_link_chain_with_an_invalid_link_chain():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 3)
+    n.add_link('2', 2, 4)
+    assert not n.has_valid_link_chain(['1', '2'])
+
+
+def test_has_valid_link_chain_with_an_empty_link_chain():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 3)
+    n.add_link('2', 2, 4)
+    assert not n.has_valid_link_chain([])
+
+
+def test_calculate_route_distance_with_links_that_have_length_attrib():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 3, attribs={'length': 2})
+    n.add_link('2', 3, 4, attribs={'length': 1})
+    assert n.route_distance(['1', '2']) == 3
+
+
+def test_calculate_route_distance_with_links_that_dont_have_length_attrib():
+    n = Network('epsg:27700')
+    n.add_node(1, attribs={'s2_id': 12345})
+    n.add_node(3, attribs={'s2_id': 345435})
+    n.add_node(4, attribs={'s2_id': 568767})
+    n.add_link('1', 1, 3)
+    n.add_link('2', 3, 4)
+    assert round(n.route_distance(['1', '2']), 6) == 0.013918
+
+
+def test_calculate_route_distance_throws_error_when_route_is_invalid():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 3)
+    n.add_link('2', 5, 4)
+    with pytest.raises(RuntimeError) as e:
+        n.route_distance(['1', '2'])
+    assert 'invalid' in str(e.value) and 'route' in str(e.value)
+
+
 def test_valid_network_route():
     n = Network('epsg:27700')
     n.add_link('1', 1, 2)
@@ -1310,7 +1357,7 @@ def test_invalid_network_routes_with_empty_route(route):
     assert n.invalid_network_routes() == [('service', 'route')]
 
 
-def test_generate_validation_report(network_object_from_test_data):
+def test_generate_validation_report_with_pt2matsim_network(network_object_from_test_data):
     n = network_object_from_test_data
     report = n.generate_validation_report()
     correct_report = {
@@ -1321,29 +1368,70 @@ def test_generate_validation_report(network_object_from_test_data):
                      'number_of_connected_subgraphs': 2},
             'bike': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
                      'number_of_connected_subgraphs': 2}}},
-        'schedule': {'schedule_level': {'is_valid_schedule': False,
-                                        'invalid_stages': [
-                                            'has_valid_services',
-                                            'has_uniquely_indexed_services'],
-                                        'has_valid_services': False,
-                                        'invalid_services': [
-                                            '10314']},
-                     'service_level': {
-                         '10314': {'is_valid_service': False,
-                                   'invalid_stages': [
-                                       'has_valid_routes',
-                                       'has_uniquely_indexed_routes'],
-                                   'has_valid_routes': False,
-                                   'invalid_routes': [
-                                       'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']}},
-                     'route_level': {'10314': {
-                         'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {
-                             'is_valid_route': False,
-                             'invalid_stages': [
-                                 'has_correctly_ordered_route',
-                                 'has_valid_offsets',
-                                 'has_self_loops']}}}},
-        'routing': {'services_have_routes_in_the_graph': True, 'service_routes_with_invalid_network_route': []}}
+        'schedule': {
+            'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
+                               'has_valid_services': False, 'invalid_services': ['10314']},
+            'service_level': {
+                '10314': {'is_valid_service': False, 'invalid_stages': ['not_has_valid_routes'],
+                          'has_valid_routes': False, 'invalid_routes': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']}},
+            'route_level': {'10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'is_valid_route': False,
+                                                                                     'invalid_stages': [
+                                                                                         'not_has_correctly_ordered_route']}}}},
+        'routing': {'services_have_routes_in_the_graph': True, 'service_routes_with_invalid_network_route': [],
+                    'route_to_crow_fly_ratio': {
+                        '10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': 'Division by zero'}}}}
+    assert_semantically_equal(report, correct_report)
+
+
+def test_generate_validation_report_with_correct_schedule(correct_schedule):
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': 2})
+    n.add_link('2', 2, 3, attribs={'length': 2})
+    n.schedule = correct_schedule
+
+    report = n.generate_validation_report()
+    correct_report = {
+        'graph': {'graph_connectivity': {
+            'car': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0},
+            'walk': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0},
+            'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0}}},
+        'schedule': {'schedule_level': {'is_valid_schedule': True, 'invalid_stages': [], 'has_valid_services': True,
+                                        'invalid_services': []}, 'service_level': {
+            'service': {'is_valid_service': True, 'invalid_stages': [], 'has_valid_routes': True,
+                        'invalid_routes': []}}, 'route_level': {
+            'service': {'1': {'is_valid_route': True, 'invalid_stages': []},
+                        '2': {'is_valid_route': True, 'invalid_stages': []}}}},
+        'routing': {'services_have_routes_in_the_graph': True, 'service_routes_with_invalid_network_route': [],
+                    'route_to_crow_fly_ratio': {'service': {'1': 0.037918141839160244, '2': 0.037918141839160244}}}}
+    assert_semantically_equal(report, correct_report)
+
+
+def test_generate_validation_report_with_non_uniquely_indexed_routes(correct_schedule):
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': 2})
+    n.add_link('2', 2, 3, attribs={'length': 2})
+
+    correct_schedule.services['service'].routes[0].id = '1'
+    correct_schedule.services['service'].routes[1].id = '1'
+    n.schedule = correct_schedule
+
+    report = n.generate_validation_report()
+    correct_report = {
+        'graph': {'graph_connectivity': {
+            'car': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0},
+            'walk': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0},
+            'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0}}},
+        'schedule': {
+            'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
+                             'has_valid_services': False, 'invalid_services': ['service']},
+            'service_level': {'service': {'is_valid_service': False,
+                                        'invalid_stages': ['not_has_uniquely_indexed_routes'],
+                                        'has_valid_routes': True, 'invalid_routes': []}},
+            'route_level': {'service': {0: {'is_valid_route': True, 'invalid_stages': []},
+                                      1: {'is_valid_route': True, 'invalid_stages': []}}}},
+        'routing': {'services_have_routes_in_the_graph': True,
+                                  'service_routes_with_invalid_network_route': [], 'route_to_crow_fly_ratio': {
+                              'service': {0: 0.037918141839160244, 1: 0.037918141839160244}}}}
     assert_semantically_equal(report, correct_report)
 
 

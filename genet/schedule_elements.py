@@ -35,6 +35,7 @@ class Stop:
             self.lat, self.lon = float(x), float(y)
         else:
             self.lat, self.lon = spatial.change_proj(x, y, self.transformer)
+        self.s2_id = spatial.grab_index_s2(lat=self.lat, lng=self.lon)
 
         self.additional_attributes = []
         if kwargs:
@@ -231,6 +232,12 @@ class Route:
                 return True
         return False
 
+    def crowfly_distance(self):
+        distance = 0
+        for prev_stop, next_stop in zip(self.stops[:-1], self.stops[1:]):
+            distance += spatial.distance_between_s2cellids(prev_stop.s2_id, next_stop.s2_id)
+        return distance
+
     def build_graph(self):
         route_graph = nx.DiGraph(name='Route graph', crs={'init': self.find_epsg()})
         route_nodes = [(stop.id, {'x': stop.x, 'y': stop.y, 'lat': stop.lat, 'lon': stop.lon}) for stop in self.stops]
@@ -298,20 +305,20 @@ class Route:
         invalid_stages = []
         valid = True
 
-        valid = valid and self.has_more_than_one_stop()
-        if not valid:
-            invalid_stages.append('has_more_than_one_stop')
+        if not self.has_more_than_one_stop():
+            valid = False
+            invalid_stages.append('not_has_more_than_one_stop')
 
-        valid = valid and bool(self.has_correctly_ordered_route())
-        if not valid:
-            invalid_stages.append('has_correctly_ordered_route')
+        if not bool(self.has_correctly_ordered_route()):
+            valid = False
+            invalid_stages.append('not_has_correctly_ordered_route')
 
-        valid = valid and bool(self.has_valid_offsets())
-        if not valid:
-            invalid_stages.append('has_valid_offsets')
+        if not bool(self.has_valid_offsets()):
+            valid = False
+            invalid_stages.append('not_has_valid_offsets')
 
-        valid = valid and bool(not self.has_self_loops())
-        if not valid:
+        if bool(self.has_self_loops()):
+            valid = False
             invalid_stages.append('has_self_loops')
 
         if return_reason:
@@ -430,7 +437,7 @@ class Service:
 
     def has_uniquely_indexed_routes(self):
         indices = set([route.id for route in self.routes])
-        if len(indices) != len(self.routes):
+        if len(indices) != len(self):
             return False
         return True
 
@@ -441,13 +448,13 @@ class Service:
         invalid_stages = []
         valid = True
 
-        valid = valid and self.has_valid_routes()
-        if not valid:
-            invalid_stages.append('has_valid_routes')
+        if not self.has_valid_routes():
+            valid = False
+            invalid_stages.append('not_has_valid_routes')
 
-        valid = valid and self.has_uniquely_indexed_routes()
-        if not valid:
-            invalid_stages.append('has_uniquely_indexed_routes')
+        if not bool(self.has_uniquely_indexed_routes()):
+            valid = False
+            invalid_stages.append('not_has_uniquely_indexed_routes')
 
         if return_reason:
             return valid, invalid_stages

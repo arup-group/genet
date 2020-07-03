@@ -629,13 +629,28 @@ class Network:
         for prev_link_id, next_link_id in zip(link_ids[:-1], link_ids[1:]):
             prev_link_id_to_node = self.link_id_mapping[prev_link_id]['to']
             next_link_id_from_node = self.link_id_mapping[next_link_id]['from']
-            if not prev_link_id_to_node == next_link_id_from_node:
+            if prev_link_id_to_node != next_link_id_from_node:
                 logging.info('Links {} and {} are not connected'.format(prev_link_id, next_link_id))
                 return False
         if not link_ids:
             logging.info('Links chain is empty')
             return False
         return True
+
+    def route_distance(self, link_ids):
+        if self.has_valid_link_chain(link_ids):
+            distance = 0
+            for link_id in link_ids:
+                link_attribs = self.link(link_id)
+                if 'length' in link_attribs:
+                    distance += link_attribs['length']
+                else:
+                    length = spatial.distance_between_s2cellids(link_attribs['from'], link_attribs['to'])
+                    link_attribs['length'] = length
+                    distance += length
+            return distance
+        else:
+            raise RuntimeError('This route is invalid: {}'.format(link_ids))
 
     def generate_index_for_node(self, avoid_keys: Union[list, set] = None, silent: bool = False):
         existing_keys = set([i for i, attribs in self.nodes()])
@@ -684,6 +699,14 @@ class Network:
             return all([self.is_valid_network_route(route) for service_id, route in self.schedule_routes()])
         return False
 
+    def calculate_route_to_crow_fly_ratio(self, route: schedule_elements.Route):
+        route_dist = self.route_distance(route.route)
+        crowfly_dist = route.crowfly_distance()
+        if crowfly_dist:
+            return route_dist / crowfly_dist
+        else:
+            return 'Division by zero'
+
     def is_valid_network_route(self, route: schedule_elements.Route):
         if self.has_links(route.route):
             return self.has_valid_link_chain(route.route)
@@ -710,9 +733,24 @@ class Network:
 
         report['schedule'] = self.schedule.generate_validation_report()
 
+        route_to_crow_fly_ratio = {}
+        for service_id, route in self.schedule_routes():
+            if 'not_has_uniquely_indexed_routes' in report['schedule']['service_level'][service_id]['invalid_stages']:
+                if service_id in route_to_crow_fly_ratio:
+                    route_id = len(route_to_crow_fly_ratio[service_id])
+                else:
+                    route_id = 0
+            else:
+                route_id = route.id
+            if service_id in route_to_crow_fly_ratio:
+                route_to_crow_fly_ratio[service_id][route_id] = self.calculate_route_to_crow_fly_ratio(route)
+            else:
+                route_to_crow_fly_ratio[service_id] = {route_id: self.calculate_route_to_crow_fly_ratio(route)}
+
         report['routing'] = {
             'services_have_routes_in_the_graph': self.has_schedule_with_valid_network_routes(),
             'service_routes_with_invalid_network_route': self.invalid_network_routes(),
+            'route_to_crow_fly_ratio': route_to_crow_fly_ratio
         }
         return report
 
@@ -969,13 +1007,13 @@ class Schedule:
         invalid_stages = []
         valid = True
 
-        valid = valid and self.has_valid_services()
-        if not valid:
-            invalid_stages.append('has_valid_services')
+        if not self.has_valid_services():
+            valid = False
+            invalid_stages.append('not_has_valid_services')
 
-        valid = valid and self.has_uniquely_indexed_services()
-        if not valid:
-            invalid_stages.append('has_uniquely_indexed_services')
+        if not bool(self.has_uniquely_indexed_services()):
+            valid = False
+            invalid_stages.append('not_has_uniquely_indexed_services')
 
         if return_reason:
             return valid, invalid_stages
