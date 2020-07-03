@@ -565,14 +565,22 @@ class Network:
         for id, service in self.schedule.services.items():
             yield service
 
+    def schedule_routes(self):
+        """
+        Iterator returning service_id and a route within that service
+        :return:
+        """
+        for service_id, route in self.schedule.routes():
+            yield service_id, route
+
     def schedule_routes_nodes(self):
         routes = []
-        for route_id, _route in self.schedule.routes():
+        for service_id, _route in self.schedule_routes():
             if _route.route:
                 route_nodes = graph_operations.convert_list_of_link_ids_to_network_nodes(self, _route.route)
                 if len(route_nodes) != 1:
-                    logging.warning('The route: {} is disconnected. Consists of {} chunks.'
-                                    ''.format(route_id, len(route_nodes)))
+                    logging.warning('The route: {} within service {}, is disconnected. Consists of {} chunks.'
+                                    ''.format(_route.id, service_id, len(route_nodes)))
                     routes.extend(route_nodes)
                 else:
                     routes.append(route_nodes[0])
@@ -580,7 +588,7 @@ class Network:
 
     def schedule_routes_links(self):
         routes = []
-        for route_id, _route in self.schedule.routes():
+        for service_id, _route in self.schedule_routes():
             if _route.route:
                 routes.append(_route.route)
         return routes
@@ -616,6 +624,18 @@ class Network:
 
     def has_links(self, link_ids: list):
         return all([self.has_link(link_id) for link_id in link_ids])
+
+    def has_valid_link_chain(self, link_ids: List[str]):
+        for prev_link_id, next_link_id in zip(link_ids[:-1], link_ids[1:]):
+            prev_link_id_to_node = self.link_id_mapping[prev_link_id]['to']
+            next_link_id_from_node = self.link_id_mapping[next_link_id]['from']
+            if not prev_link_id_to_node == next_link_id_from_node:
+                logging.info('Links {} and {} are not connected'.format(prev_link_id, next_link_id))
+                return False
+        if not link_ids:
+            logging.info('Links chain is empty')
+            return False
+        return True
 
     def generate_index_for_node(self, avoid_keys: Union[list, set] = None, silent: bool = False):
         existing_keys = set([i for i, attribs in self.nodes()])
@@ -660,13 +680,19 @@ class Network:
             i += 1
 
     def has_schedule_with_valid_network_routes(self):
-        if all([route.has_network_route() for service_id, route in self.schedule.routes()]):
-            return all([self.has_links(route) for route in self.schedule_routes_links()])
+        if all([route.has_network_route() for service_id, route in self.schedule_routes()]):
+            return all([self.is_valid_network_route(route) for service_id, route in self.schedule_routes()])
+        return False
+
+    def is_valid_network_route(self, route: schedule_elements.Route):
+        if self.has_links(route.route):
+            return self.has_valid_link_chain(route.route)
+        logging.info('Not all link ids in Route: {} are in the graph.'.format(route.id))
         return False
 
     def invalid_network_routes(self):
-        return [(service_id, route.id) for service_id, route in self.schedule.routes() if not
-                self.has_links(route.route) or not route.has_network_route()]
+        return [(service_id, route.id) for service_id, route in self.schedule.routes() if not route.has_network_route()
+                or not self.is_valid_network_route(route)]
 
     def generate_validation_report(self):
         logging.info('Checking validity of the Network')

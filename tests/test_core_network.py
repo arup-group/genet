@@ -1151,6 +1151,33 @@ def test_has_links_when_none_of_the_links_in_the_graph():
     assert not n.has_links(['10', '20'])
 
 
+def test_valid_network_route():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 2, 3)
+    r = Route(route_short_name='', mode='bus', stops=[], trips={}, arrival_offsets=[], departure_offsets=[],
+              route=['1', '2'])
+    assert n.is_valid_network_route(r)
+
+
+def test_network_route_with_wrong_links():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 3, 2)
+    r = Route(route_short_name='', mode='bus', stops=[], trips={}, arrival_offsets=[], departure_offsets=[],
+              route=['1', '2'])
+    assert not n.is_valid_network_route(r)
+
+
+def test_network_route_with_empty_link_list():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2)
+    n.add_link('2', 3, 2)
+    r = Route(route_short_name='', mode='bus', stops=[], trips={}, arrival_offsets=[], departure_offsets=[],
+              route=[])
+    assert not n.is_valid_network_route(r)
+
+
 def test_generate_index_for_node_gives_next_integer_string_when_you_have_matsim_usual_integer_index():
     n = Network('epsg:27700')
     n.add_node('1')
