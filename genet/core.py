@@ -622,8 +622,23 @@ class Network:
             logging.info('Link with id {} is not in the network.'.format(link_id))
             return False
 
-    def has_links(self, link_ids: list):
-        return all([self.has_link(link_id) for link_id in link_ids])
+    def has_links(self, link_ids: list, conditions: Union[list, dict] = None):
+        """
+        Whether the Network contains the links given in the link_ids list. If attribs is specified, checks whether the
+        Network contains the links specified and those links match the attributes in the attribs dict.
+        :param link_ids: list of link ids e.g. ['1', '102']
+        :param conditions: confer graph_operations.Filter conditions
+        :return:
+        """
+        has_all_links = all([self.has_link(link_id) for link_id in link_ids])
+        if not conditions:
+            return has_all_links
+        elif has_all_links:
+            filter = graph_operations.Filter(conditions, how=any)
+            links_satisfy = [link_id for link_id in link_ids if filter.satisfies_conditions(self.link(link_id))]
+            return set(links_satisfy) == set(link_ids)
+        else:
+            return False
 
     def has_valid_link_chain(self, link_ids: List[str]):
         for prev_link_id, next_link_id in zip(link_ids[:-1], link_ids[1:]):
@@ -708,8 +723,16 @@ class Network:
             return 'Division by zero'
 
     def is_valid_network_route(self, route: schedule_elements.Route):
+        def modal_condition(modes_list):
+            return set(modes_list) & {route.mode}
+
         if self.has_links(route.route):
-            return self.has_valid_link_chain(route.route)
+            valid_link_chain = self.has_valid_link_chain(route.route)
+            links_have_correct_modes = self.has_links(route.route, {'modes': modal_condition})
+            if not links_have_correct_modes:
+                logging.info('Some link ids in Route: {} don\'t accept the route\'s mode: {}'.format(
+                    route.id, route.mode))
+            return valid_link_chain and links_have_correct_modes
         logging.info('Not all link ids in Route: {} are in the graph.'.format(route.id))
         return False
 
