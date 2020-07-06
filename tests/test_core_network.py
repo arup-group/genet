@@ -1210,13 +1210,11 @@ def test_calculate_route_distance_with_links_that_dont_have_length_attrib():
     assert round(n.route_distance(['1', '2']), 6) == 0.013918
 
 
-def test_calculate_route_distance_throws_error_when_route_is_invalid():
+def test_calculate_route_distance_returns_0_when_route_is_invalid():
     n = Network('epsg:27700')
     n.add_link('1', 1, 3)
     n.add_link('2', 5, 4)
-    with pytest.raises(RuntimeError) as e:
-        n.route_distance(['1', '2'])
-    assert 'invalid' in str(e.value) and 'route' in str(e.value)
+    assert n.route_distance(['1', '2']) == 0
 
 
 def test_valid_network_route():

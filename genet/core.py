@@ -665,7 +665,8 @@ class Network:
                     distance += length
             return distance
         else:
-            raise RuntimeError('This route is invalid: {}'.format(link_ids))
+            logging.warning('This route is invalid: {}'.format(link_ids))
+            return 0
 
     def generate_index_for_node(self, avoid_keys: Union[list, set] = None, silent: bool = False):
         existing_keys = set([i for i, attribs in self.nodes()])
