@@ -27,6 +27,7 @@ setup(
         'xmltodict',
         'anytree',
         'osmread',
-        'PyYAML'
+        'PyYAML',
+        'boto3==1.14.16'
     ],
 )
