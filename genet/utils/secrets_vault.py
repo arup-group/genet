@@ -22,4 +22,7 @@ def get_secret(secret_name, region_name):
 
 def get_secret_as_dict(secret_name, region_name):
     string_secret = get_secret(secret_name, region_name)
-    return json.loads(string_secret)
+    if string_secret is not None:
+        return json.loads(string_secret)
+    else:
+        return {}
