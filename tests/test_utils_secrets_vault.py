@@ -31,7 +31,7 @@ def test_swallows_not_found_exception_when_retrieving_unknown_secret():
     # real client 'exceptions' attribute on to the mock client object
     #
     # see https://github.com/boto/boto3/issues/1470 and https://github.com/boto/boto3/issues/1262 for more detail
-    real_client = boto3.client('secretsmanager')
+    real_client = boto3.client('secretsmanager', 'eu-west-1')
     not_found_exception = real_client.exceptions.ResourceNotFoundException({}, 'Boom!')
     with mock.patch('boto3.client') as mock_client:
         # exception handler block expects the client to have the definition of ResourceNotFoundException
@@ -60,7 +60,7 @@ def test_transforms_text_secret_to_dict():
 
 
 def test_transforms_not_found_secret_value_to_empty_dict():
-    real_client = boto3.client('secretsmanager')
+    real_client = boto3.client('secretsmanager', 'eu-west-1')
     not_found_exception = real_client.exceptions.ResourceNotFoundException({}, 'Boom!')
     with mock.patch('boto3.client') as mock_client:
         # exception handler block expects the client to have the definition of ResourceNotFoundException
@@ -74,7 +74,7 @@ def test_transforms_not_found_secret_value_to_empty_dict():
 
 
 def test_propagates_general_exceptions_from_secrets_manager_client():
-    real_client = boto3.client('secretsmanager')
+    real_client = boto3.client('secretsmanager', 'eu-west-1')
     internal_service_error = real_client.exceptions.InternalServiceError({}, 'Boom!')
     with mock.patch('boto3.client') as mock_client:
         # exception handler block expects the client to have the definition of InternalServiceError
