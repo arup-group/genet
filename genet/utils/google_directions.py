@@ -1,5 +1,6 @@
 import itertools
 import logging
+import statistics
 import osmnx as ox
 from requests_futures.sessions import FuturesSession
 import genet.utils.secrets_vault as secrets_vault
@@ -34,7 +35,7 @@ def generate_requests(n):
     non_simplified_edges = set(g.out_edges(node_diff)) | set(g.in_edges(node_diff))
     all_paths = list(non_simplified_edges) + simple_paths
 
-    api_request_paths = zip([(path[0], path[-1]) for path in all_paths], all_paths)
+    api_request_paths = dict(zip([(path[0], path[-1]) for path in all_paths], all_paths))
 
     return api_request_paths
 
@@ -57,17 +58,36 @@ def send_requests(n, api_request_paths: dict = None, secret_name: str = None, re
         destination = n.node(request_nodes[1])
         api_requests[request_nodes] = make_request(origin, destination, key)
 
-    return api_requests
+    return api_request_paths, api_requests
 
 
 def parse_route(route: dict):
     legs = route['legs']
     if len(legs) > 1:
         logging.warning('Response has more than one leg. This is not consistent with driving requests.')
+        data = {
+            'google_speed': sum([leg['distance']['value'] / leg['duration']['value'] for leg in legs]),
+            'google_polyline': route['overview_polyline']
+        }
+    else:
+        data = {
+            'google_speed': legs[0]['distance']['value'] / legs[0]['duration']['value'],
+            'google_polyline': route['overview_polyline']['points']
+        }
+    return data
 
 
-def consolidate_routes():
-    pass
+def consolidate_routes(data: list):
+    consolidated_data = {}
+
+    for key, val in data[0].items():
+        if isinstance(val, (int, float)):
+            vals = [dat[key] for dat in data]
+            consolidated_data[key] = statistics.mean(vals)
+        else:
+            consolidated_data[key] = [dat[key] for dat in data]
+
+    return consolidated_data
 
 
 def parse_routes(response):
@@ -76,13 +96,13 @@ def parse_routes(response):
     :param request: request content
     :return:
     """
-    data = {}
+    data = []
 
     if response.status_code == 200:
         content = response.json()
         if content['routes']:
             for route in content['routes']:
-                parse_route(route)
+                data.append(parse_route(route))
         else:
             logging.info('Request did not yield any routes. Status: {}'.format(content['status']))
             if 'error_message' in content:
@@ -90,7 +110,7 @@ def parse_routes(response):
     else:
         logging.warning('Request was not successful.')
 
-    return data
+    return consolidate_routes(data)
 
 
 def parse_results(api_request_paths, api_requests):
@@ -106,9 +126,11 @@ def parse_results(api_request_paths, api_requests):
         parsed_request_data = parse_routes(request.result())
         path = api_request_paths[node_request_pair]
         edges = set(zip(path[:-1], path[1:]))
+
         current_edges = set(google_dir_api_edge_data.keys())
         overlapping_edges = edges & current_edges
-        if overlapping_edges:
-            pass
-        else:
-            google_dir_api_edge_data = dict(zip(edges, list(parsed_request_data)*len(edges)))
+        left_overs = edges - overlapping_edges
+        google_dir_api_edge_data = {**google_dir_api_edge_data,
+                                    **dict(zip(left_overs, list(parsed_request_data) * len(left_overs)))}
+
+    return google_dir_api_edge_data

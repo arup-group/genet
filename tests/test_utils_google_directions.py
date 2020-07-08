@@ -150,7 +150,7 @@ def test_generating_requests_on_non_simplified_graphs(mocker):
 
 def test_parsing_routes_with_a_good_response(google_directions_api_response):
     data = google_directions.parse_routes(google_directions_api_response)
-    assert_semantically_equal(data, {})
+    assert_semantically_equal(data, {'google_speed': 2.3636363636363638, 'google_polyline': ['ekmyH~nYbBzF']})
 
 
 # def test_parsing_routes_with_a_bad_response(request_denied_google_directions_api_response):
