@@ -506,7 +506,7 @@ class Network:
 
     def read_osm(self, osm_file_path, osm_read_config, output_epsg, num_processes: int = 1):
         self.initiate_crs_transformer(output_epsg)
-        input_to_output_transformer = Transformer.from_crs(output_epsg, 'epsg:4326')
+        input_to_output_transformer = Transformer.from_crs('epsg:4326', output_epsg)
         config = osm_reader.Config(osm_read_config)
         nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
             osm_file_path, config, num_processes)
@@ -516,8 +516,8 @@ class Network:
                 'id': str(node_id),
                 'x': x,
                 'y': y,
-                'lon': attribs['x'],
-                'lat': attribs['y'],
+                'lat': attribs['x'],
+                'lon': attribs['y'],
                 's2_id': attribs['s2id']
             }, silent=True)
 

@@ -4,7 +4,8 @@ import uuid
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
-from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, full_fat_default_config_path
+from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
+    full_fat_default_config_path
 from genet.inputs_handler import matsim_reader
 from genet.core import Network, Schedule
 from genet.schedule_elements import Service
@@ -153,7 +154,7 @@ def test_adding_the_same_networks():
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                            'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
-                          'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
+                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
 
     n_left.add(n_right)
@@ -181,7 +182,7 @@ def test_adding_the_same_networks_but_with_differing_projections():
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                            'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
-                          'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
+                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
     n_right.reproject('epsg:4326')
 
@@ -913,12 +914,12 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
     network = Network()
     network.read_osm(osm_test_file, full_fat_default_config_path, 'epsg:27700', 1)
     assert_semantically_equal(dict(network.nodes()), {
-        '0': {'id': '0', 'x': 49.766807234971715, 'y': -7.557159688006741, 'lat': -0.0006545205888310243,
-              'lon': 0.008554364250688652, 's2_id': 1152921492875543713},
-        '1': {'id': '1', 'x': 49.76680724542758, 'y': -7.5571594706895535, 'lat': -0.0006545205888310243,
-              'lon': 0.024278505899735615, 's2_id': 1152921335974974453},
-        '2': {'id': '2', 'x': 49.766807224515865, 'y': -7.557159905323929, 'lat': -0.0006545205888310243,
-              'lon': -0.00716977739835831, 's2_id': 384307157539499829}})
+        '0': {'id': '0', 'x': 622502.8306679451, 'y': -5526117.781903352, 'lat': 0.008554364250688652,
+              'lon': -0.0006545205888310243, 's2_id': 1152921492875543713},
+        '1': {'id': '1', 'x': 622502.8132744529, 'y': -5524378.838447345, 'lat': 0.024278505899735615,
+              'lon': -0.0006545205888310243, 's2_id': 1152921335974974453},
+        '2': {'id': '2', 'x': 622502.8314014417, 'y': -5527856.725358106, 'lat': -0.00716977739835831,
+              'lon': -0.0006545205888310243, 's2_id': 384307157539499829}})
     assert len(list(network.links())) == 8
 
     number_of_0_multi_idx = 0
