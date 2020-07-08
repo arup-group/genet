@@ -28,6 +28,7 @@ setup(
         'anytree',
         'osmread',
         'PyYAML',
-        'boto3==1.14.16'
+        'boto3==1.14.16',
+        'requests-futures==1.0.0'
     ],
 )
