@@ -100,9 +100,11 @@ def create_s2_indexed_osm_graph(response_jsons, config, num_processes, bidirecti
             paths[key] = value
 
     logging.info('OSM: Add each OSM way (aka, path) to the OSM graph')
-    edges = parallel.multiprocess_wrap_function_processing_dict_data(
-        osmnx_customised.return_edges,
-        paths,
+    edges = parallel.multiprocess_wrap(
+        data=paths,
+        split=parallel.split_dict,
+        apply=osmnx_customised.return_edges,
+        combine=parallel.combine_list,
         processes=num_processes,
         config=config,
         bidirectional=bidirectional)
