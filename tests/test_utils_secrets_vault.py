@@ -1,5 +1,12 @@
 from unittest import mock
+
+import boto3
+import pytest
+
 from genet.utils import secrets_vault
+
+# pytest's expected error mechanism ('raises' context mgr) is not intuitive and I want to make it clearer
+expected_error = pytest.raises
 
 
 def test_finds_text_secret_when_present_in_secrets_manager():
@@ -17,6 +24,26 @@ def test_finds_text_secret_when_present_in_secrets_manager():
     assert secret == secrets_manager_response['SecretString']
 
 
+def test_swallows_not_found_exception_when_retrieving_unknown_secret():
+    # ugly hack: boto3 client subclass exceptions seem to be dynamically generated, so cannot be imported, instantiated
+    # or mocked in the usual way, hence the following abomination, which makes a real client solely in order to access
+    # the 'exceptions' attribute in lieu of a simple import, create an exception of the right kind, and then copy the
+    # real client 'exceptions' attribute on to the mock client object
+    #
+    # see https://github.com/boto/boto3/issues/1470 and https://github.com/boto/boto3/issues/1262 for more detail
+    real_client = boto3.client('secretsmanager', 'eu-west-1')
+    not_found_exception = real_client.exceptions.ResourceNotFoundException({}, 'Boom!')
+    with mock.patch('boto3.client') as mock_client:
+        # exception handler block expects the client to have the definition of ResourceNotFoundException
+        mock_client.return_value.exceptions = real_client.exceptions
+        mock_client.return_value.get_secret_value.side_effect = not_found_exception
+
+        secret = secrets_vault.get_secret("some-project/some-credentials", region_name='some-region')
+
+        mock_client.return_value.get_secret_value.assert_called_once()
+    assert secret is None
+
+
 def test_transforms_text_secret_to_dict():
     secrets_manager_response = {
         "Name": "some-project/some-credentials",
@@ -30,6 +57,33 @@ def test_transforms_text_secret_to_dict():
         mock_client.return_value.get_secret_value.return_value = secrets_manager_response
         secret = secrets_vault.get_secret_as_dict("some-project/some-credentials", region_name='some-region')
     assert secret == {'api_key': 'abc123def456'}
+
+
+def test_transforms_not_found_secret_value_to_empty_dict():
+    real_client = boto3.client('secretsmanager', 'eu-west-1')
+    not_found_exception = real_client.exceptions.ResourceNotFoundException({}, 'Boom!')
+    with mock.patch('boto3.client') as mock_client:
+        # exception handler block expects the client to have the definition of ResourceNotFoundException
+        mock_client.return_value.exceptions = real_client.exceptions
+        mock_client.return_value.get_secret_value.side_effect = not_found_exception
+
+        secret_dict = secrets_vault.get_secret_as_dict("some-project/some-credentials", region_name='some-region')
+
+        mock_client.return_value.get_secret_value.assert_called_once()
+    assert secret_dict == {}
+
+
+def test_propagates_general_exceptions_from_secrets_manager_client():
+    real_client = boto3.client('secretsmanager', 'eu-west-1')
+    internal_service_error = real_client.exceptions.InternalServiceError({}, 'Boom!')
+    with mock.patch('boto3.client') as mock_client:
+        # exception handler block expects the client to have the definition of InternalServiceError
+        mock_client.return_value.exceptions = real_client.exceptions
+        mock_client.return_value.get_secret_value.side_effect = internal_service_error
+
+        with expected_error(real_client.exceptions.InternalServiceError) as exc_info:
+            secrets_vault.get_secret("some-project/some-credentials", region_name='some-region')
+    assert exc_info.value is internal_service_error
 
 
 def test_finds_binary_secret_when_present_in_secrets_manager():
