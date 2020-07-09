@@ -1,6 +1,6 @@
 import itertools
 import logging
-import statistics
+import polyline
 import osmnx as ox
 from requests_futures.sessions import FuturesSession
 import genet.utils.secrets_vault as secrets_vault
@@ -35,12 +35,20 @@ def generate_requests(n):
     non_simplified_edges = set(g.out_edges(node_diff)) | set(g.in_edges(node_diff))
     all_paths = list(non_simplified_edges) + simple_paths
 
-    api_request_paths = dict(zip([(path[0], path[-1]) for path in all_paths], all_paths))
+    api_requests = {}
+    for path in all_paths:
+        request_nodes = (path[0], path[-1])
+        api_requests[request_nodes] = {
+            'path_nodes': path,
+            'path_polyline': polyline.encode([(n.node(node)['lat'], n.node(node)['lon']) for node in path]),
+            'origin': n.node(request_nodes[0]),
+            'destination': n.node(request_nodes[1])
+        }
 
-    return api_request_paths
+    return api_requests
 
 
-def send_requests(n, api_request_paths: dict = None, secret_name: str = None, region_name: str = None):
+def send_requests(api_requests: dict, secret_name: str = None, region_name: str = None):
     key = secrets_vault.get_google_directions_api_key(secret_name, region_name)
     if key is None:
         raise RuntimeError('API key was not found. Make sure you are authenticated and pointing in the correct location'
@@ -49,60 +57,44 @@ def send_requests(n, api_request_paths: dict = None, secret_name: str = None, re
                            '`!echo $GOOGLE_DIR_API_KEY` if using jupyter notebook cells. To export the key use: '
                            '`export GOOGLE_DIR_API_KEY=key` (again, use ! at the beginning of the line in jupyter).')
 
-    if api_request_paths is None:
-        api_request_paths = generate_requests(n)
+    for request_nodes, api_request_attribs in api_requests.items():
+        api_request_attribs['request'] = make_request(
+            api_request_attribs['origin'], api_request_attribs['destination'], key)
 
-    api_requests = {}
-    for request_nodes, path in api_request_paths.items():
-        origin = n.node(request_nodes[0])
-        destination = n.node(request_nodes[1])
-        api_requests[request_nodes] = make_request(origin, destination, key)
-
-    return api_request_paths, api_requests
+    return api_requests
 
 
 def parse_route(route: dict):
     legs = route['legs']
     if len(legs) > 1:
         logging.warning('Response has more than one leg. This is not consistent with driving requests.')
-        data = {
-            'google_speed': sum([leg['distance']['value'] / leg['duration']['value'] for leg in legs]),
-            'google_polyline': route['overview_polyline']
-        }
-    else:
-        data = {
-            'google_speed': legs[0]['distance']['value'] / legs[0]['duration']['value'],
-            'google_polyline': route['overview_polyline']['points']
-        }
+    data = {
+        'google_speed': sum([leg['distance']['value'] / leg['duration']['value'] for leg in legs]),
+        'google_polyline': route['overview_polyline']['points']
+    }
     return data
 
 
-def consolidate_routes(data: list):
-    consolidated_data = {}
-
-    for key, val in data[0].items():
-        if isinstance(val, (int, float)):
-            vals = [dat[key] for dat in data]
-            consolidated_data[key] = statistics.mean(vals)
-        else:
-            consolidated_data[key] = [dat[key] for dat in data]
-
-    return consolidated_data
-
-
-def parse_routes(response):
+def parse_routes(response, path):
     """
     Parses request contents to infer speeds and
     :param request: request content
     :return:
     """
-    data = []
+    data = {}
 
     if response.status_code == 200:
         content = response.json()
         if content['routes']:
-            for route in content['routes']:
-                data.append(parse_route(route))
+            if len(content['routes']) > 1:
+                routes_data = []
+                for route in content['routes']:
+                    route_data = parse_route(route)
+                    route_data = check_path_proximity(route_data, path)
+                    routes_data.append(route_data)
+                    # TODO pick closest one
+            else:
+                data = parse_route(content['routes'][0])
         else:
             logging.info('Request did not yield any routes. Status: {}'.format(content['status']))
             if 'error_message' in content:
@@ -110,7 +102,11 @@ def parse_routes(response):
     else:
         logging.warning('Request was not successful.')
 
-    return consolidate_routes(data)
+    return data
+
+
+def check_path_proximity(data, path):
+    pass
 
 
 def parse_results(api_request_paths, api_requests):
@@ -123,8 +119,9 @@ def parse_results(api_request_paths, api_requests):
     """
     google_dir_api_edge_data = {}
     for node_request_pair, request in api_requests.items():
-        parsed_request_data = parse_routes(request.result())
         path = api_request_paths[node_request_pair]
+        parsed_request_data = parse_routes(request.result(), path)
+
         edges = set(zip(path[:-1], path[1:]))
 
         current_edges = set(google_dir_api_edge_data.keys())
