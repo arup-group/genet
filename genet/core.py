@@ -344,7 +344,7 @@ class Network:
         if not silent:
             logging.info('Changed Node attributes under index: {}'.format(node_id))
 
-    def apply_attributes_to_nodes(self, nodes: list, new_attributes: dict, silent: bool = False):
+    def apply_attributes_to_nodes(self, nodes: list, new_attributes: dict):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the node currently so no data is lost, unless it is being overwritten.
@@ -353,7 +353,9 @@ class Network:
         :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        [self.apply_attributes_to_node(node, new_attributes, silent) for node in nodes]
+        self.change_log.modify_bunch('node', nodes, [self.node(node) for node in nodes],
+                                     nodes, [{**self.node(node), **new_attributes} for node in nodes])
+        nx.set_node_attributes(self.graph, {node: {**self.node(node), **new_attributes} for node in nodes})
 
     def apply_attributes_to_link(self, link_id, new_attributes, silent: bool = False):
         """
@@ -385,7 +387,7 @@ class Network:
         if not silent:
             logging.info('Changed Link attributes under index: {}'.format(link_id))
 
-    def apply_attributes_to_links(self, links: list, new_attributes: dict, silent: bool = False):
+    def apply_attributes_to_links(self, links: list, new_attributes: dict):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the link currently so no data is lost, unless it is being overwritten.
@@ -394,7 +396,13 @@ class Network:
         :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        [self.apply_attributes_to_link(link, new_attributes, silent) for link in links]
+        self.change_log.modify_bunch('link', links, [deepcopy(self.link(link)) for link in links],
+                                     links, [persistence.set_nested_value(self.link(link), new_attributes)
+                                             for link in links])
+        nx.set_edge_attributes(
+            self.graph,
+            {self.edge_tuple_from_link_id(link): persistence.set_nested_value(self.link(link), new_attributes)
+             for link in links})
 
     def remove_node(self, node_id, silent: bool = False):
         """
@@ -488,13 +496,17 @@ class Network:
         for link_id in self.link_id_mapping.keys():
             yield link_id, self.link(link_id)
 
+    def edge_tuple_from_link_id(self, link):
+        u, v = self.link_id_mapping[link]['from'], self.link_id_mapping[link]['to']
+        multi_idx = self.link_id_mapping[link]['multi_edge_idx']
+        return u, v, multi_idx
+
     def link(self, link_id):
         """
         :param link_id:
         :return:
         """
-        u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
-        multi_idx = self.link_id_mapping[link_id]['multi_edge_idx']
+        u, v, multi_idx = self.edge_tuple_from_link_id(link_id)
         return dict(self.graph[u][v][multi_idx])
 
     def services(self):

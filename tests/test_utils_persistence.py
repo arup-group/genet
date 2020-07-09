@@ -64,3 +64,19 @@ def test_set_nested_value_creates_new_nest_in_place_of_single_value():
     return_d = persistence.set_nested_value(d, value)
 
     assert return_d == {'attributes': {'some_tag': 'bye'}}
+
+
+def test_set_nested_value_works_with_non_nested_dicts():
+    d = {'attributes': 1}
+    value = {'key': 2}
+    return_d = persistence.set_nested_value(d, value)
+
+    assert return_d == {'attributes': 1, 'key': 2}
+
+
+def test_set_nested_value_replaces_values_with_non_nested_dicts():
+    d = {'attributes': 1}
+    value = {'attributes': 2}
+    return_d = persistence.set_nested_value(d, value)
+
+    assert return_d == {'attributes': 2}
