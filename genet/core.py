@@ -13,6 +13,7 @@ import genet.modify.change_log as change_log
 import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
+import genet.utils.parallel as parallel
 import genet.schedule_elements as schedule_elements
 import genet.inputs_handler.osm_reader as osm_reader
 
@@ -82,17 +83,29 @@ class Network:
             self.schedule.info()
         )
 
-    def reproject(self, new_epsg):
+    def reproject(self, new_epsg, processes=1):
         """
         Changes projection of the network to new_epsg
         :param new_epsg: 'epsg:1234'
+        :param processes: max number of process to split computation across
         :return:
         """
+        def reproj_x_y(nodes_dict, transformer):
+            new_attribs = {}
+            for node, node_attrib in nodes_dict.items():
+                x, y = spatial.change_proj(node_attrib['x'], node_attrib['y'], transformer)
+                new_attribs[node] = {'x': x, 'y': y}
+            return new_attribs
+
         old_to_new_transformer = Transformer.from_crs(self.epsg, new_epsg)
-        for node_id, node_attribs in self.nodes():
-            x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], old_to_new_transformer)
-            reprojected_node_attribs = {'x': x, 'y': y}
-            self.apply_attributes_to_node(node_id, reprojected_node_attribs, silent=True)
+
+        new_nodes_attribs = parallel.multiprocess_wrap(
+            data=dict(self.nodes()), split=parallel.split_dict, apply=reproj_x_y, combine=parallel.combine_dict,
+            processes=processes, transformer=old_to_new_transformer)
+
+
+        nx.set_node_attributes(self.graph, new_nodes_attribs)
+
         if self.schedule:
             self.schedule.reproject(new_epsg)
         self.initiate_crs_transformer(new_epsg)
