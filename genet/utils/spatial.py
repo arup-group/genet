@@ -1,8 +1,41 @@
+import polyline
 import s2sphere as s2
 import networkx as nx
 import numpy as np
+import statistics
 APPROX_EARTH_RADIUS = 6371008.8
 S2_LEVELS_FOR_SPATIAL_INDEXING = [0, 6, 8, 12, 18, 24, 30]
+
+
+def decode_polyline_to_s2_points(_polyline):
+    """
+    :param _polyline: google encoded polyline
+    :return:
+    """
+    decoded = polyline.decode(_polyline)
+    return [grab_index_s2(lat, lon) for lat, lon in decoded]
+
+
+def compute_average_proximity_to_polyline(poly_1, poly_2):
+    """
+    Computes average distance between points in poly_1 and closest points in poly_2. Works best when poly_1 is less
+    dense with points than poly_2.
+    :param poly_1: google encoded polyline
+    :param poly_2: google encoded polyline
+    :return:
+    """
+    s2_poly_list_1 = decode_polyline_to_s2_points(poly_1)
+    s2_poly_list_2 = decode_polyline_to_s2_points(poly_2)
+
+    closest_distances = []
+    for point in s2_poly_list_1:
+        d = None
+        for other_line_point in s2_poly_list_2:
+            dist = distance_between_s2cellids(point, other_line_point)
+            if (d is None) or (d > dist):
+                d = dist
+        closest_distances.append(d)
+    return statistics.mean(closest_distances)
 
 
 def grab_index_s2(lat, lng):

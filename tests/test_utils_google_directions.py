@@ -1,15 +1,38 @@
 import pytest
 import json
+import polyline
+import logging
 from requests.models import Response
+from requests_futures.sessions import FuturesSession
 from genet.utils import google_directions
 from genet.utils import secrets_vault
 from genet.core import Network
-from tests.fixtures import assert_semantically_equal
+from tests.fixtures import assert_semantically_equal, assert_logging_warning_caught_with_message_containing
 
 
 @pytest.fixture()
-def request_path():
-    pass
+def generated_request():
+    nodes = {'107316': {'lat': 51.5188864, 'lon': -0.1369442},
+             '2440643031': {'lat': 51.5189281, 'lon': -0.1370038},
+             '4307345276': {'lat': 51.5195381, 'lon': -0.1376626},
+             '107317': {'lat': 51.5195849, 'lon': -0.1377132},
+             '4307345495': {'lat': 51.5198314, 'lon': -0.1379737},
+             '4307345497': {'lat': 51.5198582, 'lon': -0.138002},
+             '25495448': {'lat': 51.5199079, 'lon': -0.1380552},
+             '2503102618': {'lat': 51.5199476, 'lon': -0.1380787},
+             '107351': {'lat': 51.5202242, 'lon': -0.1384011},
+             '5411344775': {'lat': 51.5203194, 'lon': -0.138511},
+             '2440651577': {'lat': 51.5207157, 'lon': -0.1389682},
+             '2440651556': {'lat': 51.5207519, 'lon': -0.1390114},
+             '2440651552': {'lat': 51.520783, 'lon': -0.1390444},
+             '107352': {'lat': 51.5208299, 'lon': -0.1391027}}
+    path = ['107316', '2440643031', '4307345276', '107317', '4307345495', '4307345497', '25495448', '2503102618',
+            '107351', '5411344775', '2440651577', '2440651556', '2440651552', '107352']
+    encoded_polyline = polyline.encode([(nodes[node]['lat'], nodes[node]['lon']) for node in path])
+    return {'path_nodes': path,
+            'path_polyline': encoded_polyline,
+            'origin': nodes[path[0]],
+            'destination': nodes[path[-1]]}
 
 
 @pytest.fixture()
@@ -20,69 +43,69 @@ def google_directions_api_response():
         "geocoded_waypoints": [
             {
                 "geocoder_status": "OK",
-                "place_id": "ChIJOTfQ9isbdkgR_-PC_VFWNUs",
-                "types": ["street_address"]
+                "place_id": "ChIJQbcuHzwbdkgRamIMZzZGjxg",
+                "types": ["cafe", "establishment", "food", "point_of_interest"]
             },
             {
                 "geocoder_status": "OK",
-                "place_id": "ChIJQbcuHzwbdkgRamIMZzZGjxg",
-                "types": ["cafe", "establishment", "food", "point_of_interest"]
+                "place_id": "ChIJi8rZjSkbdkgRBluJBmAZK1w",
+                "types": ["street_address"]
             }
         ],
         "routes": [
             {
                 "bounds": {
                     "northeast": {
-                        "lat": 51.5193916,
-                        "lng": -0.1356769
+                        "lat": 51.5208376,
+                        "lng": -0.1369381
                     },
                     "southwest": {
                         "lat": 51.5188908,
-                        "lng": -0.1369381
+                        "lng": -0.1391098
                     }
                 },
                 "copyrights": "Map data ©2020 Google",
                 "legs": [
                     {
                         "distance": {
-                            "text": "0.1 km",
-                            "value": 104
+                            "text": "0.3 km",
+                            "value": 264
                         },
                         "duration": {
                             "text": "1 min",
-                            "value": 44
+                            "value": 71
                         },
-                        "end_address": "49 Newman St, Fitzrovia, London W1T 3DZ, UK",
+                        "end_address": "65 Cleveland St, Fitzrovia, London W1T 4JZ, UK",
                         "end_location": {
+                            "lat": 51.5208376,
+                            "lng": -0.1391098
+                        },
+                        "start_address": "49 Newman St, Fitzrovia, London W1T 3DZ, UK",
+                        "start_location": {
                             "lat": 51.5188908,
                             "lng": -0.1369381
-                        },
-                        "start_address": "42 Charlotte St, Fitzrovia, London W1T 2NP, UK",
-                        "start_location": {
-                            "lat": 51.5193916,
-                            "lng": -0.1356769
                         },
                         "steps": [
                             {
                                 "distance": {
-                                    "text": "0.1 km",
-                                    "value": 104
+                                    "text": "0.3 km",
+                                    "value": 264
                                 },
                                 "duration": {
                                     "text": "1 min",
-                                    "value": 44
+                                    "value": 71
                                 },
                                 "end_location": {
-                                    "lat": 51.5188908,
-                                    "lng": -0.1369381
+                                    "lat": 51.5208376,
+                                    "lng": -0.1391098
                                 },
-                                "html_instructions": "Head \u003cb\u003esouth-west\u003c/b\u003e on \u003cb\u003eGoodge St\u003c/b\u003e/\u003cwbr/\u003e\u003cb\u003eA5204\u003c/b\u003e towards \u003cb\u003eCharlotte Pl\u003c/b\u003e",
+                                "html_instructions": "Head \u003cb\u003enorth-west\u003c/b\u003e on \u003cb\u003eCleveland St\u003c/b\u003e towards \u003cb\u003eTottenham St\u003c/b\u003e",
                                 "polyline": {
-                                    "points": "ekmyH~nYRp@Rp@?@DLRr@Rp@L`@"
+                                    "points": "ahmyHzvYCBCFs@t@oAtAaAdAy@bAA@WX_AjAc@f@"
                                 },
                                 "start_location": {
-                                    "lat": 51.5193916,
-                                    "lng": -0.1356769
+                                    "lat": 51.5188908,
+                                    "lng": -0.1369381
                                 },
                                 "travel_mode": "DRIVING"
                             }
@@ -92,9 +115,9 @@ def google_directions_api_response():
                     }
                 ],
                 "overview_polyline": {
-                    "points": "ekmyH~nYbBzF"
+                    "points": "ahmyHzvYkCvCuCdDcBrB"
                 },
-                "summary": "Goodge St/A5204",
+                "summary": "Cleveland St",
                 "warnings": [],
                 "waypoint_order": []
             }
@@ -332,16 +355,94 @@ def test_sending_requests_throws_error_if_key_not_found(mocker):
     assert 'API key was not found' in str(e.value)
 
 
-def test_parsing_routes_with_a_good_response(google_directions_api_response, request_path):
-    data = google_directions.parse_routes(google_directions_api_response, request_path)
-    assert_semantically_equal(data, {'google_speed': 2.3636363636363638, 'google_polyline': 'ekmyH~nYbBzF'})
+def test_parsing_routes_with_a_good_response(google_directions_api_response, generated_request):
+    data = google_directions.parse_routes(google_directions_api_response, generated_request['path_polyline'])
+    assert_semantically_equal(data, {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'})
 
 
-def test_parsing_routes_with_multiple_legs_response(google_directions_api_response_multiple_legs, request_path):
-    data = google_directions.parse_routes(google_directions_api_response_multiple_legs, request_path)
+def test_parsing_routes_with_multiple_legs_response(google_directions_api_response_multiple_legs, generated_request):
+    data = google_directions.parse_routes(google_directions_api_response_multiple_legs,
+                                          generated_request['path_polyline'])
     assert_semantically_equal(data, {'google_speed': 4.7272727272727275, 'google_polyline': 'ekmyH~nYbBzFblahblah'})
 
 
-def test_parsing_routes_with_a_bad_response(request_denied_google_directions_api_response, request_path):
-    data = google_directions.parse_routes(request_denied_google_directions_api_response, request_path)
+def test_parsing_routes_with_a_bad_response(caplog, request_denied_google_directions_api_response, generated_request):
+    with caplog.at_level(logging.INFO):
+        data = google_directions.parse_routes(request_denied_google_directions_api_response,
+                                              generated_request['path_polyline'])
     assert_semantically_equal(data, {})
+    assert_logging_warning_caught_with_message_containing(caplog, 'Error message: The provided API key is invalid.')
+
+
+def test_parsing_routes_with_multiple_routes_selects_the_one_closest(mocker, google_directions_api_response,
+                                                                     generated_request):
+    mocker.patch.object(Response, 'json', return_value={'routes': [1, 2]})
+    mocker.patch.object(google_directions, 'parse_route', side_effect=[
+        {'google_speed': 2, 'google_polyline': 'ahmyHzvYeDz@m@bIqDp@'},
+        {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}])
+    data = google_directions.parse_routes(google_directions_api_response, generated_request['path_polyline'])
+
+    assert_semantically_equal(data, {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB',
+                                     'polyline_proximity': 1.306345084680333})
+
+
+def test_parsing_routes_with_bad_request(caplog, bad_request_google_directions_api_response):
+    with caplog.at_level(logging.INFO):
+        data = google_directions.parse_routes(bad_request_google_directions_api_response, 'ahmyHzvYkCvCuCdDcBrB')
+    assert_semantically_equal(data, {})
+    assert_logging_warning_caught_with_message_containing(caplog, 'Request was not successful.')
+
+
+def test_parse_results_with_singular_route_data(mocker, generated_request, google_directions_api_response):
+    request = FuturesSession(max_workers=1).get('http://hello.com')
+    mocker.patch.object(request, 'result', return_value=google_directions_api_response)
+    o_d = generated_request['path_nodes'][0], generated_request['path_nodes'][-1]
+    api_requests = {o_d: generated_request}
+    api_requests[o_d]['request'] = request
+    google_dir_api_edge_data = google_directions.parse_results(api_requests)
+    assert_semantically_equal(google_dir_api_edge_data, {
+        ('2440643031', '4307345276'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('4307345276', '107317'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('25495448', '2503102618'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('107316', '2440643031'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('4307345495', '4307345497'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2440651556', '2440651552'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('107317', '4307345495'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('107351', '5411344775'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2440651577', '2440651556'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2503102618', '107351'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('4307345497', '25495448'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2440651552', '107352'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('5411344775', '2440651577'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}})
+
+
+def test_parse_results_with_overlapping_edges(mocker, generated_request, google_directions_api_response):
+    request = FuturesSession(max_workers=1).get('http://hello.com')
+    mocker.patch.object(request, 'result', return_value=google_directions_api_response)
+    o_d = generated_request['path_nodes'][0], generated_request['path_nodes'][-1]
+    api_requests = {o_d: generated_request}
+    api_requests[o_d]['request'] = request
+
+    api_requests[('107316', '4307345276')] = {
+        'path_nodes': ['107316', '2440643031', '4307345276'],
+        'path_polyline': 'ahmyHzvYkC',
+        'origin': {'lat': 51.5188864, 'lon': -0.1369442},
+        'destination': {'lat': 51.5195381, 'lon': -0.1376626},
+        'request': request
+    }
+
+    google_dir_api_edge_data = google_directions.parse_results(api_requests)
+    assert_semantically_equal(google_dir_api_edge_data, {
+        ('2440643031', '4307345276'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('4307345276', '107317'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('25495448', '2503102618'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('107316', '2440643031'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('4307345495', '4307345497'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2440651556', '2440651552'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('107317', '4307345495'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('107351', '5411344775'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2440651577', '2440651556'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2503102618', '107351'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('4307345497', '25495448'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2440651552', '107352'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('5411344775', '2440651577'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}})

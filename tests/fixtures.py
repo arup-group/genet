@@ -2,6 +2,7 @@ import json
 import sys, os
 import dictdiffer
 import pytest
+import logging
 from collections import OrderedDict
 from genet.schedule_elements import Stop, Route, Service
 from genet.core import Schedule, Network
@@ -40,6 +41,13 @@ def assert_semantically_equal(dict1, dict2):
     # be considered the same in practical terms
     diffs = list(dictdiffer.diff(deep_sort(dict1), deep_sort(dict2), tolerance=0.00000000001))
     assert diffs == [], diffs
+
+
+def assert_logging_warning_caught_with_message_containing(clog, message):
+    for record in clog.records:
+        if message in record.message:
+            return True
+    return False
 
 
 ###########################################################

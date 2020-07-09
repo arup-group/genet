@@ -4,6 +4,7 @@ import polyline
 import osmnx as ox
 from requests_futures.sessions import FuturesSession
 import genet.utils.secrets_vault as secrets_vault
+import genet.utils.spatial as spatial
 session = FuturesSession(max_workers=10)
 
 
@@ -75,7 +76,7 @@ def parse_route(route: dict):
     return data
 
 
-def parse_routes(response, path):
+def parse_routes(response, path_polyline):
     """
     Parses request contents to infer speeds and
     :param request: request content
@@ -87,12 +88,16 @@ def parse_routes(response, path):
         content = response.json()
         if content['routes']:
             if len(content['routes']) > 1:
-                routes_data = []
                 for route in content['routes']:
                     route_data = parse_route(route)
-                    route_data = check_path_proximity(route_data, path)
-                    routes_data.append(route_data)
-                    # TODO pick closest one
+                    route_data['polyline_proximity'] = spatial.compute_average_proximity_to_polyline(
+                        route_data['google_polyline'], path_polyline)
+                    if data:
+                        # pick closest one
+                        if data['polyline_proximity'] > route_data['polyline_proximity']:
+                            data = route_data
+                    else:
+                        data = route_data
             else:
                 data = parse_route(content['routes'][0])
         else:
@@ -105,29 +110,26 @@ def parse_routes(response, path):
     return data
 
 
-def check_path_proximity(data, path):
-    pass
-
-
-def parse_results(api_request_paths, api_requests):
+def parse_results(api_requests):
     """
     Generates a dictionary of all edges in values of api_request_paths with data harvest from the api for node pairs
-    stored in keys of both api_request_paths and api_requests
-    :param api_request_paths:
+    stored in keys api_requests paths
     :param api_requests:
     :return:
     """
     google_dir_api_edge_data = {}
-    for node_request_pair, request in api_requests.items():
-        path = api_request_paths[node_request_pair]
-        parsed_request_data = parse_routes(request.result(), path)
+    for node_request_pair, api_requests_attribs in api_requests.items():
+        path_nodes = api_requests_attribs['path_nodes']
+        path_polyline = api_requests_attribs['path_polyline']
+        request = api_requests_attribs['request']
+        parsed_request_data = parse_routes(request.result(), path_polyline)
 
-        edges = set(zip(path[:-1], path[1:]))
+        edges = set(zip(path_nodes[:-1], path_nodes[1:]))
 
         current_edges = set(google_dir_api_edge_data.keys())
         overlapping_edges = edges & current_edges
         left_overs = edges - overlapping_edges
         google_dir_api_edge_data = {**google_dir_api_edge_data,
-                                    **dict(zip(left_overs, list(parsed_request_data) * len(left_overs)))}
+                                    **dict(zip(left_overs, [parsed_request_data] * len(left_overs)))}
 
     return google_dir_api_edge_data
