@@ -10,6 +10,7 @@ import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.gtfs_reader as gtfs_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.modify.change_log as change_log
+import genet.modify.graph as modify_graph
 import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
@@ -90,20 +91,14 @@ class Network:
         :param processes: max number of process to split computation across
         :return:
         """
-        def reproj_x_y(nodes_dict, transformer):
-            new_attribs = {}
-            for node, node_attrib in nodes_dict.items():
-                x, y = spatial.change_proj(node_attrib['x'], node_attrib['y'], transformer)
-                new_attribs[node] = {'x': x, 'y': y}
-            return new_attribs
-
-        old_to_new_transformer = Transformer.from_crs(self.epsg, new_epsg)
-
+        nodes_attribs = dict(self.nodes())
         new_nodes_attribs = parallel.multiprocess_wrap(
-            data=dict(self.nodes()), split=parallel.split_dict, apply=reproj_x_y, combine=parallel.combine_dict,
-            processes=processes, transformer=old_to_new_transformer)
+            data=nodes_attribs, split=parallel.split_dict, apply=modify_graph.reproj, combine=parallel.combine_dict,
+            processes=processes, from_proj=self.epsg, to_proj=new_epsg)
 
-
+        node_keys = list(nodes_attribs.keys())
+        self.change_log.modify_bunch('node', node_keys, [nodes_attribs[node] for node in node_keys],
+                                     node_keys, [{**nodes_attribs[node], **new_nodes_attribs[node]} for node in node_keys])
         nx.set_node_attributes(self.graph, new_nodes_attribs)
 
         if self.schedule:

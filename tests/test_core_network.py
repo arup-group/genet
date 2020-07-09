@@ -127,7 +127,24 @@ def test_reproject_changes_x_y_values_for_all_nodes(network1):
                    'lat': 51.52287873323954, 's2_id': 5221390329378179879},
         '101986': {'id': '101986', 'x': 51.52228713323965, 'y': -0.14439428709377497, 'lon': -0.14439428709377497,
                    'lat': 51.52228713323965, 's2_id': 5221390328605860387}}
+
+    target_change_log = pd.DataFrame(
+        {'timestamp': {3: '2020-07-09 19:50:51', 4: '2020-07-09 19:50:51'}, 'change_event': {3: 'modify', 4: 'modify'},
+         'object_type': {3: 'node', 4: 'node'}, 'old_id': {3: '101982', 4: '101986'},
+         'new_id': {3: '101982', 4: '101986'}, 'old_attributes': {
+            3: "{'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118', 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879}",
+            4: "{'id': '101986', 'x': '528835.203274008', 'y': '182006.27331298392', 'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387}"},
+         'new_attributes': {
+             3: "{'id': '101982', 'x': 51.52287873323954, 'y': -0.14625948709424305, 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879}",
+             4: "{'id': '101986', 'x': 51.52228713323965, 'y': -0.14439428709377497, 'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387}"},
+         'diff': {3: [('change', 'x', ('528704.1425925883', 51.52287873323954)),
+                      ('change', 'y', ('182068.78193707118', -0.14625948709424305))],
+                  4: [('change', 'x', ('528835.203274008', 51.52228713323965)),
+                      ('change', 'y', ('182006.27331298392', -0.14439428709377497))]}}
+    )
     assert_semantically_equal(nodes, correct_nodes)
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(network1.change_log.log[cols_to_compare].tail(2), target_change_log[cols_to_compare], check_dtype=False)
 
 
 def test_reproject_delegates_reprojection_to_schedules_own_method(network1, route, mocker):

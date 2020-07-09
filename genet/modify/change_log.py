@@ -51,7 +51,7 @@ class ChangeLog:
         }), ignore_index=True)
 
     def modify(self, object_type: str, old_id: Union[int, str], old_attributes: dict, new_id: Union[int, str],
-               new_attributes: Union[dict, list]):
+               new_attributes: dict):
         self.log = self.log.append({
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'change_event': 'modify',
@@ -62,6 +62,30 @@ class ChangeLog:
             'new_attributes': str(new_attributes),
             'diff': self.generate_diff(old_id, new_id, old_attributes, new_attributes)
         }, ignore_index=True)
+
+    def modify_bunch(self, object_type: str, old_id_bunch: List[Union[int, str]], old_attributes: List[dict],
+                     new_id_bunch: List[Union[int, str]], new_attributes: List[dict]):
+        """
+        :param object_type:
+        :param old_id_bunch: same len as attributes_bunch
+        :param old_attributes: same len as attributes_bunch
+        :param new_id_bunch: same len as id_bunch
+        :param new_attributes: same len as id_bunch
+        :return:
+        """
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.log = self.log.append(pd.DataFrame({
+            'timestamp': [timestamp]*len(old_id_bunch),
+            'change_event': ['modify']*len(old_id_bunch),
+            'object_type': [object_type]*len(old_id_bunch),
+            'old_id': old_id_bunch,
+            'new_id': new_id_bunch,
+            'old_attributes': [str(d) for d in old_attributes],
+            'new_attributes': [str(d) for d in new_attributes],
+            'diff': [self.generate_diff(old_id, new_id, old_attrib, new_attrib)
+                     for old_id, new_id, old_attrib, new_attrib in
+                     zip(old_id_bunch, new_id_bunch, old_attributes, new_attributes)]
+        }), ignore_index=True)
 
     def remove(self, object_type: str, object_id: Union[int, str], object_attributes: dict):
         self.log = self.log.append({
@@ -74,6 +98,25 @@ class ChangeLog:
             'new_attributes': None,
             'diff': self.generate_diff(object_id, None, object_attributes, None)
         }, ignore_index=True)
+
+    def remove_bunch(self, object_type: str, id_bunch: List[Union[int, str]], attributes_bunch: List[dict]):
+        """
+        :param object_type:
+        :param id_bunch: same len as attributes_bunch
+        :param attributes_bunch: same len as id_bunch
+        :return:
+        """
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.log = self.log.append(pd.DataFrame({
+            'timestamp': [timestamp]*len(id_bunch),
+            'change_event': ['remove']*len(id_bunch),
+            'object_type': [object_type]*len(id_bunch),
+            'old_id': id_bunch,
+            'new_id': None,
+            'old_attributes': [str(d) for d in attributes_bunch],
+            'new_attributes': None,
+            'diff': [self.generate_diff(_id, None, attrib, None) for _id, attrib in zip(id_bunch, attributes_bunch)]
+        }), ignore_index=True)
 
     def generate_diff(self, old_id, new_id, old_attributes_dict, new_attributes_dict):
         if old_attributes_dict is None:
