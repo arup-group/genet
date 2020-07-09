@@ -1,7 +1,7 @@
 import pandas as pd
 import dictdiffer
 from datetime import datetime
-from typing import Union
+from typing import Union, List
 
 
 class ChangeLog:
@@ -30,6 +30,25 @@ class ChangeLog:
             'new_attributes': str(object_attributes),
             'diff': self.generate_diff(None, object_id, None, object_attributes)
         }, ignore_index=True)
+
+    def add_bunch(self, object_type: str, id_bunch: List[Union[int, str]], attributes_bunch: List[dict]):
+        """
+        :param object_type:
+        :param id_bunch: same len as attributes_bunch
+        :param attributes_bunch: same len as id_bunch
+        :return:
+        """
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.log = self.log.append(pd.DataFrame({
+            'timestamp': [timestamp]*len(id_bunch),
+            'change_event': ['add']*len(id_bunch),
+            'object_type': [object_type]*len(id_bunch),
+            'old_id': None,
+            'new_id': id_bunch,
+            'old_attributes': None,
+            'new_attributes': [str(d) for d in attributes_bunch],
+            'diff': [self.generate_diff(None, _id, None, attrib) for _id, attrib in zip(id_bunch, attributes_bunch)]
+        }), ignore_index=True)
 
     def modify(self, object_type: str, old_id: Union[int, str], old_attributes: dict, new_id: Union[int, str],
                new_attributes: Union[dict, list]):
