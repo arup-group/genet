@@ -1,5 +1,5 @@
 from unittest import mock
-
+import os
 import boto3
 import pytest
 
@@ -7,6 +7,30 @@ from genet.utils import secrets_vault
 
 # pytest's expected error mechanism ('raises' context mgr) is not intuitive and I want to make it clearer
 expected_error = pytest.raises
+
+
+def test_gets_api_key_with_secrets_manager_binary(mocker):
+    mocker.patch.object(secrets_vault, 'get_secret', return_value='awesome_key')
+    key = secrets_vault.get_google_directions_api_key(secret_name='secret', region_name='region')
+    assert key == "awesome_key"
+
+
+def test_gets_api_key_with_secrets_manager_string_key(mocker):
+    mocker.patch.object(secrets_vault, 'get_secret', return_value={'key': 'awesome_key'})
+    key = secrets_vault.get_google_directions_api_key(secret_name='secret', region_name='region')
+    assert key == "awesome_key"
+
+
+def test_gets_api_key_with_secrets_manager_string_api_key(mocker):
+    mocker.patch.object(secrets_vault, 'get_secret', return_value={'api_key': 'awesome_key'})
+    key = secrets_vault.get_google_directions_api_key(secret_name='secret', region_name='region')
+    assert key == "awesome_key"
+
+
+def test_gets_api_key_with_environmental_variable():
+    os.environ["GOOGLE_DIR_API_KEY"] = "awesome_key"
+    key = secrets_vault.get_google_directions_api_key()
+    assert key == "awesome_key"
 
 
 def test_finds_text_secret_when_present_in_secrets_manager():
