@@ -2,21 +2,32 @@ import itertools
 import logging
 import polyline
 import osmnx as ox
+import pickle
+import os
+import time
 from requests_futures.sessions import FuturesSession
 import genet.utils.secrets_vault as secrets_vault
 import genet.utils.spatial as spatial
 session = FuturesSession(max_workers=10)
 
 
-def make_request(origin_attributes, destination_attributes, key):
+def send_requests_for_road_network(n, output_dir, traffic=False, secret_name: str = None, region_name: str = None):
+    api_requests = generate_requests(n)
+    api_requests = send_requests(api_requests, secret_name, region_name, traffic)
+    api_requests = parse_results(api_requests, output_dir)
+    return api_requests
+
+
+def make_request(origin_attributes, destination_attributes, key, traffic):
     base_url = 'https://maps.googleapis.com/maps/api/directions/json'
-    return session.get(
-        base_url,
-        params={
-            'origin': '{},{}'.format(origin_attributes['lat'], origin_attributes['lon']),
-            'destination': '{},{}'.format(destination_attributes['lat'], destination_attributes['lon']),
-            'key': key
-        })
+    params = {
+        'origin': '{},{}'.format(origin_attributes['lat'], origin_attributes['lon']),
+        'destination': '{},{}'.format(destination_attributes['lat'], destination_attributes['lon']),
+        'key': key
+        }
+    if traffic:
+        params['departure_time']='now'
+    return session.get(base_url, params=params)
 
 
 def generate_requests(n):
@@ -49,7 +60,7 @@ def generate_requests(n):
     return api_requests
 
 
-def send_requests(api_requests: dict, secret_name: str = None, region_name: str = None):
+def send_requests(api_requests: dict, secret_name: str = None, region_name: str = None, traffic: bool = False):
     key = secrets_vault.get_google_directions_api_key(secret_name, region_name)
     if key is None:
         raise RuntimeError('API key was not found. Make sure you are authenticated and pointing in the correct location'
@@ -59,8 +70,9 @@ def send_requests(api_requests: dict, secret_name: str = None, region_name: str 
                            '`export GOOGLE_DIR_API_KEY=key` (again, use ! at the beginning of the line in jupyter).')
 
     for request_nodes, api_request_attribs in api_requests.items():
+        api_request_attribs['timestamp'] = time.time()
         api_request_attribs['request'] = make_request(
-            api_request_attribs['origin'], api_request_attribs['destination'], key)
+            api_request_attribs['origin'], api_request_attribs['destination'], key, traffic)
 
     return api_requests
 
@@ -110,19 +122,26 @@ def parse_routes(response, path_polyline):
     return data
 
 
-def parse_results(api_requests):
+def parse_results(api_requests, output_dir):
     """
     Generates a dictionary of all edges in values of api_request_paths with data harvest from the api for node pairs
     stored in keys api_requests paths
     :param api_requests:
     :return:
     """
+    for node_request_pair, api_requests_attribs in api_requests.items():
+        path_polyline = api_requests_attribs['path_polyline']
+        request = api_requests_attribs['request']
+        api_requests_attribs['parsed_response'] = parse_routes(request.result(), path_polyline)
+        save_result(api_requests_attribs, output_dir)
+    return api_requests
+
+
+def map_results_to_edges(api_requests):
     google_dir_api_edge_data = {}
     for node_request_pair, api_requests_attribs in api_requests.items():
         path_nodes = api_requests_attribs['path_nodes']
-        path_polyline = api_requests_attribs['path_polyline']
-        request = api_requests_attribs['request']
-        parsed_request_data = parse_routes(request.result(), path_polyline)
+        parsed_request_data = api_requests_attribs['parsed_response']
 
         edges = set(zip(path_nodes[:-1], path_nodes[1:]))
 
@@ -131,5 +150,12 @@ def parse_results(api_requests):
         left_overs = edges - overlapping_edges
         google_dir_api_edge_data = {**google_dir_api_edge_data,
                                     **dict(zip(left_overs, [parsed_request_data] * len(left_overs)))}
-
     return google_dir_api_edge_data
+
+
+def save_result(api_requests_attribs, output_dir):
+    del api_requests_attribs['request']
+    with open(os.path.join(output_dir, '{}_{}.pickle'.format(
+            api_requests_attribs['timestamp'],
+            api_requests_attribs['parsed_response']['google_polyline'])), 'wb') as handle:
+        pickle.dump(api_requests_attribs, handle, protocol=pickle.HIGHEST_PROTOCOL)

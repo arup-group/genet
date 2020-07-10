@@ -2,6 +2,8 @@ import pytest
 import json
 import polyline
 import logging
+import time
+import os
 from requests.models import Response
 from requests_futures.sessions import FuturesSession
 from genet.utils import google_directions
@@ -292,15 +294,41 @@ def bad_request_google_directions_api_response():
     return response
 
 
-def test_queries_build_correctly():
+def test_send_requests_for_road_network(mocker, tmpdir, generated_request):
+    mocker.patch.object(google_directions, 'generate_requests', return_value=generated_request)
+    mocker.patch.object(google_directions, 'send_requests',
+                        return_value={**generated_request, **{'request': google_directions_api_response, 'timestamp': 12345}})
+    mocker.patch.object(google_directions, 'parse_results', return_value={})
+
+    n = Network()
+    google_directions.send_requests_for_road_network(n, tmpdir)
+    google_directions.generate_requests.assert_called_once_with(n)
+    google_directions.send_requests.assert_called_once_with(google_directions.generate_requests.return_value, None, None, False)
+    google_directions.parse_results.assert_called_once_with(google_directions.send_requests.return_value, tmpdir)
+
+
+def test_queries_build_correctly_without_traffic():
     request = google_directions.make_request(
         origin_attributes={'lat': 1, 'lon': 2},
         destination_attributes={'lat': 3, 'lon': 4},
-        key='super_awesome_key'
+        key='super_awesome_key',
+        traffic=False
     )
     result = request.result()
     assert result.status_code == 200
     assert result.url == 'https://maps.googleapis.com/maps/api/directions/json?origin=1%2C2&destination=3%2C4&key=super_awesome_key'
+
+
+def test_queries_build_correctly_with_traffic():
+    request = google_directions.make_request(
+        origin_attributes={'lat': 1, 'lon': 2},
+        destination_attributes={'lat': 3, 'lon': 4},
+        key='super_awesome_key',
+        traffic=True
+    )
+    result = request.result()
+    assert result.status_code == 200
+    assert result.url == 'https://maps.googleapis.com/maps/api/directions/json?origin=1%2C2&destination=3%2C4&key=super_awesome_key&departure_time=now'
 
 
 def test_generating_requests_on_non_simplified_graphs():
@@ -326,6 +354,7 @@ def test_generating_requests_on_non_simplified_graphs():
 
 
 def test_sending_requests(mocker, google_directions_api_response):
+    mocker.patch.object(time, 'time', return_value=12345)
     mocker.patch.object(secrets_vault, 'get_google_directions_api_key', return_value='super_awesome_key')
     mocker.patch.object(google_directions, 'make_request', return_value=google_directions_api_response)
 
@@ -341,11 +370,14 @@ def test_sending_requests(mocker, google_directions_api_response):
 
     assert_semantically_equal(api_requests, {
         (1, 10): {'path_nodes': (1, 10), 'path_polyline': '_ibE_seK??', 'origin': {'lat': 1, 'lon': 2},
-                  'destination': {'lat': 1, 'lon': 2}, 'request': google_directions_api_response},
+                  'destination': {'lat': 1, 'lon': 2}, 'request': google_directions_api_response,
+                  'timestamp': 12345},
         (1, 3): {'path_nodes': [1, 2, 3], 'path_polyline': '_ibE_seK????', 'origin': {'lat': 1, 'lon': 2},
-                 'destination': {'lat': 1, 'lon': 2}, 'request': google_directions_api_response},
+                 'destination': {'lat': 1, 'lon': 2}, 'request': google_directions_api_response,
+                 'timestamp': 12345},
         (5, 3): {'path_nodes': [5, 4, 3], 'path_polyline': '_ibE_seK????', 'origin': {'lat': 1, 'lon': 2},
-                 'destination': {'lat': 1, 'lon': 2}, 'request': google_directions_api_response}})
+                 'destination': {'lat': 1, 'lon': 2}, 'request': google_directions_api_response,
+                 'timestamp': 12345}})
 
 
 def test_sending_requests_throws_error_if_key_not_found(mocker):
@@ -393,13 +425,64 @@ def test_parsing_routes_with_bad_request(caplog, bad_request_google_directions_a
     assert_logging_warning_caught_with_message_containing(caplog, 'Request was not successful.')
 
 
-def test_parse_results_with_singular_route_data(mocker, generated_request, google_directions_api_response):
+def test_parse_results(mocker, tmpdir, generated_request, google_directions_api_response):
     request = FuturesSession(max_workers=1).get('http://hello.com')
     mocker.patch.object(request, 'result', return_value=google_directions_api_response)
     o_d = generated_request['path_nodes'][0], generated_request['path_nodes'][-1]
     api_requests = {o_d: generated_request}
     api_requests[o_d]['request'] = request
-    google_dir_api_edge_data = google_directions.parse_results(api_requests)
+    api_requests[o_d]['timestamp'] = 12345
+
+    api_requests = google_directions.parse_results(api_requests, tmpdir)
+    assert_semantically_equal(api_requests, {('107316', '107352'): {
+        'path_nodes': ['107316', '2440643031', '4307345276', '107317', '4307345495', '4307345497', '25495448',
+                       '2503102618', '107351', '5411344775', '2440651577', '2440651556', '2440651552', '107352'],
+        'path_polyline': 'ahmyHzvYGJyBbCGHq@r@EDIJGBu@~@SToAzAEFEDIJ', 'origin': {'lat': 51.5188864, 'lon': -0.1369442},
+        'destination': {'lat': 51.5208299, 'lon': -0.1391027}, 'timestamp': 12345,
+        'parsed_response': {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}}})
+
+
+def test_mapping_results_to_edges_with_singular_route_data():
+    api_requests = {('107316', '107352'): {
+        'path_nodes': ['107316', '2440643031', '4307345276', '107317', '4307345495', '4307345497', '25495448',
+                       '2503102618', '107351', '5411344775', '2440651577', '2440651556', '2440651552', '107352'],
+        'path_polyline': 'ahmyHzvYGJyBbCGHq@r@EDIJGBu@~@SToAzAEFEDIJ', 'origin': {'lat': 51.5188864, 'lon': -0.1369442},
+        'destination': {'lat': 51.5208299, 'lon': -0.1391027}, 'timestamp': 12345,
+        'parsed_response': {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}}}
+
+    google_edge_data = google_directions.map_results_to_edges(api_requests)
+    assert_semantically_equal(google_edge_data, {
+        ('2440643031', '4307345276'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('4307345276', '107317'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('25495448', '2503102618'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('107316', '2440643031'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('4307345495', '4307345497'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2440651556', '2440651552'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('107317', '4307345495'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('107351', '5411344775'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2440651577', '2440651556'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2503102618', '107351'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('4307345497', '25495448'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2440651552', '107352'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('5411344775', '2440651577'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}})
+
+
+def test_mapping_results_to_edges_with_overlapping_edges():
+    api_requests = {('107316', '107352'): {
+        'path_nodes': ['107316', '2440643031', '4307345276', '107317', '4307345495', '4307345497', '25495448',
+                       '2503102618', '107351', '5411344775', '2440651577', '2440651556', '2440651552', '107352'],
+        'path_polyline': 'ahmyHzvYGJyBbCGHq@r@EDIJGBu@~@SToAzAEFEDIJ', 'origin': {'lat': 51.5188864, 'lon': -0.1369442},
+        'destination': {'lat': 51.5208299, 'lon': -0.1391027}, 'timestamp': 12345,
+        'parsed_response': {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}},
+        ('107316', '4307345276'): {
+            'path_nodes': ['107316', '2440643031', '4307345276'],
+            'path_polyline': 'ahmyHzvYkC',
+            'origin': {'lat': 51.5188864, 'lon': -0.1369442},
+            'destination': {'lat': 51.5195381, 'lon': -0.1376626},
+            'parsed_response': {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCv'}
+    }}
+
+    google_dir_api_edge_data = google_directions.map_results_to_edges(api_requests)
     assert_semantically_equal(google_dir_api_edge_data, {
         ('2440643031', '4307345276'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
         ('4307345276', '107317'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
@@ -416,33 +499,16 @@ def test_parse_results_with_singular_route_data(mocker, generated_request, googl
         ('5411344775', '2440651577'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}})
 
 
-def test_parse_results_with_overlapping_edges(mocker, generated_request, google_directions_api_response):
-    request = FuturesSession(max_workers=1).get('http://hello.com')
-    mocker.patch.object(request, 'result', return_value=google_directions_api_response)
+def test_saved_results_appear_in_directory(tmpdir, generated_request):
     o_d = generated_request['path_nodes'][0], generated_request['path_nodes'][-1]
     api_requests = {o_d: generated_request}
-    api_requests[o_d]['request'] = request
+    api_requests[o_d]['request'] = 'request'
+    api_requests[o_d]['timestamp'] = 12345
+    api_requests[o_d]['parsed_response']= {'google_speed': 3.7183098591549295,
+                                           'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}
 
-    api_requests[('107316', '4307345276')] = {
-        'path_nodes': ['107316', '2440643031', '4307345276'],
-        'path_polyline': 'ahmyHzvYkC',
-        'origin': {'lat': 51.5188864, 'lon': -0.1369442},
-        'destination': {'lat': 51.5195381, 'lon': -0.1376626},
-        'request': request
-    }
+    expected_file_path = os.path.join(tmpdir, '12345_ahmyHzvYkCvCuCdDcBrB.pickle')
 
-    google_dir_api_edge_data = google_directions.parse_results(api_requests)
-    assert_semantically_equal(google_dir_api_edge_data, {
-        ('2440643031', '4307345276'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
-        ('4307345276', '107317'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
-        ('25495448', '2503102618'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
-        ('107316', '2440643031'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
-        ('4307345495', '4307345497'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
-        ('2440651556', '2440651552'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
-        ('107317', '4307345495'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
-        ('107351', '5411344775'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
-        ('2440651577', '2440651556'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
-        ('2503102618', '107351'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
-        ('4307345497', '25495448'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
-        ('2440651552', '107352'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
-        ('5411344775', '2440651577'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}})
+    assert not os.path.exists(expected_file_path)
+    google_directions.save_result(api_requests[o_d], tmpdir)
+    assert os.path.exists(expected_file_path)
