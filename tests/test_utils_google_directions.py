@@ -4,12 +4,17 @@ import polyline
 import logging
 import time
 import os
+import sys
 from requests.models import Response
 from requests_futures.sessions import FuturesSession
 from genet.utils import google_directions
 from genet.utils import secrets_vault
 from genet.core import Network
 from tests.fixtures import assert_semantically_equal, assert_logging_warning_caught_with_message_containing
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+example_google_speed_data = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "example_google_speed_data"))
 
 
 @pytest.fixture()
@@ -297,14 +302,28 @@ def bad_request_google_directions_api_response():
 def test_send_requests_for_road_network(mocker, tmpdir, generated_request):
     mocker.patch.object(google_directions, 'generate_requests', return_value=generated_request)
     mocker.patch.object(google_directions, 'send_requests',
-                        return_value={**generated_request, **{'request': google_directions_api_response, 'timestamp': 12345}})
+                        return_value={**generated_request,
+                                      **{'request': google_directions_api_response, 'timestamp': 12345}})
     mocker.patch.object(google_directions, 'parse_results', return_value={})
 
     n = Network('epsg:27700')
-    google_directions.send_requests_for_road_network(n, tmpdir)
+    google_directions.send_requests_for_network(n, tmpdir)
     google_directions.generate_requests.assert_called_once_with(n)
-    google_directions.send_requests.assert_called_once_with(google_directions.generate_requests.return_value, None, None, False)
+    google_directions.send_requests.assert_called_once_with(google_directions.generate_requests.return_value, None,
+                                                            None, False)
     google_directions.parse_results.assert_called_once_with(google_directions.send_requests.return_value, tmpdir)
+
+
+def test_read_saved_api_results():
+    api_requests = google_directions.read_saved_api_results(example_google_speed_data)
+    assert_semantically_equal(api_requests, {
+        ('9791490', '4698712638'): {'path_nodes': ('9791490', '4698712638'), 'path_polyline': 'mvmyHpqYb@lA',
+                                    'origin': {'id': '9791490', 'x': 529414.5591563961, 'y': 181898.4902840198,
+                                               'lat': 51.5211862, 'lon': -0.1360879, 's2_id': 5221390682074967291},
+                                    'destination': {'id': '4698712638', 'x': 529387.9166476472, 'y': 181877.74867097137,
+                                                    'lat': 51.5210059, 'lon': -0.1364793, 's2_id': 5221390682013665023},
+                                    'timestamp': 1594385229.635254,
+                                    'parsed_response': {'google_speed': 6.8, 'google_polyline': 'mvmyHpqYb@pA'}}})
 
 
 def test_queries_build_correctly_without_traffic():
@@ -333,11 +352,11 @@ def test_queries_build_correctly_with_traffic():
 
 def test_generating_requests_on_non_simplified_graphs():
     n = Network('epsg:27700')
-    n.add_link('0', 1, 2)
-    n.add_link('1', 2, 3)
-    n.add_link('2', 4, 3)
-    n.add_link('3', 5, 4)
-    n.add_link('4', 1, 10)
+    n.add_link('0', 1, 2, attribs={'modes': ['car']})
+    n.add_link('1', 2, 3, attribs={'modes': ['car']})
+    n.add_link('2', 4, 3, attribs={'modes': ['car']})
+    n.add_link('3', 5, 4, attribs={'modes': ['car']})
+    n.add_link('4', 1, 10, attribs={'modes': ['car']})
 
     for node in n.graph.nodes:
         n.apply_attributes_to_node(node, {'lat': 1, 'lon': 2})
@@ -395,7 +414,7 @@ def test_parsing_routes_with_a_good_response(google_directions_api_response, gen
 def test_parsing_routes_with_multiple_legs_response(google_directions_api_response_multiple_legs, generated_request):
     data = google_directions.parse_routes(google_directions_api_response_multiple_legs,
                                           generated_request['path_polyline'])
-    assert_semantically_equal(data, {'google_speed': 4.7272727272727275, 'google_polyline': 'ekmyH~nYbBzFblahblah'})
+    assert_semantically_equal(data, {'google_speed': 2.3636363636363638, 'google_polyline': 'ekmyH~nYbBzFblahblah'})
 
 
 def test_parsing_routes_with_a_bad_response(caplog, request_denied_google_directions_api_response, generated_request):
@@ -480,7 +499,7 @@ def test_mapping_results_to_edges_with_overlapping_edges():
             'origin': {'lat': 51.5188864, 'lon': -0.1369442},
             'destination': {'lat': 51.5195381, 'lon': -0.1376626},
             'parsed_response': {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCv'}
-    }}
+        }}
 
     google_dir_api_edge_data = google_directions.map_results_to_edges(api_requests)
     assert_semantically_equal(google_dir_api_edge_data, {
@@ -504,8 +523,8 @@ def test_saved_results_appear_in_directory(tmpdir, generated_request):
     api_requests = {o_d: generated_request}
     api_requests[o_d]['request'] = 'request'
     api_requests[o_d]['timestamp'] = 12345
-    api_requests[o_d]['parsed_response']= {'google_speed': 3.7183098591549295,
-                                           'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}
+    api_requests[o_d]['parsed_response'] = {'google_speed': 3.7183098591549295,
+                                            'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}
 
     expected_file_path = os.path.join(tmpdir, '12345_ahmyHzvYkCvCuCdDcBrB.pickle')
 

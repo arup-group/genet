@@ -9,20 +9,14 @@ from genet.utils import secrets_vault
 expected_error = pytest.raises
 
 
-def test_gets_api_key_with_secrets_manager_binary(mocker):
-    mocker.patch.object(secrets_vault, 'get_secret', return_value='awesome_key')
-    key = secrets_vault.get_google_directions_api_key(secret_name='secret', region_name='region')
-    assert key == "awesome_key"
-
-
 def test_gets_api_key_with_secrets_manager_string_key(mocker):
-    mocker.patch.object(secrets_vault, 'get_secret', return_value={'key': 'awesome_key'})
+    mocker.patch.object(secrets_vault, 'get_secret_as_dict', return_value={'key': 'awesome_key'})
     key = secrets_vault.get_google_directions_api_key(secret_name='secret', region_name='region')
     assert key == "awesome_key"
 
 
 def test_gets_api_key_with_secrets_manager_string_api_key(mocker):
-    mocker.patch.object(secrets_vault, 'get_secret', return_value={'api_key': 'awesome_key'})
+    mocker.patch.object(secrets_vault, 'get_secret_as_dict', return_value={'api_key': 'awesome_key'})
     key = secrets_vault.get_google_directions_api_key(secret_name='secret', region_name='region')
     assert key == "awesome_key"
 

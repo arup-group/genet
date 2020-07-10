@@ -8,13 +8,37 @@ import time
 from requests_futures.sessions import FuturesSession
 import genet.utils.secrets_vault as secrets_vault
 import genet.utils.spatial as spatial
+import genet.utils.persistence as persistence
 session = FuturesSession(max_workers=10)
 
 
-def send_requests_for_road_network(n, output_dir, traffic=False, secret_name: str = None, region_name: str = None):
+def send_requests_for_network(n, output_dir, traffic : bool = False, secret_name: str = None, region_name: str = None):
+    """
+    Generates, sends and parses results from Google Directions API for the car modal subgraph for network n.
+    You can use AWS Secrets manager for storing your API and pass secret_name and region_name (make sure you are
+    authenticated to your AWS account), or you can export an environmental variable in your terminal
+    $ export GOOGLE_DIR_API_KEY='your key'
+    :param n: genet.Network
+    :param output_dir: output directory where to save the google directions api parsed data
+    :param traffic: bool, whether to request traffic based information from the directions api
+    :param secret_name: if using aws secrets manager, the name where your directions api key is stored
+    :param region_name: the aws region you operate in
+    :return:
+    """
     api_requests = generate_requests(n)
     api_requests = send_requests(api_requests, secret_name, region_name, traffic)
     api_requests = parse_results(api_requests, output_dir)
+    return api_requests
+
+
+def read_saved_api_results(output_dir):
+    api_requests = {}
+    for file in os.listdir(output_dir):
+        if file.endswith(".pickle"):
+            response = os.path.join(output_dir, file)
+            with open(response, 'rb') as handle:
+                response_attribs = pickle.load(handle)
+            api_requests[(response_attribs['path_nodes'][0], response_attribs['path_nodes'][-1])] = response_attribs
     return api_requests
 
 
@@ -39,8 +63,7 @@ def generate_requests(n):
     :param region_name:
     :return:
     """
-    # TODO add car modal subgraph
-    g = n.graph
+    g = n.modal_subgraph(modes='car')
 
     simple_paths = list(ox.simplification._get_paths_to_simplify(g))
     node_diff = set(g.nodes) - set(itertools.chain.from_iterable(simple_paths))
@@ -64,8 +87,8 @@ def send_requests(api_requests: dict, secret_name: str = None, region_name: str 
     key = secrets_vault.get_google_directions_api_key(secret_name, region_name)
     if key is None:
         raise RuntimeError('API key was not found. Make sure you are authenticated and pointing in the correct location'
-                           'if using secrets manager, or that you have spelled the environmental variable correctly.'
-                           'You can check this using `echo $GOOGLE_DIR_API_KEY` in the terminal you\'re using or '
+                           ' if using secrets manager, or that you have spelled the environmental variable correctly.'
+                           ' You can check this using `echo $GOOGLE_DIR_API_KEY` in the terminal you\'re using or '
                            '`!echo $GOOGLE_DIR_API_KEY` if using jupyter notebook cells. To export the key use: '
                            '`export GOOGLE_DIR_API_KEY=key` (again, use ! at the beginning of the line in jupyter).')
 
@@ -78,11 +101,19 @@ def send_requests(api_requests: dict, secret_name: str = None, region_name: str 
 
 
 def parse_route(route: dict):
+    def compute_speed():
+        total_distance = sum([leg['distance']['value'] for leg in legs])
+        total_duration = sum([leg['duration']['value'] for leg in legs])
+        if total_duration == 0:
+            logging.warning('Duration of 0 detected. Route polyline: {}'.format(route['overview_polyline']['points']))
+            return 0
+        return total_distance / total_duration
+
     legs = route['legs']
     if len(legs) > 1:
         logging.warning('Response has more than one leg. This is not consistent with driving requests.')
     data = {
-        'google_speed': sum([leg['distance']['value'] / leg['duration']['value'] for leg in legs]),
+        'google_speed': compute_speed(),
         'google_polyline': route['overview_polyline']['points']
     }
     return data
@@ -129,6 +160,7 @@ def parse_results(api_requests, output_dir):
     :param api_requests:
     :return:
     """
+    persistence.ensure_dir(output_dir)
     for node_request_pair, api_requests_attribs in api_requests.items():
         path_polyline = api_requests_attribs['path_polyline']
         request = api_requests_attribs['request']
