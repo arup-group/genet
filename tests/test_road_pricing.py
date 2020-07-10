@@ -58,20 +58,20 @@ def test_read_toll_ids_w_prefix(path='tests/test_data/road_pricing/test_osm_toll
         assert item[0] != 'w'
 
 
-def test_extract_toll_ways_from_opl(path_opl='tests/test_data/road_pricing/test.osm.opl'):
-    toll_ids = road_pricing.extract_toll_ways_from_opl(path_opl)
-    # check that returns a list
-    assert isinstance(toll_ids, list)
-    # check that all items in list are strings and start with 'w'
-    for item in toll_ids:
-        assert isinstance(item, str)
-        assert item[0]=='w'
+# def test_extract_toll_ways_from_opl(path_opl='tests/test_data/road_pricing/test.osm.opl'):
+#     toll_ids = road_pricing.extract_toll_ways_from_opl(path_opl)
+#     # check that returns a list
+#     assert isinstance(toll_ids, list)
+#     # check that all items in list are strings and start with 'w'
+#     for item in toll_ids:
+#         assert isinstance(item, str)
+#         assert item[0]=='w'
 
 
 def test_extract_network_id_from_osm_id(path_network='tests/test_data/road_pricing/network.xml',
                                         path_osm_way_ids='tests/test_data/road_pricing/test_osm_toll_ids'):
     n = Network()
-    n.read_matsim_network(path_network, epsg='epsg:27700')
+    n.read_matsim_network(path_network, epsg='epsg:2157')
 
     osm_way_ids = road_pricing.read_toll_ids(path_osm_way_ids)
 
