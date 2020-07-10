@@ -679,23 +679,36 @@ def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_rec
     n = Network('epsg:27700')
     n.add_node(1, {'a': 1})
     n.add_node(2, {'b': 1})
-    n.apply_attributes_to_nodes([1, 2], {'a': 4})
+    n.apply_attributes_to_nodes({1: {'a': 4}, 2: {'a': 1}})
 
     assert n.node(1) == {'a': 4}
-    assert n.node(2) == {'b': 1, 'a': 4}
+    assert n.node(2) == {'b': 1, 'a': 1}
 
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {0: '2020-06-01 15:07:51', 1: '2020-06-01 15:07:51', 2: '2020-06-01 15:07:51',
                        3: '2020-06-01 15:07:51'}, 'change_event': {0: 'add', 1: 'add', 2: 'modify', 3: 'modify'},
          'object_type': {0: 'node', 1: 'node', 2: 'node', 3: 'node'}, 'old_id': {0: None, 1: None, 2: 1, 3: 2},
          'new_id': {0: 1, 1: 2, 2: 1, 3: 2}, 'old_attributes': {0: None, 1: None, 2: "{'a': 1}", 3: "{'b': 1}"},
-         'new_attributes': {0: "{'a': 1}", 1: "{'b': 1}", 2: "{'a': 4}", 3: "{'b': 1, 'a': 4}"},
+         'new_attributes': {0: "{'a': 1}", 1: "{'b': 1}", 2: "{'a': 4}", 3: "{'b': 1, 'a': 1}"},
          'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', 1)], 1: [('add', '', [('b', 1)]), ('add', 'id', 2)],
-                  2: [('change', 'a', (1, 4))], 3: [('add', '', [('a', 4)])]}
+                  2: [('change', 'a', (1, 4))], 3: [('add', '', [('a', 1)])]}
          })
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
     assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+
+
+def multiply_node_attribs(node_attribs):
+    return node_attribs['a'] * node_attribs['c']
+
+def test_apply_function_to_nodes():
+    n = Network('epsg:27700')
+    n.add_node('0', attribs={'a': 2, 'c': 3})
+    n.add_node('1', attribs={'c': 100})
+    n.apply_function_to_nodes(function=multiply_node_attribs, location='new_computed_attrib')
+    assert_semantically_equal(dict(n.nodes()),
+                              {'0': {'a': 2, 'c': 3, 'new_computed_attrib': 6},
+                               '1': {'c': 100}})
 
 
 def test_apply_attributes_to_edge_without_filter_conditions():
@@ -717,7 +730,8 @@ def test_apply_attributes_to_edge_without_filter_conditions():
          'diff': {2: [('add', '', [('c', 1)])], 3: [('add', '', [('c', 1)])]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare].tail(2), correct_change_log_df[cols_to_compare], check_dtype=False)
+    assert_frame_equal(n.change_log.log[cols_to_compare].tail(2), correct_change_log_df[cols_to_compare],
+                       check_dtype=False)
 
 
 def test_apply_attributes_to_edge_with_filter_conditions():
@@ -738,7 +752,8 @@ def test_apply_attributes_to_edge_with_filter_conditions():
          'diff': {2: [('add', '', [('c', 1)])]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare], check_dtype=False)
+    assert_frame_equal(n.change_log.log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
+                       check_dtype=False)
 
 
 def test_apply_attributes_to_multiple_edges():
@@ -808,10 +823,10 @@ def test_modify_links_adds_and_changes_attributes_in_the_graph_with_multiple_edg
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': {'b': 1}})
     n.add_link('1', 1, 2, attribs={'c': 100})
-    n.apply_attributes_to_links(['0', '1'], {'a': {'b': 100}})
+    n.apply_attributes_to_links({'0': {'a': {'b': 100}}, '1': {'a': {'b': 10}}})
 
     assert n.link('0') == {'a': {'b': 100}, 'from': 1, 'to': 2, 'id': '0'}
-    assert n.link('1') == {'c': 100, 'from': 1, 'to': 2, 'id': '1', 'a': {'b': 100}}
+    assert n.link('1') == {'c': 100, 'from': 1, 'to': 2, 'id': '1', 'a': {'b': 10}}
 
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {2: '2020-06-12 19:59:40', 3: '2020-06-12 19:59:40'}, 'change_event': {2: 'modify', 3: 'modify'},
@@ -819,12 +834,25 @@ def test_modify_links_adds_and_changes_attributes_in_the_graph_with_multiple_edg
          'old_attributes': {2: "{'a': {'b': 1}, 'from': 1, 'to': 2, 'id': '0'}",
                             3: "{'c': 100, 'from': 1, 'to': 2, 'id': '1'}"},
          'new_attributes': {2: "{'a': {'b': 100}, 'from': 1, 'to': 2, 'id': '0'}",
-                            3: "{'c': 100, 'from': 1, 'to': 2, 'id': '1', 'a': {'b': 100}}"},
-         'diff': {2: [('change', 'a.b', (1, 100))], 3: [('add', '', [('a', {'b': 100})])]}})
+                            3: "{'c': 100, 'from': 1, 'to': 2, 'id': '1', 'a': {'b': 10}}"},
+         'diff': {2: [('change', 'a.b', (1, 100))], 3: [('add', '', [('a', {'b': 10})])]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
     assert_frame_equal(n.change_log.log[cols_to_compare].tail(2), correct_change_log_df[cols_to_compare],
                        check_dtype=False)
+
+
+def multiply_link_attribs(link_attribs):
+    return link_attribs['a'] * link_attribs['c']
+
+def test_apply_function_to_links():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'a': 2, 'c': 3})
+    n.add_link('1', 1, 2, attribs={'c': 100})
+    n.apply_function_to_links(function=multiply_link_attribs, location='new_computed_attrib')
+    assert_semantically_equal(dict(n.links()),
+                              {'0': {'a': 2, 'c': 3, 'from': 1, 'to': 2, 'id': '0', 'new_computed_attrib': 6},
+                               '1': {'c': 100, 'from': 1, 'to': 2, 'id': '1'}})
 
 
 def test_resolves_link_id_clashes_by_mapping_clashing_link_to_a_new_id(mocker):

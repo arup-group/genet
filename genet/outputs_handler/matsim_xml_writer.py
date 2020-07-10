@@ -5,6 +5,7 @@ from pyproj import Proj, Transformer
 from genet.outputs_handler import matsim_xml_values
 from genet.validate.network_validation import validate_link_data
 from genet.utils.spatial import change_proj
+from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES
 
 
 def sanitise_dictionary_for_xml(d):
@@ -17,10 +18,10 @@ def sanitise_dictionary_for_xml(d):
 
 
 def delete_redundant_link_attributes_for_xml(d):
-    if 's2_from' in d:
-        del d['s2_from']
-    if 's2_to' in d:
-        del d['s2_to']
+    attrib_keys = list(d.keys())
+    for attrib in attrib_keys:
+        if attrib not in NECESSARY_NETWORK_LINK_ATTRIBUTES + ['attributes']:
+            del d[attrib]
     return d
 
 

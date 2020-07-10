@@ -1,16 +1,11 @@
 import networkx as nx
+from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES
 
 
 def validate_link_data(link_attributes):
-    assert 'id' in link_attributes
-    assert 'from' in link_attributes
-    assert 'to' in link_attributes
-    assert 'length' in link_attributes
-    assert 'freespeed' in link_attributes
-    assert 'capacity' in link_attributes
-    assert 'permlanes' in link_attributes
-    assert 'oneway' in link_attributes
-    assert 'modes' in link_attributes
+    for necessary_link_attrib in NECESSARY_NETWORK_LINK_ATTRIBUTES:
+        if necessary_link_attrib not in link_attributes:
+            raise AttributeError('Attribute: {} missing from link: {}'.format(necessary_link_attrib, link_attributes))
 
 
 def find_problem_nodes(G):

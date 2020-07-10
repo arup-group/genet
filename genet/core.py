@@ -320,9 +320,9 @@ class Network:
             new_node_id = self.generate_index_for_node()
         # extract link ids which will be affected byt the node relabel and change the from anf to attributes
         from_links = graph_operations.extract_links_on_edge_attributes(self, conditions={'from': node_id})
-        self.apply_attributes_to_links(from_links, {'from': new_node_id})
+        self.apply_attributes_to_links({link: {'from': new_node_id} for link in from_links})
         to_links = graph_operations.extract_links_on_edge_attributes(self, conditions={'to': node_id})
-        self.apply_attributes_to_links(to_links, {'to': new_node_id})
+        self.apply_attributes_to_links({link: {'to': new_node_id} for link in to_links})
         # update link_id_mapping
         for k in from_links:
             self.link_id_mapping[k]['from'] = new_node_id
@@ -404,16 +404,34 @@ class Network:
         if not silent:
             logging.info('Changed Node attributes under index: {}'.format(node_id))
 
-    def apply_attributes_to_nodes(self, nodes: list, new_attributes: dict, silent: bool = False):
+    def apply_attributes_to_nodes(self, new_attributes: dict, silent: bool = False):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the node currently so no data is lost, unless it is being overwritten.
-        :param nodes: list of node ids
-        :param new_attributes: dictionary of data to add/replace if present
+        :param new_attributes: keys are node ids and values are dictionaries of data to add/replace if present
         :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        [self.apply_attributes_to_node(node, new_attributes, silent) for node in nodes]
+        [self.apply_attributes_to_node(node, new_attribs, silent) for node, new_attribs in new_attributes.items()]
+
+    def apply_function_to_nodes(self, function, location: str, silent: bool = False):
+        """
+        Applies function to node attributes dictionary
+        :param function: function of node attributes dictionary returning a value that should be stored
+        under `location`
+        :param location: where to save the results: string defining the key in the nodes attributes dictionary
+        :param silent: whether to mute stdout logging messages, useful for big batches
+        :return:
+        """
+        new_node_attribs = {}
+        for node, node_attribs in self.nodes():
+            try:
+                new_node_attribs[node] = {location: function(node_attribs)}
+            except KeyError:
+                # Not all nodes/edges are required to have all the same attributes stored. Fail silently and only apply
+                # to relevant nodes/edges
+                pass
+        self.apply_attributes_to_nodes(new_node_attribs, silent=silent)
 
     def apply_attributes_to_edge(self, u, v, new_attributes, conditions=None, how=any, silent: bool = False):
         """
@@ -494,16 +512,34 @@ class Network:
         if not silent:
             logging.info('Changed Link attributes under index: {}'.format(link_id))
 
-    def apply_attributes_to_links(self, links: list, new_attributes: dict, silent: bool = False):
+    def apply_attributes_to_links(self, new_attributes: dict, silent: bool = False):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the link currently so no data is lost, unless it is being overwritten.
-        :param links: list of link ids
-        :param new_attributes: dictionary of data to add/replace if present
+        :param new_attributes: keys are link ids and values are dictionaries of data to add/replace if present
         :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        [self.apply_attributes_to_link(link, new_attributes, silent) for link in links]
+        [self.apply_attributes_to_link(link, new_attribs, silent) for link, new_attribs in new_attributes.items()]
+
+    def apply_function_to_links(self, function, location: str, silent: bool = False):
+        """
+        Applies function to node attributes dictionary
+        :param function: function of node attributes dictionary returning a value that should be stored
+        under `location`
+        :param location: where to save the results: string defining the key in the nodes attributes dictionary
+        :param silent: whether to mute stdout logging messages, useful for big batches
+        :return:
+        """
+        new_link_attribs = {}
+        for link_id, link_attribs in self.links():
+            try:
+                new_link_attribs[link_id] = {location: function(link_attribs)}
+            except KeyError:
+                # Not all nodes/edges are required to have all the same attributes stored. Fail silently and only apply
+                # to relevant nodes/edges
+                pass
+        self.apply_attributes_to_links(new_link_attribs, silent=silent)
 
     def remove_node(self, node_id, silent: bool = False):
         """
