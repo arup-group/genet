@@ -698,6 +698,63 @@ def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_rec
     assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
 
 
+def test_apply_attributes_to_edge_without_filter_conditions():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'a': 1})
+    n.add_link('1', 1, 2, attribs={'b': 1})
+    n.apply_attributes_to_edge(1, 2, {'c': 1})
+
+    assert n.link('0') == {'a': 1, 'from': 1, 'to': 2, 'id': '0', 'c': 1}
+    assert n.link('1') == {'b': 1, 'from': 1, 'to': 2, 'id': '1', 'c': 1}
+
+    correct_change_log_df = pd.DataFrame(
+        {'timestamp': {2: '2020-07-10 14:53:25', 3: '2020-07-10 14:53:25'}, 'change_event': {2: 'modify', 3: 'modify'},
+         'object_type': {2: 'edge', 3: 'edge'}, 'old_id': {2: '(1, 2, 0)', 3: '(1, 2, 1)'},
+         'new_id': {2: '(1, 2, 0)', 3: '(1, 2, 1)'},
+         'old_attributes': {2: "{'a': 1, 'from': 1, 'to': 2, 'id': '0'}", 3: "{'b': 1, 'from': 1, 'to': 2, 'id': '1'}"},
+         'new_attributes': {2: "{'a': 1, 'from': 1, 'to': 2, 'id': '0', 'c': 1}",
+                            3: "{'b': 1, 'from': 1, 'to': 2, 'id': '1', 'c': 1}"},
+         'diff': {2: [('add', '', [('c', 1)])], 3: [('add', '', [('c', 1)])]}})
+
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(n.change_log.log[cols_to_compare].tail(2), correct_change_log_df[cols_to_compare], check_dtype=False)
+
+
+def test_apply_attributes_to_edge_with_filter_conditions():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'a': 1})
+    n.add_link('1', 1, 2, attribs={'b': 1})
+    n.apply_attributes_to_edge(1, 2, {'c': 1}, conditions={'a': (0, 2)})
+
+    assert n.link('0') == {'a': 1, 'from': 1, 'to': 2, 'id': '0', 'c': 1}
+    assert n.link('1') == {'b': 1, 'from': 1, 'to': 2, 'id': '1'}
+
+    correct_change_log_df = pd.DataFrame(
+        {'timestamp': {2: '2020-07-10 14:53:25'}, 'change_event': {2: 'modify'},
+         'object_type': {2: 'edge'}, 'old_id': {2: '(1, 2, 0)'},
+         'new_id': {2: '(1, 2, 0)'},
+         'old_attributes': {2: "{'a': 1, 'from': 1, 'to': 2, 'id': '0'}"},
+         'new_attributes': {2: "{'a': 1, 'from': 1, 'to': 2, 'id': '0', 'c': 1}"},
+         'diff': {2: [('add', '', [('c', 1)])]}})
+
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(n.change_log.log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare], check_dtype=False)
+
+
+def test_apply_attributes_to_multiple_edges():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'a': 1})
+    n.add_link('1', 1, 2, attribs={'b': 1})
+    n.add_link('2', 2, 3, attribs={'c': 1})
+    n.add_link('3', 2, 3, attribs={'d': 1})
+    n.apply_attributes_to_edges({(1, 2): {'e': 1}, (2, 3): {'f': 1}}, conditions=[{'a': (0, 2)}, {'c': (0, 2)}])
+
+    assert n.link('0') == {'a': 1, 'from': 1, 'to': 2, 'id': '0', 'e': 1}
+    assert n.link('1') == {'b': 1, 'from': 1, 'to': 2, 'id': '1'}
+    assert n.link('2') == {'c': 1, 'from': 2, 'to': 3, 'id': '2', 'f': 1}
+    assert n.link('3') == {'d': 1, 'from': 2, 'to': 3, 'id': '3'}
+
+
 def test_modify_link_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': 1})

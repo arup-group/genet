@@ -37,7 +37,7 @@ class Filter:
             conditions: Union[
                 list,
                 Dict[str, Union[dict, Union[str, int, float], list, Callable[[str, int, float], bool]]]
-            ],
+            ] = None,
             how=any):
         self.conditions = conditions
         self.how = how
@@ -50,6 +50,8 @@ class Filter:
             return self.how(conditions_satisfied)
         elif isinstance(self.conditions, dict):
             return self.evaluate_condition(self.conditions, data_dict)
+        elif self.conditions is None:
+            return True
 
     def evaluate_condition(self, condition, data_dict):
         satisfies = False

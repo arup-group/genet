@@ -415,6 +415,55 @@ class Network:
         """
         [self.apply_attributes_to_node(node, new_attributes, silent) for node in nodes]
 
+    def apply_attributes_to_edge(self, u, v, new_attributes, conditions=None, how=any, silent: bool = False):
+        """
+        Applies attributes to edges (which optionally match certain criteria)
+        :param u: from node
+        :param v: to node
+        :param new_attributes: attributes data to be applied
+        :param conditions: graph_operations.Filter conditions
+        :param how: graph_operations.Filter how
+        :param silent:
+        :return:
+        """
+        filter = graph_operations.Filter(conditions=conditions, how=how)
+
+        for multi_idx, edge_atrribs in self.edge(u, v).items():
+            if filter.satisfies_conditions(edge_atrribs):
+                old_attributes = deepcopy(edge_atrribs)
+
+                # check if change is to nested part of node data
+                if any(isinstance(v, dict) for v in new_attributes.values()):
+                    new_attribs = persistence.set_nested_value(old_attributes, new_attributes)
+                else:
+                    new_attribs = {**old_attributes, **new_attributes}
+
+                edge = '({}, {}, {})'.format(u, v, multi_idx)
+
+                self.change_log.modify(
+                    object_type='edge',
+                    old_id=edge,
+                    new_id=edge,
+                    old_attributes=edge_atrribs,
+                    new_attributes=new_attribs)
+
+                nx.set_edge_attributes(self.graph, {(u, v, multi_idx): new_attribs})
+                if not silent:
+                    logging.info('Changed Link attributes under index: {}'.format(edge))
+
+    def apply_attributes_to_edges(self, new_attributes: dict, conditions=None, how=any, silent: bool = False):
+        """
+        Applies new attributes for edges (optionally satisfying certain criteria)
+        :param new_attributes: dictionary where keys are two tuples (u, v) where u is the from node and v is the to
+        node. The value at the key are the new attributes to be applied to links on edge (u,v)
+        :param conditions: graph_operations.Filter conditions
+        :param how: graph_operations.Filter how
+        :param silent:
+        :return:
+        """
+        [self.apply_attributes_to_edge(u, v, new_attribs, conditions, how, silent)
+         for (u,v), new_attribs in new_attributes.items()]
+
     def apply_attributes_to_link(self, link_id, new_attributes, silent: bool = False):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
