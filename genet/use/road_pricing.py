@@ -142,7 +142,7 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
     for target_id in target_osm_ids:
         links = graph_operations.extract_links_on_edge_attributes(
                 network,
-                conditions = {'attributes': {attribute_name: {'text': target_id}}},
+                conditions={'attributes': {attribute_name: {'text': target_id}}},
             )
 
         # links is now a list of strings
