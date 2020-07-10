@@ -24,13 +24,6 @@ def delete_redundant_link_attributes_for_xml(d):
     return d
 
 
-def write_to_matsim_xmls(output_dir, network):
-    write_matsim_network(output_dir, network)
-    if network.schedule:
-        vehicles = write_matsim_schedule(output_dir, network.schedule, epsg=network.epsg)
-        write_vehicles(output_dir, vehicles)
-
-
 def write_matsim_network(output_dir, network):
     fname = os.path.join(output_dir, "network.xml")
     logging.info('Writing {}'.format(fname))

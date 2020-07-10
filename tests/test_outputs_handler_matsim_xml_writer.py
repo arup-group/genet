@@ -55,8 +55,8 @@ def test_network_from_test_osm_data_produces_valid_matsim_network_xml_file(full_
                                                                            tmpdir):
     osm_test_file = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml"))
-    network = Network()
-    network.read_osm(osm_test_file, full_fat_default_config_path, 'epsg:27700', 1)
+    network = Network('epsg:27700')
+    network.read_osm(osm_test_file, full_fat_default_config_path, 1)
     network.write_to_matsim(tmpdir)
 
     generated_network_file_path = os.path.join(tmpdir, 'network.xml')
