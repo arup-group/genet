@@ -26,7 +26,7 @@ def make_request(origin_attributes, destination_attributes, key, traffic):
         'key': key
         }
     if traffic:
-        params['departure_time']='now'
+        params['departure_time'] = 'now'
     return session.get(base_url, params=params)
 
 

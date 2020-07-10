@@ -300,7 +300,7 @@ def test_send_requests_for_road_network(mocker, tmpdir, generated_request):
                         return_value={**generated_request, **{'request': google_directions_api_response, 'timestamp': 12345}})
     mocker.patch.object(google_directions, 'parse_results', return_value={})
 
-    n = Network()
+    n = Network('epsg:27700')
     google_directions.send_requests_for_road_network(n, tmpdir)
     google_directions.generate_requests.assert_called_once_with(n)
     google_directions.send_requests.assert_called_once_with(google_directions.generate_requests.return_value, None, None, False)
@@ -332,7 +332,7 @@ def test_queries_build_correctly_with_traffic():
 
 
 def test_generating_requests_on_non_simplified_graphs():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2)
     n.add_link('1', 2, 3)
     n.add_link('2', 4, 3)
