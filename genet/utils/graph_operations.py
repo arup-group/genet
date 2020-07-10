@@ -5,7 +5,7 @@ import logging
 from itertools import count, filterfalse
 
 
-class Filter():
+class Filter:
     """
     Helps filtering on specified attributes
 
@@ -179,7 +179,7 @@ def render_tree(root, data=False):
 
 def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
     """
-    Returns all data stored under key in attribute dictionaries for interators yielding (index, attribute_dictionary),
+    Returns all data stored under key in attribute dictionaries for iterators yielding (index, attribute_dictionary),
     inherits index from the iterator.
     :param iterator: list or iterator yielding (index, attribute_dictionary)
     :param key: either a string e.g. 'modes', or if accessing nested information, a dictionary
@@ -325,7 +325,7 @@ def consolidate_link_indices(left, right):
             'link_id_left'].isna()].apply(
             lambda row: append_data_to_unique_clashing_links_data(row), axis=1)
 
-        right.remove_links(set(clashing_overlapping_edges['link_id_right'].dropna()))
+        right.remove_links(set(clashing_overlapping_edges['link_id_right'].dropna()), silent=True)
 
     # resolve clashing link ids for links in right which don't exist in left
     clashing_right_link_ids = set(df[df['left'].isna()]['link_id_right']) & set(df['link_id_left'].dropna())
@@ -341,7 +341,7 @@ def consolidate_link_indices(left, right):
     for left_link_id, data in overlapping_links_data.items():
         u, v = left.link_id_mapping[left_link_id]['from'], left.link_id_mapping[left_link_id]['to']
         multi_idx = left.link_id_mapping[left_link_id]['multi_edge_idx']
-        right.add_link(left_link_id, u, v, multi_idx, data)
+        right.add_link(left_link_id, u, v, multi_idx, data, silent=True)
 
     for right_link_id, data in unique_clashing_links_data.items():
         u, v = data['from'], data['to']
@@ -356,7 +356,29 @@ def consolidate_link_indices(left, right):
         multi_idx = next(filterfalse(set(existing_multi_edge_ids).__contains__, count(1)))
         if right_link_id in set(left.link_id_mapping.keys()) | set(right.link_id_mapping.keys()):
             right_link_id = right.generate_index_for_edge(set(left.link_id_mapping.keys()))
-        right.add_link(right_link_id, u, v, multi_idx, data)
+        right.add_link(right_link_id, u, v, multi_idx, data, silent=True)
 
     logging.info('Finished consolidating link indexing between the two graphs')
     return right
+
+
+def convert_list_of_link_ids_to_network_nodes(network, link_ids: list):
+    """
+    Extracts nodes corresponding to link ids in the order of given link_ids list. Useful for extracting network routes.
+    :param network:
+    :param link_ids:
+    :return:
+    """
+    paths = []
+    connected_path = []
+    for link_id in link_ids:
+        x, y = network.link_id_mapping[link_id]['from'], network.link_id_mapping[link_id]['to']
+        if not connected_path:
+            connected_path = [x, y]
+        elif connected_path[-1] != x:
+            paths.append(connected_path)
+            connected_path = [x, y]
+        else:
+            connected_path.append(y)
+    paths.append(connected_path)
+    return paths

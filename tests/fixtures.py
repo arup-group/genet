@@ -45,12 +45,26 @@ def assert_semantically_equal(dict1, dict2):
 ###########################################################
 # core data  structure examples
 ###########################################################
+
+###########################################################
+# networks
+###########################################################
 @pytest.fixture()
 def network_object_from_test_data():
-    n = Network()
-    n.read_matsim_network(pt2matsim_network_test_file, 'epsg:27700')
-    n.read_matsim_schedule(pt2matsim_schedule_file, 'epsg:27700')
+    n = Network('epsg:27700')
+    n.read_matsim_network(pt2matsim_network_test_file)
+    n.read_matsim_schedule(pt2matsim_schedule_file)
     return n
+
+
+###########################################################
+# schedule
+###########################################################
+@pytest.fixture()
+def schedule_object_from_test_data():
+    s = Schedule('epsg:27700')
+    s.read_matsim_schedule(pt2matsim_schedule_file)
+    return s
 
 
 @pytest.fixture()
@@ -64,38 +78,99 @@ def stop_epsg_4326():
 
 
 @pytest.fixture()
-def route(stop_epsg_27700):
+def route():
     return Route(route_short_name='route', mode='bus',
-                 stops=[stop_epsg_27700, stop_epsg_27700],
+                 stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                        Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
                  trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
                  arrival_offsets=['00:00:00', '00:02:00'],
                  departure_offsets=['00:00:00', '00:02:00'])
 
 
 @pytest.fixture()
-def similar_non_exact_test_route(stop_epsg_27700):
+def similar_non_exact_test_route():
     return Route(route_short_name='route', mode='bus',
-                 stops=[stop_epsg_27700, stop_epsg_27700],
+                 stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                        Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
                  trips={'Blep_04:40:00': '05:40:00'},
                  arrival_offsets=['00:00:00', '00:03:00'],
                  departure_offsets=['00:00:00', '00:05:00'])
 
 
 @pytest.fixture()
-def test_service(route, similar_non_exact_test_route):
+def test_service():
     return Service(id='service',
-                   routes=[route, similar_non_exact_test_route])
+                   routes=[
+                       Route(route_short_name='route', mode='bus',
+                        stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                            Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                        trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+                        arrival_offsets=['00:00:00', '00:02:00'],
+                        departure_offsets=['00:00:00', '00:02:00']),
+                       Route(route_short_name='route1', mode='bus',
+                             stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                                    Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                             trips={'Blep_04:40:00': '05:40:00'},
+                             arrival_offsets=['00:00:00', '00:03:00'],
+                             departure_offsets=['00:00:00', '00:05:00'])
+                   ])
 
 
 @pytest.fixture()
-def different_test_service(route):
+def different_test_service():
     return Service(id='different_service',
-                   routes=[route])
+                   routes=[
+                       Route(route_short_name='route', mode='bus',
+                             stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                                    Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                             trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+                             arrival_offsets=['00:00:00', '00:02:00'],
+                             departure_offsets=['00:00:00', '00:02:00'])
+                   ])
 
 
 @pytest.fixture()
-def test_schedule(test_service):
-    return Schedule(services=[test_service])
+def correct_schedule():
+    return Schedule(epsg='epsg:27700', services=[
+        Service(id='service',
+                routes=[
+                    Route(id='1', route_short_name='route', mode='bus',
+                          stops=[Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='1'),
+                                 Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')],
+                          trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00'],
+                          route=['1', '2']),
+                    Route(id='2', route_short_name='route1', mode='bus',
+                          stops=[Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='1'),
+                                 Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')],
+                          trips={'Blep_04:40:00': '05:40:00'},
+                          arrival_offsets=['00:00:00', '00:03:00'],
+                          departure_offsets=['00:00:00', '00:05:00'],
+                          route=['1', '2'])
+                ])
+    ])
+
+
+@pytest.fixture()
+def test_schedule():
+    return Schedule(epsg='epsg:27700', services=[
+        Service(id='service',
+                routes=[
+                    Route(route_short_name='route', mode='bus',
+                          stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                                 Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                          trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00']),
+                    Route(route_short_name='route1', mode='bus',
+                          stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                                 Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                          trips={'Blep_04:40:00': '05:40:00'},
+                          arrival_offsets=['00:00:00', '00:03:00'],
+                          departure_offsets=['00:00:00', '00:05:00'])
+                ])
+    ])
 
 
 ###########################################################

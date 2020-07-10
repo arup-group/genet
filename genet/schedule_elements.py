@@ -1,6 +1,10 @@
 from typing import Union, Dict, List
 from pyproj import Transformer
 from genet.utils import spatial
+import networkx as nx
+import logging
+from datetime import datetime
+from genet.utils import plot
 
 # number of decimal places to consider when comparing lat lons
 SPATIAL_TOLERANCE = 8
@@ -21,7 +25,7 @@ class Stop:
     """
 
     def __init__(self, id: Union[str, int], x: Union[str, int, float], y: Union[str, int, float], epsg: str,
-                 transformer: Transformer = None):
+                 transformer: Transformer = None, **kwargs):
         self.id = id
         self.x = float(x)
         self.y = float(y)
@@ -31,15 +35,43 @@ class Stop:
             self.lat, self.lon = float(x), float(y)
         else:
             self.lat, self.lon = spatial.change_proj(x, y, self.transformer)
+        self.s2_id = spatial.grab_index_s2(lat=self.lat, lng=self.lon)
 
         self.additional_attributes = []
+        if kwargs:
+            self.add_additional_attributes(kwargs)
 
     def __eq__(self, other):
-        return (round(self.lat, SPATIAL_TOLERANCE) == round(other.lat, SPATIAL_TOLERANCE)) \
-               and (round(self.lon, SPATIAL_TOLERANCE) == round(other.lon, SPATIAL_TOLERANCE))
+        return (self._round_lat() == other._round_lat()) and (self._round_lon() == other._round_lon())
 
     def __hash__(self):
-        return hash((self.id, round(self.lat, SPATIAL_TOLERANCE), round(self.lon, SPATIAL_TOLERANCE)))
+        return hash((self.id, self._round_lat(), self._round_lon()))
+
+    def __repr__(self):
+        return "<{} instance at {}: in {}>".format(
+            self.__class__.__name__,
+            id(self),
+            self.epsg)
+
+    def __str__(self):
+        return self.info()
+
+    def _round_lat(self):
+        return round(self.lat, SPATIAL_TOLERANCE)
+
+    def _round_lon(self):
+        return round(self.lon, SPATIAL_TOLERANCE)
+
+    def print(self):
+        print(self.info())
+
+    def info(self):
+        if self.has_linkRefId():
+            return '{} ID: {}\nProjection: {}\nLat, Lon: {}, {}\nlinkRefId: {}'.format(
+                self.__class__.__name__, self.id, self.epsg, self._round_lat(), self._round_lon(), self.linkRefId)
+        else:
+            return '{} ID: {}\nProjection: {}\nLat, Lon: {}, {}'.format(
+                self.__class__.__name__, self.id, self.epsg, self._round_lat(), self._round_lon())
 
     def initiate_crs_transformer(self, epsg, transformer):
         self.epsg = epsg
@@ -94,6 +126,12 @@ class Stop:
                 return True
         return False
 
+    def has_linkRefId(self):
+        return 'linkRefId' in self.__dict__
+
+    def has_id(self):
+        return self.id
+
 
 class Route:
     """
@@ -142,6 +180,40 @@ class Route:
         same_stops = self.stops == other.stops
         return same_route_name and same_mode and same_stops
 
+    def __repr__(self):
+        return "<{} instance at {}: with {} stops and {} trips>".format(
+            self.__class__.__name__,
+            id(self),
+            len(self.stops),
+            len(self.trips))
+
+    def __str__(self):
+        return self.info()
+
+    def print(self):
+        print(self.info())
+
+    def info(self):
+        return '{} ID: {}\nName: {}\nNumber of stops: {}\nNumber of trips: {}'.format(
+            self.__class__.__name__, self.id, self.route_short_name, len(self.stops), len(self.trips))
+
+    def plot(self, show=True, save=False, output_dir=''):
+        route_graph = self.build_graph()
+        if self.stops:
+            return plot.plot_graph(
+                nx.MultiGraph(route_graph),
+                filename='route_{}_graph'.format(self.id),
+                show=show,
+                save=save,
+                output_dir=output_dir,
+                e_c='#EC7063'
+            )
+
+    def find_epsg(self):
+        for stop in self.stops:
+            return stop.epsg
+        return None
+
     def is_exact(self, other):
         same_route_name = self.route_short_name == other.route_short_name
         same_mode = self.mode.lower() == other.mode.lower()
@@ -160,6 +232,99 @@ class Route:
                 return True
         return False
 
+    def crowfly_distance(self):
+        distance = 0
+        for prev_stop, next_stop in zip(self.stops[:-1], self.stops[1:]):
+            distance += spatial.distance_between_s2cellids(prev_stop.s2_id, next_stop.s2_id)
+        return distance
+
+    def build_graph(self):
+        route_graph = nx.DiGraph(name='Route graph', crs={'init': self.find_epsg()})
+        route_nodes = [(stop.id, {'x': stop.x, 'y': stop.y, 'lat': stop.lat, 'lon': stop.lon}) for stop in self.stops]
+        route_graph.add_nodes_from(route_nodes)
+        stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(self.stops[:-1], self.stops[1:])]
+        route_graph.add_edges_from(stop_edges)
+        return route_graph
+
+    def is_strongly_connected(self):
+        g = self.build_graph()
+        if nx.number_strongly_connected_components(g) == 1:
+            return True
+        return False
+
+    def has_self_loops(self):
+        """
+        means that there are two consecutive stops that are the same
+        :return:
+        """
+        g = self.build_graph()
+        return list(nx.nodes_with_selfloops(g))
+
+    def has_more_than_one_stop(self):
+        if len(self.stops) > 1:
+            return True
+        return False
+
+    def has_network_route(self):
+        return self.route
+
+    def has_correctly_ordered_route(self):
+        if self.has_network_route():
+            stops_linkrefids = [stop.linkRefId for stop in self.stops if stop.has_linkRefId()]
+            if len(stops_linkrefids) != len(self.stops):
+                logging.warning('Not all stops reference network link ids.')
+                return False
+            for link_id in self.route:
+                if link_id == stops_linkrefids[0]:
+                    stops_linkrefids = stops_linkrefids[1:]
+            if not stops_linkrefids:
+                return True
+        return False
+
+    def has_valid_offsets(self):
+        if not self.arrival_offsets or not self.departure_offsets:
+            return False
+        elif len(self.arrival_offsets) != len(self.stops) or len(self.departure_offsets) != len(self.stops):
+            return False
+        for arr_offset, dep_offset in zip(self.arrival_offsets, self.departure_offsets):
+            dt_arr_offset = datetime.strptime(arr_offset, '%H:%M:%S')
+            dt_dep_offset = datetime.strptime(dep_offset, '%H:%M:%S')
+            if dt_arr_offset > dt_dep_offset:
+                return False
+        for next_arr_offset, prev_dep_offset in zip(self.arrival_offsets[1:], self.departure_offsets[:-1]):
+            dt_next_arr_offset = datetime.strptime(next_arr_offset, '%H:%M:%S')
+            dt_prev_dep_offset = datetime.strptime(prev_dep_offset, '%H:%M:%S')
+            if dt_next_arr_offset < dt_prev_dep_offset:
+                return False
+        return True
+
+    def has_id(self):
+        return self.id
+
+    def is_valid_route(self, return_reason=False):
+        invalid_stages = []
+        valid = True
+
+        if not self.has_more_than_one_stop():
+            valid = False
+            invalid_stages.append('not_has_more_than_one_stop')
+
+        if not bool(self.has_correctly_ordered_route()):
+            valid = False
+            invalid_stages.append('not_has_correctly_ordered_route')
+
+        if not bool(self.has_valid_offsets()):
+            valid = False
+            invalid_stages.append('not_has_valid_offsets')
+
+        if bool(self.has_self_loops()):
+            valid = False
+            invalid_stages.append('has_self_loops')
+
+        if return_reason:
+            return valid, invalid_stages
+        return valid
+
 
 class Service:
     """
@@ -177,14 +342,53 @@ class Service:
         self.routes = routes
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
-        if routes[0].route_short_name:
-            name = routes[0].route_short_name
+        if routes:
+            if routes[0].route_short_name:
+                name = routes[0].route_short_name
+            else:
+                name = routes[0].route_long_name
+            self.name = str(name)
         else:
-            name = routes[0].route_long_name
-        self.name = str(name)
+            self.name = ''
 
     def __eq__(self, other):
         return self.id == other.id
+
+    def __repr__(self):
+        return "<{} instance at {}: with {} routes>".format(
+            self.__class__.__name__,
+            id(self),
+            len(self))
+
+    def __str__(self):
+        return self.info()
+
+    def __len__(self):
+        return len(self.routes)
+
+    def print(self):
+        print(self.info())
+
+    def info(self):
+        return '{} ID: {}\nName: {}\nNumber of routes: {}\nNumber of unique stops: {}'.format(
+            self.__class__.__name__, self.id, self.name, len(self), len(list(self.stops())))
+
+    def plot(self, show=True, save=False, output_dir=''):
+        service_graph = self.build_graph()
+        if self.stops:
+            return plot.plot_graph(
+                nx.MultiGraph(service_graph),
+                filename='service_{}_graph'.format(self.id),
+                show=show,
+                save=save,
+                output_dir=output_dir,
+                e_c='#EC7063'
+            )
+
+    def find_epsg(self):
+        for stop in self.stops():
+            return stop.epsg
+        return None
 
     def is_exact(self, other):
         return (self.id == other.id) and (self.routes == other.routes)
@@ -205,3 +409,53 @@ class Service:
             all_stops = all_stops | set(route.stops)
         for stop in all_stops:
             yield stop
+
+    def build_graph(self):
+        service_graph = nx.DiGraph(name='Service graph', crs={'init': self.find_epsg()})
+        for route in self.routes:
+            service_graph = nx.compose(route.build_graph(), service_graph)
+        return service_graph
+
+    def is_strongly_connected(self):
+        g = self.build_graph()
+        if nx.number_strongly_connected_components(g) == 1:
+            return True
+        return False
+
+    def has_self_loops(self):
+        g = self.build_graph()
+        return list(nx.nodes_with_selfloops(g))
+
+    def validity_of_routes(self):
+        return [route.is_valid_route() for route in self.routes]
+
+    def has_valid_routes(self):
+        return all(self.validity_of_routes())
+
+    def invalid_routes(self):
+        return [route for route in self.routes if not route.is_valid_route()]
+
+    def has_uniquely_indexed_routes(self):
+        indices = set([route.id for route in self.routes])
+        if len(indices) != len(self):
+            return False
+        return True
+
+    def has_id(self):
+        return self.id
+
+    def is_valid_service(self, return_reason=False):
+        invalid_stages = []
+        valid = True
+
+        if not self.has_valid_routes():
+            valid = False
+            invalid_stages.append('not_has_valid_routes')
+
+        if not bool(self.has_uniquely_indexed_routes()):
+            valid = False
+            invalid_stages.append('not_has_uniquely_indexed_routes')
+
+        if return_reason:
+            return valid, invalid_stages
+        return valid
