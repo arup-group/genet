@@ -142,7 +142,7 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
     for target_id in target_osm_ids:
         links = graph_operations.extract_links_on_edge_attributes(
                 network,
-                conditions= {'attributes': {attribute_name: {'text': target_id}}},
+                conditions = {'attributes': {attribute_name: {'text': target_id}}},
             )
 
         # links is now a list of strings
@@ -158,7 +158,7 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
             osm_df.loc[temp_index, 'network_id'] = 'no'
 
     # check whether some of our OSM ids were not found
-    unmatched_osm_df = osm_df[osm_df['network_id']=='no']
+    unmatched_osm_df = osm_df[osm_df['network_id'] == 'no']
     if unmatched_osm_df.shape[0] > 0:
         # print unmatched ids
         print('these OSM way ids did not find a match in the network.xml')
@@ -168,8 +168,8 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
         # osm_df = osm_df.drop(osm_df[osm_df['network_id'].isnull()].index)
     
     # write dataframe as .csv and dictionary as .json
-    osm_df.to_csv(os.path.join(outpath,'osm_tolls_with_network_ids.csv'), index=False)
-    with open(os.path.join(outpath,'osm_to_network_ids.json'), 'w') as write_file:
+    osm_df.to_csv(os.path.join(outpath, 'osm_tolls_with_network_ids.csv'), index=False)
+    with open(os.path.join(outpath, 'osm_to_network_ids.json'), 'w') as write_file:
         json.dump(osm_to_network_dict, write_file)
 
 
