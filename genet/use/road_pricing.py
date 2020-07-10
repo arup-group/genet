@@ -3,6 +3,7 @@ import json
 import pandas as pd
 from lxml import etree as et
 from lxml.etree import Element, SubElement, Comment
+from tqdm import tqdm
 from genet.utils import graph_operations
 
 # Below function should be deprecated - possibly replaced by an XML parser ?
@@ -136,23 +137,26 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
 
     osm_to_network_dict = {}
 
-    for target_id in target_osm_ids:
-        links = graph_operations.extract_links_on_edge_attributes(
-                network,
-                conditions={'attributes': {attribute_name: {'text': target_id}}},
-            )
+    with tqdm(total=len(target_osm_ids)) as pbar:
+        for target_id in target_osm_ids:
+            links = graph_operations.extract_links_on_edge_attributes(
+                    network,
+                    conditions={'attributes': {attribute_name: {'text': target_id}}},
+                )
 
-        # links is now a list of strings
-        if len(links) > 0:
-            # store list of links in dictionary
-            osm_to_network_dict[target_id] = links
-            # mark the OSM id as "matched" in the dataframe
-            temp_index = osm_df[osm_df['osm_ids'] == target_id].index
-            osm_df.loc[temp_index, 'network_id'] = 'yes'
-        else:
-            # mark the OSM id as "ummatched" in the dataframe
-            temp_index = osm_df[osm_df['osm_ids'] == target_id].index
-            osm_df.loc[temp_index, 'network_id'] = 'no'
+            # links is now a list of strings
+            if len(links) > 0:
+                # store list of links in dictionary
+                osm_to_network_dict[target_id] = links
+                # mark the OSM id as "matched" in the dataframe
+                temp_index = osm_df[osm_df['osm_ids'] == target_id].index
+                osm_df.loc[temp_index, 'network_id'] = 'yes'
+            else:
+                # mark the OSM id as "ummatched" in the dataframe
+                temp_index = osm_df[osm_df['osm_ids'] == target_id].index
+                osm_df.loc[temp_index, 'network_id'] = 'no'
+
+            pbar.update(1)
 
     # check whether some of our OSM ids were not found
     unmatched_osm_df = osm_df[osm_df['network_id'] == 'no']
