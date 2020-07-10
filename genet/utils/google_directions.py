@@ -12,7 +12,7 @@ import genet.utils.persistence as persistence
 session = FuturesSession(max_workers=10)
 
 
-def send_requests_for_network(n, output_dir, traffic : bool = False, secret_name: str = None, region_name: str = None):
+def send_requests_for_network(n, output_dir, traffic: bool = False, secret_name: str = None, region_name: str = None):
     """
     Generates, sends and parses results from Google Directions API for the car modal subgraph for network n.
     You can use AWS Secrets manager for storing your API and pass secret_name and region_name (make sure you are

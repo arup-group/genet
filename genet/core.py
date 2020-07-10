@@ -480,7 +480,7 @@ class Network:
         :return:
         """
         [self.apply_attributes_to_edge(u, v, new_attribs, conditions, how, silent)
-         for (u,v), new_attribs in new_attributes.items()]
+         for (u, v), new_attribs in new_attributes.items()]
 
     def apply_attributes_to_link(self, link_id, new_attributes, silent: bool = False):
         """
