@@ -433,8 +433,7 @@ class Network:
         :return:
         """
         self.change_log.remove(object_type='link', object_id=link_id, object_attributes=self.link(link_id))
-        u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
-        multi_idx = self.link_id_mapping[link_id]['multi_edge_idx']
+        u, v, multi_idx = self.edge_tuple_from_link_id(link_id)
         self.graph.remove_edge(u, v, multi_idx)
         del self.link_id_mapping[link_id]
         if not silent:
@@ -726,12 +725,18 @@ class Schedule:
     def info(self):
         return 'Number of services: {}\nNumber of unique routes: {}'.format(self.__len__(), self.number_of_routes())
 
-    def reproject(self, new_epsg):
+    def reproject(self, new_epsg, processes=1):
         """
         Changes projection of the schedule to new_epsg
         :param new_epsg: 'epsg:1234'
         :return:
         """
+        # routes = [route for service_id, route in self.routes()]
+        #
+        # parallel.multiprocess_wrap(
+        #     data=routes, split=parallel.split_list, apply=modify_graph.reproj, combine=parallel.combine_dict,
+        #     processes=processes, from_proj=self.epsg, to_proj=new_epsg)
+
         old_to_new_transformer = Transformer.from_crs(self.epsg, new_epsg)
         # need to go through all instances of all the stops
         for service_id, route in self.routes():
