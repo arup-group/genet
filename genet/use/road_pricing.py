@@ -3,10 +3,7 @@ import json
 import pandas as pd
 from lxml import etree as et
 from lxml.etree import Element, SubElement, Comment
-from tqdm import tqdm
-
 from genet.utils import graph_operations
-
 
 # Below function should be deprecated - possibly replaced by an XML parser ?
 
