@@ -267,7 +267,7 @@ def build_tree(network_toll_ids):
     return roadpricing
 
 
-def build_tree_from_csv(csv_input):
+def build_tree_from_csv_json(csv_input, json_input):
     '''
     Build XML config for MATSim Road Pricing from .csv input
     :param csv_input:
@@ -282,15 +282,23 @@ def build_tree_from_csv(csv_input):
 
     links = SubElement(roadpricing, "links")
 
-    tolled_links_df = pd.read_csv(csv_input)
+    # CSV input
+    tolled_links_df = pd.read_csv(csv_input, dtype=str)
     # make sure all links from same toll are grouped together:
     tolled_links_df = tolled_links_df.sort_values(by='osm_refs')
+    # remove the links whose osm_id were not matched to network_ids
+    tolled_links_df = tolled_links_df[tolled_links_df['network_id'] == 'yes']
 
     # remove references to 'DPT', we will hard-code its paramters below
-    links_DPT = list(tolled_links_df[tolled_links_df['osm_refs'] == 'DPT']['network_id'].values)
+    links_DPT_df = tolled_links_df[tolled_links_df['osm_refs'] == 'DPT']
     tolled_links_df = tolled_links_df[tolled_links_df['osm_refs'] != 'DPT']
 
-    commented_tolls = []  # list to keep track of which Toll names we added as comments
+    # JSON input
+    with open(json_input, 'r') as f:
+        osm_id_to_network_id_dict = json.load(f)
+
+    # list to keep track of which Toll names we added as comments
+    commented_tolls = []
 
     # all other tolls
     for index, row in tolled_links_df.iterrows():
@@ -299,20 +307,28 @@ def build_tree_from_csv(csv_input):
             links.append(Comment(' === '+str(row['osm_refs'])+' === '))
             commented_tolls.append(str(row['osm_refs']))
 
-        link = SubElement(links, "link", id=str(row['network_id']))
-        SubElement(link, "cost", start_time=str(row['start_time']),
-                   end_time=str(row['end_time']), amount=str(row['toll_amount'])
-                   )
+        # from the JSON input, obtain all network_ids that match this row's specific osm_id
+        list_of_network_ids = osm_id_to_network_id_dict[row['osm_ids']]
+
+        for net_id in list_of_network_ids:
+            link = SubElement(links, "link", id=str(net_id))
+            SubElement(link, "cost", start_time=str(row['start_time']),
+                       end_time=str(row['end_time']), amount=str(row['toll_amount']))
+
     # DPT
     links.append(Comment(' === '+'DPT'+' === '))
 
-    for link_id in links_DPT:
+    for index, row in links_DPT_df.iterrows():
 
-        link = SubElement(links, "link", id=str(link_id))
-        SubElement(link, "cost", start_time="00:00", end_time="05:59", amount="3.00")
-        SubElement(link, "cost", start_time="06:00", end_time="09:59", amount="10.00")
-        SubElement(link, "cost", start_time="10:00", end_time="15:59", amount="3.00")
-        SubElement(link, "cost", start_time="16:00", end_time="18:59", amount="10.00")
-        SubElement(link, "cost", start_time="19:00", end_time="23:59", amount="3.00")
+        # from the JSON input, obtain all network_ids that match this specific osm_id
+        list_of_network_ids = osm_id_to_network_id_dict[row['osm_ids']]
+
+        for net_id in list_of_network_ids:
+            link = SubElement(links, "link", id=str(net_id))
+            SubElement(link, "cost", start_time="00:00", end_time="05:59", amount="3.00")
+            SubElement(link, "cost", start_time="06:00", end_time="09:59", amount="10.00")
+            SubElement(link, "cost", start_time="10:00", end_time="15:59", amount="3.00")
+            SubElement(link, "cost", start_time="16:00", end_time="18:59", amount="10.00")
+            SubElement(link, "cost", start_time="19:00", end_time="23:59", amount="3.00")
 
     return roadpricing
