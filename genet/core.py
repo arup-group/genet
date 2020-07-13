@@ -11,6 +11,7 @@ import genet.inputs_handler.gtfs_reader as gtfs_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
+import genet.modify.schedule as modify_schedule
 import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
@@ -731,18 +732,13 @@ class Schedule:
         :param new_epsg: 'epsg:1234'
         :return:
         """
-        # routes = [route for service_id, route in self.routes()]
-        #
-        # parallel.multiprocess_wrap(
-        #     data=routes, split=parallel.split_list, apply=modify_graph.reproj, combine=parallel.combine_dict,
-        #     processes=processes, from_proj=self.epsg, to_proj=new_epsg)
+        routes = [route for service_id, route in self.routes()]
 
-        old_to_new_transformer = Transformer.from_crs(self.epsg, new_epsg)
-        # need to go through all instances of all the stops
-        for service_id, route in self.routes():
-            for stop in route.stops:
-                stop.reproject(new_epsg, old_to_new_transformer)
-        self.initiate_crs_transformer(new_epsg)
+        parallel.multiprocess_wrap(
+            data=routes, split=parallel.split_list, apply=modify_schedule.reproj, combine=parallel.combine_list,
+            processes=processes, from_proj=self.epsg, to_proj=new_epsg)
+
+        # TODO replace old routes with reprojected routes
 
     def service_ids(self):
         return list(self.services.keys())

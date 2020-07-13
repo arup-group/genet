@@ -1,6 +1,23 @@
 from genet.schedule_elements import Stop
 from tests.fixtures import stop_epsg_27700, assert_semantically_equal
 from pyproj import Proj, Transformer
+import os
+import pickle
+
+
+def test_pickling_stop_with_additional_attributes(tmpdir):
+    stop = Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')
+    stop.add_additional_attributes({'extra': 'stuff'})
+    pickle_path = os.path.join(tmpdir, 'stop.pickle')
+    with open(pickle_path, 'wb') as handle:
+        pickle.dump(stop, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    assert os.path.exists(pickle_path)
+    with open(pickle_path, 'rb') as handle:
+        stop_from_pickle = pickle.load(handle)
+
+    attributes = ['additional_attributes', 'epsg', 'extra', 'id', 'lat', 'lon', 'x', 'y']
+    assert_semantically_equal({k: stop_from_pickle.__dict__[k] for k in attributes},
+                              {k: stop.__dict__[k] for k in attributes})
 
 
 def test_reproject_stops_without_transformer():

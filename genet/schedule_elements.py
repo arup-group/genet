@@ -6,6 +6,20 @@ from genet.utils import spatial
 SPATIAL_TOLERANCE = 8
 
 
+def rebuild_stop(id, x, y, epsg, additional_attributes):
+    return Stop(id, x, y, epsg, None, additional_attributes)
+
+
+def rebuild_route(route_short_name, mode, stops, trips, arrival_offsets, departure_offsets, route_long_name, id,
+                  route, await_departure):
+    return Route(route_short_name, mode, stops, trips, arrival_offsets, departure_offsets,
+                 route, route_long_name, id, await_departure)
+
+
+def rebuild_service(id, routes, name):
+    return Service(id, routes, name)
+
+
 class Stop:
     """
     A transit stop that features in a Route object
@@ -21,7 +35,7 @@ class Stop:
     """
 
     def __init__(self, id: Union[str, int], x: Union[str, int, float], y: Union[str, int, float], epsg: str,
-                 transformer: Transformer = None):
+                 transformer: Transformer = None, additional_attributes: dict = None):
         self.id = id
         self.x = float(x)
         self.y = float(y)
@@ -32,7 +46,11 @@ class Stop:
         else:
             self.lat, self.lon = spatial.change_proj(x, y, self.transformer)
 
-        self.additional_attributes = []
+        if additional_attributes:
+            self.additional_attributes = []
+            self.add_additional_attributes(additional_attributes)
+        else:
+            self.additional_attributes = []
 
     def __eq__(self, other):
         return (round(self.lat, SPATIAL_TOLERANCE) == round(other.lat, SPATIAL_TOLERANCE)) \
@@ -40,6 +58,9 @@ class Stop:
 
     def __hash__(self):
         return hash((self.id, round(self.lat, SPATIAL_TOLERANCE), round(self.lon, SPATIAL_TOLERANCE)))
+
+    def __reduce__(self):
+        return rebuild_stop, (self.id, self.x, self.y, self.epsg, dict(self.iter_through_additional_attributes()))
 
     def initiate_crs_transformer(self, epsg, transformer):
         self.epsg = epsg
@@ -142,6 +163,11 @@ class Route:
         same_stops = self.stops == other.stops
         return same_route_name and same_mode and same_stops
 
+    def __reduce__(self):
+        return rebuild_route, (self.route_short_name, self.mode, self.stops, self.trips,
+                               self.arrival_offsets, self.departure_offsets, self.route_long_name, self.id, self.route,
+                               self.await_departure)
+
     def is_exact(self, other):
         same_route_name = self.route_short_name == other.route_short_name
         same_mode = self.mode.lower() == other.mode.lower()
@@ -172,19 +198,23 @@ class Service:
     :param epsg: 'epsg:12345'
     """
 
-    def __init__(self, id: str, routes: List[Route]):
+    def __init__(self, id: str, routes: List[Route], name: str = ''):
         self.id = id
         self.routes = routes
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
+        if name:
+            self.name = str(name)
         if routes[0].route_short_name:
-            name = routes[0].route_short_name
+            self.name = str(routes[0].route_short_name)
         else:
-            name = routes[0].route_long_name
-        self.name = str(name)
+            self.name = str(routes[0].route_long_name)
 
     def __eq__(self, other):
         return self.id == other.id
+
+    def __reduce__(self):
+        return rebuild_service, (self.id, self.routes, self.name)
 
     def is_exact(self, other):
         return (self.id == other.id) and (self.routes == other.routes)
