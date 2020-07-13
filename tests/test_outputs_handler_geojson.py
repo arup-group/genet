@@ -22,11 +22,16 @@ def test_save_to_geojson(tmpdir):
     assert_semantically_equal(nodes[['x', 'y']].to_dict(), correct_nodes)
     assert_semantically_equal(links[['length', 'from', 'to', 'id', 'u', 'v', 'key', 'modes']].to_dict(), correct_links)
 
-    assert_semantically_equal({'0': nodes.loc['0', 'geometry'].coords[:], '1': nodes.loc['1', 'geometry'].coords[:]},
-                              {'0': [(-0.14625948709424305, 51.52287873323954)],
-                               '1': [(-0.14478238148334213, 51.523754629002234)]})
-    assert_semantically_equal({0: links.loc[0, 'geometry'].coords[:]}, {0:[(-0.14625948709424305, 51.52287873323954),
-                                                  (-0.14478238148334213, 51.523754629002234)]})
+    assert round(nodes.loc['0', 'geometry'].coords[:][0][0], 7) == round(-0.14625948709424305, 7)
+    assert round(nodes.loc['0', 'geometry'].coords[:][0][1], 7) == round(51.52287873323954, 7)
+    assert round(nodes.loc['1', 'geometry'].coords[:][0][0], 7) == round(-0.14478238148334213, 7)
+    assert round(nodes.loc['1', 'geometry'].coords[:][0][1], 7) == round(51.523754629002234, 7)
+
+    points = links.loc[0, 'geometry'].coords[:]
+    assert round(points[0][0], 7) == round(-0.14625948709424305, 7)
+    assert round(points[0][1], 7) == round(51.52287873323954, 7)
+    assert round(points[1][0], 7) == round(-0.14478238148334213, 7)
+    assert round(points[1][1], 7) == round(51.523754629002234, 7)
 
     assert nodes.crs == "EPSG:4326"
     assert links.crs == "EPSG:4326"
