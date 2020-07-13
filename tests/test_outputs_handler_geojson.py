@@ -22,10 +22,11 @@ def test_save_to_geojson(tmpdir):
     assert_semantically_equal(nodes[['x', 'y']].to_dict(), correct_nodes)
     assert_semantically_equal(links[['length', 'from', 'to', 'id', 'u', 'v', 'key', 'modes']].to_dict(), correct_links)
 
-    assert_semantically_equal(nodes.loc['0', 'geometry'].coords[:], [(-0.14625948709424305, 51.52287873323954)])
-    assert_semantically_equal(nodes.loc['1', 'geometry'].coords[:], [(-0.14478238148334213, 51.523754629002234)])
-    assert_semantically_equal(links.loc[0, 'geometry'].coords[:], [(-0.14625948709424305, 51.52287873323954),
-                                                  (-0.14478238148334213, 51.523754629002234)])
+    assert_semantically_equal({'0': nodes.loc['0', 'geometry'].coords[:], '1': nodes.loc['1', 'geometry'].coords[:]},
+                              {'0': [(-0.14625948709424305, 51.52287873323954)],
+                               '1': [(-0.14478238148334213, 51.523754629002234)]})
+    assert_semantically_equal({0: links.loc[0, 'geometry'].coords[:]}, {0:[(-0.14625948709424305, 51.52287873323954),
+                                                  (-0.14478238148334213, 51.523754629002234)]})
 
     assert nodes.crs == "EPSG:4326"
     assert links.crs == "EPSG:4326"
