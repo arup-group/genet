@@ -2,7 +2,6 @@ import json
 import sys, os
 import dictdiffer
 import pytest
-import logging
 from collections import OrderedDict
 from genet.schedule_elements import Stop, Route, Service
 from genet.core import Schedule, Network

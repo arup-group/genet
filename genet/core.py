@@ -8,7 +8,9 @@ from typing import Union, List
 from pyproj import Transformer
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.gtfs_reader as gtfs_reader
+import genet.inputs_handler.osm_reader as osm_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
+import genet.outputs_handler.geojson as geojson
 import genet.modify.change_log as change_log
 import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
@@ -17,7 +19,6 @@ import genet.validate.network_validation as network_validation
 import genet.validate.schedule_validation as schedule_validation
 import genet.utils.plot as plot
 import genet.schedule_elements as schedule_elements
-import genet.inputs_handler.osm_reader as osm_reader
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -938,6 +939,7 @@ class Network:
         if self.schedule:
             self.schedule.write_to_matsim(output_dir)
         self.change_log.export(os.path.join(output_dir, 'change_log.csv'))
+        geojson.save_nodes_and_links_geojson(self.graph, output_dir)
 
 
 class Schedule:
