@@ -261,6 +261,13 @@ class Network:
             logging.info('Added Node with index `{}` and data={}'.format(node, attribs))
         return node
 
+    def add_nodes(self, nodes_and_attribs: dict, silent: bool = False):
+        self.graph.add_nodes_from([(node_id, attribs) for node_id, attribs in nodes_and_attribs.items()])
+        self.change_log.add_bunch(object_type='node', id_bunch=list(nodes_and_attribs.keys()),
+                                  attributes_bunch=list(nodes_and_attribs.values()))
+        if not silent:
+            logging.info(f'Added Nodes with indices {list(nodes_and_attribs.keys())}')
+
     def add_edge(self, u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None, attribs: dict = None,
                  silent: bool = False):
         """
@@ -813,16 +820,19 @@ class Network:
         config = osm_reader.Config(osm_read_config)
         nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
             osm_file_path, config, num_processes)
+
+        nodes_and_attributes = {}
         for node_id, attribs in nodes.items():
             x, y = spatial.change_proj(attribs['x'], attribs['y'], input_to_output_transformer)
-            self.add_node(str(node_id), {
+            nodes_and_attributes[str(node_id)] = {
                 'id': str(node_id),
                 'x': x,
                 'y': y,
                 'lon': attribs['x'],
                 'lat': attribs['y'],
                 's2_id': attribs['s2id']
-            }, silent=True)
+            }
+        self.add_nodes(nodes_and_attributes)
 
         for edge, attribs in edges:
             u, v = str(edge[0]), str(edge[1])
