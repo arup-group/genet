@@ -515,6 +515,70 @@ def test_network_modal_subgraph_using_specific_modal_subgraph_method_several_mod
     assert list(car_graph.edges) == [(1, 2, 0), (2, 3, 0), (2, 3, 1)]
 
 
+def test_find_shortest_path_when_graph_has_no_extra_edge_choices():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike'], 'length': 1})
+    n.add_link('1', 2, 3, attribs={'modes': ['car'], 'length': 1})
+    n.add_link('2', 2, 3, attribs={'modes': ['bike'], 'length': 1})
+    n.add_link('3', 2, 3, attribs={'modes': ['walk'], 'length': 1})
+
+    bike_route = n.find_shortest_path(1, 3, modes='bike')
+    assert bike_route == ['0', '2']
+
+
+def test_find_shortest_path_when_subgraph_is_pre_computed():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike'], 'length': 1})
+    n.add_link('1', 2, 3, attribs={'modes': ['car'], 'length': 1})
+    n.add_link('2', 2, 3, attribs={'modes': ['bike'], 'length': 1})
+    n.add_link('3', 2, 3, attribs={'modes': ['walk'], 'length': 1})
+
+    bike_g = n.modal_subgraph(modes='bike')
+
+    bike_route = n.find_shortest_path(1, 3, subgraph=bike_g)
+    assert bike_route == ['0', '2']
+
+
+def test_find_shortest_path_defaults_to_full_graph():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike'], 'length': 1})
+    n.add_link('1', 2, 3, attribs={'modes': ['car'], 'freespeed': 3})
+    n.add_link('2', 2, 3, attribs={'modes': ['bike'], 'freespeed': 2})
+    n.add_link('3', 2, 3, attribs={'modes': ['walk'], 'freespeed': 1})
+
+    bike_route = n.find_shortest_path(1, 3)
+    assert bike_route == ['0', '1']
+
+
+def test_find_shortest_path_when_graph_has_extra_edge_choice_for_freespeed_that_is_obvious():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike'], 'length': 1, 'freespeed': 10})
+    n.add_link('2', 2, 3, attribs={'modes': ['car', 'bike'], 'length': 1, 'freespeed': 10})
+    n.add_link('3', 2, 3, attribs={'modes': ['car', 'bike'], 'length': 1, 'freespeed': 1})
+
+    bike_route = n.find_shortest_path(1, 3, modes='bike')
+    assert bike_route == ['0', '2']
+
+
+def test_find_shortest_path_when_graph_has_extra_edge_choice_with_attractive_mode():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike'], 'length': 1, 'freespeed': 10})
+    n.add_link('2', 2, 3, attribs={'modes': ['car', 'bike'], 'length': 1, 'freespeed': 10})
+    n.add_link('3', 2, 3, attribs={'modes': ['bike'], 'length': 1, 'freespeed': 1})
+
+    bike_route = n.find_shortest_path(1, 3, modes='bike')
+    assert bike_route == ['0', '3']
+
+
+def test_find_shortest_path_and_return_just_nodes():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike'], 'length': 1, 'freespeed': 10})
+    n.add_link('1', 2, 3, attribs={'modes': ['car', 'bike'], 'length': 1, 'freespeed': 10})
+
+    bike_route = n.find_shortest_path(1, 3, return_nodes=True)
+    assert bike_route == [1, 2, 3]
+
+
 def test_add_link_adds_link_with_specific_multi_idx():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, 0)

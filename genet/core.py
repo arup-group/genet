@@ -378,6 +378,35 @@ class Network:
 
         return self.subgraph_on_link_conditions(conditions={'modes': modal_condition})
 
+    def find_shortest_path(self, from_node, to_node, modes: Union[str, list] = None, subgraph: nx.MultiDiGraph = None,
+                           return_nodes=False):
+        """
+        Finds shortest path between from and to nodes in the graph. If modes specified, finds shortest path in the
+        modal subgraph (using links which have given modes stored under 'modes' key in link attributes). If computing
+        a large number of routes on the same modal subgraph, it is best to find the subgraph using the `modal_subgraph`
+        method and pass it under subgraph to avoid re-computing the subgraph every time.
+        :param from_node: node id in the graph
+        :param to_node: node id in the graph
+        :param modes: string e.g. 'car' or list ['car', 'bike']
+        :param subgraph: nx.MultiDiGraph, preferably the result of `modal_subgraph`
+        :param return_nodes: If True, returns list of node ids defining a route (reminder: there can be more than one
+        link between two nodes, by default this method will return a list of link ids that results in shortest journey)
+        :return: list of link ids defining a route
+        """
+        if subgraph is not None:
+            g = subgraph
+        elif modes:
+            g = self.modal_subgraph(modes)
+        else:
+            g = self.graph
+        route = nx.shortest_path(g, source=from_node, target=to_node, weight='length')
+
+        if return_nodes:
+            return route
+        else:
+            return [graph_operations.find_shortest_path_link(dict(g[u][v]), modes=modes)
+                    for u, v in zip(route[:-1], route[1:])]
+
     def apply_attributes_to_node(self, node_id, new_attributes, silent: bool = False):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary

@@ -384,3 +384,40 @@ def convert_list_of_link_ids_to_network_nodes(network, link_ids: list):
             connected_path.append(y)
     paths.append(connected_path)
     return paths
+
+
+def find_shortest_path_link(link_attribute_dictionary, modes=None):
+    """
+    Finds link that is deemed quickest if freespeed present. Relies on (link) id being stored on edge data (default
+    if using genet Network's `add_link` or `add_edge` methods or reading data using genet's Network methods.)
+    :param link_attribute_dictionary: {multi_index_id: {'length': 10}}
+    :param modes: optional, if passed and there are more than one possible edge that has the same length and speed,
+    will also check if there is a link with modes that match exactly with `modes`.
+    :return:
+    """
+    selected_link = None
+    if len(link_attribute_dictionary) > 1:
+        # check if any link is better than the other
+        if modes:
+            for multi_idx, attribs in link_attribute_dictionary.items():
+                if 'modes' in attribs:
+                    if isinstance(modes, str):
+                        modes = [modes]
+                    if set(attribs['modes']) == set(modes):
+                        selected_link = attribs['id']
+        if selected_link is None:
+            current_freespeed = None
+            for multi_idx, attribs in link_attribute_dictionary.items():
+                if 'freespeed' in attribs:
+                    if current_freespeed is None:
+                        current_freespeed = attribs['freespeed']
+                        selected_link = attribs['id']
+                    elif attribs['freespeed'] > current_freespeed:
+                        current_freespeed = attribs['freespeed']
+                        selected_link = attribs['id']
+    else:
+        selected_link = link_attribute_dictionary[list(link_attribute_dictionary.keys())[0]]['id']
+    if selected_link is None:
+        raise RuntimeError('Failed to find suitable link_id for shortest path')
+    else:
+        return selected_link
