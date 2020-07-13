@@ -483,7 +483,7 @@ class Network:
         self.change_log.remove(object_type='node', object_id=node_id, object_attributes=self.node(node_id))
         self.graph.remove_node(node_id)
         if not silent:
-            logging.info('Removed Node under index: {}'.format(node_id))
+            logging.info(f'Removed Node under index: {node_id}')
 
     def remove_nodes(self, nodes, silent: bool = False):
         """
@@ -492,7 +492,11 @@ class Network:
         :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        [self.remove_node(node, silent) for node in nodes]
+        self.change_log.remove_bunch(object_type='node', id_bunch=nodes,
+                                     attributes_bunch=[self.node(node_id) for node_id in nodes])
+        self.graph.remove_nodes_from(nodes)
+        if not silent:
+            logging.info(f'Removed Nodes under indices: {nodes}')
 
     def remove_link(self, link_id, silent: bool = False):
         """
@@ -506,7 +510,7 @@ class Network:
         self.graph.remove_edge(u, v, multi_idx)
         del self.link_id_mapping[link_id]
         if not silent:
-            logging.info('Removed Link under index: {}'.format(link_id))
+            logging.info(f'Removed Link under index: {link_id}')
 
     def remove_links(self, links, silent: bool = False):
         """
@@ -515,7 +519,13 @@ class Network:
         :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        [self.remove_link(link, silent) for link in links]
+        self.change_log.remove_bunch(object_type='link', id_bunch=links,
+                                     attributes_bunch=[self.link(link_id) for link_id in links])
+        self.graph.remove_edges_from([self.edge_tuple_from_link_id(link_id) for link_id in links])
+        for link_id in links:
+            del self.link_id_mapping[link_id]
+        if not silent:
+            logging.info(f'Removed Links under indices: {links}')
 
     def number_of_multi_edges(self, u, v):
         """
