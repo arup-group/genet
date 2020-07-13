@@ -732,13 +732,14 @@ class Schedule:
         :param new_epsg: 'epsg:1234'
         :return:
         """
-        routes = [route for service_id, route in self.routes()]
+        routes = {(service_id, route.id): route for service_id, route in self.routes()}
 
-        parallel.multiprocess_wrap(
-            data=routes, split=parallel.split_list, apply=modify_schedule.reproj, combine=parallel.combine_list,
+        reprojed_routes = parallel.multiprocess_wrap(
+            data=routes, split=parallel.split_dict, apply=modify_schedule.reproj, combine=parallel.combine_dict,
             processes=processes, from_proj=self.epsg, to_proj=new_epsg)
 
-        # TODO replace old routes with reprojected routes
+        for service_id, service in self.services.items():
+            service.routes = [reprojed_routes[(service_id, route.id)] for route in service.routes]
 
     def service_ids(self):
         return list(self.services.keys())
