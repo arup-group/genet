@@ -16,6 +16,9 @@ import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
+import genet.validate.network_validation as network_validation
+import genet.validate.schedule_validation as schedule_validation
+import genet.utils.plot as plot
 import genet.schedule_elements as schedule_elements
 import genet.inputs_handler.osm_reader as osm_reader
 
@@ -23,14 +26,13 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 
 class Network:
-    def __init__(self):
-        self.graph = nx.MultiDiGraph()
-        self.schedule = Schedule()
+    def __init__(self, epsg):
+        self.epsg = epsg
+        self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
+        self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg})
+        self.schedule = Schedule(epsg)
         self.change_log = change_log.ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
-
-        self.epsg = ''
-        self.transformer = ''
         # link_id_mapping maps between (usually string literal) index per edge to the from and to nodes that are
         # connected by the edge
         self.link_id_mapping = {}
@@ -77,13 +79,47 @@ class Network:
         self.change_log.log = self.change_log.log.sort_values(by='timestamp').reset_index(drop=True)
 
     def print(self):
-        return self.info()
+        print(self.info())
 
     def info(self):
         return "Graph info: {} \nSchedule info: {}".format(
             nx.info(self.graph),
             self.schedule.info()
         )
+
+    def plot(self, show=True, save=False, output_dir=''):
+        """
+        Plots the network graph and schedule
+        :param show: whether to display the plot
+        :param save: whether to save the plot
+        :param output_dir: output directory for the image
+        :return:
+        """
+        return plot.plot_graph_routes(self.graph, self.schedule_routes_nodes(), 'network_route_graph', show=show,
+                                      save=save, output_dir=output_dir)
+
+    def plot_graph(self, show=True, save=False, output_dir=''):
+        """
+        Plots the network graph only
+        :param show: whether to display the plot
+        :param save: whether to save the plot
+        :param output_dir: output directory for the image
+        :return:
+        """
+        return plot.plot_graph(self.graph, 'network_graph', show=show, save=save, output_dir=output_dir)
+
+    def plot_schedule(self, show=True, save=False, output_dir=''):
+        """
+        Plots original stop connections in the network's schedule over the network graph
+        :param show: whether to display the plot
+        :param save: whether to save the plot
+        :param output_dir: output directory for the image
+        :return:
+        """
+        fig, ax = self.plot_graph(show=False)
+        schedule_g = self.schedule.build_graph()
+        return plot.plot_non_routed_schedule_graph(
+            nx.MultiDiGraph(schedule_g), 'network_schedule.png', ax=ax, show=show, save=save, output_dir=output_dir)
 
     def reproject(self, new_epsg, processes=1):
         """
@@ -105,6 +141,13 @@ class Network:
         if self.schedule:
             self.schedule.reproject(new_epsg)
         self.initiate_crs_transformer(new_epsg)
+
+    def initiate_crs_transformer(self, epsg):
+        self.epsg = epsg
+        if epsg != 'epsg:4326':
+            self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
+        else:
+            self.transformer = None
 
     def node_attribute_summary(self, data=False):
         """
@@ -231,7 +274,7 @@ class Network:
         :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        link_id = self.generate_index_for_edge()
+        link_id = self.generate_index_for_edge(silent=silent)
         self.add_link(link_id, u, v, multi_edge_idx, attribs, silent)
         if not silent:
             logging.info('Added edge from `{}` to `{}` with link_id `{}`'.format(u, v, link_id))
@@ -252,7 +295,7 @@ class Network:
         :return:
         """
         if link_id in self.link_id_mapping:
-            new_link_id = self.generate_index_for_edge()
+            new_link_id = self.generate_index_for_edge(silent=silent)
             logging.warning('This link_id=`{}` already exists. Generated a new unique_index: `{}`'.format(
                 link_id, new_link_id))
             link_id = new_link_id
@@ -317,6 +360,31 @@ class Network:
         del self.link_id_mapping[link_id]
         if not silent:
             logging.info('Changed Link index from {} to {}'.format(link_id, new_link_id))
+
+    def subgraph_on_link_conditions(self, conditions):
+        """
+        Gives a subgraph of network.graph based on matching conditions defined in conditions
+        :param conditions as describen in graph_operations.extract_links_on_edge_attributes
+        :return:
+        """
+        links = graph_operations.extract_links_on_edge_attributes(self, conditions)
+        edges_for_sub = [
+            (self.link_id_mapping[link]['from'],
+             self.link_id_mapping[link]['to'],
+             self.link_id_mapping[link]['multi_edge_idx'])
+            for link in links]
+        return nx.MultiDiGraph(nx.edge_subgraph(self.graph, edges_for_sub))
+
+    def modal_subgraph(self, modes: Union[str, list]):
+        if isinstance(modes, str):
+            modes = {modes}
+        else:
+            modes = set(modes)
+
+        def modal_condition(modes_list):
+            return set(modes_list) & modes
+
+        return self.subgraph_on_link_conditions(conditions={'modes': modal_condition})
 
     def apply_attributes_to_node(self, node_id, new_attributes, silent: bool = False):
         """
@@ -517,16 +585,221 @@ class Network:
         for id, service in self.schedule.services.items():
             yield service
 
-    def initiate_crs_transformer(self, epsg):
-        self.epsg = epsg
-        if epsg != 'epsg:4326':
-            self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
-        else:
-            self.transformer = None
+    def schedule_routes(self):
+        """
+        Iterator returning service_id and a route within that service
+        :return:
+        """
+        for service_id, route in self.schedule.routes():
+            yield service_id, route
 
-    def read_osm(self, osm_file_path, osm_read_config, output_epsg, num_processes: int = 1):
-        self.initiate_crs_transformer(output_epsg)
-        input_to_output_transformer = Transformer.from_crs(output_epsg, 'epsg:4326')
+    def schedule_routes_nodes(self):
+        routes = []
+        for service_id, _route in self.schedule_routes():
+            if _route.route:
+                route_nodes = graph_operations.convert_list_of_link_ids_to_network_nodes(self, _route.route)
+                if len(route_nodes) != 1:
+                    logging.warning('The route: {} within service {}, is disconnected. Consists of {} chunks.'
+                                    ''.format(_route.id, service_id, len(route_nodes)))
+                    routes.extend(route_nodes)
+                else:
+                    routes.append(route_nodes[0])
+        return routes
+
+    def schedule_routes_links(self):
+        routes = []
+        for service_id, _route in self.schedule_routes():
+            if _route.route:
+                routes.append(_route.route)
+        return routes
+
+    def node_id_exists(self, node_id):
+        if node_id in [i for i, attribs in self.nodes()]:
+            logging.warning('This node_id={} already exists.'.format(node_id))
+            return True
+        return False
+
+    def has_node(self, node_id):
+        return self.graph.has_node(node_id)
+
+    def has_nodes(self, node_id: list):
+        return all([self.has_node(node_id) for node_id in node_id])
+
+    def has_edge(self, u, v):
+        return self.graph.has_edge(u, v)
+
+    def has_link(self, link_id: str):
+        if link_id in self.link_id_mapping:
+            link_edge = self.link_id_mapping[link_id]
+            u, v, multi_idx = link_edge['from'], link_edge['to'], link_edge['multi_edge_idx']
+            if self.graph.has_edge(u, v, multi_idx):
+                return True
+            else:
+                logging.info('Link with id {} is declared in the network with from_node: {}, to_node: {} and '
+                             'multi_index: {} but this edge is not in the graph.'.format(link_id, u, v, multi_idx))
+                return False
+        else:
+            logging.info('Link with id {} is not in the network.'.format(link_id))
+            return False
+
+    def has_links(self, link_ids: list, conditions: Union[list, dict] = None):
+        """
+        Whether the Network contains the links given in the link_ids list. If attribs is specified, checks whether the
+        Network contains the links specified and those links match the attributes in the attribs dict.
+        :param link_ids: list of link ids e.g. ['1', '102']
+        :param conditions: confer graph_operations.Filter conditions
+        :return:
+        """
+        has_all_links = all([self.has_link(link_id) for link_id in link_ids])
+        if not conditions:
+            return has_all_links
+        elif has_all_links:
+            filter = graph_operations.Filter(conditions, how=any)
+            links_satisfy = [link_id for link_id in link_ids if filter.satisfies_conditions(self.link(link_id))]
+            return set(links_satisfy) == set(link_ids)
+        else:
+            return False
+
+    def has_valid_link_chain(self, link_ids: List[str]):
+        for prev_link_id, next_link_id in zip(link_ids[:-1], link_ids[1:]):
+            prev_link_id_to_node = self.link_id_mapping[prev_link_id]['to']
+            next_link_id_from_node = self.link_id_mapping[next_link_id]['from']
+            if prev_link_id_to_node != next_link_id_from_node:
+                logging.info('Links {} and {} are not connected'.format(prev_link_id, next_link_id))
+                return False
+        if not link_ids:
+            logging.info('Links chain is empty')
+            return False
+        return True
+
+    def route_distance(self, link_ids):
+        if self.has_valid_link_chain(link_ids):
+            distance = 0
+            for link_id in link_ids:
+                link_attribs = self.link(link_id)
+                if 'length' in link_attribs:
+                    distance += link_attribs['length']
+                else:
+                    length = spatial.distance_between_s2cellids(link_attribs['from'], link_attribs['to'])
+                    link_attribs['length'] = length
+                    distance += length
+            return distance
+        else:
+            logging.warning('This route is invalid: {}'.format(link_ids))
+            return 0
+
+    def generate_index_for_node(self, avoid_keys: Union[list, set] = None, silent: bool = False):
+        existing_keys = set([i for i, attribs in self.nodes()])
+        if avoid_keys:
+            existing_keys = existing_keys | set(avoid_keys)
+        try:
+            id = max([int(i) for i in existing_keys]) + 1
+        except ValueError:
+            id = len(existing_keys) + 1
+        if (id in existing_keys) or (str(id) in existing_keys):
+            id = uuid.uuid4()
+        if not silent:
+            logging.info('Generated node id {}.'.format(id))
+        return str(id)
+
+    def link_id_exists(self, link_id):
+        if link_id in self.link_id_mapping:
+            logging.warning('This link_id={} already exists.'.format(link_id))
+            return True
+        return False
+
+    def generate_index_for_edge(self, avoid_keys: Union[list, set] = None, silent: bool = False):
+        existing_keys = set(self.link_id_mapping.keys())
+        if avoid_keys:
+            existing_keys = existing_keys | set(avoid_keys)
+        try:
+            id = max([int(i) for i in existing_keys]) + 1
+        except ValueError:
+            id = len(existing_keys) + 1
+        if (id in existing_keys) or (str(id) in existing_keys):
+            id = uuid.uuid4()
+        if not silent:
+            logging.info('Generated link id {}.'.format(id))
+        return str(id)
+
+    def index_graph_edges(self):
+        logging.warning('This method clears the existing link_id indexing')
+        self.link_id_mapping = {}
+        i = 0
+        for u, v, multi_edge_idx in self.graph.edges:
+            self.link_id_mapping[str(i)] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
+            i += 1
+
+    def has_schedule_with_valid_network_routes(self):
+        if all([route.has_network_route() for service_id, route in self.schedule_routes()]):
+            return all([self.is_valid_network_route(route) for service_id, route in self.schedule_routes()])
+        return False
+
+    def calculate_route_to_crow_fly_ratio(self, route: schedule_elements.Route):
+        route_dist = self.route_distance(route.route)
+        crowfly_dist = route.crowfly_distance()
+        if crowfly_dist:
+            return route_dist / crowfly_dist
+        else:
+            return 'Division by zero'
+
+    def is_valid_network_route(self, route: schedule_elements.Route):
+        def modal_condition(modes_list):
+            return set(modes_list) & {route.mode}
+
+        if self.has_links(route.route):
+            valid_link_chain = self.has_valid_link_chain(route.route)
+            links_have_correct_modes = self.has_links(route.route, {'modes': modal_condition})
+            if not links_have_correct_modes:
+                logging.info('Some link ids in Route: {} don\'t accept the route\'s mode: {}'.format(
+                    route.id, route.mode))
+            return valid_link_chain and links_have_correct_modes
+        logging.info('Not all link ids in Route: {} are in the graph.'.format(route.id))
+        return False
+
+    def invalid_network_routes(self):
+        return [(service_id, route.id) for service_id, route in self.schedule.routes() if not route.has_network_route()
+                or not self.is_valid_network_route(route)]
+
+    def generate_validation_report(self):
+        logging.info('Checking validity of the Network')
+        logging.info('Checking validity of the Network graph')
+        report = {}
+        # decribe network connectivity
+        modes = ['car', 'walk', 'bike']
+        report['graph'] = {'graph_connectivity': {}}
+        for mode in modes:
+            logging.info('Checking network connectivity for mode: {}'.format(mode))
+            # subgraph for the mode to be tested
+            G_mode = self.modal_subgraph('car')
+            # calculate how many connected subgraphs there are
+            report['graph']['graph_connectivity'][mode] = network_validation.describe_graph_connectivity(G_mode)
+
+        report['schedule'] = self.schedule.generate_validation_report()
+
+        route_to_crow_fly_ratio = {}
+        for service_id, route in self.schedule_routes():
+            if 'not_has_uniquely_indexed_routes' in report['schedule']['service_level'][service_id]['invalid_stages']:
+                if service_id in route_to_crow_fly_ratio:
+                    route_id = len(route_to_crow_fly_ratio[service_id])
+                else:
+                    route_id = 0
+            else:
+                route_id = route.id
+            if service_id in route_to_crow_fly_ratio:
+                route_to_crow_fly_ratio[service_id][route_id] = self.calculate_route_to_crow_fly_ratio(route)
+            else:
+                route_to_crow_fly_ratio[service_id] = {route_id: self.calculate_route_to_crow_fly_ratio(route)}
+
+        report['routing'] = {
+            'services_have_routes_in_the_graph': self.has_schedule_with_valid_network_routes(),
+            'service_routes_with_invalid_network_route': self.invalid_network_routes(),
+            'route_to_crow_fly_ratio': route_to_crow_fly_ratio
+        }
+        return report
+
+    def read_osm(self, osm_file_path, osm_read_config, num_processes: int = 1):
+        input_to_output_transformer = Transformer.from_crs(self.epsg, 'epsg:4326')
         config = osm_reader.Config(osm_read_config)
         nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
             osm_file_path, config, num_processes)
@@ -567,10 +840,11 @@ class Network:
         logging.info('Deleting isolated nodes which have no edges.')
         self.remove_nodes(list(nx.isolates(self.graph)), silent=True)
 
-    def read_matsim_network(self, path, epsg):
-        self.initiate_crs_transformer(epsg)
+    def read_matsim_network(self, path):
         self.graph, self.link_id_mapping, duplicated_nodes, duplicated_links = \
             matsim_reader.read_network(path, self.transformer)
+        self.graph.graph['name'] = 'Network graph'
+        self.graph.graph['crs'] = {'init': self.epsg}
 
         for node_id, duplicated_node_attribs in duplicated_nodes.items():
             for duplicated_node_attrib in duplicated_node_attribs:
@@ -589,66 +863,14 @@ class Network:
                     new_attributes=self.link(duplicated_link)
                 )
 
-    def read_matsim_schedule(self, path, epsg=None):
-        if epsg is None:
-            assert self.epsg
-            assert self.transformer
-        elif self.epsg and (epsg != self.epsg):
-            raise RuntimeError('The epsg you have given {} does not match the epsg currently stored for this network '
-                               '{}. Make sure you pass files with matching coordinate system.'.format(epsg, self.epsg))
-        else:
-            self.initiate_crs_transformer(epsg)
-        self.schedule.read_matsim_schedule(path, self.epsg)
-
-    def node_id_exists(self, node_id):
-        if node_id in [i for i, attribs in self.nodes()]:
-            logging.warning('This node_id={} already exists.'.format(node_id))
-            return True
-        return False
-
-    def generate_index_for_node(self, avoid_keys: Union[list, set] = None):
-        existing_keys = set([i for i, attribs in self.nodes()])
-        if avoid_keys:
-            existing_keys = existing_keys | set(avoid_keys)
-        try:
-            id = max([int(i) for i in existing_keys]) + 1
-        except ValueError:
-            id = len(existing_keys) + 1
-        if (id in existing_keys) or (str(id) in existing_keys):
-            id = uuid.uuid4()
-        logging.info('Generated node id {}.'.format(id))
-        return str(id)
-
-    def link_id_exists(self, link_id):
-        if link_id in self.link_id_mapping:
-            logging.warning('This link_id={} already exists.'.format(link_id))
-            return True
-        return False
-
-    def generate_index_for_edge(self, avoid_keys: Union[list, set] = None):
-        existing_keys = set(self.link_id_mapping.keys())
-        if avoid_keys:
-            existing_keys = existing_keys | set(avoid_keys)
-        try:
-            id = max([int(i) for i in existing_keys]) + 1
-        except ValueError:
-            id = len(existing_keys) + 1
-        if (id in existing_keys) or (str(id) in existing_keys):
-            id = uuid.uuid4()
-        logging.info('Generated link id {}.'.format(id))
-        return str(id)
-
-    def index_graph_edges(self):
-        logging.warning('This method clears the existing link_id indexing')
-        self.link_id_mapping = {}
-        i = 0
-        for u, v, multi_edge_idx in self.graph.edges:
-            self.link_id_mapping[str(i)] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
-            i += 1
+    def read_matsim_schedule(self, path):
+        self.schedule.read_matsim_schedule(path)
 
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)
-        matsim_xml_writer.write_to_matsim_xmls(output_dir, self)
+        matsim_xml_writer.write_matsim_network(output_dir, self)
+        if self.schedule:
+            self.schedule.write_to_matsim(output_dir)
         self.change_log.export(os.path.join(output_dir, 'change_log.csv'))
 
 
@@ -662,9 +884,9 @@ class Schedule:
     :param stops_mapping: {'stop_id' : [service_id, service_id_2, ...]} for extracting services given a stop_id
     :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     """
-
-    def __init__(self, services: List[schedule_elements.Service] = None, epsg=''):
-        super().__init__()
+    def __init__(self, epsg, services: List[schedule_elements.Service] = None):
+        self.epsg = epsg
+        self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
         if services is None:
             self.services = {}
             self.stops_mapping = pd.DataFrame(columns=['stop_id', 'stop', 'service_id', 'service'])
@@ -674,8 +896,6 @@ class Schedule:
             for service in services:
                 self.services[service.id] = service
             self.build_stops_mapping()
-        self.epsg = epsg
-        self.transformer = ''
         self.minimal_transfer_times = {}
 
     def __nonzero__(self):
@@ -721,10 +941,22 @@ class Schedule:
         return set(other.services.keys()) & set(self.services.keys()) == set()
 
     def print(self):
-        return self.info()
+        print(self.info())
 
     def info(self):
-        return 'Number of services: {}\nNumber of unique routes: {}'.format(self.__len__(), self.number_of_routes())
+        return 'Schedule:\nNumber of services: {}\nNumber of unique routes: {}\nNumber of stops: {}'.format(
+            self.__len__(), self.number_of_routes(), len(self.stops_mapping))
+
+    def plot(self, show=True, save=False, output_dir=''):
+        schedule_graph = self.build_graph()
+        return plot.plot_graph(
+            nx.MultiGraph(schedule_graph),
+            filename='schedule_graph',
+            show=show,
+            save=save,
+            output_dir=output_dir,
+            e_c='#EC7063'
+        )
 
     def reproject(self, new_epsg, processes=1):
         """
@@ -779,6 +1011,12 @@ class Schedule:
                 else:
                     self.stops_mapping[item] = [key]
 
+    def build_graph(self):
+        schedule_graph = nx.DiGraph(name='Service graph', crs={'init': self.epsg})
+        for service_id, service in self.services.items():
+            schedule_graph = nx.compose(service.build_graph(), schedule_graph)
+        return schedule_graph
+
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
         if epsg != 'epsg:4326':
@@ -786,9 +1024,52 @@ class Schedule:
         else:
             self.transformer = None
 
-    def read_matsim_schedule(self, path, epsg):
-        self.initiate_crs_transformer(epsg)
-        services, self.minimal_transfer_times = matsim_reader.read_schedule(path, epsg)
+    def is_strongly_connected(self):
+        g = self.build_graph()
+        if nx.number_strongly_connected_components(g) == 1:
+            return True
+        return False
+
+    def has_self_loops(self):
+        g = self.build_graph()
+        return list(nx.nodes_with_selfloops(g))
+
+    def validity_of_services(self):
+        return [service.is_valid_service() for service_id, service in self.services.items()]
+
+    def has_valid_services(self):
+        return all(self.validity_of_services())
+
+    def invalid_services(self):
+        return [service for service_id, service in self.services.items() if not service.is_valid_service()]
+
+    def has_uniquely_indexed_services(self):
+        indices = set([service.id for service_id, service in self.services.items()])
+        if len(indices) != len(self.services):
+            return False
+        return True
+
+    def is_valid_schedule(self, return_reason=False):
+        invalid_stages = []
+        valid = True
+
+        if not self.has_valid_services():
+            valid = False
+            invalid_stages.append('not_has_valid_services')
+
+        if not bool(self.has_uniquely_indexed_services()):
+            valid = False
+            invalid_stages.append('not_has_uniquely_indexed_services')
+
+        if return_reason:
+            return valid, invalid_stages
+        return valid
+
+    def generate_validation_report(self):
+        return schedule_validation.generate_validation_report(schedule=self)
+
+    def read_matsim_schedule(self, path):
+        services, self.minimal_transfer_times = matsim_reader.read_schedule(path, self.epsg)
         for service in services:
             self.services[service.id] = service
         self.build_stops_mapping()
@@ -800,9 +1081,12 @@ class Schedule:
         :param day: 'YYYYMMDD' to use form the gtfs
         :return:
         """
-        self.initiate_crs_transformer(epsg='epsg:4326')
+        old_to_new_transformer = Transformer.from_crs('epsg:4326', self.epsg)
         services = gtfs_reader.read_to_list_of_service_objects(path, day)
         for service in services:
+            for route in service.routes:
+                for stop in route.stops:
+                    stop.reproject(self.epsg, old_to_new_transformer)
             self.services[service.id] = service
         self.build_stops_mapping()
 

@@ -2,6 +2,7 @@ from genet.core import Network, Schedule
 from genet.utils import graph_operations
 from anytree import Node, RenderTree
 from tests.fixtures import assert_semantically_equal
+import logging
 
 
 def generate_output_tree(root):
@@ -21,7 +22,7 @@ def generate_output_tree(root):
 
 
 def test_extract_graph_links_with_flat_condition():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_link('1', 2, 3, attribs={
@@ -37,7 +38,7 @@ def test_extract_graph_links_with_flat_condition():
 
 
 def test_extract_graph_links_with_nested_condition():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_link('1', 2, 3, attribs={
@@ -52,7 +53,7 @@ def test_extract_graph_links_with_nested_condition():
 
 
 def test_extract_graph_links_with_list_of_conditions():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_link('1', 2, 3, attribs={
@@ -70,7 +71,7 @@ def test_extract_graph_links_with_list_of_conditions():
 
 
 def test_extract_graph_links_with_list_of_conditions_strict():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'attributes': {
         'osm:way:highway': {'name': 'osm:way:highway:to:hell', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_link('1', 2, 3, attribs={
@@ -88,7 +89,7 @@ def test_extract_graph_links_with_list_of_conditions_strict():
 
 
 def test_extract_graph_links_with_list_condition_with():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_link('1', 2, 3, attribs={
@@ -104,7 +105,7 @@ def test_extract_graph_links_with_list_condition_with():
 
 
 def test_extract_graph_links_with_bound_condition():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 9}}})
     n.add_link('1', 2, 3, attribs={
@@ -120,7 +121,7 @@ def test_extract_graph_links_with_bound_condition():
 
 
 def test_extract_graph_links_with_callable_condition():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 9}}})
     n.add_link('1', 2, 3, attribs={
@@ -139,7 +140,7 @@ def test_extract_graph_links_with_callable_condition():
 
 
 def test_extract_graph_nodes_with_flat_condition():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1, {
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_node(2, {
@@ -155,7 +156,7 @@ def test_extract_graph_nodes_with_flat_condition():
 
 
 def test_extract_graph_nodes_with_nested_condition():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1, {
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_node(2, {
@@ -170,7 +171,7 @@ def test_extract_graph_nodes_with_nested_condition():
 
 
 def test_extract_graph_nodes_with_list_of_conditions():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1, {
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_node(2, {
@@ -188,7 +189,7 @@ def test_extract_graph_nodes_with_list_of_conditions():
 
 
 def test_extract_graph_nodes_with_list_of_conditions_strict():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1, {'attributes': {
         'osm:way:highway': {'name': 'osm:way:highway:to:hell', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_node(2, {
@@ -206,7 +207,7 @@ def test_extract_graph_nodes_with_list_of_conditions_strict():
 
 
 def test_extract_graph_nodes_with_list_condition_with():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1, {
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_node(2, {
@@ -222,7 +223,7 @@ def test_extract_graph_nodes_with_list_condition_with():
 
 
 def test_extract_graph_nodes_with_bound_condition():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1,
                {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 9}}})
     n.add_node(2,
@@ -238,7 +239,7 @@ def test_extract_graph_nodes_with_bound_condition():
 
 
 def test_extract_graph_nodes_with_callable_condition():
-    n = Network()
+    n = Network('epsg:27700')
     n.add_node(1,
                {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 9}}})
     n.add_node(2,
@@ -347,11 +348,11 @@ def test_get_attribute_data_under_key_with_nested_link_data_and_nested_key():
 
 
 def test_consolidating_node_ids_does_nothing_to_matching_nodes_in_matching_coordinate_system():
-    n_left = Network()
+    n_left = Network('epsg:27700')
     n_left.epsg = 'epsg:27700'
     n_left.add_node('101982', {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118',
                                'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
-    n_right = Network()
+    n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:27700'
     n_right.add_node('101982', {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118',
                                 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
@@ -364,11 +365,11 @@ def test_consolidating_node_ids_does_nothing_to_matching_nodes_in_matching_coord
 
 
 def test_consolidating_node_ids_updates_nodes_data_for_overlapping_nodes_of_different_coordinate_system():
-    n_left = Network()
+    n_left = Network('epsg:27700')
     n_left.epsg = 'epsg:27700'
     n_left.add_node('101982', {'id': '101982', 'x': '528704.1434730452', 'y': '182068.78144827875',
                                'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
-    n_right = Network()
+    n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:4326'
     n_right.add_node('101982', {'id': '101982', 'x': 51.52287873323954, 'y': -0.14625948709424305,
                                 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
@@ -382,11 +383,11 @@ def test_consolidating_node_ids_updates_nodes_data_for_overlapping_nodes_of_diff
 
 
 def test_consolidating_node_ids_reprojects_non_overlapping_nodes():
-    n_left = Network()
+    n_left = Network('epsg:27700')
     n_left.epsg = 'epsg:27700'
     n_left.add_node('101986', {'id': '101986', 'x': '528835.203274008', 'y': '182006.27331298392',
                                'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_right = Network()
+    n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:4326'
     n_right.add_node('101990', {'id': '101990', 'x': 51.5205729332399, 'y': -0.14770188709624754,
                                 'lon': -0.14770188709624754, 'lat': 51.5205729332399, 's2_id': 5221390304444511271})
@@ -400,12 +401,12 @@ def test_consolidating_node_ids_reprojects_non_overlapping_nodes():
                                's2_id': 5221390304444511271})
 
 
-def test_consolidate_node_indicies_reindexes_node_if_clashes_with_spatially_matched_nodes():
-    n_left = Network()
+def test_add_reindexes_node_if_clashes_with_spatially_matched_nodes():
+    n_left = Network('epsg:27700')
     n_left.epsg = 'epsg:27700'
     n_left.add_node('101982', {'id': '101982', 'x': '528704.1434730452', 'y': '182068.78144827875',
                                'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
-    n_right = Network()
+    n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:4326'
     n_right.add_node('101990', {'id': '101990', 'x': 51.52287873323954, 'y': -0.14625948709424305,
                                 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
@@ -421,12 +422,12 @@ def test_consolidate_node_indicies_reindexes_node_if_clashes_with_spatially_matc
                                's2_id': 5221390329378179879})
 
 
-def test_consolidate_node_indicies_results_in_correct_node_attribs_if_id_clashes_with_spatially_unmatched_nodes():
-    n_left = Network()
+def test_add_reindexes_node_if_clashes_with_spatially_unmatched_nodes():
+    n_left = Network('epsg:27700')
     n_left.epsg = 'epsg:27700'
     n_left.add_node('101982', {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118',
                                'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
-    n_right = Network()
+    n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:4326'
     n_right.add_node('101982', {'id': '101982', 'x': 51.5205729332399, 'y': -0.14770188709624754,
                                 'lon': -0.14770188709624754, 'lat': 51.5205729332399, 's2_id': 5221390304444511271})
@@ -443,9 +444,9 @@ def test_consolidate_node_indicies_results_in_correct_node_attribs_if_id_clashes
 
 
 def test_consolidating_link_ids_does_nothing_to_completely_matching_links():
-    n_left = Network()
+    n_left = Network('epsg:27700')
     n_left.add_link('1', 1, 2, attribs={'modes': ['walk']})
-    n_right = Network()
+    n_right = Network('epsg:27700')
     n_right.add_link('1', 1, 2, attribs={'modes': ['walk']})
 
     output_n_right = graph_operations.consolidate_link_indices(n_left, n_right)
@@ -455,9 +456,9 @@ def test_consolidating_link_ids_does_nothing_to_completely_matching_links():
 
 
 def test_consolidating_link_ids_imposes_link_indexing_from_left_on_overlapping_links():
-    n_left = Network()
+    n_left = Network('epsg:27700')
     n_left.add_link('100', 1, 2, attribs={'modes': ['walk']})
-    n_right = Network()
+    n_right = Network('epsg:27700')
     n_right.add_link('1', 1, 2, attribs={'modes': ['walk']})
 
     output_n_right = graph_operations.consolidate_link_indices(n_left, n_right)
@@ -467,9 +468,9 @@ def test_consolidating_link_ids_imposes_link_indexing_from_left_on_overlapping_l
 
 
 def test_consolidating_link_ids_imposes_multiindex_on_overlapping_links_matching_link_ids():
-    n_left = Network()
+    n_left = Network('epsg:27700')
     n_left.add_link('1', 1, 2, 1, attribs={'modes': ['walk']})
-    n_right = Network()
+    n_right = Network('epsg:27700')
     n_right.add_link('1', 1, 2, 0, attribs={'modes': ['walk']})
 
     output_n_right = graph_operations.consolidate_link_indices(n_left, n_right)
@@ -479,9 +480,9 @@ def test_consolidating_link_ids_imposes_multiindex_on_overlapping_links_matching
 
 
 def test_consolidating_link_ids_imposes_multiindex_and_link_id_on_overlapping_links_not_matching_link_ids():
-    n_left = Network()
+    n_left = Network('epsg:27700')
     n_left.add_link('1', 1, 2, 1, attribs={'modes': ['walk']})
-    n_right = Network()
+    n_right = Network('epsg:27700')
     n_right.add_link('100', 1, 2, 0, attribs={'modes': ['walk']})
 
     output_n_right = graph_operations.consolidate_link_indices(n_left, n_right)
@@ -491,9 +492,9 @@ def test_consolidating_link_ids_imposes_multiindex_and_link_id_on_overlapping_li
 
 
 def test_consolidating_link_ids_generates_unique_index_for_non_matching_link_with_clashing_link_id():
-    n_left = Network()
+    n_left = Network('epsg:27700')
     n_left.add_link('1', 1, 2, 1, attribs={'modes': ['walk']})
-    n_right = Network()
+    n_right = Network('epsg:27700')
     n_right.add_link('1', 10, 20, 0, attribs={'modes': ['bike']})
 
     output_n_right = graph_operations.consolidate_link_indices(n_left, n_right)
@@ -504,9 +505,9 @@ def test_consolidating_link_ids_generates_unique_index_for_non_matching_link_wit
 
 
 def test_consolidating_link_ids_generates_unique_indices_for_non_overlapping_link_with_clashing_link_id_and_multiindex():
-    n_left = Network()
+    n_left = Network('epsg:27700')
     n_left.add_link('1', 1, 2, 1, attribs={'modes': ['walk']})
-    n_right = Network()
+    n_right = Network('epsg:27700')
     n_right.add_link('1', 1, 2, 1, attribs={'modes': ['bike']})
 
     output_n_right = graph_operations.consolidate_link_indices(n_left, n_right)
@@ -519,9 +520,9 @@ def test_consolidating_link_ids_generates_unique_indices_for_non_overlapping_lin
 
 
 def test_consolidating_link_ids_generates_unique_indices_for_non_overlapping_link_with_clashing_multiindex():
-    n_left = Network()
+    n_left = Network('epsg:27700')
     n_left.add_link('1', 1, 2, 1, attribs={'modes': ['walk']})
-    n_right = Network()
+    n_right = Network('epsg:27700')
     n_right.add_link('2', 1, 2, 1, attribs={'modes': ['bike']})
 
     output_n_right = graph_operations.consolidate_link_indices(n_left, n_right)
@@ -530,3 +531,25 @@ def test_consolidating_link_ids_generates_unique_indices_for_non_overlapping_lin
     assert len(output_n_right.link_id_mapping) == 1
     u, v, midx = list(output_n_right.graph.edges)[0]
     assert midx != 1
+
+
+def test_convert_list_of_link_ids_to_network_nodes_with_connected_link_id_list():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={})
+    n.add_link('1', 2, 3, attribs={})
+    n.add_link('2', 3, 4, attribs={})
+
+    network_nodes = graph_operations.convert_list_of_link_ids_to_network_nodes(n, ['0', '1', '2'])
+    assert network_nodes == [[1, 2, 3, 4]]
+
+
+def test_convert_list_of_link_ids_to_network_nodes_with_disconnected_link_id_list(mocker):
+    mocker.patch.object(logging,  'Logger')
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={})
+    n.add_link('1', 2, 3, attribs={})
+    n.add_link('2', 3, 4, attribs={})
+
+    network_nodes = graph_operations.convert_list_of_link_ids_to_network_nodes(n, ['0', '2'])
+
+    assert network_nodes == [[1, 2], [3, 4]]
