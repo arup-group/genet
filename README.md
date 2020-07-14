@@ -389,6 +389,7 @@ link data accept the mode of the route.
 route. If the route is invalid, it will result in 0. If the route has only one stop it will result in 
 `'Division by zero'`.
 
+Example:
 
     'routing': {
       'services_have_routes_in_the_graph': False,
