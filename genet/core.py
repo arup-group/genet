@@ -874,7 +874,7 @@ class Network:
             return value >= 1000
         report['graph']['links_over_1km_length'] = graph_operations.extract_links_on_edge_attributes(
             self,
-            conditions= {'length': links_over_1km_length}
+            conditions={'length': links_over_1km_length}
         )
 
         report['schedule'] = self.schedule.generate_validation_report()

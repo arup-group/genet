@@ -492,6 +492,33 @@ the model rather than supply (network).
     >>> _n.apply_function_to_links(set_google_speed, 'freespeed')
 
 
+### Routing
+
+You can find shortest path between two nodes in the graph, using a modal subgraph or otherwise.
+
+    >>> n.find_shortest_path(from_node, to_node)
+
+will use the whole graph disregarding modes.
+
+    >>> n.find_shortest_path(from_node, to_node, modes='car')
+
+will compute a modal subgraph and use it for routing. You can also pass a list e.g. `['bike`, `walk`]`. 
+If you have many node pair to process, it may be beneficial to
+compute the modal subgraph of interest first and pass it to the method
+
+    >>> car_g = n.modal_subgraph('car')
+    >>> n.find_shortest_path(from_node, to_node, subgraph=car_g)
+
+Specifying `'modes'` on top of giving the `subgraph` will also use given modes for preferential treatment if there is
+ambiguity in which link should be chosen for the route (remember, there can be several links between the same two 
+nodes). For example, if using mode `'bus'` and there are two links to choose from, one with modes: `['car', 'bus']` and
+the other with just `['bus']`, preference will be given to the link dedicated to that mode. Otherwise, preference
+will be given to links with higher `freespeed`.
+
+You can also choose to return the chain of nodes instead:
+
+    >>> n.find_shortest_path(from_node, to_node, return_nodes=True)
+
 ## Adding two networks
 
 You can add one network to another. The network you're adding the other network too will be updated with the nodes, 
