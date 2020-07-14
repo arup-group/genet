@@ -429,7 +429,7 @@ After obtaining a key, you can either set it as an environmental variable called
     
     $ export GOOGLE_DIR_API_KEY='key'
     
-    >>> api_requests = gn.utils.google_directions.send_requests_for_network(
+    >>> api_requests = gn.google_directions.send_requests_for_network(
             n=n, 
             output_dir='../example_data/example_google_speed_data',
             traffic=True
@@ -439,7 +439,7 @@ If you use AWS, you can also store the key in the `Secrets Manager` [(read more 
 authenticate to your AWS account and then pass the `secret_name` and `region_name` to the `send_requests_for_network` 
 method:
 
-    >>> api_requests = gn.utils.google_directions.send_requests_for_network(
+    >>> api_requests = gn.google_directions.send_requests_for_network(
             n=n, 
             output_dir='../example_data/example_google_speed_data',
             traffic=True,
@@ -457,11 +457,11 @@ and timestamp.
 
 You can read saved results:
 
-    >>> api_requests = gn.utils.google_directions.read_saved_api_results('../example_data/example_google_speed_data')
+    >>> api_requests = gn.google_directions.read_saved_api_results('../example_data/example_google_speed_data')
 
 Once you have results, you can match them to the network:
 
-    >>> google_edge_data = gn.utils.google_directions.map_results_to_edges(api_requests)
+    >>> google_edge_data = gn.google_directions.map_results_to_edges(api_requests)
 
 This will create a dictionary of non-simplified edges to which the response data applies. This data can be applied to
 the graph in the following way:
