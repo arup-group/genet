@@ -153,6 +153,7 @@ as the nodes or links.
 - or `pandas.DatFrame` object if you want to exctract data under more than one key, indexed by the same index 
 as the nodes or links.
 
+For example:
 
     >>> s_freespeed = n.link_attribute_data_under_key('freespeed')
     >>> s_freespeed
