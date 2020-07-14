@@ -866,9 +866,16 @@ class Network:
         for mode in modes:
             logging.info('Checking network connectivity for mode: {}'.format(mode))
             # subgraph for the mode to be tested
-            G_mode = self.modal_subgraph('car')
+            G_mode = self.modal_subgraph(mode)
             # calculate how many connected subgraphs there are
             report['graph']['graph_connectivity'][mode] = network_validation.describe_graph_connectivity(G_mode)
+
+        def links_over_1km_length(value):
+            return value >= 1000
+        report['graph']['links_over_1km_length'] = graph_operations.extract_links_on_edge_attributes(
+            self,
+            conditions= {'length': links_over_1km_length}
+        )
 
         report['schedule'] = self.schedule.generate_validation_report()
 
