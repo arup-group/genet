@@ -27,49 +27,6 @@ def road_pricing_sample_xml():
     yield lxml.etree.parse(sample_xml_path)
 
 
-# def test_writes_toll_ids_to_expected_location(tmpdir):
-#     toll_ids = [str(i) for i in range(10)]
-#     road_pricing.write_toll_ids(toll_ids, tmpdir)
-#
-#     expected_toll_id_file = os.path.join(tmpdir, 'toll_ids')
-#     assert os.path.exists(expected_toll_id_file)
-#     with open(expected_toll_id_file) as toll_file:
-#         lines = toll_file.readlines()
-#         assert len(lines) == len(toll_ids)
-#         for i, toll_id in enumerate(toll_ids):
-#             assert lines[i] == "{}\n".format(toll_id)
-
-
-# def test_read_toll_ids(path='tests/test_data/road_pricing/test_osm_toll_ids'):
-#     toll_ids = road_pricing.read_toll_ids(path)
-#     # check that returns a list
-#     assert isinstance(toll_ids, list)
-#     # check that all items in list are strings and don't start with 'w'
-#     for item in toll_ids:
-#         assert isinstance(item, str)
-#         assert item[0] != 'w'
-#
-#
-# def test_read_toll_ids_w_prefix(path='tests/test_data/road_pricing/test_osm_toll_ids_w_prefix'):
-#     toll_ids = road_pricing.read_toll_ids(path)
-#     # check that returns a list
-#     assert isinstance(toll_ids, list)
-#     # check that all items in list are strings and don't start with 'w'
-#     for item in toll_ids:
-#         assert isinstance(item, str)
-#         assert item[0] != 'w'
-
-
-# def test_extract_toll_ways_from_opl(path_opl='tests/test_data/road_pricing/test.osm.opl'):
-#     toll_ids = road_pricing.extract_toll_ways_from_opl(path_opl)
-#     # check that returns a list
-#     assert isinstance(toll_ids, list)
-#     # check that all items in list are strings and start with 'w'
-#     for item in toll_ids:
-#         assert isinstance(item, str)
-#         assert item[0]=='w'
-
-
 def test_extract_network_id_from_osm_csv(tmpdir,
                                          path_network='tests/test_data/road_pricing/network.xml',
                                          attribute_name = 'osm:way:id',
@@ -128,7 +85,7 @@ def test_builds_xml_tree_with_correct_content_from_csv_json(
     assert descs[0].text == 'A simple cordon toll scheme'
 
     costs = xml_tree_root.xpath('//cost')
-    assert len(costs) == 108
+    assert len(costs) == 158
     for cost in costs:
         assert cost.tag == 'cost'
         assert cost.attrib.keys() == ['start_time', 'end_time', 'amount']
@@ -168,7 +125,6 @@ def test_writes_road_pricing_xml_file_with_expected_content(tmpdir, road_pricing
 
     xml_obj = lxml.etree.parse(expected_xml)
     assert_xml_trees_equal(road_pricing_sample_xml, xml_obj)
-
 
 
 

@@ -6,82 +6,6 @@ from lxml.etree import Element, SubElement, Comment
 from tqdm import tqdm
 from genet.utils import graph_operations
 
-# Below function should be deprecated - possibly replaced by an XML parser ?
-
-# def extract_toll_ways_from_opl(path_opl):
-#     '''
-#     Given a .osm.opl file, extract the ids of toll ways
-#     :param path_opl: path to the .osm.opl file
-#     :return: list of OSM way ids matching criteria (str)
-#     '''
-#     # parse .osm.opl contents
-#     with open(path_opl, 'r') as f:
-#         contents = [line.rstrip('\n') for line in f]
-#     # extract all OSM ways (lines starting with 'w')
-#     ways = [line for line in contents if line[0] == 'w']
-
-#     # extract toll ways from above OSM ways
-#     toll_ways = []
-#     with tqdm(total=len(ways)) as pbar:
-#         for way in ways:
-#             # below conditions are the result of iterations on Ireland OSM
-#             # for another location, some unwanted ways could still persist
-#             if all(['toll=yes' in way,
-#                     'ferry' not in way,
-#                     'highway=service' not in way,
-#                     'highway=unclassified' not in way,
-#                     'motor_vehicle=no' not in way,
-#                     'access=private' not in way,
-#                     'access=no' not in way]):
-#                 toll_ways.append(way)
-#             pbar.update(1)
-
-#     # extract ids from toll ways
-#     toll_ids = [item.split(' ')[0] for item in toll_ways]
-#     # summary for user
-#     print('{} toll ways extracted from {}'.format(len(toll_ids), path_opl))
-
-#     return toll_ids
-
-# #  user should check that they are happy with links (osmium getid - QGIS - OSM layer)
-# # hence why we provide write_toll_ids() and read_toll_ids(), as user may
-# # add some ids manually
-
-
-# def write_toll_ids(toll_ids, outpath):
-#     '''
-#     Given a list of way ids, write them to a file named 'toll_ids' where each is
-#     on a separate line. Such files can be used to subset a .osm.pbf with osmium
-#     e.g. `osmium getid -i toll_ids -r input.osm.pbf -o tolls.osm.pbf`
-#     :param toll_ids: list of way ids (str)
-#     :param outpath: path to destination folder
-#     :return: write a list of way ids e.g. `w123456` (str)
-#
-#     the reason we are keeping the 'w' while writing the ids, is that they are
-#     required by the osmium command detailed above
-#     '''
-#     with open(os.path.join(outpath, 'toll_ids'), 'w') as f:
-#         for item in toll_ids:
-#             temp = item
-#             f.write("%s\n" % temp)
-
-
-# def read_toll_ids(path):
-#     '''
-#     Read a list of OSM way ids
-#     :param path: path to folder
-#     :return: a list of OSM way ids (without the `w` prefix) (str)
-#     '''
-#     with open(path, 'r') as f:
-#         osm_way_ids = [line.rstrip('\n') for line in f]
-#     # remove the `w` in front of each id number if present
-#     if osm_way_ids[0][0] == 'w':
-#         osm_way_ids = [item.split('w')[1] for item in osm_way_ids]
-#     # remove duplicates
-#     osm_way_ids = list(set(osm_way_ids))
-#
-#     return osm_way_ids
-
 
 def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpath):
     '''Parse a Network() object and find edges whose
@@ -150,29 +74,6 @@ def write_xml(root, path):
         file.write(tree)
 
 
-def build_tree(network_toll_ids):
-    '''
-    Build XML config for MATSim Road Pricing from given network link ids.
-    :param network_toll_ids: a list of network edge ids (str)
-    :return: an 'lxml.etree._Element' object
-    '''
-    # creat ETree root
-    roadpricing = Element("roadpricing", type="cordon", name="cordon-toll")
-    # <description
-    description = SubElement(roadpricing, "description")
-    description.text = "A simple cordon toll scheme"
-
-    links = SubElement(roadpricing, "links")
-
-    for link_id in network_toll_ids:
-        SubElement(links, "link", id=link_id)
-
-    # apply same cost to all links, regardless of vehicle type
-    SubElement(roadpricing, "cost", start_time="00:00", end_time="23:59", amount="2.00")
-
-    return roadpricing
-
-
 def build_tree_from_csv_json(csv_input, json_input):
     '''
     Build XML config for MATSim Road Pricing from .csv input
@@ -195,9 +96,11 @@ def build_tree_from_csv_json(csv_input, json_input):
     # remove the links whose osm_id were not matched to network_ids
     tolled_links_df = tolled_links_df[tolled_links_df['network_id'] == 'yes']
 
-    # remove references to 'DPT', we will hard-code its paramters below
-    links_DPT_df = tolled_links_df[tolled_links_df['osm_refs'] == 'DPT']
-    tolled_links_df = tolled_links_df[tolled_links_df['osm_refs'] != 'DPT']
+    # Time-of-day pricing:
+    # links with multiple tolling amounts throughout the day appear as multiple rows in the .csv config
+    # links with uniform pricing throughout the day appear only once in .csv config
+    links_repeat = pd.concat(g for _, g in tolled_links_df.groupby('osm_ids') if len(g) > 1)
+    links_no_repeat = tolled_links_df[~tolled_links_df.index.isin(links_repeat.index)]
 
     # JSON input
     with open(json_input, 'r') as f:
@@ -206,8 +109,8 @@ def build_tree_from_csv_json(csv_input, json_input):
     # list to keep track of which Toll names we added as comments
     commented_tolls = []
 
-    # all other tolls
-    for index, row in tolled_links_df.iterrows():
+    # links without time-of-day pricing:
+    for index, row in links_no_repeat.iterrows():
 
         if str(row['osm_refs']) not in commented_tolls:
             links.append(Comment(' === '+str(row['osm_refs'])+' === '))
@@ -215,26 +118,32 @@ def build_tree_from_csv_json(csv_input, json_input):
 
         # from the JSON input, obtain all network_ids that match this row's specific osm_id
         list_of_network_ids = osm_id_to_network_id_dict[row['osm_ids']]
-
+        # network link in list_of_network_ids is matched with 1 row of links_no_repeat
         for net_id in list_of_network_ids:
             link = SubElement(links, "link", id=str(net_id))
             SubElement(link, "cost", start_time=str(row['start_time']),
                        end_time=str(row['end_time']), amount=str(row['toll_amount']))
 
-    # DPT
-    links.append(Comment(' === '+'DPT'+' === '))
+    # links with time-of-day pricing:
+    # get unique ids of these links and iterate through them
+    unique_repeated_ids = links_repeat['osm_ids'].unique()
+    for link_id in unique_repeated_ids:
 
-    for index, row in links_DPT_df.iterrows():
+        link_time_of_day_df = links_repeat[links_repeat['osm_ids']==link_id]
 
-        # from the JSON input, obtain all network_ids that match this specific osm_id
-        list_of_network_ids = osm_id_to_network_id_dict[row['osm_ids']]
+        link_ref = link_time_of_day_df['osm_refs'].unique()[0]
+        if link_ref not in commented_tolls:
+            links.append(Comment(' === '+str(link_ref)+' === '))
+            commented_tolls.append(str(link_ref))
 
+        # from the JSON input, obtain all network_ids that match this row's specific osm_id
+        list_of_network_ids = osm_id_to_network_id_dict[link_id]
+        # each network link in list_of_network_ids is now matched with multiple rows of link_time_of_day_df
         for net_id in list_of_network_ids:
             link = SubElement(links, "link", id=str(net_id))
-            SubElement(link, "cost", start_time="00:00", end_time="05:59", amount="3.00")
-            SubElement(link, "cost", start_time="06:00", end_time="09:59", amount="10.00")
-            SubElement(link, "cost", start_time="10:00", end_time="15:59", amount="3.00")
-            SubElement(link, "cost", start_time="16:00", end_time="18:59", amount="10.00")
-            SubElement(link, "cost", start_time="19:00", end_time="23:59", amount="3.00")
+            for index, row in link_time_of_day_df.iterrows():
+                SubElement(link, "cost", start_time=str(row['start_time']),
+                           end_time=str(row['end_time']), amount=str(row['toll_amount']))
+
 
     return roadpricing

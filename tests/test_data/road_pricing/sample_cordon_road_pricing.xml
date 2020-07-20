@@ -4,76 +4,10 @@
   <description>A simple cordon toll scheme</description>
   <links>
     <!-- === N6_Galway_Ballinasloe === -->
-    <link id="4946">
+    <link id="380">
       <cost start_time="00:00" end_time="23:59" amount="1.9"/>
     </link>
-    <link id="1079">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1080">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1081">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1082">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1083">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1084">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1085">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1086">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1087">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1088">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1089">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1090">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1091">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1092">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1093">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1094">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1095">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1096">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1097">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1098">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1099">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1122">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="1123">
+    <link id="381">
       <cost start_time="00:00" end_time="23:59" amount="1.9"/>
     </link>
     <link id="307">
@@ -145,13 +79,31 @@
     <link id="329">
       <cost start_time="00:00" end_time="23:59" amount="1.9"/>
     </link>
-    <link id="380">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="381">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
     <link id="266">
+      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
+    </link>
+    <link id="613">
+      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
+    </link>
+    <link id="614">
+      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
+    </link>
+    <link id="615">
+      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
+    </link>
+    <link id="616">
+      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
+    </link>
+    <link id="5977">
+      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
+    </link>
+    <link id="5978">
+      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
+    </link>
+    <link id="5979">
+      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
+    </link>
+    <link id="5980">
       <cost start_time="00:00" end_time="23:59" amount="1.9"/>
     </link>
     <link id="5987">
@@ -215,21 +167,6 @@
       <cost start_time="00:00" end_time="23:59" amount="1.9"/>
     </link>
     <link id="6007">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="5977">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="5978">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="5979">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="5980">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
-    </link>
-    <link id="3986">
       <cost start_time="00:00" end_time="23:59" amount="1.9"/>
     </link>
     <link id="2192">
@@ -310,24 +247,136 @@
     <link id="1606">
       <cost start_time="00:00" end_time="23:59" amount="1.9"/>
     </link>
-    <link id="613">
+    <link id="1122">
       <cost start_time="00:00" end_time="23:59" amount="1.9"/>
     </link>
-    <link id="614">
+    <link id="1123">
       <cost start_time="00:00" end_time="23:59" amount="1.9"/>
     </link>
-    <link id="615">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
+    <link id="1079">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
     </link>
-    <link id="616">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
+    <link id="1080">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1081">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1082">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1083">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1084">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1085">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1086">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1087">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1088">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1089">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1090">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1091">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1092">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1093">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1094">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1095">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1096">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1097">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1098">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="1099">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+    </link>
+    <link id="4946">
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+    </link>
+    <link id="3986">
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+      <cost start_time="08:00" end_time="15:59" amount="5"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
     </link>
     <link id="4725">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
     </link>
     <link id="4726">
-      <cost start_time="00:00" end_time="23:59" amount="1.9"/>
+      <cost start_time="00:00" end_time="07:59" amount="2"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
+      <cost start_time="16:00" end_time="23:59" amount="8"/>
     </link>
-    <!-- === DPT === -->
   </links>
 </roadpricing>
