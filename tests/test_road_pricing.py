@@ -32,8 +32,8 @@ def test_extract_network_id_from_osm_csv(tmpdir,
                                          attribute_name = 'osm:way:id',
                                          path_osm_csv = 'tests/test_data/road_pricing/osm_toll_id_ref.csv'
                                          ):
-    n = Network()
-    n.read_matsim_network(path_network, epsg='epsg:27700')
+    n = Network(epsg='epsg:27700')
+    n.read_matsim_network(path_network)
 
     road_pricing.extract_network_id_from_osm_csv(n,attribute_name, path_osm_csv, tmpdir)
 
