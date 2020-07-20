@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?><osm generator="JOSM" version="0.6">
+  <bounds maxlat="1" maxlon="1" minlat="-1" minlon="-1" origin="test"/>
+  <node changeset="41144045" id="0" lat="0.008554364250688652" lon="-0.0006545205888310243" timestamp="2016-07-31T12:34:30Z" uid="0" user="test" version="6"/>
+  <node changeset="41144045" id="1" lat="0.024278505899735615" lon="-0.0006545205888310243" timestamp="2016-07-31T12:34:30Z" uid="1" user="test" version="6"/>
+  <node changeset="41144045" id="2" lat="-0.00716977739835831" lon="-0.0006545205888310243" timestamp="2016-07-31T12:34:30Z" uid="2" user="test" version="6"/>
+  <way changeset="41144045" id="00000" lat="-0.015031848222881792" lon="0.018894091724085748" timestamp="2016-07-31T12:34:30Z" uid="00000" user="test" version="6">
+    <nd ref="0"/>
+    <nd ref="1"/>
+    <tag k="highway" v="unclassified"/>
+  </way>
+  <way changeset="41144045" id="00100" lat="-0.015031848222881792" lon="0.018894091724085748" timestamp="2016-07-31T12:34:30Z" uid="00100" user="test" version="6">
+    <nd ref="0"/>
+    <nd ref="2"/>
+    <tag k="highway" v="unclassified"/>
+  </way>
+  <way changeset="41144045" id="00400" lat="-0.015031848222881792" lon="0.018894091724085748" timestamp="2016-07-31T12:34:30Z" uid="00400" user="test" version="6">
+    <nd ref="1"/>
+    <nd ref="0"/>
+    <tag k="highway" v="unclassified"/>
+  </way>
+  <way changeset="41144045" id="00700" lat="-0.015031848222881792" lon="0.018894091724085748" timestamp="2016-07-31T12:34:30Z" uid="00700" user="test" version="6">
+    <nd ref="2"/>
+    <nd ref="0"/>
+    <tag k="highway" v="unclassified"/>
+  </way>
+    <relation id='12176' timestamp='2019-08-31T08:44:46Z' uid='322039' user='MacLondon' version='266' changeset='73945369'>
+    <member type='relation' ref='9802731' role='' />
+    <member type='way' ref='0' role='forward' />
+    <member type='way' ref='1' role='backward' />
+    <member type='way' ref='2' role='backward' />
+    <tag k='alt_name' v='London Cycle Network route 0' />
+    <tag k='cycle_network' v='GB:London Cycle Network' />
+    <tag k='from' v='Westminster' />
+    <tag k='name' v='Stations Circular' />
+    <tag k='network' v='lcn' />
+    <tag k='ref' v='0' />
+    <tag k='ref:colour' v='#0198E1' />
+    <tag k='ref:colour_bg' v='white' />
+    <tag k='ref:colour_tx' v='white' />
+    <tag k='route' v='bicycle' />
+    <tag k='to' v='City of London' />
+    <tag k='type' v='route' />
+  </relation>
+</osm>

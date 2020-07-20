@@ -1,5 +1,7 @@
 import pandas as pd
+import dictdiffer
 from datetime import datetime
+from typing import Union
 
 
 class ChangeLog:
@@ -15,21 +17,22 @@ class ChangeLog:
     def __init__(self):
         self.log = pd.DataFrame(
             columns=['timestamp', 'change_event', 'object_type', 'old_id', 'new_id', 'old_attributes',
-                     'new_attributes'])
+                     'new_attributes', 'diff'])
 
-    def add(self, object_type: str, object_id: str, object_attributes: dict):
+    def add(self, object_type: str, object_id: Union[int, str], object_attributes: dict):
         self.log = self.log.append({
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'change_event': 'add',
             'object_type': object_type,
-            'old_id': pd.NA,
+            'old_id': None,
             'new_id': object_id,
-            'old_attributes': pd.NA,
-            'new_attributes': str(object_attributes)
+            'old_attributes': None,
+            'new_attributes': str(object_attributes),
+            'diff': self.generate_diff(None, object_id, None, object_attributes)
         }, ignore_index=True)
 
-    def modify(self, object_type: str, old_id: str, old_attributes: dict, new_id: str,
-               new_attributes: dict):
+    def modify(self, object_type: str, old_id: Union[int, str], old_attributes: dict, new_id: Union[int, str],
+               new_attributes: Union[dict, list]):
         self.log = self.log.append({
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'change_event': 'modify',
@@ -37,19 +40,37 @@ class ChangeLog:
             'old_id': old_id,
             'new_id': new_id,
             'old_attributes': str(old_attributes),
-            'new_attributes': str(new_attributes)
+            'new_attributes': str(new_attributes),
+            'diff': self.generate_diff(old_id, new_id, old_attributes, new_attributes)
         }, ignore_index=True)
 
-    def remove(self, object_type: str, object_id: str, object_attributes: dict):
+    def remove(self, object_type: str, object_id: Union[int, str], object_attributes: dict):
         self.log = self.log.append({
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'change_event': 'remove',
             'object_type': object_type,
             'old_id': object_id,
-            'new_id': pd.NA,
+            'new_id': None,
             'old_attributes': str(object_attributes),
-            'new_attributes': pd.NA
+            'new_attributes': None,
+            'diff': self.generate_diff(object_id, None, object_attributes, None)
         }, ignore_index=True)
 
+    def generate_diff(self, old_id, new_id, old_attributes_dict, new_attributes_dict):
+        if old_attributes_dict is None:
+            old_attributes_dict = {}
+        if new_attributes_dict is None:
+            new_attributes_dict = {}
+
+        diff = list(dictdiffer.diff(old_attributes_dict, new_attributes_dict))
+        if old_id != new_id:
+            if old_id is None:
+                diff.append(('add', 'id', new_id))
+            elif new_id is None:
+                diff.append(('remove', 'id', old_id))
+            else:
+                diff.append(('change', 'id', (old_id, new_id)))
+        return diff
+
     def export(self, path):
-        self.log.write_csv(path)
+        self.log.to_csv(path)

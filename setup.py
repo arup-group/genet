@@ -11,7 +11,7 @@ setup(
     description="MATSim network scenario generator",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    # url="https://github.com/arup-group/puma",
+    url="https://github.com/arup-group/genet",
     packages=find_packages(),
     python_requires='>=3.7',
     install_requires=[
@@ -23,7 +23,11 @@ setup(
         'pytest-mock',
         'dictdiffer==0.8.1',
         'pandas',
-        'tqdm',
-        'lxml'
+        'lxml',
+        'xmltodict',
+        'anytree',
+        'osmnx==0.15.0',
+        'osmread',
+        'PyYAML'
     ],
 )
