@@ -129,7 +129,7 @@ def build_tree_from_csv_json(csv_input, json_input):
     unique_repeated_ids = links_repeat['osm_ids'].unique()
     for link_id in unique_repeated_ids:
 
-        link_time_of_day_df = links_repeat[links_repeat['osm_ids']==link_id]
+        link_time_of_day_df = links_repeat[links_repeat['osm_ids'] == link_id]
 
         link_ref = link_time_of_day_df['osm_refs'].unique()[0]
         if link_ref not in commented_tolls:
@@ -144,6 +144,5 @@ def build_tree_from_csv_json(csv_input, json_input):
             for index, row in link_time_of_day_df.iterrows():
                 SubElement(link, "cost", start_time=str(row['start_time']),
                            end_time=str(row['end_time']), amount=str(row['toll_amount']))
-
 
     return roadpricing
