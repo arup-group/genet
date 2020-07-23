@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 import pandas as pd
 from lxml import etree as et
 from lxml.etree import Element, SubElement, Comment
@@ -36,12 +37,10 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
                 # store list of links in dictionary
                 osm_to_network_dict[target_id] = links
                 # mark the OSM id as "matched" in the dataframe
-                temp_index = osm_df[osm_df['osm_ids'] == target_id].index
-                osm_df.loc[temp_index, 'network_id'] = 'yes'
+                osm_df.loc[osm_df['osm_ids'] == target_id, 'network_id'] = True
             else:
                 # mark the OSM id as "ummatched" in the dataframe
-                temp_index = osm_df[osm_df['osm_ids'] == target_id].index
-                osm_df.loc[temp_index, 'network_id'] = 'no'
+                osm_df.loc[osm_df['osm_ids'] == target_id, 'network_id'] = False
 
             pbar.update(1)
 
@@ -49,8 +48,8 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
     unmatched_osm_df = osm_df[osm_df['network_id'] == 'no']
     if unmatched_osm_df.shape[0] > 0:
         # print unmatched ids
-        print('these OSM way ids did not find a match in the network.xml')
-        print(unmatched_osm_df['osm_ids'].values)
+        logging.info('these OSM way ids did not find a match in the network.xml')
+        logging.info(unmatched_osm_df['osm_ids'].values)
     # write dataframe as .csv and dictionary as .json
     osm_df.to_csv(os.path.join(outpath, 'osm_tolls_with_network_ids.csv'), index=False)
     with open(os.path.join(outpath, 'osm_to_network_ids.json'), 'w') as write_file:
@@ -81,20 +80,18 @@ def build_tree_from_csv_json(csv_input, json_input):
     :return: an 'lxml.etree._Element' object
     '''
 
-    # creat ETree root
     roadpricing = Element("roadpricing", type="cordon", name="cordon-toll")
-    # description
     description = SubElement(roadpricing, "description")
     description.text = "A simple cordon toll scheme"
 
     links = SubElement(roadpricing, "links")
 
     # CSV input
-    tolled_links_df = pd.read_csv(csv_input, dtype=str)
+    tolled_links_df = pd.read_csv(csv_input, dtype={'osm_ids': str})
     # make sure all links from same toll are grouped together:
     tolled_links_df = tolled_links_df.sort_values(by='osm_refs')
-    # remove the links whose osm_id were not matched to network_ids
-    tolled_links_df = tolled_links_df[tolled_links_df['network_id'] == 'yes']
+    # remove the links whose osm_id were not matched to network_ids ('network_id' column is boolean)
+    tolled_links_df = tolled_links_df[tolled_links_df['network_id']]
 
     # Time-of-day pricing:
     # links with multiple tolling amounts throughout the day appear as multiple rows in the .csv config
