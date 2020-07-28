@@ -18,10 +18,9 @@ def sanitise_dictionary_for_xml(d):
 
 
 def delete_redundant_link_attributes_for_xml(d):
-    attrib_keys = list(d.keys())
-    for attrib in attrib_keys:
-        if attrib not in NECESSARY_NETWORK_LINK_ATTRIBUTES + ['attributes']:
-            del d[attrib]
+    attrib_keys = set(d.keys())
+    for attrib in attrib_keys - set(NECESSARY_NETWORK_LINK_ATTRIBUTES + ['attributes']):
+        del d[attrib]
     return d
 
 

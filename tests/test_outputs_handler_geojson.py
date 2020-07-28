@@ -36,4 +36,5 @@ def test_save_to_geojson(tmpdir):
     assert nodes.crs == "EPSG:4326"
     assert links.crs == "EPSG:4326"
 
-    assert_semantically_equal(os.listdir(tmpdir), ['nodes.geojson', 'links.geojson'])
+    assert_semantically_equal(os.listdir(tmpdir), ['nodes.geojson', 'links.geojson', 'links_geometry_only.geojson',
+                                                   'nodes_geometry_only.geojson'])

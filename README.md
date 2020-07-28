@@ -30,6 +30,7 @@ underlying graph doesn't have any dead-ends or sources (a place which you can le
 
     virtualenv -p python3.7 venv
     source venv/bin/activate
+    pip install -r requirements.txt
     pip install -e .
     
 ### Testing
@@ -423,9 +424,30 @@ subgraph and generate API requests for all edges in the subgraph. The number of 
 in the subgraph. The process simplifies edges using `osmnx` library's method to extract a chains of nodes with no
 intersections, in this way reducing the number of requests. If your graph is already simplified, the number of requests
 will be equal to the number of edges.
+ You need to specify an upper bound for the number of requests you're happy to send, big networks 
+generate many requests (even with the simplification) and you will be charged per request. You can generate
+the requests first and inspect them before committing to running them.
+
+    >>> api_requests = gn.google_directions.generate_requests(n=n)
+    >>> len(api_requests)
+    12345
 
 To send requests to Google Direction API you need a key [(read more here)](https://developers.google.com/maps/documentation/directions/start).
-After obtaining a key, you can either set it as an environmental variable called `GOOGLE_DIR_API_KEY`, if using command line:
+After obtaining a key, you can:
+ - pass it to the relevant function under `key` variable
+ - set it as an environmental variable called `GOOGLE_DIR_API_KEY`
+ - use AWS `Secrets Manager` [(read more here)](https://aws.amazon.com/secrets-manager/)
+ 
+If passing the key directly to the function:
+
+    >>> api_requests = gn.google_directions.send_requests_for_network(
+            n=n, 
+            key='google_directions_api_key',
+            output_dir='../example_data/example_google_speed_data',
+            traffic=True
+        )
+
+To set it as an environmental variable called `GOOGLE_DIR_API_KEY`, using command line:
     
     $ export GOOGLE_DIR_API_KEY='key'
     
@@ -435,8 +457,8 @@ After obtaining a key, you can either set it as an environmental variable called
             traffic=True
         )
 
-If you use AWS, you can also store the key in the `Secrets Manager` [(read more here)](https://aws.amazon.com/secrets-manager/)
-authenticate to your AWS account and then pass the `secret_name` and `region_name` to the `send_requests_for_network` 
+If you using AWS `Secrets Manager`, authenticate to your AWS account and then pass the `secret_name` and `region_name` 
+to the `send_requests_for_network` 
 method:
 
     >>> api_requests = gn.google_directions.send_requests_for_network(

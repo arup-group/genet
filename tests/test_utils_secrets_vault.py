@@ -22,9 +22,14 @@ def test_gets_api_key_with_secrets_manager_string_api_key(mocker):
 
 
 def test_gets_api_key_with_environmental_variable():
-    os.environ["GOOGLE_DIR_API_KEY"] = "awesome_key"
-    key = secrets_vault.get_google_directions_api_key()
-    assert key == "awesome_key"
+    try:
+        os.environ["GOOGLE_DIR_API_KEY"] = "awesome_key"
+        key = secrets_vault.get_google_directions_api_key()
+        assert key == "awesome_key"
+    except Exception as e:
+        raise e
+    finally:
+        del os.environ["GOOGLE_DIR_API_KEY"]
 
 
 def test_finds_text_secret_when_present_in_secrets_manager():

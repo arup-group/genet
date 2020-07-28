@@ -307,10 +307,10 @@ def test_send_requests_for_road_network(mocker, tmpdir, generated_request):
     mocker.patch.object(google_directions, 'parse_results', return_value={})
 
     n = Network('epsg:27700')
-    google_directions.send_requests_for_network(n, tmpdir)
+    google_directions.send_requests_for_network(n, 10, tmpdir)
     google_directions.generate_requests.assert_called_once_with(n)
     google_directions.send_requests.assert_called_once_with(google_directions.generate_requests.return_value, None,
-                                                            None, False)
+                                                            None, None, False)
     google_directions.parse_results.assert_called_once_with(google_directions.send_requests.return_value, tmpdir)
 
 
@@ -529,5 +529,5 @@ def test_saved_results_appear_in_directory(tmpdir, generated_request):
     expected_file_path = os.path.join(tmpdir, '12345_ahmyHzvYkCvCuCdDcBrB.pickle')
 
     assert not os.path.exists(expected_file_path)
-    google_directions.save_result(api_requests[o_d], tmpdir)
+    google_directions.pickle_result(api_requests[o_d], tmpdir)
     assert os.path.exists(expected_file_path)

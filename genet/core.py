@@ -569,6 +569,10 @@ class Network:
                 # Not all nodes/edges are required to have all the same attributes stored. Fail silently and only apply
                 # to relevant nodes/edges
                 pass
+        number_of_links_not_affected = len(self.link_id_mapping) - len(new_link_attribs)
+        if number_of_links_not_affected != 0:
+            logging.info(f'{number_of_links_not_affected} out of {len(self.link_id_mapping)} links have not been '
+                         f'affected by the function. Links affected: {list(new_link_attribs.keys())}')
         self.apply_attributes_to_links(new_link_attribs, silent=silent)
 
     def remove_node(self, node_id, silent: bool = False):
@@ -856,7 +860,14 @@ class Network:
         return [(service_id, route.id) for service_id, route in self.schedule.routes() if not route.has_network_route()
                 or not self.is_valid_network_route(route)]
 
-    def generate_validation_report(self):
+    def generate_validation_report(self, link_length_threshold=1000):
+        """
+        Generates a dictionary with keys: 'graph', 'schedule' and 'routing' describing validity of the Network's
+        underlying graph, the schedule services and then the intersection of the two which is the routing of schedule
+        services onto the graph.
+        :param link_length_threshold: in meters defaults to 1000, i.e. 1km
+        :return:
+        """
         logging.info('Checking validity of the Network')
         logging.info('Checking validity of the Network graph')
         report = {}
@@ -870,11 +881,11 @@ class Network:
             # calculate how many connected subgraphs there are
             report['graph']['graph_connectivity'][mode] = network_validation.describe_graph_connectivity(G_mode)
 
-        def links_over_1km_length(value):
-            return value >= 1000
+        def links_over_threshold_length(value):
+            return value >= link_length_threshold
         report['graph']['links_over_1km_length'] = graph_operations.extract_links_on_edge_attributes(
             self,
-            conditions={'length': links_over_1km_length}
+            conditions={'length': links_over_threshold_length}
         )
 
         report['schedule'] = self.schedule.generate_validation_report()

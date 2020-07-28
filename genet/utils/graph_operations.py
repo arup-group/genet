@@ -390,6 +390,7 @@ def find_shortest_path_link(link_attribute_dictionary, modes=None):
     """
     Finds link that is deemed quickest if freespeed present. Relies on (link) id being stored on edge data (default
     if using genet Network's `add_link` or `add_edge` methods or reading data using genet's Network methods.)
+    Throws a `RuntimeError` if a link id is not found.
     :param link_attribute_dictionary: {multi_index_id: {'length': 10}}
     :param modes: optional, if passed and there are more than one possible edge that has the same length and speed,
     will also check if there is a link with modes that match exactly with `modes`.
