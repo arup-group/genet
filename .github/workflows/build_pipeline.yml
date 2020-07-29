@@ -36,7 +36,7 @@ jobs:
     - name: Unit tests
       run: |
         export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-        ./scripts/code-coverage.sh
+        ./bash_scripts/code-coverage.sh
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
