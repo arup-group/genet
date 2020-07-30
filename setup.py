@@ -28,6 +28,7 @@ setup(
         'anytree',
         'osmnx==0.15.0',
         'osmread',
-        'PyYAML'
+        'PyYAML',
+        'memory-profiler==0.57.0'
     ],
 )

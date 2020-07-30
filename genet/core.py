@@ -266,7 +266,7 @@ class Network:
         self.change_log.add_bunch(object_type='node', id_bunch=list(nodes_and_attribs.keys()),
                                   attributes_bunch=list(nodes_and_attribs.values()))
         if not silent:
-            logging.info(f'Added Nodes with indices {list(nodes_and_attribs.keys())}')
+            logging.info(f'Added {len(nodes_and_attribs)} nodes')
 
     def add_edge(self, u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None, attribs: dict = None,
                  silent: bool = False):
@@ -832,7 +832,7 @@ class Network:
                 'lat': attribs['y'],
                 's2_id': attribs['s2id']
             }
-        self.add_nodes(nodes_and_attributes)
+        self.add_nodes(nodes_and_attributes, silent=True)
 
         for edge, attribs in edges:
             u, v = str(edge[0]), str(edge[1])
