@@ -1,5 +1,10 @@
 
 
+# NECESSARY NETWORK LINK ATTRIBUTES
+NECESSARY_NETWORK_LINK_ATTRIBUTES = ['id', 'from', 'to', 'length', 'freespeed', 'capacity', 'permlanes', 'oneway',
+                                     'modes']
+
+
 # EXTENDED_TYPE_DICT = {mode : [GTFS mode integers]}
 # e.g. {"subway,metro" : [1, 400, 401 ,402, 403, 405]}
 # https://developers.google.com/transit/gtfs/reference#routestxt

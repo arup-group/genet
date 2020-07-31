@@ -1,7 +1,7 @@
 import os, sys
 import pytest
 import lxml
-from tests.fixtures import network_object_from_test_data, full_fat_default_config_path
+from tests.fixtures import network_object_from_test_data, full_fat_default_config_path, assert_semantically_equal
 from tests import xml_diff
 from genet.outputs_handler import matsim_xml_writer
 from genet.schedule_elements import Stop
@@ -66,7 +66,34 @@ def test_network_from_test_osm_data_produces_valid_matsim_network_xml_file(full_
                                                                         network_dtd.error_log.filter_from_errors())
 
 
-def test_write_matsim_network_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data, tmpdir):
+def test_network_with_extra_attribs_produces_valid_matsim_network_xml_file(tmpdir, network_dtd):
+    network = Network('epsg:27700')
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})
+    network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
+    network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
+                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
+                                             'extra_Special_attrib': 12})
+    network.write_to_matsim(tmpdir)
+    generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+    xml_obj = lxml.etree.parse(generated_network_file_path)
+    assert network_dtd.validate(xml_obj), \
+        'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
+                                                                        network_dtd.error_log.filter_from_errors())
+
+    _network_from_file = Network(epsg='epsg:27700')
+    _network_from_file.read_matsim_network(generated_network_file_path)
+    assert_semantically_equal(dict(_network_from_file.nodes()), {
+        '0': {'id': '0', 'x': 1.0, 'y': 2.0, 'lon': -7.557148039524952, 'lat': 49.766825803756994,
+              's2_id': 5205973754090365183},
+        '1': {'id': '1', 'x': 2.0, 'y': 2.0, 'lon': -7.557134218911724, 'lat': 49.766826468710484,
+              's2_id': 5205973754090480551}})
+    assert_semantically_equal(dict(_network_from_file.links()), {
+        '0': {'id': '0', 'from': '0', 'to': '1', 'freespeed': 1.0, 'capacity': 20.0, 'permlanes': 1.0, 'oneway': '1',
+              'modes': ['car'], 's2_from': 5205973754090365183, 's2_to': 5205973754090480551, 'length': 1.0}})
+
+
+def test_write_matsim_network_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
+                                                                                  tmpdir):
     matsim_xml_writer.write_matsim_network(tmpdir, network_object_from_test_data)
 
     xml_diff.assert_semantically_equal(os.path.join(tmpdir, 'network.xml'), pt2matsim_network_test_file)
@@ -78,19 +105,21 @@ def test_generates_valid_matsim_schedule_xml_file(network_object_from_test_data,
     generated_file_path = os.path.join(tmpdir, 'schedule.xml')
     xml_obj = lxml.etree.parse(generated_file_path)
     assert schedule_dtd.validate(xml_obj), \
-        'Doc generated at {} is not valid against DTD due to {} errors - first error {}'\
+        'Doc generated at {} is not valid against DTD due to {} errors - first error {}' \
             .format(generated_file_path,
                     len(schedule_dtd.error_log.filter_from_errors()),
-                        schedule_dtd.error_log.filter_from_errors()[0])
+                    schedule_dtd.error_log.filter_from_errors()[0])
 
 
-def test_write_matsim_schedule_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data, tmpdir):
+def test_write_matsim_schedule_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
+                                                                                   tmpdir):
     matsim_xml_writer.write_matsim_schedule(tmpdir, network_object_from_test_data.schedule)
 
     xml_diff.assert_semantically_equal(os.path.join(tmpdir, 'schedule.xml'), pt2matsim_schedule_file)
 
 
-def test_write_matsim_schedule_produces_symantically_equal_xml_to_input_matsim_xml_if_stops_need_to_reprojected(network_object_from_test_data, tmpdir):
+def test_write_matsim_schedule_produces_symantically_equal_xml_to_input_matsim_xml_if_stops_need_to_reprojected(
+        network_object_from_test_data, tmpdir):
     # we change all the stops in the one service and one route that exists in the test data
     stops = network_object_from_test_data.schedule['10314'].routes[0].stops
     transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:3035'))
@@ -181,7 +210,8 @@ def test_throws_exception_when_generating_vehicles_xml_from_unrecognised_vehicle
            in str(e.value)
 
 
-def test_write_matsim_vehicles_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data, tmpdir):
+def test_write_matsim_vehicles_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
+                                                                                   tmpdir):
     network = network_object_from_test_data
     vehicles = matsim_xml_writer.write_matsim_schedule(tmpdir, network.schedule)
     matsim_xml_writer.write_vehicles(tmpdir, vehicles)

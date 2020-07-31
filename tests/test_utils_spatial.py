@@ -3,6 +3,28 @@ from genet.utils import spatial
 from tests.fixtures import *
 
 
+def test_decode_polyline_to_s2_points():
+    s2_list = spatial.decode_polyline_to_s2_points('ahmyHzvYGJyBbCGHq@r@EDIJGBu@~@SToAzAEFEDIJ')
+    assert s2_list == [5221390692712666847, 5221390692823346465, 5221390693003336431, 5221390693005239025,
+                        5221390693026247929, 5221390693047976565, 5221390685911708669, 5221390685910265239,
+                        5221390683049158953, 5221390683157459293, 5221390683301132839, 5221390683277381201,
+                        5221390683276573369, 5221390683274586647]
+
+
+def test_compute_average_proximity_to_polyline():
+    poly_1 = 'ahmyHzvYkCvCuCdDcBrB'
+    poly_2 = 'ahmyHzvYGJyBbCGHq@r@EDIJGBu@~@SToAzAEFEDIJ'
+    dist = spatial.compute_average_proximity_to_polyline(poly_1, poly_2)
+    assert round(dist, 5) == round(1.306345084680333, 5)
+
+
+def test_compute_average_proximity_to_polyline_when_they_are_the_same_line():
+    poly_1 = 'ahmyHzvYkCvCuCdDcBrB'
+    poly_2 = 'ahmyHzvYkCvCuCdDcBrB'
+    dist = spatial.compute_average_proximity_to_polyline(poly_1, poly_2)
+    assert dist == 0
+
+
 def test_grabs_point_indexes_from_s2(mocker):
     mocker.patch.object(s2sphere.CellId, 'from_lat_lng', return_value=s2sphere.CellId(id_=123456789))
     point_index = spatial.grab_index_s2(53.483959, -2.244644)
@@ -13,8 +35,9 @@ def test_grabs_point_indexes_from_s2(mocker):
 
 def test_delegates_distance_between_points_query_to_s2(mocker):
     mocker.patch.object(s2sphere.LatLng, 'get_distance', return_value=s2sphere.Angle(radians=3))
-    distance = spatial.distance_between_s2cellids(s2sphere.CellId.from_lat_lng(s2sphere.LatLng.from_degrees(53.483959, -2.244644)),
-                                                  s2sphere.CellId.from_lat_lng(s2sphere.LatLng.from_degrees(53.583959, -2.344644)))
+    distance = spatial.distance_between_s2cellids(
+        s2sphere.CellId.from_lat_lng(s2sphere.LatLng.from_degrees(53.483959, -2.244644)),
+        s2sphere.CellId.from_lat_lng(s2sphere.LatLng.from_degrees(53.583959, -2.344644)))
 
     earth_radius_metres = 6371008.8
     assert distance == 3 * earth_radius_metres
@@ -23,8 +46,9 @@ def test_delegates_distance_between_points_query_to_s2(mocker):
 
 def test_delegates_distance_between_int_points_query_to_s2(mocker):
     mocker.patch.object(s2sphere.LatLng, 'get_distance', return_value=s2sphere.Angle(radians=3))
-    distance = spatial.distance_between_s2cellids(s2sphere.CellId.from_lat_lng(s2sphere.LatLng.from_degrees(53.483959, -2.244644)).id(),
-                                                  s2sphere.CellId.from_lat_lng(s2sphere.LatLng.from_degrees(53.583959, -2.344644)).id())
+    distance = spatial.distance_between_s2cellids(
+        s2sphere.CellId.from_lat_lng(s2sphere.LatLng.from_degrees(53.483959, -2.244644)).id(),
+        s2sphere.CellId.from_lat_lng(s2sphere.LatLng.from_degrees(53.583959, -2.344644)).id())
 
     earth_radius_metres = 6371008.8
     assert distance == 3 * earth_radius_metres
@@ -75,9 +99,10 @@ def test_SpatialTree_combines_link_list_attribs():
     spatial_tree.add_links(links=links)
 
     assert_semantically_equal(list(spatial_tree.edges), [(5221390298638188544, '1'), (5221390298638188544, '2'),
-                                        (5764607523034234880, 5221642292959379456),
-                                        (5221642292959379456, 5221378410168713216),
-                                        (5221378410168713216, 5221390298638188544), (0, 5764607523034234880)])
+                                                         (5764607523034234880, 5221642292959379456),
+                                                         (5221642292959379456, 5221378410168713216),
+                                                         (5221378410168713216, 5221390298638188544),
+                                                         (0, 5764607523034234880)])
     for node, node_attrib in list(spatial_tree.nodes(data=True)):
         if node not in ['1', '2']:
             assert set(node_attrib['modes']) == {'subway,metro', 'car', 'bike', 'walk', 'piggy_back'}

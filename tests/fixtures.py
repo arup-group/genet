@@ -42,6 +42,13 @@ def assert_semantically_equal(dict1, dict2):
     assert diffs == [], diffs
 
 
+def assert_logging_warning_caught_with_message_containing(clog, message):
+    for record in clog.records:
+        if message in record.message:
+            return True
+    return False
+
+
 ###########################################################
 # core data  structure examples
 ###########################################################
