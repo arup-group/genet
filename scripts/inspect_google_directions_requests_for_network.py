@@ -36,7 +36,9 @@ if __name__ == '__main__':
     args = vars(arg_parser.parse_args())
     network = args['network']
     projection = args['projection']
-    subset_conditions = args['subset_conditions'].split(',')
+    subset_conditions = args['subset_conditions']
+    if subset_conditions:
+        subset_conditions = subset_conditions.split(',')
     output_dir = args['output_dir']
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)

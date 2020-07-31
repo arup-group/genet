@@ -56,7 +56,9 @@ if __name__ == '__main__':
     args = vars(arg_parser.parse_args())
     network = args['network']
     projection = args['projection']
-    subset_conditions = args['subset_conditions'].split(',')
+    subset_conditions = args['subset_conditions']
+    if subset_conditions:
+        subset_conditions = subset_conditions.split(',')
     requests_threshold = args['requests_threshold']
     key = args['key']
     secret_name = args['secret_name']
