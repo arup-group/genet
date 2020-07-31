@@ -8,7 +8,9 @@ from typing import Union, List
 from pyproj import Transformer
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.gtfs_reader as gtfs_reader
+import genet.inputs_handler.osm_reader as osm_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
+import genet.outputs_handler.geojson as geojson
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
 import genet.modify.schedule as modify_schedule
@@ -20,7 +22,6 @@ import genet.validate.network_validation as network_validation
 import genet.validate.schedule_validation as schedule_validation
 import genet.utils.plot as plot
 import genet.schedule_elements as schedule_elements
-import genet.inputs_handler.osm_reader as osm_reader
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -336,9 +337,9 @@ class Network:
             new_node_id = self.generate_index_for_node()
         # extract link ids which will be affected byt the node relabel and change the from anf to attributes
         from_links = graph_operations.extract_links_on_edge_attributes(self, conditions={'from': node_id})
-        self.apply_attributes_to_links(from_links, {'from': new_node_id})
+        self.apply_attributes_to_links({link: {'from': new_node_id} for link in from_links})
         to_links = graph_operations.extract_links_on_edge_attributes(self, conditions={'to': node_id})
-        self.apply_attributes_to_links(to_links, {'to': new_node_id})
+        self.apply_attributes_to_links({link: {'to': new_node_id} for link in to_links})
         # update link_id_mapping
         for k in from_links:
             self.link_id_mapping[k]['from'] = new_node_id
@@ -393,6 +394,35 @@ class Network:
 
         return self.subgraph_on_link_conditions(conditions={'modes': modal_condition})
 
+    def find_shortest_path(self, from_node, to_node, modes: Union[str, list] = None, subgraph: nx.MultiDiGraph = None,
+                           return_nodes=False):
+        """
+        Finds shortest path between from and to nodes in the graph. If modes specified, finds shortest path in the
+        modal subgraph (using links which have given modes stored under 'modes' key in link attributes). If computing
+        a large number of routes on the same modal subgraph, it is best to find the subgraph using the `modal_subgraph`
+        method and pass it under subgraph to avoid re-computing the subgraph every time.
+        :param from_node: node id in the graph
+        :param to_node: node id in the graph
+        :param modes: string e.g. 'car' or list ['car', 'bike']
+        :param subgraph: nx.MultiDiGraph, preferably the result of `modal_subgraph`
+        :param return_nodes: If True, returns list of node ids defining a route (reminder: there can be more than one
+        link between two nodes, by default this method will return a list of link ids that results in shortest journey)
+        :return: list of link ids defining a route
+        """
+        if subgraph is not None:
+            g = subgraph
+        elif modes:
+            g = self.modal_subgraph(modes)
+        else:
+            g = self.graph
+        route = nx.shortest_path(g, source=from_node, target=to_node, weight='length')
+
+        if return_nodes:
+            return route
+        else:
+            return [graph_operations.find_shortest_path_link(dict(g[u][v]), modes=modes)
+                    for u, v in zip(route[:-1], route[1:])]
+
     def apply_attributes_to_node(self, node_id, new_attributes, silent: bool = False):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
@@ -420,18 +450,91 @@ class Network:
         if not silent:
             logging.info('Changed Node attributes under index: {}'.format(node_id))
 
-    def apply_attributes_to_nodes(self, nodes: list, new_attributes: dict):
+    def apply_attributes_to_nodes(self, new_attributes: dict, silent: bool = False):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the node currently so no data is lost, unless it is being overwritten.
-        :param nodes: list of node ids
-        :param new_attributes: dictionary of data to add/replace if present
+        :param new_attributes: keys are node ids and values are dictionaries of data to add/replace if present
         :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        self.change_log.modify_bunch('node', nodes, [self.node(node) for node in nodes],
-                                     nodes, [{**self.node(node), **new_attributes} for node in nodes])
-        nx.set_node_attributes(self.graph, {node: {**self.node(node), **new_attributes} for node in nodes})
+        nodes = list(new_attributes.keys())
+        old_attribs = [deepcopy(self.node(node)) for node in nodes]
+        new_attribs = [{**self.node(node), **new_attributes} for node in nodes]
+
+        self.change_log.modify_bunch('node', nodes, old_attribs, nodes, new_attribs)
+
+        nx.set_node_attributes(self.graph, dict(zip(nodes, new_attribs)))
+        logging.info(f'Changed Node attributes for {len(nodes)} nodes')
+
+    def apply_function_to_nodes(self, function, location: str, silent: bool = False):
+        """
+        Applies function to node attributes dictionary
+        :param function: function of node attributes dictionary returning a value that should be stored
+        under `location`
+        :param location: where to save the results: string defining the key in the nodes attributes dictionary
+        :param silent: whether to mute stdout logging messages, useful for big batches
+        :return:
+        """
+        new_node_attribs = {}
+        for node, node_attribs in self.nodes():
+            try:
+                new_node_attribs[node] = {location: function(node_attribs)}
+            except KeyError:
+                # Not all nodes/edges are required to have all the same attributes stored. Fail silently and only apply
+                # to relevant nodes/edges
+                pass
+        self.apply_attributes_to_nodes(new_node_attribs, silent=silent)
+
+    def apply_attributes_to_edge(self, u, v, new_attributes, conditions=None, how=any, silent: bool = False):
+        """
+        Applies attributes to edges (which optionally match certain criteria)
+        :param u: from node
+        :param v: to node
+        :param new_attributes: attributes data to be applied
+        :param conditions: graph_operations.Filter conditions
+        :param how: graph_operations.Filter how
+        :param silent:
+        :return:
+        """
+        filter = graph_operations.Filter(conditions=conditions, how=how)
+
+        for multi_idx, edge_atrribs in self.edge(u, v).items():
+            if filter.satisfies_conditions(edge_atrribs):
+                old_attributes = deepcopy(edge_atrribs)
+
+                # check if change is to nested part of node data
+                if any(isinstance(v, dict) for v in new_attributes.values()):
+                    new_attribs = persistence.set_nested_value(old_attributes, new_attributes)
+                else:
+                    new_attribs = {**old_attributes, **new_attributes}
+
+                edge = '({}, {}, {})'.format(u, v, multi_idx)
+
+                self.change_log.modify(
+                    object_type='edge',
+                    old_id=edge,
+                    new_id=edge,
+                    old_attributes=edge_atrribs,
+                    new_attributes=new_attribs)
+
+                nx.set_edge_attributes(self.graph, {(u, v, multi_idx): new_attribs})
+                if not silent:
+                    logging.info('Changed Link attributes under index: {}'.format(edge))
+
+    def apply_attributes_to_edges(self, new_attributes: dict, conditions=None, how=any, silent: bool = False):
+        """
+        Applies new attributes for edges (optionally satisfying certain criteria)
+        :param new_attributes: dictionary where keys are two tuples (u, v) where u is the from node and v is the to
+        node. The value at the key are the new attributes to be applied to links on edge (u,v)
+        :param conditions: graph_operations.Filter conditions
+        :param how: graph_operations.Filter how
+        :param silent:
+        :return:
+        """
+        # TODO optimise
+        [self.apply_attributes_to_edge(u, v, new_attribs, conditions, how, silent)
+         for (u, v), new_attribs in new_attributes.items()]
 
     def apply_attributes_to_link(self, link_id, new_attributes, silent: bool = False):
         """
@@ -463,22 +566,46 @@ class Network:
         if not silent:
             logging.info('Changed Link attributes under index: {}'.format(link_id))
 
-    def apply_attributes_to_links(self, links: list, new_attributes: dict):
+    def apply_attributes_to_links(self, new_attributes: dict):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the link currently so no data is lost, unless it is being overwritten.
-        :param links: list of link ids
-        :param new_attributes: dictionary of data to add/replace if present
+        :param new_attributes: keys are link ids and values are dictionaries of data to add/replace if present
         :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        self.change_log.modify_bunch('link', links, [deepcopy(self.link(link)) for link in links],
-                                     links, [persistence.set_nested_value(self.link(link), new_attributes)
-                                             for link in links])
+        links = list(new_attributes.keys())
+        old_attribs = [deepcopy(self.link(link)) for link in links]
+        new_attribs = [persistence.set_nested_value(self.link(link), new_attributes[link]) for link in links]
+        edge_tuples = [self.edge_tuple_from_link_id(link) for link in links]
+
+        self.change_log.modify_bunch('link', links, old_attribs, links, new_attribs)
         nx.set_edge_attributes(
             self.graph,
-            {self.edge_tuple_from_link_id(link): persistence.set_nested_value(self.link(link), new_attributes)
-             for link in links})
+            dict(zip(edge_tuples, new_attribs)))
+        logging.info(f'Changed Link attributes for {len(links)} links')
+
+    def apply_function_to_links(self, function, location: str):
+        """
+        Applies function to node attributes dictionary
+        :param function: function of node attributes dictionary returning a value that should be stored
+        under `location`
+        :param location: where to save the results: string defining the key in the nodes attributes dictionary
+        :return:
+        """
+        new_link_attribs = {}
+        for link_id, link_attribs in self.links():
+            try:
+                new_link_attribs[link_id] = {location: function(link_attribs)}
+            except KeyError:
+                # Not all nodes/edges are required to have all the same attributes stored. Fail silently and only apply
+                # to relevant nodes/edges
+                pass
+        number_of_links_not_affected = len(self.link_id_mapping) - len(new_link_attribs)
+        if number_of_links_not_affected != 0:
+            logging.info(f'{number_of_links_not_affected} out of {len(self.link_id_mapping)} links have not been '
+                         f'affected by the function. Links affected: {list(new_link_attribs.keys())}')
+        self.apply_attributes_to_links(new_link_attribs)
 
     def remove_node(self, node_id, silent: bool = False):
         """
@@ -778,7 +905,14 @@ class Network:
         return [(service_id, route.id) for service_id, route in self.schedule.routes() if not route.has_network_route()
                 or not self.is_valid_network_route(route)]
 
-    def generate_validation_report(self):
+    def generate_validation_report(self, link_length_threshold=1000):
+        """
+        Generates a dictionary with keys: 'graph', 'schedule' and 'routing' describing validity of the Network's
+        underlying graph, the schedule services and then the intersection of the two which is the routing of schedule
+        services onto the graph.
+        :param link_length_threshold: in meters defaults to 1000, i.e. 1km
+        :return:
+        """
         logging.info('Checking validity of the Network')
         logging.info('Checking validity of the Network graph')
         report = {}
@@ -788,9 +922,16 @@ class Network:
         for mode in modes:
             logging.info('Checking network connectivity for mode: {}'.format(mode))
             # subgraph for the mode to be tested
-            G_mode = self.modal_subgraph('car')
+            G_mode = self.modal_subgraph(mode)
             # calculate how many connected subgraphs there are
             report['graph']['graph_connectivity'][mode] = network_validation.describe_graph_connectivity(G_mode)
+
+        def links_over_threshold_length(value):
+            return value >= link_length_threshold
+        report['graph']['links_over_1km_length'] = graph_operations.extract_links_on_edge_attributes(
+            self,
+            conditions={'length': links_over_threshold_length}
+        )
 
         report['schedule'] = self.schedule.generate_validation_report()
 
@@ -816,7 +957,8 @@ class Network:
         return report
 
     def read_osm(self, osm_file_path, osm_read_config, num_processes: int = 1):
-        input_to_output_transformer = Transformer.from_crs(self.epsg, 'epsg:4326')
+        input_to_output_transformer = Transformer.from_crs('epsg:4326', self.epsg)
+
         config = osm_reader.Config(osm_read_config)
         nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
             osm_file_path, config, num_processes)
@@ -828,8 +970,8 @@ class Network:
                 'id': str(node_id),
                 'x': x,
                 'y': y,
-                'lon': attribs['x'],
-                'lat': attribs['y'],
+                'lat': attribs['x'],
+                'lon': attribs['y'],
                 's2_id': attribs['s2id']
             }
         self.add_nodes(nodes_and_attributes, silent=True)
@@ -892,6 +1034,7 @@ class Network:
         if self.schedule:
             self.schedule.write_to_matsim(output_dir)
         self.change_log.export(os.path.join(output_dir, 'change_log.csv'))
+        geojson.save_nodes_and_links_geojson(self.graph, output_dir)
 
 
 class Schedule:
