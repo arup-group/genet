@@ -531,3 +531,25 @@ def test_saved_results_appear_in_directory(tmpdir, generated_request):
     assert not os.path.exists(expected_file_path)
     google_directions.pickle_result(api_requests[o_d], tmpdir)
     assert os.path.exists(expected_file_path)
+
+
+def test_dumping_requests_to_json(tmpdir):
+    api_requests = {
+        ('2440643031', '4307345276'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('4307345276', '107317'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('25495448', '2503102618'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('107316', '2440643031'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('4307345495', '4307345497'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2440651556', '2440651552'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('107317', '4307345495'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('107351', '5411344775'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2440651577', '2440651556'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2503102618', '107351'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('4307345497', '25495448'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('2440651552', '107352'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        ('5411344775', '2440651577'): {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}}
+
+    expected_file_path = os.path.join(tmpdir, 'api_requests.json')
+    assert not os.path.exists(expected_file_path)
+    google_directions.dump_all_api_requests_to_json(api_requests, tmpdir)
+    assert os.path.exists(expected_file_path)

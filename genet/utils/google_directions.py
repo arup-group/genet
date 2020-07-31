@@ -32,10 +32,7 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir, traf
     logging.info('Generating Google Directions API requests')
     api_requests = generate_requests(n)
 
-    persistence.ensure_dir(output_dir)
-    logging.info(f'Saving Google Directions API requests to {output_dir}')
-    with open(os.path.join(output_dir, 'api_requests.json'), 'w') as fp:
-        json.dump(api_requests, fp)
+    dump_all_api_requests_to_json(api_requests, output_dir)
 
     if len(api_requests) > request_number_threshold:
         raise RuntimeError(f'Number of requests exceeded the threshold. Number of requests: {len(api_requests)}')
@@ -45,9 +42,7 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir, traf
     logging.info('Parsing API requests')
     api_requests = parse_results(api_requests, output_dir)
 
-    logging.info(f'Saving Google Directions API requests to {output_dir}')
-    with open(os.path.join(output_dir, 'api_requests.json'), 'w') as fp:
-        json.dump(api_requests, fp)
+    dump_all_api_requests_to_json(api_requests, output_dir)
     return api_requests
 
 
@@ -219,3 +214,15 @@ def pickle_result(api_requests_attribs, output_dir):
             api_requests_attribs['timestamp'],
             api_requests_attribs['parsed_response']['google_polyline'])), 'wb') as handle:
         pickle.dump(api_requests_attribs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def dump_all_api_requests_to_json(api_requests, output_dir):
+    # sanitise tuple keys
+    new_d = {}
+    for k, v in api_requests.items():
+        new_d['{}'.format(k)] = '{}'.format(v)
+
+    persistence.ensure_dir(output_dir)
+    logging.info(f'Saving Google Directions API requests to {output_dir}')
+    with open(os.path.join(output_dir, 'api_requests.json'), 'w') as fp:
+        json.dump(new_d, fp)
