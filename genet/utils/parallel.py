@@ -59,7 +59,7 @@ def combine_dict(list_dict):
     return return_dict
 
 
-def multiprocess_wrap(data, split, apply, combine, processes=1, **kwargs):
+def multiprocess_wrap(data, split, apply, combine, processes=1, shared_object=None, **kwargs):
     """
     Split up data into batches using `split` function and process in parallel using `apply(data, kwargs)` function,
     kwargs is a dictionary of arguments. Results of all parallel processes are consolidated using the given `combine`
@@ -71,12 +71,19 @@ def multiprocess_wrap(data, split, apply, combine, processes=1, **kwargs):
     :param combine: function which expects a list of the returns of function `apply` and combines it back into
     what `apply` would have returned if it had been ran in a single process
     :param processes: max number of processes to use for computations
+    :param shared_object: key in the kwargs under which the object should not be copied across processes
     :param kwargs: that need to be passed to the function `apply` which remain constant across all data
     :return: output of the combine function
     """
     data_partitioned = split(data)
 
     pool = mp.Pool(processes=processes)
+
+    if shared_object is not None:
+        mgr = mp.Manager()
+        ns = mgr.Namespace()
+        ns.g = kwargs[shared_object]
+        kwargs[shared_object] = ns
 
     results = [pool.apply_async(apply, (data_bunch,), kwargs) for data_bunch in data_partitioned]
 
