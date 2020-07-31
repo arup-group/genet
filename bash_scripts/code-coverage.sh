@@ -9,7 +9,7 @@ python3 -m pytest -vv \
 --cov=. \
 --cov-report=html:reports/coverage \
 --cov-report=xml:reports/coverage/coverage.xml \
---cov-config=scripts/.coveragerc \
+--cov-config=bash_scripts/.coveragerc \
 tests/
 return_code=$?
 

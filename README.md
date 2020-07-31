@@ -21,6 +21,43 @@ underlying graph doesn't have any dead-ends or sources (a place which you can le
 
 ## Setup
 
+To run pre-baked scripts that use genet in a number of different scenarios you can use docker:
+
+### Using Docker
+#### Build the image
+
+    docker build -t "genet" .
+
+#### Running a container with a pre-baked script
+
+    docker run genet reproject_network.py -h
+    
+    usage: reproject_network.py [-h] -n NETWORK [-s SCHEDULE] -cp
+                                CURRENT_PROJECTION -np NEW_PROJECTION
+                                [-p PROCESSES] -od OUTPUT_DIR
+    
+    Reproject a MATSim network
+    
+    optional arguments:
+      -h, --help            show this help message and exit
+      -n NETWORK, --network NETWORK
+                            Location of the network.xml file
+      -s SCHEDULE, --schedule SCHEDULE
+                            Location of the schedule.xml file
+      -cp CURRENT_PROJECTION, --current_projection CURRENT_PROJECTION
+                            The projection network is currently in, eg.
+                            "epsg:27700"
+      -np NEW_PROJECTION, --new_projection NEW_PROJECTION
+                            The projection desired, eg. "epsg:27700"
+      -p PROCESSES, --processes PROCESSES
+                            The number of processes to split computation across
+      -od OUTPUT_DIR, --output_dir OUTPUT_DIR
+                            Output directory for the reprojected network
+
+Otherwise, you can install `genet` as a python package, in your base installation of python or a virtual environment.
+Run the pre-baked scripts, write your own scripts or use IPython shell or Jupyter Notebook to load up a network, 
+inspect or change it and save it out to file.
+
 #### Install dev prereqs (use equivalent linux or windows package management)
 
     brew install python3.7
@@ -43,7 +80,7 @@ underlying graph doesn't have any dead-ends or sources (a place which you can le
 
 To generate XML & HTML coverage reports to `reports/coverage`:
     
-    ./scripts/code-coverage.sh
+    ./bash_scripts/code-coverage.sh
 
 ## Usage
 This section goes through basic usage examples.
