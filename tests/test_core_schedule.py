@@ -5,8 +5,7 @@ from tests.fixtures import *
 from tests.test_core_components_route import self_looping_route, route
 from tests.test_core_components_service import service
 from genet.inputs_handler import matsim_reader, gtfs_reader
-from genet.core import Schedule
-from genet.schedule_elements import Service, Route, Stop
+from genet.schedule_elements import Schedule, Service, Route, Stop
 from genet.utils import plot
 from genet.validate import schedule_validation
 
@@ -175,10 +174,10 @@ def test_number_of_routes_counts_routes(test_service, different_test_service):
     assert schedule.number_of_routes() == 3
 
 
-def test_iter_stops_returns_stops_with_ids(test_service, different_test_service):
+def test_iter_stops_returns_stops_objects(test_service, different_test_service):
     schedule = Schedule(services=[test_service, different_test_service], epsg='epsg:4326')
-    assert set([stop_id for stop_id, stop in schedule.stops()]) == {'0'}
-    assert all([isinstance(stop, Stop) for stop_id, stop in schedule.stops()])
+    assert set([stop.id for stop in schedule.stops()]) == {'0'}
+    assert all([isinstance(stop, Stop) for stop in schedule.stops()])
 
 
 def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker):

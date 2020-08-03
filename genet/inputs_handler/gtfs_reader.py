@@ -5,7 +5,7 @@ import shutil
 from datetime import datetime, timedelta
 from genet.utils import spatial, persistence
 from genet import variables
-from genet.schedule_elements import Service, Route, Stop
+from genet import schedule_elements
 
 
 def read_services_from_calendar(path, day):
@@ -183,27 +183,6 @@ def parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, route_db, servi
     return schedule
 
 
-def convert_schedule_to_list_of_services(schedule, stops_db):
-    services = []
-
-    for key, routes in schedule.items():
-        routes_list = []
-        for route in routes:
-            r = Route(
-                route_short_name=route['route_short_name'],
-                mode=route['mode'],
-                stops=[Stop(id=id, x=stops_db[id]['stop_lon'], y=stops_db[id]['stop_lat'], epsg='epsg:4326') for id in
-                       route['stops']],
-                trips=route['trips'],
-                arrival_offsets=route['arrival_offsets'],
-                departure_offsets=route['departure_offsets']
-            )
-            routes_list.append(r)
-        services.append(Service(id=key, routes=routes_list))
-
-    return services
-
-
 def read_to_list_of_service_objects(path: str, day: str):
     if persistence.is_zip(path):
         gtfs_path = os.path.join(os.getcwd(), 'tmp')
@@ -223,4 +202,4 @@ def read_to_list_of_service_objects(path: str, day: str):
     if persistence.is_zip(path):
         shutil.rmtree(os.path.dirname(gtfs_path))
 
-    return convert_schedule_to_list_of_services(schedule, stops_db)
+    return schedule_elements.schedule_convert_schedule_to_list_of_services(schedule, stops_db)

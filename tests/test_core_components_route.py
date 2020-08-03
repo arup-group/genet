@@ -46,7 +46,7 @@ def self_looping_route():
 
 
 def test__repr__shows_stops_and_trips_length(route):
-    assert str(len(route.stops)) in route.__repr__()
+    assert str(len(route._stops)) in route.__repr__()
     assert str(len(route.trips)) in route.__repr__()
 
 
@@ -65,7 +65,7 @@ def test_info_shows_id_name_and_len_of_stops_and_trips(route):
     info = route.info()
     assert route.id in info
     assert route.route_short_name in info
-    assert str(len(route.stops)) in info
+    assert str(len(route._stops)) in info
     assert str(len(route.trips)) in info
 
 
@@ -81,8 +81,7 @@ def test_build_graph_builds_correct_graph():
                   stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
                          Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
                   trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
-    g = route.build_graph()
-    assert_semantically_equal(dict(g.nodes(data=True)),
+    assert_semantically_equal(dict(route.graph.nodes(data=True)),
                               {'1': {'x': 4.0, 'y': 2.0, 'lat': 49.76682779861249, 'lon': -7.557106577683727},
                                '2': {'x': 1.0, 'y': 2.0, 'lat': 49.766825803756994, 'lon': -7.557148039524952},
                                '3': {'x': 3.0, 'y': 3.0, 'lat': 49.76683608549253, 'lon': -7.557121424907424},

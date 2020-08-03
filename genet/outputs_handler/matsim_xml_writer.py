@@ -70,8 +70,8 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
         with xf.element("transitSchedule"):
             # transitStops first
             with xf.element("transitStops"):
-                for stop_facility_id, stop_facility in schedule.stops():
-                    transit_stop_attrib = {'id': str(stop_facility_id)}
+                for stop_facility in schedule.stops():
+                    transit_stop_attrib = {'id': str(stop_facility.id)}
                     if stop_facility.epsg == epsg:
                         x = stop_facility.x
                         y = stop_facility.y
