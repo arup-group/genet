@@ -121,7 +121,7 @@ def test_write_matsim_schedule_produces_symantically_equal_xml_to_input_matsim_x
 def test_write_matsim_schedule_produces_symantically_equal_xml_to_input_matsim_xml_if_stops_need_to_reprojected(
         network_object_from_test_data, tmpdir):
     # we change all the stops in the one service and one route that exists in the test data
-    stops = network_object_from_test_data.schedule['10314'].routes[0].stops
+    stops = network_object_from_test_data.schedule['10314'].routes[0].stops()
     transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:3035'))
     reprojected_stops = []
     for stop in stops:

@@ -5,7 +5,6 @@ import shutil
 from datetime import datetime, timedelta
 from genet.utils import spatial, persistence
 from genet import variables
-from genet import schedule_elements
 
 
 def read_services_from_calendar(path, day):
@@ -183,7 +182,7 @@ def parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, route_db, servi
     return schedule
 
 
-def read_to_list_of_service_objects(path: str, day: str):
+def read_to_dict_schedule_and_stopd_db(path: str, day: str):
     if persistence.is_zip(path):
         gtfs_path = os.path.join(os.getcwd(), 'tmp')
         if not os.path.exists(gtfs_path):
@@ -202,4 +201,4 @@ def read_to_list_of_service_objects(path: str, day: str):
     if persistence.is_zip(path):
         shutil.rmtree(os.path.dirname(gtfs_path))
 
-    return schedule_elements.schedule_convert_schedule_to_list_of_services(schedule, stops_db)
+    return schedule, stops_db

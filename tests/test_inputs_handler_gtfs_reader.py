@@ -47,12 +47,12 @@ def test_parse_db_to_schedule_dict_correct(correct_schedule_dict, correct_stop_t
 
 
 def test_read_to_schedule_correct(correct_services_from_test_gtfs):
-    services = gtfs_reader.read_to_list_of_service_objects(gtfs_test_file, '20190604')
+    services = gtfs_reader.read_to_dict_schedule_and_stopd_db(gtfs_test_file, '20190604')
 
     assert services == correct_services_from_test_gtfs
 
 
 def test_zip_read_to_schedule_correct(correct_services_from_test_gtfs):
-    services = gtfs_reader.read_to_list_of_service_objects(gtfs_test_zip_file, '20190604')
+    services = gtfs_reader.read_to_dict_schedule_and_stopd_db(gtfs_test_zip_file, '20190604')
 
     assert services == correct_services_from_test_gtfs

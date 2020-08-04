@@ -21,13 +21,14 @@ class ScheduleElement:
     Base class for Route, Service and Schedule
     """
     def __init__(self, stops):
-        self.graph = self.build_graph(stops)
-        self.reference_nodes = list(self.graph.nodes())
+        self._graph = self.build_graph(stops)
+        self.reference_nodes = list(self._graph.nodes())
+        self.reference_edges = list(self._graph.edges())
         self.epsg = self.find_epsg()
-        self.graph.crs = {'init': self.epsg}
+        self._graph.crs = {'init': self.epsg}
 
     def stop(self, stop_id):
-        return Stop(**self.graph.nodes[stop_id])
+        return Stop(**self._graph.nodes[stop_id])
 
     def stops(self):
         """
@@ -39,6 +40,29 @@ class ScheduleElement:
 
     def build_graph(self, stops):
         pass
+
+    def graph(self):
+        if isinstance(self, Schedule):
+            return self._graph
+        else:
+            return nx.DiGraph(nx.edge_subgraph(self._graph, self.reference_edges))
+
+    def reproject(self, new_epsg):
+        """
+        Changes projection of the element to new_epsg
+        :param new_epsg: 'epsg:1234'
+        :return:
+        """
+        if self.epsg != new_epsg:
+            old_to_new_transformer = Transformer.from_crs(self.epsg, new_epsg)
+
+            reprojected_node_attribs = {}
+            for node_id, node_attribs in self.graph().nodes(data=True):
+                x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], old_to_new_transformer)
+                reprojected_node_attribs[node_id] = {'x': x, 'y': y}
+
+            nx.set_node_attributes(self._graph, reprojected_node_attribs)
+            self.epsg = new_epsg
 
     def find_epsg(self):
         if isinstance(self, Schedule):
@@ -197,7 +221,7 @@ class Route(ScheduleElement):
                  arrival_offsets: List[str], departure_offsets: List[str], route: list = None,
                  route_long_name: str = '', id: str = '', await_departure: list = None):
         super().__init__(stops)
-        self._stops = [stop.id for stop in stops]
+        self.ordered_stops = [stop.id for stop in stops]
         self.route_short_name = route_short_name
         self.mode = mode.lower()
         self.trips = trips
@@ -217,14 +241,14 @@ class Route(ScheduleElement):
     def __eq__(self, other):
         same_route_name = self.route_short_name == other.route_short_name
         same_mode = self.mode.lower() == other.mode.lower()
-        same_stops = self.stops == other.stops
+        same_stops = self.stops() == other.stops()
         return same_route_name and same_mode and same_stops
 
     def __repr__(self):
         return "<{} instance at {}: with {} stops and {} trips>".format(
             self.__class__.__name__,
             id(self),
-            len(self._stops),
+            len(self.ordered_stops),
             len(self.trips))
 
     def __str__(self):
@@ -235,12 +259,12 @@ class Route(ScheduleElement):
 
     def info(self):
         return '{} ID: {}\nName: {}\nNumber of stops: {}\nNumber of trips: {}'.format(
-            self.__class__.__name__, self.id, self.route_short_name, len(self.stops), len(self.trips))
+            self.__class__.__name__, self.id, self.route_short_name, len(self.ordered_stops), len(self.trips))
 
     def plot(self, show=True, save=False, output_dir=''):
-        if self.stops:
+        if self.ordered_stops:
             return plot.plot_graph(
-                nx.MultiGraph(self.graph),
+                nx.MultiGraph(self.graph()),
                 filename='route_{}_graph'.format(self.id),
                 show=show,
                 save=save,
@@ -253,13 +277,13 @@ class Route(ScheduleElement):
         Iterable returns stops in the Route in order of travel
         :return:
         """
-        for s in self._stops:
+        for s in self.ordered_stops:
             yield self.stop(s)
 
     def is_exact(self, other):
         same_route_name = self.route_short_name == other.route_short_name
         same_mode = self.mode.lower() == other.mode.lower()
-        same_stops = self.stops == other.stops
+        same_stops = self.stops() == other.stops()
         same_trips = self.trips == other.trips
         same_arrival_offsets = self.arrival_offsets == other.arrival_offsets
         same_departure_offsets = self.departure_offsets == other.departure_offsets
@@ -276,7 +300,8 @@ class Route(ScheduleElement):
 
     def crowfly_distance(self):
         distance = 0
-        for prev_stop, next_stop in zip(self.stops[:-1], self.stops[1:]):
+        for prev_stop, next_stop in zip(self.ordered_stops[:-1], self.ordered_stops[1:]):
+            # todo replace by accessing graph nodes
             distance += spatial.distance_between_s2cellids(self.stop(prev_stop).s2_id, self.stop(next_stop).s2_id)
         return distance
 
@@ -289,7 +314,7 @@ class Route(ScheduleElement):
         return route_graph
 
     def is_strongly_connected(self):
-        if nx.number_strongly_connected_components(self.graph) == 1:
+        if nx.number_strongly_connected_components(self.graph()) == 1:
             return True
         return False
 
@@ -298,10 +323,10 @@ class Route(ScheduleElement):
         means that there are two consecutive stops that are the same
         :return:
         """
-        return list(nx.nodes_with_selfloops(self.graph))
+        return list(nx.nodes_with_selfloops(self.graph()))
 
     def has_more_than_one_stop(self):
-        if len(self._stops) > 1:
+        if len(self.ordered_stops) > 1:
             return True
         return False
 
@@ -310,8 +335,9 @@ class Route(ScheduleElement):
 
     def has_correctly_ordered_route(self):
         if self.has_network_route():
+            # todo replace by accessing graph nodes
             stops_linkrefids = [stop.linkRefId for stop in self.stops() if stop.has_linkRefId()]
-            if len(stops_linkrefids) != len(self._stops):
+            if len(stops_linkrefids) != len(self.ordered_stops):
                 logging.warning('Not all stops reference network link ids.')
                 return False
             for link_id in self.route:
@@ -324,7 +350,7 @@ class Route(ScheduleElement):
     def has_valid_offsets(self):
         if not self.arrival_offsets or not self.departure_offsets:
             return False
-        elif len(self.arrival_offsets) != len(self._stops) or len(self.departure_offsets) != len(self._stops):
+        elif len(self.arrival_offsets) != len(self.ordered_stops) or len(self.departure_offsets) != len(self.ordered_stops):
             return False
         for arr_offset, dep_offset in zip(self.arrival_offsets, self.departure_offsets):
             dt_arr_offset = datetime.strptime(arr_offset, '%H:%M:%S')
@@ -415,9 +441,9 @@ class Service(ScheduleElement):
             self.__class__.__name__, self.id, self.name, len(self), len(self.reference_nodes))
 
     def plot(self, show=True, save=False, output_dir=''):
-        if self.stops:
+        if self.reference_nodes:
             return plot.plot_graph(
-                nx.MultiGraph(self.graph),
+                nx.MultiGraph(self.graph()),
                 filename='service_{}_graph'.format(self.id),
                 show=show,
                 save=save,
@@ -437,16 +463,19 @@ class Service(ScheduleElement):
     def build_graph(self, stops=None):
         service_graph = nx.DiGraph(name='Service graph')
         for route in self.routes:
-            service_graph = nx.compose(route.graph, service_graph)
+            service_graph = nx.compose(route.graph(), service_graph)
+        # update route graphs by the larger graph
+        for route in self.routes:
+            route._graph = service_graph
         return service_graph
 
     def is_strongly_connected(self):
-        if nx.number_strongly_connected_components(self.graph) == 1:
+        if nx.number_strongly_connected_components(self.graph()) == 1:
             return True
         return False
 
     def has_self_loops(self):
-        return list(nx.nodes_with_selfloops(self.graph))
+        return list(nx.nodes_with_selfloops(self.graph()))
 
     def validity_of_routes(self):
         return [route.is_valid_route() for route in self.routes]
@@ -526,7 +555,7 @@ class Schedule(ScheduleElement):
     def __len__(self):
         return len(self.services)
 
-    def __add__(self, other):
+    def add(self, other):
         """
         takes the services dictionary and adds them to the current
         services stored in the Schedule. Have to be separable!
@@ -540,9 +569,11 @@ class Schedule(ScheduleElement):
             raise NotImplementedError('This method only supports adding non overlapping services.')
         elif self.epsg != other.epsg:
             other.reproject(self.epsg)
-        return self.__class__(
-            services=list(self.services.values()) + list(other.services.values()),
-            epsg=self.epsg)
+
+        self.services = {**other.services, **self.services}
+        self._graph = nx.compose(other._graph, self._graph)
+        self.reference_nodes = list(set(self.reference_nodes) | set(other.reference_nodes))
+        self.reference_edges = list(set(self.reference_edges) | set(other.reference_edges))
 
     def is_separable_from(self, other):
         return set(other.services.keys()) & set(self.services.keys()) == set()
@@ -556,26 +587,13 @@ class Schedule(ScheduleElement):
 
     def plot(self, show=True, save=False, output_dir=''):
         return plot.plot_graph(
-            nx.MultiGraph(self.graph),
+            nx.MultiGraph(self.graph()),
             filename='schedule_graph',
             show=show,
             save=save,
             output_dir=output_dir,
             e_c='#EC7063'
         )
-
-    def reproject(self, new_epsg):
-        """
-        Changes projection of the schedule to new_epsg
-        :param new_epsg: 'epsg:1234'
-        :return:
-        """
-        old_to_new_transformer = Transformer.from_crs(self.epsg, new_epsg)
-        # need to go through all instances of all the stops
-        for service_id, route in self.routes():
-            for stop in route.stops:
-                stop.reproject(new_epsg, old_to_new_transformer)
-        self.initiate_crs_transformer(new_epsg)
 
     def service_ids(self):
         return list(self.services.keys())
@@ -594,7 +612,12 @@ class Schedule(ScheduleElement):
     def build_graph(self, stops=None):
         schedule_graph = nx.DiGraph(name='Service graph')
         for service_id, service in self.services.items():
-            schedule_graph = nx.compose(service.graph, schedule_graph)
+            schedule_graph = nx.compose(service.graph(), schedule_graph)
+        # update service and route graphs by the larger graph
+        for service in self.services.values():
+            service._graph = schedule_graph
+            for route in service.routes:
+                route._graph = schedule_graph
         return schedule_graph
 
     def initiate_crs_transformer(self, epsg):
@@ -605,12 +628,12 @@ class Schedule(ScheduleElement):
             self.transformer = None
 
     def is_strongly_connected(self):
-        if nx.number_strongly_connected_components(self.graph) == 1:
+        if nx.number_strongly_connected_components(self.graph()) == 1:
             return True
         return False
 
     def has_self_loops(self):
-        return list(nx.nodes_with_selfloops(self.graph))
+        return list(nx.nodes_with_selfloops(self.graph()))
 
     def validity_of_services(self):
         return [service.is_valid_service() for service_id, service in self.services.items()]
@@ -658,33 +681,30 @@ class Schedule(ScheduleElement):
         :param day: 'YYYYMMDD' to use form the gtfs
         :return:
         """
-        services = gtfs_reader.read_to_list_of_service_objects(path, day)
-        _self = self.__class__('epsg:4326', services)
-        _self.reproject(self.epsg)
-        return _self
+        schedule, stops_db = gtfs_reader.read_to_dict_schedule_and_stopd_db(path, day)
+        services = []
+        for key, routes in schedule.items():
+            routes_list = []
+            for route in routes:
+                r = Route(
+                    route_short_name=route['route_short_name'],
+                    mode=route['mode'],
+                    stops=[Stop(id=id, x=stops_db[id]['stop_lon'], y=stops_db[id]['stop_lat'], epsg='epsg:4326') for id
+                           in
+                           route['stops']],
+                    trips=route['trips'],
+                    arrival_offsets=route['arrival_offsets'],
+                    departure_offsets=route['departure_offsets']
+                )
+                routes_list.append(r)
+            services.append(Service(id=key, routes=routes_list))
+
+        # TODO add services rather than creating new object (in case there are already services present)
+        to_add = self.__class__('epsg:4326', services)
+        self.add(to_add)
+        self.reproject(self.epsg)
 
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)
         vehicles = matsim_xml_writer.write_matsim_schedule(output_dir, self)
         matsim_xml_writer.write_vehicles(output_dir, vehicles)
-
-
-def convert_schedule_to_list_of_services(schedule, stops_db):
-    services = []
-
-    for key, routes in schedule.items():
-        routes_list = []
-        for route in routes:
-            r = Route(
-                route_short_name=route['route_short_name'],
-                mode=route['mode'],
-                stops=[Stop(id=id, x=stops_db[id]['stop_lon'], y=stops_db[id]['stop_lat'], epsg='epsg:4326') for id in
-                       route['stops']],
-                trips=route['trips'],
-                arrival_offsets=route['arrival_offsets'],
-                departure_offsets=route['departure_offsets']
-            )
-            routes_list.append(r)
-        services.append(Service(id=key, routes=routes_list))
-
-    return services

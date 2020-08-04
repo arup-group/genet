@@ -119,8 +119,8 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                             xf.write(rec)
 
                             with xf.element("routeProfile"):
-                                for j in range(len(route.stops)):
-                                    stop_attribs = {'refId': str(route.stops[j].id)}
+                                for j in range(len(route.ordered_stops)):
+                                    stop_attribs = {'refId': str(route.ordered_stops[j])}
 
                                     if not (route.departure_offsets and route.arrival_offsets):
                                         logging.warning(
@@ -130,7 +130,7 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                                     else:
                                         if j == 0:
                                             stop_attribs['departureOffset'] = route.departure_offsets[j]
-                                        elif j == len(route.stops) - 1:
+                                        elif j == len(route.ordered_stops) - 1:
                                             stop_attribs['arrivalOffset'] = route.arrival_offsets[j]
                                         else:
                                             stop_attribs['departureOffset'] = route.departure_offsets[j]

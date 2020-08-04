@@ -8,8 +8,8 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
     full_fat_default_config_path, correct_schedule
 from genet.inputs_handler import matsim_reader
-from genet.core import Network, Schedule
-from genet.schedule_elements import Route, Service
+from genet.core import Network
+from genet.schedule_elements import Route, Service, Schedule
 from genet.utils import plot
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

@@ -46,7 +46,7 @@ def self_looping_route():
 
 
 def test__repr__shows_stops_and_trips_length(route):
-    assert str(len(route._stops)) in route.__repr__()
+    assert str(len(route.ordered_stops)) in route.__repr__()
     assert str(len(route.trips)) in route.__repr__()
 
 
@@ -65,7 +65,7 @@ def test_info_shows_id_name_and_len_of_stops_and_trips(route):
     info = route.info()
     assert route.id in info
     assert route.route_short_name in info
-    assert str(len(route._stops)) in info
+    assert str(len(route.ordered_stops)) in info
     assert str(len(route.trips)) in info
 
 
@@ -86,7 +86,7 @@ def test_build_graph_builds_correct_graph():
                                '2': {'x': 1.0, 'y': 2.0, 'lat': 49.766825803756994, 'lon': -7.557148039524952},
                                '3': {'x': 3.0, 'y': 3.0, 'lat': 49.76683608549253, 'lon': -7.557121424907424},
                                '4': {'x': 7.0, 'y': 5.0, 'lat': 49.766856648946295, 'lon': -7.5570681956375}})
-    assert_semantically_equal(list(g.edges), [('1', '2'), ('2', '3'), ('3', '4')])
+    assert_semantically_equal(list(route.graph.edges), [('1', '2'), ('2', '3'), ('3', '4')])
 
 
 def test_routes_equal(stop_epsg_27700):

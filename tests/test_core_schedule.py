@@ -118,7 +118,8 @@ def test_reproject_changes_projection_for_all_stops_in_route():
             )
         ])])
     schedule.reproject('epsg:4326')
-    stops = dict(schedule.stops())
+    _stops = list(schedule.stops())
+    stops = dict(zip([stop.id for stop in _stops], _stops))
     assert_semantically_equal({'x': stops['26997928P'].x, 'y': stops['26997928P'].y}, correct_x_y)
     assert_semantically_equal({'x': stops['26997928P.link:1'].x, 'y': stops['26997928P.link:1'].y}, correct_x_y)
 
@@ -127,13 +128,13 @@ def test_adding_merges_separable_schedules(route):
     schedule = Schedule(epsg='epsg:4326', services=[Service(id='1', routes=[route])])
     schedule_to_be_added = Schedule(epsg='epsg:4326', services=[Service(id='2', routes=[route])])
 
-    new_schedule = schedule + schedule_to_be_added
+    schedule.add(schedule_to_be_added)
 
-    assert new_schedule.services == {
+    assert schedule.services == {
         '1': Service(id='1', routes=[route]),
         '2': Service(id='2', routes=[route])}
-    assert new_schedule.epsg == schedule.epsg
-    assert new_schedule.epsg == schedule_to_be_added.epsg
+    assert schedule.epsg == 'epsg:4326'
+    assert schedule.epsg == schedule_to_be_added.epsg
 
 
 def test_adding_throws_error_when_schedules_not_separable(test_service):
@@ -142,7 +143,7 @@ def test_adding_throws_error_when_schedules_not_separable(test_service):
     schedule_to_be_added = Schedule(epsg='epsg:4326', services=[test_service])
 
     with pytest.raises(NotImplementedError) as e:
-        schedule + schedule_to_be_added
+        schedule.add(schedule_to_be_added)
     assert 'This method only supports adding non overlapping services' in str(e.value)
 
 
@@ -152,7 +153,7 @@ def test_adding_calls_on_reproject_when_schedules_dont_have_matching_epsg(test_s
     assert 'service' in schedule.services
     schedule_to_be_added = Schedule(services=[different_test_service], epsg='epsg:4326')
 
-    schedule + schedule_to_be_added
+    schedule.add(schedule_to_be_added)
     schedule_to_be_added.reproject.assert_called_once_with('epsg:27700')
 
 
@@ -187,15 +188,6 @@ def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker):
     schedule.read_matsim_schedule(pt2matsim_schedule_file)
 
     matsim_reader.read_schedule.assert_called_once_with(pt2matsim_schedule_file, schedule.epsg)
-
-
-def test_read_matsim_schedule_delegates_to_read_to_list_of_service_objects_when_reading_gtfs(mocker, test_service):
-    mocker.patch.object(gtfs_reader, 'read_to_list_of_service_objects', return_value = [test_service])
-
-    schedule = Schedule('epsg:4326')
-    schedule.read_gtfs_schedule(gtfs_test_file, '20190604')
-
-    gtfs_reader.read_to_list_of_service_objects.assert_called_once_with(gtfs_test_file, '20190604')
 
 
 def test_read_matsim_schedule_returns_expected_schedule():
