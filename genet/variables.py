@@ -4,6 +4,11 @@
 NECESSARY_NETWORK_LINK_ATTRIBUTES = ['id', 'from', 'to', 'length', 'freespeed', 'capacity', 'permlanes', 'oneway',
                                      'modes']
 
+# NECESSARY STOP FACILITY ATTRIBUTES
+NECESSARY_STOP_FACILITY_ATTRIBUTES = ['id', 'x', 'y']
+# ADDITIONAL STOP FACILITY ATTRIBUTES
+ADDITIONAL_STOP_FACILITY_ATTRIBUTES = ['linkRefId', 'isBlocking', 'name']
+
 
 # EXTENDED_TYPE_DICT = {mode : [GTFS mode integers]}
 # e.g. {"subway,metro" : [1, 400, 401 ,402, 403, 405]}

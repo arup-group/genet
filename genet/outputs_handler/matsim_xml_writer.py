@@ -5,7 +5,7 @@ from pyproj import Proj, Transformer
 from genet.outputs_handler import matsim_xml_values
 from genet.validate.network_validation import validate_link_data
 from genet.utils.spatial import change_proj
-from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES
+from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES, ADDITIONAL_STOP_FACILITY_ATTRIBUTES
 
 
 def sanitise_dictionary_for_xml(d):
@@ -81,8 +81,9 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                             y=stop_facility.lon,
                             crs_transformer=transformer)
                     transit_stop_attrib['x'], transit_stop_attrib['y'] = str(x), str(y)
-                    for k, v in stop_facility.iter_through_additional_attributes():
-                        transit_stop_attrib[k] = str(v)
+                    for k in ADDITIONAL_STOP_FACILITY_ATTRIBUTES:
+                        if stop_facility.has_attrib(k):
+                            transit_stop_attrib[k] = str(stop_facility.additional_attribute(k))
                     xf.write(etree.Element("stopFacility", transit_stop_attrib))
 
             # minimalTransferTimes, if present

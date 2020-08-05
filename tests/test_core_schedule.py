@@ -10,8 +10,10 @@ from genet.utils import plot
 from genet.validate import schedule_validation
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_schedule_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
+pt2matsim_schedule_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
 gtfs_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs"))
+
 
 @pytest.fixture()
 def schedule():
@@ -48,7 +50,7 @@ def strongly_connected_schedule():
                            Stop(id='5', x=4, y=2, epsg='epsg:27700')],
                     trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2', '3', '4', '5'],
                     departure_offsets=['1', '2', '3', '4', '5'])
-    service =  Service(id='service', routes=[route_1, route_2])
+    service = Service(id='service', routes=[route_1, route_2])
     return Schedule(epsg='epsg:27700', services=[service])
 
 
@@ -182,7 +184,7 @@ def test_iter_stops_returns_stops_objects(test_service, different_test_service):
 
 
 def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker):
-    mocker.patch.object(matsim_reader, 'read_schedule', return_value = ([Service(id='1', routes=[])], {}))
+    mocker.patch.object(matsim_reader, 'read_schedule', return_value=([Service(id='1', routes=[])], {}))
 
     schedule = Schedule('epsg:27700')
     schedule.read_matsim_schedule(pt2matsim_schedule_file)
@@ -196,7 +198,7 @@ def test_read_matsim_schedule_returns_expected_schedule():
 
     correct_services = Service(id='10314', routes=[
         Route(
-            route_short_name='12',
+            route_short_name='12', id='VJbd8660f05fe6f744e58a66ae12bd66acbca88b98',
             mode='bus',
             stops=[Stop(id='26997928P', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700'),
                    Stop(id='26997928P.link:1', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700')],
@@ -209,10 +211,14 @@ def test_read_matsim_schedule_returns_expected_schedule():
 
     for key, val in schedule.services.items():
         assert val == correct_services
-    assert_semantically_equal(schedule.stops_mapping, {'26997928P.link:1': ['10314'], '26997928P': ['10314']})
+    assert_semantically_equal(schedule.stop_to_service_ids_map(),
+                              {'26997928P.link:1': ['10314'], '26997928P': ['10314']})
+    assert_semantically_equal(schedule.stop_to_route_ids_map(),
+                              {'26997928P': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
+                               '26997928P.link:1': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']})
 
 
-def test_read_gtfs_returns_expected_schedule(correct_stops_mapping_from_test_gtfs):
+def test_read_gtfs_returns_expected_schedule(correct_stops_to_service_mapping_from_test_gtfs, correct_stops_to_route_mapping_from_test_gtfs):
     schedule = Schedule('epsg:4326')
     schedule.read_gtfs_schedule(gtfs_test_file, '20190604')
 
@@ -238,7 +244,8 @@ def test_read_gtfs_returns_expected_schedule(correct_stops_mapping_from_test_gtf
             arrival_offsets=['0:00:00', '0:02:00'],
             departure_offsets=['0:00:00', '0:02:00']
         )])
-    assert_semantically_equal(schedule.stops_mapping, correct_stops_mapping_from_test_gtfs)
+    assert_semantically_equal(schedule.stop_to_service_ids_map(), correct_stops_to_service_mapping_from_test_gtfs)
+    assert_semantically_equal(schedule.stop_to_route_ids_map(), correct_stops_to_route_mapping_from_test_gtfs)
 
 
 def test_is_strongly_connected_with_strongly_connected_schedule(strongly_connected_schedule):

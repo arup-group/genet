@@ -20,12 +20,16 @@ class ScheduleElement:
     """
     Base class for Route, Service and Schedule
     """
+
     def __init__(self, stops):
-        self._graph = self.build_graph(stops)
+        self._graph = self._build_graph(stops)
         self.reference_nodes = list(self._graph.nodes())
         self.reference_edges = list(self._graph.edges())
         self.epsg = self.find_epsg()
         self._graph.crs = {'init': self.epsg}
+
+    def _update_graph(self, new_graph):
+        self._graph = new_graph
 
     def stop(self, stop_id):
         return Stop(**self._graph.nodes[stop_id])
@@ -38,7 +42,7 @@ class ScheduleElement:
         for s in self.reference_nodes:
             yield self.stop(s)
 
-    def build_graph(self, stops):
+    def _build_graph(self, stops):
         pass
 
     def graph(self):
@@ -48,10 +52,10 @@ class ScheduleElement:
             return nx.DiGraph(nx.edge_subgraph(self._graph, self.reference_edges))
 
     def stop_to_service_ids_map(self):
-        pass
+        return dict(self.graph().nodes(data='services'))
 
     def stop_to_route_ids_map(self):
-        pass
+        return dict(self.graph().nodes(data='routes'))
 
     def reproject(self, new_epsg):
         """
@@ -60,20 +64,21 @@ class ScheduleElement:
         :return:
         """
         if self.epsg != new_epsg:
-            old_to_new_transformer = Transformer.from_crs(self.epsg, new_epsg)
+            g = self.graph()
+            transformers = {epsg: Transformer.from_crs(epsg, new_epsg) for epsg in
+                            pd.Series(dict(g.nodes(data='epsg'))).unique()}
 
             reprojected_node_attribs = {}
-            for node_id, node_attribs in self.graph().nodes(data=True):
-                x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], old_to_new_transformer)
-                reprojected_node_attribs[node_id] = {'x': x, 'y': y}
+            for node_id, node_attribs in g.nodes(data=True):
+                x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], transformers[node_attribs['epsg']])
+                reprojected_node_attribs[node_id] = {'x': x, 'y': y, 'epsg': new_epsg}
 
             nx.set_node_attributes(self._graph, reprojected_node_attribs)
-            nx.set_node_attributes(self._graph, values=new_epsg, name='epsg')
             self.epsg = new_epsg
 
     def find_epsg(self):
         if isinstance(self, Schedule):
-            return self._epsg
+            return self.init_epsg
         else:
             for n in self.reference_nodes:
                 return self.stop(n).epsg
@@ -90,8 +95,9 @@ class Stop:
     :param x: x coordinate or lat if using 'epsg:4326'
     :param y: y coordinate or lon if using 'epsg:4326'
     :param epsg: 'epsg:12345'
-    :param transformer: optional but makes things MUCH faster if you're reading through a lot of stops in the same
-            projection
+    :param transformer: pyproj.Transformer.from_crs(epsg, 'epsg:4326') optional but makes things MUCH faster if you're
+    reading through a lot of stops in the same projection, all stops are mapped back to 'epsg:4326' and indexed with
+    s2sphere
     """
 
     def __init__(self, id: Union[str, int], x: Union[str, int, float], y: Union[str, int, float], epsg: str,
@@ -99,13 +105,21 @@ class Stop:
         self.id = id
         self.x = float(x)
         self.y = float(y)
-        self.initiate_crs_transformer(epsg, transformer)
+        self.epsg = epsg
 
-        if self.epsg == 'epsg:4326':
-            self.lat, self.lon = float(x), float(y)
+        if ('lat' in kwargs) and ('lon' in kwargs):
+            self.lat, self.lon = kwargs['lat'], kwargs['lon']
         else:
-            self.lat, self.lon = spatial.change_proj(x, y, self.transformer)
-        self.s2_id = spatial.grab_index_s2(lat=self.lat, lng=self.lon)
+            if self.epsg == 'epsg:4326':
+                self.lat, self.lon = float(x), float(y)
+            else:
+                if transformer is None:
+                    transformer = Transformer.from_crs(self.epsg, 'epsg:4326')
+                self.lat, self.lon = spatial.change_proj(x, y, transformer)
+        if 's2_id' in kwargs:
+            self.s2_id = kwargs['s2_id']
+        else:
+            self.s2_id = spatial.grab_index_s2(lat=self.lat, lng=self.lon)
 
         self.additional_attributes = []
         if kwargs:
@@ -143,16 +157,6 @@ class Stop:
             return '{} ID: {}\nProjection: {}\nLat, Lon: {}, {}'.format(
                 self.__class__.__name__, self.id, self.epsg, self._round_lat(), self._round_lon())
 
-    def initiate_crs_transformer(self, epsg, transformer):
-        self.epsg = epsg
-        if transformer is None:
-            if epsg != 'epsg:4326':
-                self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
-            else:
-                self.transformer = None
-        else:
-            self.transformer = transformer
-
     def reproject(self, new_epsg, transformer: Transformer = None):
         """
         Changes projection of a stop. If doing many stops, it's much quicker to pass the transformer as well as epsg.
@@ -163,9 +167,7 @@ class Stop:
         if transformer is None:
             transformer = Transformer.from_crs(self.epsg, new_epsg)
         self.x, self.y = spatial.change_proj(self.x, self.y, transformer)
-
         self.epsg = new_epsg
-        self.transformer = Transformer.from_crs(self.epsg, 'epsg:4326')
 
     def add_additional_attributes(self, attribs: dict):
         """
@@ -180,9 +182,11 @@ class Stop:
                 self.additional_attributes.append(k)
 
     def iter_through_additional_attributes(self):
-        for attr, value in self.__dict__.items():
-            if attr in self.additional_attributes:
-                yield attr, value
+        for attr_key in self.additional_attributes:
+            yield attr_key, self.__dict__[attr_key]
+
+    def additional_attribute(self, attrib_name):
+        return self.__dict__[attrib_name]
 
     def is_exact(self, other):
         same_id = self.id == other.id
@@ -198,6 +202,9 @@ class Stop:
 
     def has_linkRefId(self):
         return 'linkRefId' in self.__dict__
+
+    def has_attrib(self, attrib_name):
+        return attrib_name in self.__dict__
 
     def has_id(self):
         return self.id
@@ -261,6 +268,14 @@ class Route(ScheduleElement):
     def __str__(self):
         return self.info()
 
+    def _build_graph(self, stops: List[Stop]):
+        route_graph = nx.DiGraph(name='Route graph')
+        route_nodes = [(stop.id, stop.__dict__) for stop in stops]
+        route_graph.add_nodes_from(route_nodes, routes=[self.id])
+        stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
+        route_graph.add_edges_from(stop_edges)
+        return route_graph
+
     def print(self):
         print(self.info())
 
@@ -296,7 +311,7 @@ class Route(ScheduleElement):
         same_departure_offsets = self.departure_offsets == other.departure_offsets
 
         statement = same_route_name and same_mode and same_stops and same_trips and same_arrival_offsets \
-            and same_departure_offsets
+                    and same_departure_offsets
         return statement
 
     def isin_exact(self, routes: list):
@@ -311,14 +326,6 @@ class Route(ScheduleElement):
             # todo replace by accessing graph nodes
             distance += spatial.distance_between_s2cellids(self.stop(prev_stop).s2_id, self.stop(next_stop).s2_id)
         return distance
-
-    def build_graph(self, stops: List[Stop]):
-        route_graph = nx.DiGraph(name='Route graph')
-        route_nodes = [(stop.id, stop.__dict__) for stop in stops]
-        route_graph.add_nodes_from(route_nodes, routes=[self.id])
-        stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
-        route_graph.add_edges_from(stop_edges)
-        return route_graph
 
     def is_strongly_connected(self):
         if nx.number_strongly_connected_components(self.graph()) == 1:
@@ -357,7 +364,8 @@ class Route(ScheduleElement):
     def has_valid_offsets(self):
         if not self.arrival_offsets or not self.departure_offsets:
             return False
-        elif len(self.arrival_offsets) != len(self.ordered_stops) or len(self.departure_offsets) != len(self.ordered_stops):
+        elif len(self.arrival_offsets) != len(self.ordered_stops) or len(self.departure_offsets) != len(
+                self.ordered_stops):
             return False
         for arr_offset, dep_offset in zip(self.arrival_offsets, self.departure_offsets):
             dt_arr_offset = datetime.strptime(arr_offset, '%H:%M:%S')
@@ -440,6 +448,24 @@ class Service(ScheduleElement):
     def __len__(self):
         return len(self.routes)
 
+    def _build_graph(self, stops=None):
+        service_graph = nx.DiGraph(name='Service graph')
+        routes_attribs = {}
+        for route in self.routes:
+            g = route.graph()
+            routes_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
+            service_graph = nx.compose(g, service_graph)
+        nx.set_node_attributes(service_graph, values=routes_attribs, name='routes')
+        nx.set_node_attributes(service_graph, values=[self.id], name='services')
+        # update route graphs by the larger graph
+        self._update_graph(service_graph)
+        return service_graph
+
+    def _update_graph(self, new_graph):
+        self._graph = new_graph
+        for route in self.routes:
+            route._graph = new_graph
+
     def print(self):
         print(self.info())
 
@@ -466,20 +492,6 @@ class Service(ScheduleElement):
             if self.is_exact(other):
                 return True
         return False
-
-    def build_graph(self, stops=None):
-        service_graph = nx.DiGraph(name='Service graph')
-        routes_attribs = {}
-        for route in self.routes:
-            g = route.graph()
-            routes_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
-            service_graph = nx.compose(g, service_graph)
-        nx.set_node_attributes(service_graph, values=routes_attribs, name='routes')
-        nx.set_node_attributes(service_graph, values=[self.id], name='services')
-        # update route graphs by the larger graph
-        for route in self.routes:
-            route._graph = service_graph
-        return service_graph
 
     def is_strongly_connected(self):
         if nx.number_strongly_connected_components(self.graph()) == 1:
@@ -534,7 +546,7 @@ class Schedule(ScheduleElement):
     :param services: list of Service class objects
     """
     def __init__(self, epsg, services: List[Service] = None):
-        self._epsg = epsg
+        self.init_epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
         if services is None:
             self.services = {}
@@ -567,6 +579,30 @@ class Schedule(ScheduleElement):
     def __len__(self):
         return len(self.services)
 
+    def _build_graph(self, stops=None):
+        schedule_graph = nx.DiGraph(name='Schedule graph')
+        routes_attribs = {}
+        services_attribs = {}
+        for service_id, service in self.services.items():
+            schedule_graph = nx.compose(service.graph(), schedule_graph)
+            g = service.graph()
+            routes_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
+            services_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='services')), services_attribs)
+            schedule_graph = nx.compose(g, schedule_graph)
+        nx.set_node_attributes(schedule_graph, values=routes_attribs, name='routes')
+        nx.set_node_attributes(schedule_graph, values=services_attribs, name='services')
+
+        # update service and route graphs by the larger graph
+        self._update_graph(schedule_graph)
+        return schedule_graph
+
+    def _update_graph(self, new_graph):
+        self._graph = new_graph
+        for service in self.services.values():
+            service._graph = new_graph
+            for route in service.routes:
+                route._graph = new_graph
+
     def add(self, other):
         """
         takes the services dictionary and adds them to the current
@@ -583,7 +619,9 @@ class Schedule(ScheduleElement):
             other.reproject(self.epsg)
 
         self.services = {**other.services, **self.services}
-        self._graph = nx.compose(other._graph, self._graph)
+        self.minimal_transfer_times = {**other.minimal_transfer_times, **self.minimal_transfer_times}
+        self._graph.update(other._graph)
+        other._update_graph(self._graph)
         self.reference_nodes = list(set(self.reference_nodes) | set(other.reference_nodes))
         self.reference_edges = list(set(self.reference_edges) | set(other.reference_edges))
 
@@ -620,26 +658,6 @@ class Schedule(ScheduleElement):
 
     def number_of_routes(self):
         return len([r for id, r in self.routes()])
-
-    def build_graph(self, stops=None):
-        schedule_graph = nx.DiGraph(name='Service graph')
-        routes_attribs = {}
-        services_attribs = {}
-        for service_id, service in self.services.items():
-            schedule_graph = nx.compose(service.graph(), schedule_graph)
-            g = service.graph()
-            routes_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
-            services_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='services')), services_attribs)
-            schedule_graph = nx.compose(g, schedule_graph)
-        nx.set_node_attributes(schedule_graph, values=routes_attribs, name='routes')
-        nx.set_node_attributes(schedule_graph, values=services_attribs, name='services')
-
-        # update service and route graphs by the larger graph
-        for service in self.services.values():
-            service._graph = schedule_graph
-            for route in service.routes:
-                route._graph = schedule_graph
-        return schedule_graph
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
@@ -691,9 +709,10 @@ class Schedule(ScheduleElement):
         return schedule_validation.generate_validation_report(schedule=self)
 
     def read_matsim_schedule(self, path):
-        services, self.minimal_transfer_times = matsim_reader.read_schedule(path, self.epsg)
-        for service in services:
-            self.services[service.id] = service
+        services, minimal_transfer_times = matsim_reader.read_schedule(path, self.epsg)
+        matsim_schedule = self.__class__(services=services, epsg=self.epsg)
+        matsim_schedule.minimal_transfer_times = minimal_transfer_times
+        self.add(matsim_schedule)
 
     def read_gtfs_schedule(self, path, day):
         """

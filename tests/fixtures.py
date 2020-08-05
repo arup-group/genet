@@ -293,8 +293,13 @@ def correct_services_from_test_gtfs():
 
 
 @pytest.fixture()
-def correct_stops_mapping_from_test_gtfs():
+def correct_stops_to_service_mapping_from_test_gtfs():
     return {'BSN': ['1001'], 'BSE': ['1001'], 'RSE': ['1002'], 'RSN': ['1002']}
+
+
+@pytest.fixture()
+def correct_stops_to_route_mapping_from_test_gtfs():
+    return {'BSN': [''], 'BSE': [''], 'RSE': [''], 'RSN': ['']}
 
 
 @pytest.fixture()
