@@ -68,7 +68,7 @@ class Network:
         self.link_id_mapping = {**other.link_id_mapping, **self.link_id_mapping}
 
         # combine schedules
-        self.schedule = self.schedule + other.schedule
+        self.schedule.add(other.schedule)
 
         # merge change_log DataFrames
         self.change_log.log = self.change_log.log.append(other.change_log.log)

@@ -47,6 +47,12 @@ class ScheduleElement:
         else:
             return nx.DiGraph(nx.edge_subgraph(self._graph, self.reference_edges))
 
+    def stop_to_service_ids_map(self):
+        pass
+
+    def stop_to_route_ids_map(self):
+        pass
+
     def reproject(self, new_epsg):
         """
         Changes projection of the element to new_epsg
@@ -62,6 +68,7 @@ class ScheduleElement:
                 reprojected_node_attribs[node_id] = {'x': x, 'y': y}
 
             nx.set_node_attributes(self._graph, reprojected_node_attribs)
+            nx.set_node_attributes(self._graph, values=new_epsg, name='epsg')
             self.epsg = new_epsg
 
     def find_epsg(self):
@@ -220,7 +227,6 @@ class Route(ScheduleElement):
     def __init__(self, route_short_name: str, mode: str, stops: List[Stop], trips: Dict[str, str],
                  arrival_offsets: List[str], departure_offsets: List[str], route: list = None,
                  route_long_name: str = '', id: str = '', await_departure: list = None):
-        super().__init__(stops)
         self.ordered_stops = [stop.id for stop in stops]
         self.route_short_name = route_short_name
         self.mode = mode.lower()
@@ -237,11 +243,12 @@ class Route(ScheduleElement):
             self.await_departure = []
         else:
             self.await_departure = await_departure
+        super().__init__(stops)
 
     def __eq__(self, other):
         same_route_name = self.route_short_name == other.route_short_name
         same_mode = self.mode.lower() == other.mode.lower()
-        same_stops = self.stops() == other.stops()
+        same_stops = list(self.stops()) == list(other.stops())
         return same_route_name and same_mode and same_stops
 
     def __repr__(self):
@@ -283,7 +290,7 @@ class Route(ScheduleElement):
     def is_exact(self, other):
         same_route_name = self.route_short_name == other.route_short_name
         same_mode = self.mode.lower() == other.mode.lower()
-        same_stops = self.stops() == other.stops()
+        same_stops = list(self.stops()) == list(other.stops())
         same_trips = self.trips == other.trips
         same_arrival_offsets = self.arrival_offsets == other.arrival_offsets
         same_departure_offsets = self.departure_offsets == other.departure_offsets
@@ -308,7 +315,7 @@ class Route(ScheduleElement):
     def build_graph(self, stops: List[Stop]):
         route_graph = nx.DiGraph(name='Route graph')
         route_nodes = [(stop.id, stop.__dict__) for stop in stops]
-        route_graph.add_nodes_from(route_nodes)
+        route_graph.add_nodes_from(route_nodes, routes=[self.id])
         stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
         route_graph.add_edges_from(stop_edges)
         return route_graph
@@ -462,8 +469,13 @@ class Service(ScheduleElement):
 
     def build_graph(self, stops=None):
         service_graph = nx.DiGraph(name='Service graph')
+        routes_attribs = {}
         for route in self.routes:
-            service_graph = nx.compose(route.graph(), service_graph)
+            g = route.graph()
+            routes_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
+            service_graph = nx.compose(g, service_graph)
+        nx.set_node_attributes(service_graph, values=routes_attribs, name='routes')
+        nx.set_node_attributes(service_graph, values=[self.id], name='services')
         # update route graphs by the larger graph
         for route in self.routes:
             route._graph = service_graph
@@ -611,8 +623,17 @@ class Schedule(ScheduleElement):
 
     def build_graph(self, stops=None):
         schedule_graph = nx.DiGraph(name='Service graph')
+        routes_attribs = {}
+        services_attribs = {}
         for service_id, service in self.services.items():
             schedule_graph = nx.compose(service.graph(), schedule_graph)
+            g = service.graph()
+            routes_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
+            services_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='services')), services_attribs)
+            schedule_graph = nx.compose(g, schedule_graph)
+        nx.set_node_attributes(schedule_graph, values=routes_attribs, name='routes')
+        nx.set_node_attributes(schedule_graph, values=services_attribs, name='services')
+
         # update service and route graphs by the larger graph
         for service in self.services.values():
             service._graph = schedule_graph

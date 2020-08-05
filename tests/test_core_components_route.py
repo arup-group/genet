@@ -81,12 +81,12 @@ def test_build_graph_builds_correct_graph():
                   stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
                          Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
                   trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
-    assert_semantically_equal(dict(route.graph.nodes(data=True)),
+    assert_semantically_equal(dict(route.graph().nodes(data=True)),
                               {'1': {'x': 4.0, 'y': 2.0, 'lat': 49.76682779861249, 'lon': -7.557106577683727},
                                '2': {'x': 1.0, 'y': 2.0, 'lat': 49.766825803756994, 'lon': -7.557148039524952},
                                '3': {'x': 3.0, 'y': 3.0, 'lat': 49.76683608549253, 'lon': -7.557121424907424},
                                '4': {'x': 7.0, 'y': 5.0, 'lat': 49.766856648946295, 'lon': -7.5570681956375}})
-    assert_semantically_equal(list(route.graph.edges), [('1', '2'), ('2', '3'), ('3', '4')])
+    assert_semantically_equal(list(route.graph().edges), [('1', '2'), ('2', '3'), ('3', '4')])
 
 
 def test_routes_equal(stop_epsg_27700):
@@ -107,7 +107,7 @@ def test_routes_equal(stop_epsg_27700):
     assert a == b
 
 
-def test_routes_exact():
+def test_routes_exact(stop_epsg_27700):
     a = Route(
         route_short_name='route', mode='bus',
         stops=[stop_epsg_27700, stop_epsg_27700],
@@ -127,7 +127,6 @@ def test_routes_exact():
 
 def test_route_isin_exact_list(route):
     a = route
-
     assert a.isin_exact([route, route, route])
 
 

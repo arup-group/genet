@@ -77,7 +77,7 @@ def test_plot_delegates_to_util_plot_plot_graph_routes(mocker, route):
     plot.plot_graph.assert_called_once()
 
 
-def test_services_equal(route):
+def test_services_equal(route, similar_non_exact_test_route):
     a = Service(id='service',
                 routes=[route, similar_non_exact_test_route])
 
@@ -87,7 +87,7 @@ def test_services_equal(route):
     assert a == b
 
 
-def test_services_exact(route):
+def test_services_exact(route, similar_non_exact_test_route):
     a = Service(id='service',
                 routes=[route, similar_non_exact_test_route])
 
@@ -111,12 +111,12 @@ def test_route_is_not_in_exact_list(similar_non_exact_test_route, test_service):
 
 
 def test_build_graph_builds_correct_graph():
-    route_1 = Route(route_short_name='name',
+    route_1 = Route(route_short_name='name', id='1',
                   mode='bus',
                   stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
                          Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
                   trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
-    route_2 = Route(route_short_name='name_2',
+    route_2 = Route(route_short_name='name_2', id='2',
                   mode='bus',
                   stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
                          Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
@@ -124,7 +124,7 @@ def test_build_graph_builds_correct_graph():
     service = Service(id='service',
                       routes=[route_1, route_2])
 
-    g = service.build_graph()
+    g = service.graph()
 
     assert_semantically_equal(dict(g.nodes(data=True)),
                               {'5': {'x': 4.0, 'y': 2.0, 'lat': 49.76682779861249, 'lon': -7.557106577683727},

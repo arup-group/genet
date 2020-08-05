@@ -33,3 +33,16 @@ def set_nested_value(d: dict, value: dict):
     else:
         d = value
     return d
+
+
+def merge_dicts_with_lists(d1, d2):
+    """
+    Merges two dictionaries with list values, returns a list with unique elements present in each dict under a matching
+    key
+    :param d1:
+    :param d2:
+    :return:
+    """
+    keys = set(d1).union(d2)
+    no = []
+    return {k: list(set(d1.get(k, no)) | set(d2.get(k, no))) for k in keys}
