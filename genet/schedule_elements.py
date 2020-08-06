@@ -49,7 +49,9 @@ class ScheduleElement:
         if isinstance(self, Schedule):
             return self._graph
         else:
-            return nx.DiGraph(nx.edge_subgraph(self._graph, self.reference_edges))
+            g = nx.edge_subgraph(self._graph, self.reference_edges)
+            g.crs = self._graph.crs
+            return g
 
     def stop_to_service_ids_map(self):
         return dict(self.graph().nodes(data='services'))
@@ -276,6 +278,15 @@ class Route(ScheduleElement):
         route_graph.add_edges_from(stop_edges)
         return route_graph
 
+    def reindex(self, new_id):
+        if self.id != new_id:
+            # change data on graph
+            g = self.graph()
+            for stop in self.reference_nodes:
+                g.nodes[stop]['routes'] = list((set(g.nodes[stop]['routes']) - {self.id}) | {new_id})
+            self._graph.update(g)
+            self.id = new_id
+
     def print(self):
         print(self.info())
 
@@ -420,8 +431,6 @@ class Service(ScheduleElement):
 
     def __init__(self, id: str, routes: List[Route]):
         self.id = id
-        self.routes = routes
-        super().__init__(None)
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
         if routes:
@@ -432,6 +441,15 @@ class Service(ScheduleElement):
             self.name = str(name)
         else:
             self.name = ''
+        # create a dictionary and index if not unique ids
+        self.routes = {}
+        for route in routes:
+            _id = route.id
+            if (not _id) or (_id in self.routes):
+                _id = self.id + f'_{len(self.routes)}'
+                route.reindex(_id)
+            self.routes[_id] = route
+        super().__init__(None)
 
     def __eq__(self, other):
         return self.id == other.id
@@ -442,6 +460,9 @@ class Service(ScheduleElement):
             id(self),
             len(self))
 
+    def __getitem__(self, route_id):
+        return self.routes[route_id]
+
     def __str__(self):
         return self.info()
 
@@ -451,7 +472,7 @@ class Service(ScheduleElement):
     def _build_graph(self, stops=None):
         service_graph = nx.DiGraph(name='Service graph')
         routes_attribs = {}
-        for route in self.routes:
+        for route in self.routes.values():
             g = route.graph()
             routes_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
             service_graph = nx.compose(g, service_graph)
@@ -463,8 +484,17 @@ class Service(ScheduleElement):
 
     def _update_graph(self, new_graph):
         self._graph = new_graph
-        for route in self.routes:
+        for route in self.routes.values():
             route._graph = new_graph
+
+    def reindex(self, new_id):
+        if self.id != new_id:
+            # change data on graph
+            g = self.graph()
+            for stop in self.reference_nodes:
+                g.nodes[stop]['services'] = list((set(g.nodes[stop]['services']) - {self.id}) | {new_id})
+            self._graph.update(g)
+            self.id = new_id
 
     def print(self):
         print(self.info())
@@ -502,16 +532,16 @@ class Service(ScheduleElement):
         return list(nx.nodes_with_selfloops(self.graph()))
 
     def validity_of_routes(self):
-        return [route.is_valid_route() for route in self.routes]
+        return [route.is_valid_route() for route in self.routes.values()]
 
     def has_valid_routes(self):
         return all(self.validity_of_routes())
 
     def invalid_routes(self):
-        return [route for route in self.routes if not route.is_valid_route()]
+        return [route for route in self.routes.values() if not route.is_valid_route()]
 
     def has_uniquely_indexed_routes(self):
-        indices = set([route.id for route in self.routes])
+        indices = set([route.id for route in self.routes.values()])
         if len(indices) != len(self):
             return False
         return True
@@ -545,6 +575,7 @@ class Schedule(ScheduleElement):
     :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     :param services: list of Service class objects
     """
+
     def __init__(self, epsg, services: List[Service] = None):
         self.init_epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
@@ -600,8 +631,12 @@ class Schedule(ScheduleElement):
         self._graph = new_graph
         for service in self.services.values():
             service._graph = new_graph
-            for route in service.routes:
+            for route in service.routes.values():
                 route._graph = new_graph
+
+    def reindex(self, new_id):
+        if isinstance(self, Schedule):
+            raise NotImplementedError('Schedule is not an indexed object')
 
     def add(self, other):
         """
@@ -620,13 +655,17 @@ class Schedule(ScheduleElement):
 
         self.services = {**other.services, **self.services}
         self.minimal_transfer_times = {**other.minimal_transfer_times, **self.minimal_transfer_times}
+        # todo assuming separate schedules, with non conflicting ids, nodes and edges
         self._graph.update(other._graph)
         other._update_graph(self._graph)
         self.reference_nodes = list(set(self.reference_nodes) | set(other.reference_nodes))
         self.reference_edges = list(set(self.reference_edges) | set(other.reference_edges))
 
     def is_separable_from(self, other):
-        return set(other.services.keys()) & set(self.services.keys()) == set()
+        unique_service_ids = set(other.services.keys()) & set(self.services.keys()) == set()
+        unique_nodes = set(other.reference_nodes) & set(self.reference_nodes) == set()
+        unique_edges = set(other.reference_edges) & set(self.reference_edges) == set()
+        return unique_service_ids and unique_nodes and unique_edges
 
     def print(self):
         print(self.info())
@@ -648,23 +687,33 @@ class Schedule(ScheduleElement):
     def service_ids(self):
         return list(self.services.keys())
 
+    def route(self, route_id):
+        """
+        Gives the route under id: route_id or a list of routes with such route ids if not uniquely indexed
+        :param route_id:
+        :return:
+        """
+        routes = []
+        for service_id, service in self.services.items():
+            if route_id in service.routes:
+                routes.append(service[route_id])
+        if not routes:
+            raise KeyError(f'{route_id} not found in any of the Services')
+        if len(routes) == 1:
+            return routes[0]
+        else:
+            return routes
+
     def routes(self):
         """
         Iterator for routes in the schedule, returns service_id and a route
         """
         for service_id, service in self.services.items():
-            for route in service.routes:
+            for route in service.routes.values():
                 yield service_id, route
 
     def number_of_routes(self):
         return len([r for id, r in self.routes()])
-
-    def initiate_crs_transformer(self, epsg):
-        self.epsg = epsg
-        if epsg != 'epsg:4326':
-            self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
-        else:
-            self.transformer = None
 
     def is_strongly_connected(self):
         if nx.number_strongly_connected_components(self.graph()) == 1:

@@ -107,11 +107,7 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                 transit_line_attribs = {'id': service_id, 'name': str(service.name)}
 
                 with xf.element("transitLine", transit_line_attribs):
-                    for i in range(len(service.routes)):
-                        route = service.routes[i]
-                        id = route.id
-                        if not id:
-                            '{}_{}'.format(service.id, i)
+                    for id, route in service.routes.items():
                         transit_route_attribs = {'id': id}
 
                         with xf.element("transitRoute", transit_route_attribs):

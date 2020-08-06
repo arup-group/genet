@@ -236,15 +236,7 @@ def test_invalid_routes_shows_invalid_routes(self_looping_route, route):
     assert s.invalid_routes() == [self_looping_route]
 
 
-def test_has_uniquely_indexed_routes_with_service_with_clashing_indexing(service):
-    service.routes[0].id = '1'
-    service.routes[1].id = '1'
-    assert not service.has_uniquely_indexed_routes()
-
-
-def test_has_uniquely_indexed_routes_with_uniquely_indexed_service(service):
-    service.routes[0].id = '1'
-    service.routes[1].id = '2'
+def test_unique_indexing_of_with_uniquely_indexed_service(service):
     assert service.has_uniquely_indexed_routes()
 
 
@@ -262,7 +254,7 @@ def test_is_valid_with_looping_route(self_looping_route, route):
 
 
 def test_is_valid_with_non_network_route(service):
-    service.routes[0].route = []
-    service.routes[1].route = []
+    service.routes['1'].route = []
+    service.routes['2'].route = []
     assert not service.is_valid_service()
 
