@@ -121,4 +121,4 @@ def test_lesser_element_graphs_inherit_master_graphs_attributes(schedule):
     service_graph = service.graph()
 
     assert schedule.graph().name == service_graph.name
-    assert schedule.graph().crs == service_graph.crs
+    assert schedule.graph().graph['crs'] == service_graph.graph['crs']

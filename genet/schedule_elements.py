@@ -26,7 +26,7 @@ class ScheduleElement:
         self.reference_nodes = list(self._graph.nodes())
         self.reference_edges = list(self._graph.edges())
         self.epsg = self.find_epsg()
-        self._graph.crs = {'init': self.epsg}
+        self._graph.graph['crs'] = {'init': self.epsg}
 
     def _update_graph(self, new_graph):
         self._graph = new_graph
@@ -50,7 +50,6 @@ class ScheduleElement:
             return self._graph
         else:
             g = nx.edge_subgraph(self._graph, self.reference_edges)
-            g.crs = self._graph.crs
             return g
 
     def stop_to_service_ids_map(self):
@@ -77,6 +76,8 @@ class ScheduleElement:
 
             nx.set_node_attributes(self._graph, reprojected_node_attribs)
             self.epsg = new_epsg
+            if isinstance(self, Schedule):
+                self._graph.graph['crs'] = {'init': new_epsg}
 
     def find_epsg(self):
         if isinstance(self, Schedule):
