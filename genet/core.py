@@ -114,7 +114,13 @@ class Network:
         """
         fig, ax = self.plot_graph(show=False)
         return plot.plot_non_routed_schedule_graph(
-            nx.MultiDiGraph(self.schedule.graph()), 'network_schedule.png', ax=ax, show=show, save=save, output_dir=output_dir)
+            nx.MultiDiGraph(self.schedule.graph()),
+            'network_schedule.png',
+            ax=ax,
+            show=show,
+            save=save,
+            output_dir=output_dir
+        )
 
     def reproject(self, new_epsg):
         """
