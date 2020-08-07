@@ -135,8 +135,8 @@ class Network:
             processes=processes, from_proj=self.epsg, to_proj=new_epsg)
 
         node_keys = list(nodes_attribs.keys())
-        self.change_log.modify_bunch('node', node_keys, [nodes_attribs[node] for node in node_keys],
-                                     node_keys, [{**nodes_attribs[node], **new_nodes_attribs[node]} for node in node_keys])
+        self.change_log.modify_bunch('node', node_keys, [nodes_attribs[node] for node in node_keys], node_keys,
+            [{**nodes_attribs[node], **new_nodes_attribs[node]} for node in node_keys])
         nx.set_node_attributes(self.graph, new_nodes_attribs)
 
         if self.schedule:
@@ -928,6 +928,7 @@ class Network:
 
         def links_over_threshold_length(value):
             return value >= link_length_threshold
+
         report['graph']['links_over_1km_length'] = graph_operations.extract_links_on_edge_attributes(
             self,
             conditions={'length': links_over_threshold_length}
@@ -992,10 +993,10 @@ class Network:
             for key, val in attribs.items():
                 if key not in link_attributes:
                     link_attributes['attributes']['osm:way:{}'.format(key)] = {
-                            'name': 'osm:way:{}'.format(key),
-                            'class': 'java.lang.String',
-                            'text': str(val),
-                        }
+                        'name': 'osm:way:{}'.format(key),
+                        'class': 'java.lang.String',
+                        'text': str(val),
+                    }
 
             self.add_edge(u, v, attribs=link_attributes, silent=True)
 
@@ -1047,6 +1048,7 @@ class Schedule:
     :param stops_mapping: {'stop_id' : [service_id, service_id_2, ...]} for extracting services given a stop_id
     :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     """
+
     def __init__(self, epsg, services: List[schedule_elements.Service] = None):
         self.epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
