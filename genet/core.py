@@ -460,7 +460,7 @@ class Network:
         """
         nodes = list(new_attributes.keys())
         old_attribs = [deepcopy(self.node(node)) for node in nodes]
-        new_attribs = [{**self.node(node), **new_attributes} for node in nodes]
+        new_attribs = [{**self.node(node), **new_attributes[node]} for node in nodes]
 
         self.change_log.modify_bunch('node', nodes, old_attribs, nodes, new_attribs)
 
