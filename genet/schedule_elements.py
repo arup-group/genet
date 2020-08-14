@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 import genet.utils.plot as plot
 import genet.utils.spatial as spatial
+import genet.utils.dict_support as dict_support
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.gtfs_reader as gtfs_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
@@ -46,11 +47,7 @@ class ScheduleElement:
         pass
 
     def graph(self):
-        if isinstance(self, Schedule):
-            return self._graph
-        else:
-            g = nx.edge_subgraph(self._graph, self.reference_edges)
-            return g
+        return nx.edge_subgraph(self._graph, self.reference_edges)
 
     def stop_to_service_ids_map(self):
         return dict(self.graph().nodes(data='services'))
@@ -76,15 +73,10 @@ class ScheduleElement:
 
             nx.set_node_attributes(self._graph, reprojected_node_attribs)
             self.epsg = new_epsg
-            if isinstance(self, Schedule):
-                self._graph.graph['crs'] = {'init': new_epsg}
 
     def find_epsg(self):
-        if isinstance(self, Schedule):
-            return self.init_epsg
-        else:
-            for n in self.reference_nodes:
-                return self.stop(n).epsg
+        for n in self.reference_nodes:
+            return self.stop(n).epsg
         return None
 
 
@@ -475,7 +467,7 @@ class Service(ScheduleElement):
         routes_attribs = {}
         for route in self.routes.values():
             g = route.graph()
-            routes_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
+            routes_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
             service_graph = nx.compose(g, service_graph)
         nx.set_node_attributes(service_graph, values=routes_attribs, name='routes')
         nx.set_node_attributes(service_graph, values=[self.id], name='services')
@@ -618,8 +610,8 @@ class Schedule(ScheduleElement):
         for service_id, service in self.services.items():
             schedule_graph = nx.compose(service.graph(), schedule_graph)
             g = service.graph()
-            routes_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
-            services_attribs = persistence.merge_dicts_with_lists(dict(g.nodes(data='services')), services_attribs)
+            routes_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
+            services_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='services')), services_attribs)
             schedule_graph = nx.compose(g, schedule_graph)
         nx.set_node_attributes(schedule_graph, values=routes_attribs, name='routes')
         nx.set_node_attributes(schedule_graph, values=services_attribs, name='services')
@@ -674,6 +666,21 @@ class Schedule(ScheduleElement):
     def info(self):
         return 'Schedule:\nNumber of services: {}\nNumber of unique routes: {}\nNumber of stops: {}'.format(
             self.__len__(), self.number_of_routes(), len(self.reference_nodes))
+
+    def graph(self):
+        return self._graph
+
+    def reproject(self, new_epsg):
+        """
+        Changes projection of the element to new_epsg
+        :param new_epsg: 'epsg:1234'
+        :return:
+        """
+        ScheduleElement.reproject(self, new_epsg)
+        self._graph.graph['crs'] = {'init': new_epsg}
+
+    def find_epsg(self):
+        return self.init_epsg
 
     def plot(self, show=True, save=False, output_dir=''):
         return plot.plot_graph(
