@@ -63,6 +63,12 @@ def test_add_additional_attributes_to_stops():
     assert a.isBlocking == True
 
 
+def test_iterating_through_additional_attribs():
+    s = Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700', additional_attrib_1='hey',
+             additional_attrib_2='what?')
+    assert set(s.iter_through_additional_attributes()) == {('additional_attrib_1', 'hey'), ('additional_attrib_2', 'what?')}
+
+
 def test_stops_equal():
     a = Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')
     b = Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')

@@ -1,5 +1,6 @@
 import os
 from genet.utils import persistence
+from tests.fixtures import assert_semantically_equal
 
 
 def test_creates_directories_when_required_on_ensure_check(tmpdir):
@@ -40,27 +41,3 @@ def test_is_zip_identifies_zip():
 def test_is_zip_identifies_folder_isnt_zip():
     zip_dir = os.path.join('path', 'to', 'dir')
     assert not persistence.is_zip(zip_dir)
-
-
-def test_set_nested_value_overwrites_current_value():
-    d = {'attributes': {'some_osm_tag': 'hello'}}
-    value = {'attributes': {'some_osm_tag': 'bye'}}
-    return_d = persistence.set_nested_value(d, value)
-
-    assert return_d == {'attributes': {'some_osm_tag': 'bye'}}
-
-
-def test_set_nested_value_adds_new_key_val_pair():
-    d = {'attributes': {'some_osm_tag': 'hello'}}
-    value = {'attributes': {'some_tag': 'bye'}}
-    return_d = persistence.set_nested_value(d, value)
-
-    assert return_d == {'attributes': {'some_osm_tag': 'hello', 'some_tag': 'bye'}}
-
-
-def test_set_nested_value_creates_new_nest_in_place_of_single_value():
-    d = {'attributes': 1}
-    value = {'attributes': {'some_tag': 'bye'}}
-    return_d = persistence.set_nested_value(d, value)
-
-    assert return_d == {'attributes': {'some_tag': 'bye'}}

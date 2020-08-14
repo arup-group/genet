@@ -5,7 +5,7 @@ from pyproj import Proj, Transformer
 from genet.outputs_handler import matsim_xml_values
 from genet.validate.network_validation import validate_link_data
 from genet.utils.spatial import change_proj
-from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES
+from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES, ADDITIONAL_STOP_FACILITY_ATTRIBUTES
 
 
 def sanitise_dictionary_for_xml(d):
@@ -70,8 +70,8 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
         with xf.element("transitSchedule"):
             # transitStops first
             with xf.element("transitStops"):
-                for stop_facility_id, stop_facility in schedule.stops():
-                    transit_stop_attrib = {'id': str(stop_facility_id)}
+                for stop_facility in schedule.stops():
+                    transit_stop_attrib = {'id': str(stop_facility.id)}
                     if stop_facility.epsg == epsg:
                         x = stop_facility.x
                         y = stop_facility.y
@@ -81,8 +81,9 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                             y=stop_facility.lon,
                             crs_transformer=transformer)
                     transit_stop_attrib['x'], transit_stop_attrib['y'] = str(x), str(y)
-                    for k, v in stop_facility.iter_through_additional_attributes():
-                        transit_stop_attrib[k] = str(v)
+                    for k in ADDITIONAL_STOP_FACILITY_ATTRIBUTES:
+                        if stop_facility.has_attrib(k):
+                            transit_stop_attrib[k] = str(stop_facility.additional_attribute(k))
                     xf.write(etree.Element("stopFacility", transit_stop_attrib))
 
             # minimalTransferTimes, if present
@@ -106,11 +107,7 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                 transit_line_attribs = {'id': service_id, 'name': str(service.name)}
 
                 with xf.element("transitLine", transit_line_attribs):
-                    for i in range(len(service.routes)):
-                        route = service.routes[i]
-                        id = route.id
-                        if not id:
-                            '{}_{}'.format(service.id, i)
+                    for id, route in service.routes.items():
                         transit_route_attribs = {'id': id}
 
                         with xf.element("transitRoute", transit_route_attribs):
@@ -119,8 +116,8 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                             xf.write(rec)
 
                             with xf.element("routeProfile"):
-                                for j in range(len(route.stops)):
-                                    stop_attribs = {'refId': str(route.stops[j].id)}
+                                for j in range(len(route.ordered_stops)):
+                                    stop_attribs = {'refId': str(route.ordered_stops[j])}
 
                                     if not (route.departure_offsets and route.arrival_offsets):
                                         logging.warning(
@@ -130,7 +127,7 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                                     else:
                                         if j == 0:
                                             stop_attribs['departureOffset'] = route.departure_offsets[j]
-                                        elif j == len(route.stops) - 1:
+                                        elif j == len(route.ordered_stops) - 1:
                                             stop_attribs['arrivalOffset'] = route.arrival_offsets[j]
                                         else:
                                             stop_attribs['departureOffset'] = route.departure_offsets[j]

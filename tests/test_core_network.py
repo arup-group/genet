@@ -8,8 +8,8 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
     full_fat_default_config_path, correct_schedule
 from genet.inputs_handler import matsim_reader
-from genet.core import Network, Schedule
-from genet.schedule_elements import Route, Service
+from genet.core import Network
+from genet.schedule_elements import Route, Service, Schedule
 from genet.utils import plot
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -1095,8 +1095,8 @@ def test_schedule_routes(network_object_from_test_data):
 
 def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
     n = network_object_from_test_data
-    n.schedule['10314'].routes.append(Route(arrival_offsets=[], departure_offsets=[], mode='bus', trips={},
-                                            route_short_name='', stops=[]))
+    n.schedule['10314'].routes['1'] = Route(arrival_offsets=[], departure_offsets=[], mode='bus', trips={},
+                                            route_short_name='', stops=[])
     assert set(n.schedule.service_ids()) == {'10314'}
     correct_routes = [['25508485', '21667818']]
     routes = n.schedule_routes_nodes()
@@ -1106,7 +1106,7 @@ def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
 def test_schedule_routes_with_disconnected_routes(network_object_from_test_data):
     n = network_object_from_test_data
     n.add_link('2', 2345678, 987875)
-    n.schedule['10314'].routes[0].route.append('2')
+    n.schedule.route('VJbd8660f05fe6f744e58a66ae12bd66acbca88b98').route.append('2')
     correct_routes = [['25508485', '21667818'], [2345678, 987875]]
     routes = n.schedule_routes_nodes()
     assert correct_routes == routes
@@ -1596,8 +1596,8 @@ def test_generate_validation_report_with_non_uniquely_indexed_routes(correct_sch
     n.add_link('1', 1, 2, attribs={'length': 2, "modes": ['car', 'bus']})
     n.add_link('2', 2, 3, attribs={'length': 2, "modes": ['car', 'bus']})
 
-    correct_schedule.services['service'].routes[0].id = '1'
-    correct_schedule.services['service'].routes[1].id = '1'
+    for serv_id, route in correct_schedule.routes():
+        route.id = '1'
     n.schedule = correct_schedule
 
     report = n.generate_validation_report()

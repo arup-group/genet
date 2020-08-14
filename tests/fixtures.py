@@ -3,8 +3,8 @@ import sys, os
 import dictdiffer
 import pytest
 from collections import OrderedDict
-from genet.schedule_elements import Stop, Route, Service
-from genet.core import Schedule, Network
+from genet.schedule_elements import Stop, Route, Service, Schedule
+from genet.core import Network
 from genet.inputs_handler import osm_reader
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -115,8 +115,8 @@ def test_service():
                         arrival_offsets=['00:00:00', '00:02:00'],
                         departure_offsets=['00:00:00', '00:02:00']),
                        Route(route_short_name='route1', mode='bus',
-                             stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
-                                    Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                             stops=[Stop(id='1', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                                    Stop(id='2', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
                              trips={'Blep_04:40:00': '05:40:00'},
                              arrival_offsets=['00:00:00', '00:03:00'],
                              departure_offsets=['00:00:00', '00:05:00'])
@@ -128,8 +128,8 @@ def different_test_service():
     return Service(id='different_service',
                    routes=[
                        Route(route_short_name='route', mode='bus',
-                             stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
-                                    Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                             stops=[Stop(id='3', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                                    Stop(id='4', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
                              trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
                              arrival_offsets=['00:00:00', '00:02:00'],
                              departure_offsets=['00:00:00', '00:02:00'])
@@ -293,8 +293,13 @@ def correct_services_from_test_gtfs():
 
 
 @pytest.fixture()
-def correct_stops_mapping_from_test_gtfs():
+def correct_stops_to_service_mapping_from_test_gtfs():
     return {'BSN': ['1001'], 'BSE': ['1001'], 'RSE': ['1002'], 'RSN': ['1002']}
+
+
+@pytest.fixture()
+def correct_stops_to_route_mapping_from_test_gtfs():
+    return {'BSE': ['1001_0'], 'BSN': ['1001_0'], 'RSE': ['1002_0'], 'RSN': ['1002_0']}
 
 
 @pytest.fixture()
