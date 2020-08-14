@@ -1,6 +1,5 @@
 
 
-
 def set_nested_value(d: dict, value: dict):
     """
     Changes or, if not present injects, `different_value` into nested dictionary d at key `key: key_2`
