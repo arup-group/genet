@@ -249,6 +249,7 @@ def read_schedule(schedule_path, epsg):
     is_minimalTransferTimes = False
     minimalTransferTimes = {}  # {'stop_id_1': {stop: 'stop_id_2', transfer_time: 0.0}}
 
+    removed_lines = 0
     # transitLines
     for event, elem in ET.iterparse(schedule_path, events=('start', 'end')):
         if event == 'start':
@@ -272,6 +273,7 @@ def read_schedule(schedule_path, epsg):
                 if transitLine:
                     if not transitRoutes:
                         logging.warning(f"TransitLine: {transitLine} has no Routes, therefore ignoring.")
+                        removed_lines = removed_lines + 1
                     else:
                         write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
                 transitLine = {"transitLine": elem.attrib}
@@ -305,6 +307,7 @@ def read_schedule(schedule_path, epsg):
         elif (event == 'end') and (elem.tag == "transportMode"):
             transportMode = {'transportMode': elem.text}
 
+    print("{} lines removed as they had no route".format(removed_lines))
     # add the last one
     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
 
