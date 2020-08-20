@@ -49,10 +49,12 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
     :param link_attribs: link attributes of the previous link
     :return:
     """
+    
     duplicated_link_id = {}
     # update old link by link attributes (osm tags etc.)
     if link_attribs:
         # if multiple edges, add to the one added most recently
+        print(u,v)
         g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs  # noqa: F821
 
     attribs = elem.attrib
@@ -145,6 +147,9 @@ def read_network(network_path, transformer: Transformer):
                         else:
                             duplicated_node_ids[key] = [val]
             elif elem.tag == 'link':
+                # reset link_attribs
+                link_attribs = {}
+
                 g, u, v, link_id_mapping, duplicated_link_id = read_link(
                     elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs)
                 if duplicated_link_id:
@@ -153,8 +158,7 @@ def read_network(network_path, transformer: Transformer):
                             duplicated_link_ids[key].append(val)
                         else:
                             duplicated_link_ids[key] = [val]
-                # reset link_attribs
-                link_attribs = {}
+                
             elif elem.tag == 'attribute':
                 link_attribs = read_link_attrib(elem, link_attribs)
     # update the attributes of the last link
@@ -266,7 +270,10 @@ def read_schedule(schedule_path, epsg):
                         }
             if elem.tag == 'transitLine':
                 if transitLine:
-                    write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
+                    if not transitRoutes:
+                        logging.warning(f"TransitLine: {transitLine} has no Routes, therefore ignoring.")
+                    else:
+                        write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
                 transitLine = {"transitLine": elem.attrib}
                 transitRoutes = {}
 
