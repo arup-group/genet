@@ -2,7 +2,6 @@ import yaml
 import logging
 import osmread
 import genet.inputs_handler.osmnx_customised as osmnx_customised
-import genet.utils.spatial as spatial
 import genet.utils.parallel as parallel
 from genet.outputs_handler.matsim_xml_values import MATSIM_JOSM_DEFAULTS
 
