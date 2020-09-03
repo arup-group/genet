@@ -11,6 +11,8 @@ import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.gtfs_reader as gtfs_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.utils.persistence as persistence
+import genet.utils.parallel as parallel
+import genet.modify.schedule as mod_schedule
 import genet.validate.schedule_validation as schedule_validation
 
 # number of decimal places to consider when comparing lat lons
@@ -77,15 +79,14 @@ class ScheduleElement:
         """
         if self.epsg != new_epsg:
             g = self.graph()
-            transformers = {epsg: Transformer.from_crs(epsg, new_epsg) for epsg in
-                            pd.Series(dict(g.nodes(data='epsg'))).unique()}
 
-            reprojected_node_attribs = {}
-            # TODO parallelise
-            for node_id, node_attribs in g.nodes(data=True):
-                x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], transformers[node_attribs['epsg']])
-                reprojected_node_attribs[node_id] = {'x': x, 'y': y, 'epsg': new_epsg}
-
+            reprojected_node_attribs = parallel.multiprocess_wrap(
+                data=dict(g.nodes(data=True)),
+                split=parallel.split_dict,
+                apply=mod_schedule.reproj_stops,
+                combine=parallel.combine_dict,
+                new_epsg=new_epsg
+            )
             nx.set_node_attributes(self._graph, reprojected_node_attribs)
             self.epsg = new_epsg
 
