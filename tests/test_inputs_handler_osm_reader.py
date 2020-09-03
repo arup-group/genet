@@ -120,7 +120,7 @@ def test_generate_osm_graph_edges_from_file(full_fat_default_config):
         1: {'osmid': 1, 's2id': 1152921335974974453, 'x': 0.024278505899735615, 'y': -0.0006545205888310243},
         2: {'osmid': 2, 's2id': 384307157539499829, 'x': -0.00716977739835831, 'y': -0.0006545205888310243}})
 
-    assert len(edges) == 8
+    assert len(edges) == 9
     correct_edge_data = {
         0: {'osmid': 0, 'modes': ['walk', 'car', 'bike'], 'highway': 'unclassified', 'length': 1748.4487354464366},
         1: {'osmid': 0, 'modes': ['walk', 'car', 'bike'], 'highway': 'unclassified', 'length': 1748.4487354464366},
@@ -129,8 +129,10 @@ def test_generate_osm_graph_edges_from_file(full_fat_default_config):
         4: {'osmid': 400, 'modes': ['walk', 'car', 'bike'], 'highway': 'unclassified', 'length': 1748.4487354464366},
         5: {'osmid': 400, 'modes': ['walk', 'car', 'bike'], 'highway': 'unclassified', 'length': 1748.4487354464366},
         6: {'osmid': 700, 'modes': ['walk', 'car', 'bike'], 'highway': 'unclassified', 'length': 1748.4488584600201},
-        7: {'osmid': 700, 'modes': ['walk', 'car', 'bike'], 'highway': 'unclassified', 'length': 1748.4488584600201}}
-    correct_edges = {0: (0, 1), 1: (1, 0), 2: (0, 2), 3: (2, 0), 4: (1, 0), 5: (0, 1), 6: (2, 0), 7: (0, 2)}
+        7: {'osmid': 700, 'modes': ['walk', 'car', 'bike'], 'highway': 'unclassified', 'length': 1748.4488584600201},
+        8: {'osmid': 47007861, 'modes': ['car', 'walk', 'bike'], 'highway': 'tertiary', 'length': 3496.897593906457, 'lanes': '3'}
+    }
+    correct_edges = {0: (0, 1), 1: (1, 0), 2: (0, 2), 3: (2, 0), 4: (1, 0), 5: (0, 1), 6: (2, 0), 7: (0, 2), 8:(2, 1)}
 
     i = 0
     for edge, attribs in edges:

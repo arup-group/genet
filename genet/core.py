@@ -935,6 +935,12 @@ class Network:
         for edge, attribs in edges:
             u, v = str(edge[0]), str(edge[1])
             link_attributes = osm_reader.find_matsim_link_values(attribs, config)
+            if 'lanes' in attribs:
+                # overwrite the default matsim josm values
+                link_attributes['permlanes'] = float(attribs['lanes'])
+            # compute link-wide capacity
+            link_attributes['capacity'] = link_attributes['permlanes'] * link_attributes['capacity']
+
             link_attributes['oneway'] = '1'
             link_attributes['modes'] = attribs['modes']
             link_attributes['from'] = self.node(u)['id']
