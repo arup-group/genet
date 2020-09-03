@@ -580,7 +580,7 @@ class Network:
         """
         links = list(new_attributes.keys())
         old_attribs = [deepcopy(self.link(link)) for link in links]
-        new_attribs = [persistence.set_nested_value(self.link(link), new_attributes[link]) for link in links]
+        new_attribs = [dict_support.set_nested_value(self.link(link), new_attributes[link]) for link in links]
         edge_tuples = [self.edge_tuple_from_link_id(link) for link in links]
 
         self.change_log.modify_bunch('link', links, old_attribs, links, new_attribs)
