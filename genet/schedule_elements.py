@@ -111,7 +111,7 @@ class Stop:
     """
 
     def __init__(self, id: Union[str, int], x: Union[str, int, float], y: Union[str, int, float], epsg: str,
-                 transformer: Transformer = None, additional_attributes: dict = None, **kwargs):
+                 transformer: Transformer = None, **kwargs):
         self.id = id
         self.x = float(x)
         self.y = float(y)
@@ -131,11 +131,7 @@ class Stop:
         else:
             self.s2_id = spatial.grab_index_s2(lat=self.lat, lng=self.lon)
 
-        if additional_attributes:
-            self.additional_attributes = []
-            self.add_additional_attributes(additional_attributes)
-        else:
-            self.additional_attributes = []
+        self.additional_attributes = []
         if kwargs:
             self.add_additional_attributes(kwargs)
 
@@ -193,10 +189,15 @@ class Stop:
         :param attribs:
         :return:
         """
-        for k, v in attribs.items():
-            if k not in self.__dict__:
-                setattr(self, k, v)
-                self.additional_attributes.append(k)
+        if 'additional_attributes' in attribs:
+            self.additional_attributes = attribs['additional_attributes']
+            for k in attribs['additional_attributes']:
+                setattr(self, k, attribs[k])
+        else:
+            for k, v in attribs.items():
+                if k not in self.__dict__:
+                    setattr(self, k, v)
+                    self.additional_attributes.append(k)
 
     def iter_through_additional_attributes(self):
         for attr_key in self.additional_attributes:
