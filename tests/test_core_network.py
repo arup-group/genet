@@ -1128,13 +1128,17 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
 
     number_of_0_multi_idx = 0
     number_of_1_multi_idx = 0
+    number_of_2_multi_idx = 0
     for link_id, edge_map in network.link_id_mapping.items():
         if edge_map['multi_edge_idx'] == 0:
             number_of_0_multi_idx += 1
         elif edge_map['multi_edge_idx'] == 1:
             number_of_1_multi_idx += 1
+        elif edge_map['multi_edge_idx'] == 2:
+            number_of_2_multi_idx += 1
     assert number_of_0_multi_idx == 5
     assert number_of_1_multi_idx == 4
+    assert number_of_2_multi_idx == 1
 
     assert_semantically_equal(dict(network.links()),
                               {'1': {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
