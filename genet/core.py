@@ -7,7 +7,6 @@ from copy import deepcopy
 from typing import Union, List
 from pyproj import Transformer
 import genet.inputs_handler.matsim_reader as matsim_reader
-import genet.inputs_handler.gtfs_reader as gtfs_reader
 import genet.inputs_handler.osm_reader as osm_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.geojson as geojson
@@ -18,8 +17,8 @@ import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
+import genet.utils.dict_support as dict_support
 import genet.validate.network_validation as network_validation
-import genet.validate.schedule_validation as schedule_validation
 import genet.utils.plot as plot
 import genet.schedule_elements as schedule_elements
 
@@ -31,7 +30,7 @@ class Network:
         self.epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
         self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg})
-        self.schedule = Schedule(epsg)
+        self.schedule = schedule_elements.Schedule(epsg)
         self.change_log = change_log.ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
         # link_id_mapping maps between (usually string literal) index per edge to the from and to nodes that are
@@ -73,7 +72,7 @@ class Network:
         self.link_id_mapping = {**other.link_id_mapping, **self.link_id_mapping}
 
         # combine schedules
-        self.schedule = self.schedule + other.schedule
+        self.schedule.add(other.schedule)
 
         # merge change_log DataFrames
         self.change_log.log = self.change_log.log.append(other.change_log.log)
@@ -118,9 +117,14 @@ class Network:
         :return:
         """
         fig, ax = self.plot_graph(show=False)
-        schedule_g = self.schedule.build_graph()
         return plot.plot_non_routed_schedule_graph(
-            nx.MultiDiGraph(schedule_g), 'network_schedule.png', ax=ax, show=show, save=save, output_dir=output_dir)
+            nx.MultiDiGraph(self.schedule.graph()),
+            'network_schedule.png',
+            ax=ax,
+            show=show,
+            save=save,
+            output_dir=output_dir
+        )
 
     def reproject(self, new_epsg, processes=1):
         """
@@ -436,7 +440,7 @@ class Network:
 
         # check if change is to nested part of node data
         if any(isinstance(v, dict) for v in new_attributes.values()):
-            new_attributes = persistence.set_nested_value(old_attributes, new_attributes)
+            new_attributes = dict_support.set_nested_value(old_attributes, new_attributes)
         else:
             new_attributes = {**old_attributes, **new_attributes}
 
@@ -505,7 +509,7 @@ class Network:
 
                 # check if change is to nested part of node data
                 if any(isinstance(v, dict) for v in new_attributes.values()):
-                    new_attribs = persistence.set_nested_value(old_attributes, new_attributes)
+                    new_attribs = dict_support.set_nested_value(old_attributes, new_attributes)
                 else:
                     new_attribs = {**old_attributes, **new_attributes}
 
@@ -551,7 +555,7 @@ class Network:
 
         # check if change is to nested part of node data
         if any(isinstance(v, dict) for v in new_attributes.values()):
-            new_attributes = persistence.set_nested_value(old_attributes, new_attributes)
+            new_attributes = dict_support.set_nested_value(old_attributes, new_attributes)
         else:
             new_attributes = {**old_attributes, **new_attributes}
 
@@ -1036,226 +1040,3 @@ class Network:
             self.schedule.write_to_matsim(output_dir)
         self.change_log.export(os.path.join(output_dir, 'change_log.csv'))
         geojson.save_nodes_and_links_geojson(self.graph, output_dir)
-
-
-class Schedule:
-    """
-    Takes services and stops_mapping in the correct format and provides method and structure for transit schedules
-
-    Parameters
-    ----------
-    :param services: list of Service class objects
-    :param stops_mapping: {'stop_id' : [service_id, service_id_2, ...]} for extracting services given a stop_id
-    :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
-    """
-
-    def __init__(self, epsg, services: List[schedule_elements.Service] = None):
-        self.epsg = epsg
-        self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
-        if services is None:
-            self.services = {}
-            self.stops_mapping = pd.DataFrame(columns=['stop_id', 'stop', 'service_id', 'service'])
-        else:
-            assert epsg != '', 'You need to specify the coordinate system for the schedule'
-            self.services = {}
-            for service in services:
-                self.services[service.id] = service
-            self.build_stops_mapping()
-        self.minimal_transfer_times = {}
-
-    def __nonzero__(self):
-        return self.services
-
-    def __getitem__(self, service_id):
-        return self.services[service_id]
-
-    def __contains__(self, service_id):
-        return service_id in self.services
-
-    def __repr__(self):
-        return "<{} instance at {}: with {} services>".format(
-            self.__class__.__name__,
-            id(self),
-            len(self))
-
-    def __str__(self):
-        return self.info()
-
-    def __len__(self):
-        return len(self.services)
-
-    def __add__(self, other):
-        """
-        takes the services dictionary and adds them to the current
-        services stored in the Schedule. Have to be separable!
-        I.e. the keys in services cannot overlap with the ones already
-        existing (TODO: add merging complicated schedules, parallels to the merging gtfs work)
-        :param services: (see tests for the dict schema)
-        :return:
-        """
-        if not self.is_separable_from(other):
-            # have left and right indicies
-            raise NotImplementedError('This method only supports adding non overlapping services.')
-        elif self.epsg != other.epsg:
-            other.reproject(self.epsg)
-        return self.__class__(
-            services=list(self.services.values()) + list(other.services.values()),
-            epsg=self.epsg)
-
-    def is_separable_from(self, other):
-        return set(other.services.keys()) & set(self.services.keys()) == set()
-
-    def print(self):
-        print(self.info())
-
-    def info(self):
-        return 'Schedule:\nNumber of services: {}\nNumber of unique routes: {}\nNumber of stops: {}'.format(
-            self.__len__(), self.number_of_routes(), len(self.stops_mapping))
-
-    def plot(self, show=True, save=False, output_dir=''):
-        schedule_graph = self.build_graph()
-        return plot.plot_graph(
-            nx.MultiGraph(schedule_graph),
-            filename='schedule_graph',
-            show=show,
-            save=save,
-            output_dir=output_dir,
-            e_c='#EC7063'
-        )
-
-    def reproject(self, new_epsg, processes=1):
-        """
-        Changes projection of the schedule to new_epsg
-        :param new_epsg: 'epsg:1234'
-        :return:
-        """
-        routes = {(service_id, route.id): route for service_id, route in self.routes()}
-
-        reprojed_routes = parallel.multiprocess_wrap(
-            data=routes, split=parallel.split_dict, apply=modify_schedule.reproj, combine=parallel.combine_dict,
-            processes=processes, from_proj=self.epsg, to_proj=new_epsg)
-
-        for service_id, service in self.services.items():
-            service.routes = [reprojed_routes[(service_id, route.id)] for route in service.routes]
-
-    def service_ids(self):
-        return list(self.services.keys())
-
-    def routes(self):
-        """
-        Iterator for routes in the schedule, returns service_id and a route
-        """
-        for service_id, service in self.services.items():
-            for route in service.routes:
-                yield service_id, route
-
-    def number_of_routes(self):
-        return len([r for id, r in self.routes()])
-
-    def stops(self):
-        """
-        Iterator for stops_mapping in the schedule, returns two-tuple: stop_id and the Stop object
-        """
-        all_stops = set()
-        for service in self.services.values():
-            all_stops = all_stops | set(service.stops())
-        for stop in all_stops:
-            yield stop.id, stop
-
-    def build_stops_mapping(self):
-        service_to_stops = {}
-        for service_id, service in self.services.items():
-            service_to_stops[service_id] = [stop.id for stop in service.stops()]
-
-        # ze old switcheroo
-        self.stops_mapping = {}
-        for key, value in service_to_stops.items():
-            for item in value:
-                if item in self.stops_mapping:
-                    self.stops_mapping[item].append(key)
-                else:
-                    self.stops_mapping[item] = [key]
-
-    def build_graph(self):
-        schedule_graph = nx.DiGraph(name='Service graph', crs={'init': self.epsg})
-        for service_id, service in self.services.items():
-            schedule_graph = nx.compose(service.build_graph(), schedule_graph)
-        return schedule_graph
-
-    def initiate_crs_transformer(self, epsg):
-        self.epsg = epsg
-        if epsg != 'epsg:4326':
-            self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
-        else:
-            self.transformer = None
-
-    def is_strongly_connected(self):
-        g = self.build_graph()
-        if nx.number_strongly_connected_components(g) == 1:
-            return True
-        return False
-
-    def has_self_loops(self):
-        g = self.build_graph()
-        return list(nx.nodes_with_selfloops(g))
-
-    def validity_of_services(self):
-        return [service.is_valid_service() for service_id, service in self.services.items()]
-
-    def has_valid_services(self):
-        return all(self.validity_of_services())
-
-    def invalid_services(self):
-        return [service for service_id, service in self.services.items() if not service.is_valid_service()]
-
-    def has_uniquely_indexed_services(self):
-        indices = set([service.id for service_id, service in self.services.items()])
-        if len(indices) != len(self.services):
-            return False
-        return True
-
-    def is_valid_schedule(self, return_reason=False):
-        invalid_stages = []
-        valid = True
-
-        if not self.has_valid_services():
-            valid = False
-            invalid_stages.append('not_has_valid_services')
-
-        if not bool(self.has_uniquely_indexed_services()):
-            valid = False
-            invalid_stages.append('not_has_uniquely_indexed_services')
-
-        if return_reason:
-            return valid, invalid_stages
-        return valid
-
-    def generate_validation_report(self):
-        return schedule_validation.generate_validation_report(schedule=self)
-
-    def read_matsim_schedule(self, path):
-        services, self.minimal_transfer_times = matsim_reader.read_schedule(path, self.epsg)
-        for service in services:
-            self.services[service.id] = service
-        self.build_stops_mapping()
-
-    def read_gtfs_schedule(self, path, day):
-        """
-        Reads from GTFS. The resulting services will not have route lists. Assumes to be in lat lon epsg:4326
-        :param path: to GTFS folder or a zip file
-        :param day: 'YYYYMMDD' to use form the gtfs
-        :return:
-        """
-        old_to_new_transformer = Transformer.from_crs('epsg:4326', self.epsg)
-        services = gtfs_reader.read_to_list_of_service_objects(path, day)
-        for service in services:
-            for route in service.routes:
-                for stop in route.stops:
-                    stop.reproject(self.epsg, old_to_new_transformer)
-            self.services[service.id] = service
-        self.build_stops_mapping()
-
-    def write_to_matsim(self, output_dir):
-        persistence.ensure_dir(output_dir)
-        vehicles = matsim_xml_writer.write_matsim_schedule(output_dir, self)
-        matsim_xml_writer.write_vehicles(output_dir, vehicles)

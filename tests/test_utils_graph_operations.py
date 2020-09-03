@@ -1,4 +1,4 @@
-from genet.core import Network, Schedule
+from genet.core import Network
 from genet.utils import graph_operations
 from anytree import Node, RenderTree
 from tests.fixtures import assert_semantically_equal

@@ -1,5 +1,6 @@
 import os
 from genet.utils import persistence
+from tests.fixtures import assert_semantically_equal
 
 
 def test_creates_directories_when_required_on_ensure_check(tmpdir):
