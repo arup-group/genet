@@ -934,7 +934,7 @@ class Network:
 
         for edge, attribs in edges:
             u, v = str(edge[0]), str(edge[1])
-            link_attributes = osm_reader.find_matsim_link_values(attribs, config)
+            link_attributes = osm_reader.find_matsim_link_values(attribs, config).copy()
             if 'lanes' in attribs:
                 # overwrite the default matsim josm values
                 link_attributes['permlanes'] = float(attribs['lanes'])
@@ -947,7 +947,8 @@ class Network:
             link_attributes['to'] = self.node(v)['id']
             link_attributes['s2_from'] = self.node(u)['s2_id']
             link_attributes['s2_to'] = self.node(v)['s2_id']
-            link_attributes['length'] = attribs['length']
+            link_attributes['length'] = spatial.distance_between_s2cellids(
+                link_attributes['s2_from'], link_attributes['s2_to'])
 
             # the rest of the keys are osm attributes
             link_attributes['attributes'] = {}

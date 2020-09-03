@@ -26,6 +26,7 @@
   <way id='47007861' timestamp='2018-11-20T20:34:44Z' uid='322039' user='MacLondon' version='12' changeset='64713626'>
     <nd ref='2' />
     <nd ref='1' />
+    <nd ref='0' />
     <tag k='highway' v='tertiary' />
     <tag k='lanes' v='3' />
     <tag k='lit' v='yes' />
