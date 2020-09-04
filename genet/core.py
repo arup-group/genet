@@ -12,7 +12,6 @@ import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.geojson as geojson
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
-import genet.modify.schedule as modify_schedule
 import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
@@ -140,7 +139,7 @@ class Network:
 
         node_keys = list(nodes_attribs.keys())
         self.change_log.modify_bunch('node', node_keys, [nodes_attribs[node] for node in node_keys], node_keys,
-            [{**nodes_attribs[node], **new_nodes_attribs[node]} for node in node_keys])
+                                     [{**nodes_attribs[node], **new_nodes_attribs[node]} for node in node_keys])
         nx.set_node_attributes(self.graph, new_nodes_attribs)
 
         if self.schedule:

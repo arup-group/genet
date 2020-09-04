@@ -1,7 +1,6 @@
 from typing import Union, Dict, List
 from pyproj import Transformer
 import networkx as nx
-import pandas as pd
 import logging
 from datetime import datetime
 import genet.utils.plot as plot
