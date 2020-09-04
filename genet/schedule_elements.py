@@ -173,15 +173,10 @@ class Stop:
         :param attribs:
         :return:
         """
-        if 'additional_attributes' in attribs:
-            self.additional_attributes = attribs['additional_attributes']
-            for k in attribs['additional_attributes']:
-                setattr(self, k, attribs[k])
-        else:
-            for k, v in attribs.items():
-                if k not in self.__dict__:
-                    setattr(self, k, v)
-                    self.additional_attributes.append(k)
+        for k, v in attribs.items():
+            if k not in self.__dict__:
+                setattr(self, k, v)
+                self.additional_attributes.append(k)
 
     def iter_through_additional_attributes(self):
         for attr_key in self.additional_attributes:
