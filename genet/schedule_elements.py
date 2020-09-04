@@ -19,20 +19,6 @@ import genet.validate.schedule_validation as schedule_validation
 SPATIAL_TOLERANCE = 8
 
 
-def rebuild_stop(id, x, y, epsg, additional_attributes):
-    return Stop(id, x, y, epsg, None, additional_attributes)
-
-
-def rebuild_route(route_short_name, mode, stops, trips, arrival_offsets, departure_offsets, route_long_name, id,
-                  route, await_departure):
-    return Route(route_short_name, mode, stops, trips, arrival_offsets, departure_offsets,
-                 route, route_long_name, id, await_departure)
-
-
-def rebuild_service(id, routes, name):
-    return Service(id, routes, name)
-
-
 class ScheduleElement:
     """
     Base class for Route, Service and Schedule
@@ -150,9 +136,6 @@ class Stop:
 
     def __str__(self):
         return self.info()
-
-    def __reduce__(self):
-        return rebuild_stop, (self.id, self.x, self.y, self.epsg, dict(self.iter_through_additional_attributes()))
 
     def _round_lat(self):
         return round(self.lat, SPATIAL_TOLERANCE)
@@ -276,11 +259,6 @@ class Route(ScheduleElement):
         same_mode = self.mode.lower() == other.mode.lower()
         same_stops = list(self.stops()) == list(other.stops())
         return same_route_name and same_mode and same_stops
-
-    def __reduce__(self):
-        return rebuild_route, (self.route_short_name, self.mode, self.stops, self.trips,
-                               self.arrival_offsets, self.departure_offsets, self.route_long_name, self.id, self.route,
-                               self.await_departure)
 
     def __repr__(self):
         return "<{} instance at {}: with {} stops and {} trips>".format(
@@ -475,9 +453,6 @@ class Service(ScheduleElement):
     def __eq__(self, other):
         return self.id == other.id
 
-    def __reduce__(self):
-        return rebuild_service, (self.id, self.routes, self.name)
-
     def __repr__(self):
         return "<{} instance at {}: with {} routes>".format(
             self.__class__.__name__,
@@ -499,6 +474,7 @@ class Service(ScheduleElement):
         for route in self.routes.values():
             g = route.graph()
             routes_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
+            # TODO check for clashing stop ids overwriting data
             service_graph = nx.compose(g, service_graph)
         nx.set_node_attributes(service_graph, values=routes_attribs, name='routes')
         nx.set_node_attributes(service_graph, values=[self.id], name='services')
@@ -643,6 +619,7 @@ class Schedule(ScheduleElement):
             g = service.graph()
             routes_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
             services_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='services')), services_attribs)
+            # TODO check for clashing stop ids overwriting data
             schedule_graph = nx.compose(g, schedule_graph)
         nx.set_node_attributes(schedule_graph, values=routes_attribs, name='routes')
         nx.set_node_attributes(schedule_graph, values=services_attribs, name='services')
