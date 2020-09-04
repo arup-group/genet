@@ -1,5 +1,6 @@
 import os
 import sys
+import ast
 import uuid
 import pandas as pd
 import networkx as nx
@@ -144,7 +145,10 @@ def test_reproject_changes_x_y_values_for_all_nodes(network1):
                       ('change', 'y', ('182006.27331298392', -0.14439428709377497))]}}
     )
     assert_semantically_equal(nodes, correct_nodes)
-    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    for i in [3, 4]:
+        assert_semantically_equal(ast.literal_eval(target_change_log.loc[i, 'old_attributes']), ast.literal_eval(network1.change_log.log.loc[i, 'old_attributes']))
+        assert_semantically_equal(ast.literal_eval(target_change_log.loc[i, 'new_attributes']), ast.literal_eval(network1.change_log.log.loc[i, 'new_attributes']))
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'diff']
     assert_frame_equal(network1.change_log.log[cols_to_compare].tail(2), target_change_log[cols_to_compare], check_dtype=False)
 
 
