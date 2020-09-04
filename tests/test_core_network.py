@@ -156,7 +156,7 @@ def test_reproject_delegates_reprojection_to_schedules_own_method(network1, rout
     mocker.patch.object(Schedule, 'reproject')
     network1.schedule = Schedule(epsg='epsg:27700', services=[Service(id='id', routes=[route])])
     network1.reproject('epsg:4326')
-    network1.schedule.reproject.assert_called_once_with('epsg:4326')
+    network1.schedule.reproject.assert_called_once_with('epsg:4326', 1)
 
 
 def test_adding_the_same_networks():
@@ -464,6 +464,29 @@ def test_add_node_adds_node_to_graph_without_attribs():
     n.add_node(1)
     assert n.node(1) == {}
     assert n.graph.has_node(1)
+
+
+def test_add_multiple_nodes():
+    n = Network('epsg:27700')
+    reindexing_dict = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
+    assert n.graph.has_node(1)
+    assert n.node(1) == {'x': 1, 'y': 2}
+    assert n.graph.has_node(2)
+    assert n.node(2) == {'x': 2, 'y': 2}
+    assert reindexing_dict == {}
+
+
+def test_add_nodes_with_clashing_ids():
+    n = Network('epsg:27700')
+    n.add_node(1, {})
+    reindexing_dict = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
+    assert n.graph.has_node(1)
+    assert n.node(1) == {}
+    assert n.graph.has_node(2)
+    assert n.node(2) == {'x': 2, 'y': 2}
+    assert 1 in reindexing_dict
+    assert n.graph.has_node(reindexing_dict[1])
+    assert n.node(reindexing_dict[1]) == {'x': 1, 'y': 2}
 
 
 def test_add_edge_generates_a_link_id_and_delegated_to_add_link_id(mocker):

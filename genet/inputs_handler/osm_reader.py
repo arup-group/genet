@@ -1,6 +1,7 @@
 import yaml
 import logging
 import osmread
+from pyproj import Transformer
 import genet.inputs_handler.osmnx_customised as osmnx_customised
 import genet.utils.spatial as spatial
 import genet.utils.parallel as parallel
@@ -115,6 +116,22 @@ def create_s2_indexed_osm_graph(response_jsons, config, num_processes, bidirecti
         to_n = nodes[edge[1]]['s2id']
         attr['length'] = spatial.distance_between_s2cellids(from_n, to_n)
     return nodes, edges
+
+
+def generate_graph_nodes(nodes, epsg):
+    input_to_output_transformer = Transformer.from_crs('epsg:4326', epsg)
+    nodes_and_attributes = {}
+    for node_id, attribs in nodes.items():
+        x, y = spatial.change_proj(attribs['x'], attribs['y'], input_to_output_transformer)
+        nodes_and_attributes[str(node_id)] = {
+            'id': str(node_id),
+            'x': x,
+            'y': y,
+            'lat': attribs['x'],
+            'lon': attribs['y'],
+            's2_id': attribs['s2id']
+        }
+    return nodes_and_attributes
 
 
 def read_node(entity):

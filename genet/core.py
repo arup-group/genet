@@ -266,11 +266,24 @@ class Network:
         return node
 
     def add_nodes(self, nodes_and_attribs: dict, silent: bool = False):
-        self.graph.add_nodes_from([(node_id, attribs) for node_id, attribs in nodes_and_attribs.items()])
-        self.change_log.add_bunch(object_type='node', id_bunch=list(nodes_and_attribs.keys()),
-                                  attributes_bunch=list(nodes_and_attribs.values()))
+        # check for clashing nodes
+        clashing_node_ids = set(dict(self.nodes()).keys()) & set(nodes_and_attribs.keys())
+
+        nodes_and_attribs_to_add = {}
+        reindexing_dict = {}
+        for n in clashing_node_ids:
+            new_idx = self.generate_index_for_node(avoid_keys=set(nodes_and_attribs.keys()))
+            reindexing_dict[n] = new_idx
+            nodes_and_attribs_to_add[new_idx] = nodes_and_attribs[n]
+            del nodes_and_attribs[n]
+        nodes_and_attribs_to_add = {**nodes_and_attribs_to_add, **nodes_and_attribs}
+
+        self.graph.add_nodes_from([(node_id, attribs) for node_id, attribs in nodes_and_attribs_to_add.items()])
+        self.change_log.add_bunch(object_type='node', id_bunch=list(nodes_and_attribs_to_add.keys()),
+                                  attributes_bunch=list(nodes_and_attribs_to_add.values()))
         if not silent:
             logging.info(f'Added {len(nodes_and_attribs)} nodes')
+        return reindexing_dict
 
     def add_edge(self, u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None, attribs: dict = None,
                  silent: bool = False):
@@ -961,24 +974,26 @@ class Network:
         return report
 
     def read_osm(self, osm_file_path, osm_read_config, num_processes: int = 1):
-        input_to_output_transformer = Transformer.from_crs('epsg:4326', self.epsg)
-
+        """
+        Reads OSM data into a graph of the Network object
+        :param osm_file_path: path to .osm or .osm.pbf file
+        :param osm_read_config: config file (see configs folder in genet for examples) which informs for example which
+        highway types to read (in case of road network) and what modes to assign to them
+        :param num_processes: number of processes to split parallelisable operations across
+        :return:
+        """
         config = osm_reader.Config(osm_read_config)
         nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
             osm_file_path, config, num_processes)
 
-        nodes_and_attributes = {}
-        for node_id, attribs in nodes.items():
-            x, y = spatial.change_proj(attribs['x'], attribs['y'], input_to_output_transformer)
-            nodes_and_attributes[str(node_id)] = {
-                'id': str(node_id),
-                'x': x,
-                'y': y,
-                'lat': attribs['x'],
-                'lon': attribs['y'],
-                's2_id': attribs['s2id']
-            }
-        self.add_nodes(nodes_and_attributes, silent=True)
+        nodes_and_attributes = parallel.multiprocess_wrap(
+            data=nodes,
+            split=parallel.split_dict,
+            apply=osm_reader.generate_graph_nodes,
+            combine=parallel.combine_dict,
+            epsg=self.epsg
+        )
+        self.add_nodes(nodes_and_attributes, silent=False)
 
         for edge, attribs in edges:
             u, v = str(edge[0]), str(edge[1])
@@ -990,7 +1005,6 @@ class Network:
             link_attributes['s2_from'] = self.node(u)['s2_id']
             link_attributes['s2_to'] = self.node(v)['s2_id']
             link_attributes['length'] = attribs['length']
-
             # the rest of the keys are osm attributes
             link_attributes['attributes'] = {}
             for key, val in attribs.items():
