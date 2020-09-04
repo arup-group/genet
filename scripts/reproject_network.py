@@ -62,7 +62,7 @@ if __name__ == '__main__':
     logging.info('Reprojecting the network.')
 
     start = time.time()
-    n.reproject(new_projection)
+    n.reproject(new_projection, processes=processes)
     end = time.time()
     n.write_to_matsim(output_dir)
 

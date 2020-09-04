@@ -143,7 +143,7 @@ class Network:
         nx.set_node_attributes(self.graph, new_nodes_attribs)
 
         if self.schedule:
-            self.schedule.reproject(new_epsg)
+            self.schedule.reproject(new_epsg, processes)
         self.initiate_crs_transformer(new_epsg)
 
     def initiate_crs_transformer(self, epsg):

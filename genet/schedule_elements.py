@@ -56,7 +56,7 @@ class ScheduleElement:
     def stop_to_route_ids_map(self):
         return dict(self.graph().nodes(data='routes'))
 
-    def reproject(self, new_epsg):
+    def reproject(self, new_epsg, processes=1):
         """
         Changes projection of the element to new_epsg
         :param new_epsg: 'epsg:1234'
@@ -70,6 +70,7 @@ class ScheduleElement:
                 split=parallel.split_dict,
                 apply=mod_schedule.reproj_stops,
                 combine=parallel.combine_dict,
+                processes=processes,
                 new_epsg=new_epsg
             )
             nx.set_node_attributes(self._graph, reprojected_node_attribs)
@@ -678,7 +679,7 @@ class Schedule(ScheduleElement):
         :param new_epsg: 'epsg:1234'
         :return:
         """
-        ScheduleElement.reproject(self, new_epsg)
+        ScheduleElement.reproject(self, new_epsg, processes=processes)
         self._graph.graph['crs'] = {'init': new_epsg}
 
     def find_epsg(self):
