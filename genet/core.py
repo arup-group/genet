@@ -4,7 +4,7 @@ import uuid
 import logging
 import os
 from copy import deepcopy
-from typing import Union, List
+from typing import Union, List, Dict
 from pyproj import Transformer
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.osm_reader as osm_reader
@@ -271,8 +271,12 @@ class Network:
 
         nodes_and_attribs_to_add = {}
         reindexing_dict = {}
+        avoid_keys = set(nodes_and_attribs.keys())
         for n in clashing_node_ids:
-            new_idx = self.generate_index_for_node(avoid_keys=set(nodes_and_attribs.keys()))
+            new_idx = self.generate_index_for_node(avoid_keys=avoid_keys, silent=True)
+            # add newly generated index for keys to be avoided
+            avoid_keys |= {new_idx}
+            # create reindexing map and generate final adding dict
             reindexing_dict[n] = new_idx
             nodes_and_attribs_to_add[new_idx] = nodes_and_attribs[n]
             del nodes_and_attribs[n]
@@ -283,7 +287,7 @@ class Network:
                                   attributes_bunch=list(nodes_and_attribs_to_add.values()))
         if not silent:
             logging.info(f'Added {len(nodes_and_attribs)} nodes')
-        return reindexing_dict
+        return reindexing_dict, nodes_and_attribs_to_add
 
     def add_edge(self, u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None, attribs: dict = None,
                  silent: bool = False):
@@ -295,7 +299,7 @@ class Network:
         :param multi_edge_idx: you can specify which multi index to use if there are other edges between u and v.
         Will generate new index if already used.
         :param attribs:
-        :param silent: whether to mute stdout logging messages, useful for big batches
+        :param silent: whether to mute stdout logging messages
         :return:
         """
         link_id = self.generate_index_for_edge(silent=silent)
@@ -303,6 +307,29 @@ class Network:
         if not silent:
             logging.info('Added edge from `{}` to `{}` with link_id `{}`'.format(u, v, link_id))
         return link_id
+
+    def add_edges(self, edges_attributes: List[dict], silent: bool = False):
+        """
+        Adds multiple edges, generates their unique link ids
+        :param edges_attributes: List of edges, each item in list is a dictionary defining the edge attributes,
+        contains at least 'from': node_id and 'to': node_id entries,
+        :param silent: whether to mute stdout logging messages
+        :return:
+        """
+        links = {}
+        avoid_keys = set()
+        for edges_attribute in edges_attributes:
+            if 'from' not in edges_attribute:
+                raise RuntimeError(f'You cannot add an edge {edges_attribute} without `from` (origin) node')
+            if 'to' not in edges_attribute:
+                raise RuntimeError(f'You cannot add an edge {edges_attribute} without `to` (destination) node')
+
+            link_id = self.generate_index_for_edge(avoid_keys=avoid_keys, silent=True)
+            # add newly generated index for keys to be avoided
+            avoid_keys |= {link_id}
+            links[link_id] = edges_attribute.copy()
+            links[link_id]['id'] = link_id
+        return self.add_links(links, silent=silent)
 
     def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None,
                  attribs: dict = None, silent: bool = False):
@@ -315,7 +342,7 @@ class Network:
         :param multi_edge_idx: you can specify which multi index to use if there are other edges between u and v.
         Will generate new index if already used.
         :param attribs:
-        :param silent: whether to mute stdout logging messages, useful for big batches
+        :param silent: whether to mute stdout logging messages
         :return:
         """
         if link_id in self.link_id_mapping:
@@ -346,6 +373,85 @@ class Network:
             logging.info('Added Link with index {}, from node:{} to node:{}, under multi-index:{}, and data={}'.format(
                 link_id, u, v, multi_edge_idx, attribs))
         return link_id
+
+    def add_links(self, links_and_attributes: Dict[str, dict], silent: bool = False):
+        """
+        Adds multiple edges, generates their unique link ids
+        :param links_and_attributes: Dictionary of link ids and corresponding edge attributes, each edge attributes
+        contains at least 'from': node_id and 'to': node_id entries,
+        :param silent: whether to mute stdout logging messages
+        :return:
+        """
+        # check for compulsory attribs
+        df_links = pd.DataFrame(links_and_attributes).T
+        if ('from' not in df_links.columns) or (df_links['from'].isnull().any()):
+            raise RuntimeError('You are trying to add links which are missing `from` (origin) nodes')
+        if ('to' not in df_links.columns) or (df_links['to'].isnull().any()):
+            raise RuntimeError('You are trying to add links which are missing `to` (destination) nodes')
+
+        if ('id' not in df_links.columns) or (df_links['id'].isnull().any()):
+            df_links['id'] = df_links.index
+
+        # generate initial multi_edge_idxes for the links to be added
+        if 'multi_edge_idx' not in df_links.columns:
+            df_links['multi_edge_idx'] = 0
+            while df_links[['from', 'to', 'multi_edge_idx']].duplicated().any():
+                df_links.loc[df_links[['from', 'to', 'multi_edge_idx']].duplicated(), 'multi_edge_idx'] += 1
+
+        df_link_id_mapping = pd.DataFrame(self.link_id_mapping).T
+        df_link_id_mapping['id'] = df_link_id_mapping.index
+        if not df_link_id_mapping.empty:
+            _df = pd.merge(df_links, df_link_id_mapping, how='left', on=('from', 'to', 'multi_edge_idx'),
+                           suffixes=('_to_add', '_in_graph'))
+
+            # generate new multi_edge_idx where it clashes with existing links
+            def generate_unique_multi_idx(group):
+                multi_idx_to_avoid = df_link_id_mapping[
+                    (df_link_id_mapping['from'] == group.name[0]) & (df_link_id_mapping['to'] == group.name[1])][
+                    'multi_edge_idx']
+                while group['multi_edge_idx'].isin(multi_idx_to_avoid).any() \
+                        | group['multi_edge_idx'].duplicated().any():
+                    group.loc[(group['multi_edge_idx'].isin(multi_idx_to_avoid)) | (
+                        group['multi_edge_idx'].duplicated()), 'multi_edge_idx'] += 1
+                return group
+
+            clashing_multi_idxs = _df[_df['id_in_graph'].notna()]['id_to_add']
+            df_links.loc[df_links['id'].isin(clashing_multi_idxs)] = df_links[
+                df_links['id'].isin(clashing_multi_idxs)].groupby(['from', 'to']).apply(generate_unique_multi_idx)
+
+            # TODO generate unique indices if not
+            clashing_link_ids = set(self.link_id_mapping.keys()) & set(links_and_attributes.keys())
+            reindexing_dict = {}
+            avoid_keys = set(links_and_attributes.keys())
+            for idx in clashing_link_ids:
+                new_idx = self.generate_index_for_edge(avoid_keys=avoid_keys, silent=True)
+                # add newly generated index for keys to be avoided
+                avoid_keys |= {new_idx}
+                # create reindexing map and generate final adding dict
+                reindexing_dict[idx] = new_idx
+                del links_and_attributes[idx]
+            clashing_mask = df_links['id'].isin(reindexing_dict.keys())
+            df_links.loc[clashing_mask, 'id'] = df_links.loc[clashing_mask, 'id'].map(reindexing_dict)
+            df_links = df_links.set_index('id')
+        else:
+            reindexing_dict = {}
+
+        # end with updated links_and_attributes dict
+        add_to_link_id_mapping = df_links[['from', 'to', 'multi_edge_idx']].T.to_dict()
+        df_links = df_links.drop('multi_edge_idx', axis=1)
+        links_and_attributes = df_links.T.to_dict()
+
+        # update link_id_mapping
+        self.link_id_mapping = {**self.link_id_mapping, **add_to_link_id_mapping}
+
+        self.graph.add_edges_from(
+            [(attribs['from'], attribs['to'], add_to_link_id_mapping[link]['multi_edge_idx'], attribs) for link, attribs
+             in links_and_attributes.items()])
+        self.change_log.add_bunch(object_type='link', id_bunch=list(links_and_attributes.keys()),
+                                  attributes_bunch=list(links_and_attributes.values()))
+        if not silent:
+            logging.info(f'Added {len(links_and_attributes)} links')
+        return reindexing_dict, links_and_attributes
 
     def reindex_node(self, node_id, new_node_id, silent: bool = False):
         # check if new id is already occupied
@@ -993,29 +1099,18 @@ class Network:
             combine=parallel.combine_dict,
             epsg=self.epsg
         )
-        self.add_nodes(nodes_and_attributes, silent=False)
+        reindexing_dict, nodes_and_attributes = self.add_nodes(nodes_and_attributes, silent=False)
 
-        for edge, attribs in edges:
-            u, v = str(edge[0]), str(edge[1])
-            link_attributes = osm_reader.find_matsim_link_values(attribs, config)
-            link_attributes['oneway'] = '1'
-            link_attributes['modes'] = attribs['modes']
-            link_attributes['from'] = self.node(u)['id']
-            link_attributes['to'] = self.node(v)['id']
-            link_attributes['s2_from'] = self.node(u)['s2_id']
-            link_attributes['s2_to'] = self.node(v)['s2_id']
-            link_attributes['length'] = attribs['length']
-            # the rest of the keys are osm attributes
-            link_attributes['attributes'] = {}
-            for key, val in attribs.items():
-                if key not in link_attributes:
-                    link_attributes['attributes']['osm:way:{}'.format(key)] = {
-                        'name': 'osm:way:{}'.format(key),
-                        'class': 'java.lang.String',
-                        'text': str(val),
-                    }
-
-            self.add_edge(u, v, attribs=link_attributes, silent=True)
+        edges_attributes = parallel.multiprocess_wrap(
+            data=edges,
+            split=parallel.split_dict,
+            apply=osm_reader.generate_graph_edges,
+            combine=parallel.combine_list,
+            reindexing_dict=reindexing_dict,
+            nodes_and_attributes=nodes_and_attributes,
+            config_path=osm_read_config
+        )
+        self.add_edges(edges_attributes, silent=False)
 
         logging.info('Deleting isolated nodes which have no edges.')
         self.remove_nodes(list(nx.isolates(self.graph)), silent=True)

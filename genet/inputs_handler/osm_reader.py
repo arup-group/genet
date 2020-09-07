@@ -134,6 +134,36 @@ def generate_graph_nodes(nodes, epsg):
     return nodes_and_attributes
 
 
+def generate_graph_edges(edges, reindexing_dict, nodes_and_attributes, config_path):
+    edges_attributes = []
+    for edge, attribs in edges:
+        u, v = str(edge[0]), str(edge[1])
+        if u in reindexing_dict:
+            u = reindexing_dict[u]
+        if v in reindexing_dict:
+            v = reindexing_dict[v]
+
+        link_attributes = find_matsim_link_values(attribs, Config(config_path)).copy()
+        link_attributes['oneway'] = '1'
+        link_attributes['modes'] = attribs['modes']
+        link_attributes['from'] = u
+        link_attributes['to'] = v
+        link_attributes['s2_from'] = nodes_and_attributes[u]['s2_id']
+        link_attributes['s2_to'] = nodes_and_attributes[v]['s2_id']
+        link_attributes['length'] = attribs['length']
+        # the rest of the keys are osm attributes
+        link_attributes['attributes'] = {}
+        for key, val in attribs.items():
+            if key not in link_attributes:
+                link_attributes['attributes']['osm:way:{}'.format(key)] = {
+                    'name': 'osm:way:{}'.format(key),
+                    'class': 'java.lang.String',
+                    'text': str(val),
+                }
+        edges_attributes.append(link_attributes)
+    return edges_attributes
+
+
 def read_node(entity):
     json_data = {'type': 'node',
                  'id': entity.id,

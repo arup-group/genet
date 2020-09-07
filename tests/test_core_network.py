@@ -468,7 +468,7 @@ def test_add_node_adds_node_to_graph_without_attribs():
 
 def test_add_multiple_nodes():
     n = Network('epsg:27700')
-    reindexing_dict = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
+    reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
     assert n.graph.has_node(1)
     assert n.node(1) == {'x': 1, 'y': 2}
     assert n.graph.has_node(2)
@@ -479,7 +479,7 @@ def test_add_multiple_nodes():
 def test_add_nodes_with_clashing_ids():
     n = Network('epsg:27700')
     n.add_node(1, {})
-    reindexing_dict = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
+    reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
     assert n.graph.has_node(1)
     assert n.node(1) == {}
     assert n.graph.has_node(2)
@@ -487,6 +487,25 @@ def test_add_nodes_with_clashing_ids():
     assert 1 in reindexing_dict
     assert n.graph.has_node(reindexing_dict[1])
     assert n.node(reindexing_dict[1]) == {'x': 1, 'y': 2}
+
+
+def test_add_nodes_with_multiple_clashing_ids():
+    n = Network('epsg:27700')
+    n.add_node(1, {})
+    n.add_node(2, {})
+    assert n.graph.has_node(1)
+    assert n.node(1) == {}
+    assert n.graph.has_node(2)
+    assert n.node(2) == {}
+
+    reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
+    assert 1 in reindexing_dict
+    assert n.graph.has_node(reindexing_dict[1])
+    assert n.node(reindexing_dict[1]) == {'x': 1, 'y': 2}
+
+    assert 2 in reindexing_dict
+    assert n.graph.has_node(reindexing_dict[2])
+    assert n.node(reindexing_dict[2]) == {'x': 2, 'y': 2}
 
 
 def test_add_edge_generates_a_link_id_and_delegated_to_add_link_id(mocker):
@@ -509,6 +528,26 @@ def test_add_edge_generates_a_link_id_with_specified_multiidx(mocker):
     Network.add_link.assert_called_once_with('12345', 1, 2, 10, {'a': 1}, False)
 
 
+def test_adding_multiple_edges():
+    n = Network('epsg:27700')
+    n.add_edges([{'from': 1, 'to': 2}, {'from': 2, 'to': 3}])
+    assert n.graph.has_edge(1, 2)
+    assert n.graph.has_edge(2, 3)
+    assert '1' in n.link_id_mapping
+    assert '2' in n.link_id_mapping
+    assert n.link_id_mapping['1'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
+    assert n.link_id_mapping['2'] == {'from': 2, 'to': 3, 'multi_edge_idx': 0}
+
+
+def test_adding_multiple_edges_between_same_nodes():
+    n = Network('epsg:27700')
+    n.add_edges([{'from': 1, 'to': 2}, {'from': 1, 'to': 2}, {'from': 1, 'to': 2}, {'from': 2, 'to': 3}])
+    assert n.graph.has_edge(1, 2)
+    assert n.graph.number_of_edges(1, 2) == 3
+    assert n.graph.has_edge(2, 3)
+    assert len(n.link_id_mapping) == 4
+
+
 def test_add_link_adds_edge_to_graph_with_attribs():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'a': 1})
@@ -523,6 +562,116 @@ def test_add_link_adds_edge_to_graph_without_attribs():
     n.graph.has_edge(1, 2)
     assert '0' in n.link_id_mapping
     assert n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
+
+
+def test_adding_multiple_links():
+    n = Network('epsg:27700')
+    n.add_links({'0': {'from': 1, 'to': 2}, '1': {'from': 2, 'to': 3}})
+    assert n.graph.has_edge(1, 2)
+    assert n.graph.has_edge(2, 3)
+    assert '0' in n.link_id_mapping
+    assert '1' in n.link_id_mapping
+    assert n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
+    assert n.link_id_mapping['1'] == {'from': 2, 'to': 3, 'multi_edge_idx': 0}
+
+
+def test_adding_multiple_links_with_id_clashes():
+    n = Network('epsg:27700')
+    n.add_link('0', 10, 20)
+    assert '0' in n.link_id_mapping
+
+    reindexing_dict, links_and_attribs = n.add_links({'0': {'from': 1, 'to': 2}, '1': {'from': 2, 'to': 3}})
+
+    assert '1' in n.link_id_mapping
+    assert '0' in reindexing_dict
+    assert len(n.link_id_mapping) == 3
+
+    assert_semantically_equal(links_and_attribs[reindexing_dict['0']], {'from': 1, 'to': 2})
+    assert_semantically_equal(links_and_attribs['1'], {'from': 2, 'to': 3})
+
+
+def test_adding_multiple_links_with_multiple_id_clashes():
+    n = Network('epsg:27700')
+    n.add_link('0', 10, 20)
+    n.add_link('1', 10, 20)
+    assert '0' in n.link_id_mapping
+    assert '1' in n.link_id_mapping
+
+    reindexing_dict, links_and_attribs = n.add_links({'0': {'from': 1, 'to': 2}, '1': {'from': 2, 'to': 3}})
+
+    assert '0' in reindexing_dict
+    assert '1' in reindexing_dict
+    assert len(n.link_id_mapping) == 4
+
+    assert_semantically_equal(links_and_attribs[reindexing_dict['0']], {'from': 1, 'to': 2})
+    assert_semantically_equal(links_and_attribs[reindexing_dict['1']], {'from': 2, 'to': 3})
+
+
+def test_adding_loads_of_multiple_links_between_same_nodes():
+    n = Network('epsg:27700')
+    reindexing_dict, links_and_attribs = n.add_links({i: {'from': 1, 'to': 2} for i in range(10)})
+
+    assert_semantically_equal(links_and_attribs, {i: {'from': 1, 'to': 2, 'id': i} for i in range(10)})
+    assert_semantically_equal(n.link_id_mapping, {i: {'from': 1, 'to': 2, 'multi_edge_idx': i} for i in range(10)})
+
+
+def test_adding_multiple_links_with_multi_idx_clashes():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2)
+    n.add_link('1', 1, 2)
+    assert '0' in n.link_id_mapping
+    assert '1' in n.link_id_mapping
+
+    n.add_links({'2': {'from': 1, 'to': 2}, '3': {'from': 1, 'to': 2}, '4': {'from': 2, 'to': 3}})
+
+    assert n.link_id_mapping['2'] == {'from': 1, 'to': 2, 'multi_edge_idx': 2}
+    assert n.link_id_mapping['3'] == {'from': 1, 'to': 2, 'multi_edge_idx': 3}
+    assert n.link_id_mapping['4'] == {'from': 2, 'to': 3, 'multi_edge_idx': 0}
+
+
+def test_adding_multiple_links_with_id_and_multi_idx_clashes():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2)
+    n.add_link('1', 1, 2)
+    assert '0' in n.link_id_mapping
+    assert '1' in n.link_id_mapping
+
+    reindexing_dict, links_and_attribs = n.add_links({'0': {'from': 1, 'to': 2}, '1': {'from': 1, 'to': 2}, '2': {'from': 2, 'to': 3}})
+
+    assert '0' in reindexing_dict
+    assert '1' in reindexing_dict
+    assert len(n.link_id_mapping) == 5
+
+    assert_semantically_equal(n.link_id_mapping[reindexing_dict['0']], {'from': 1, 'to': 2, 'multi_edge_idx': 2})
+    assert_semantically_equal(n.link_id_mapping[reindexing_dict['1']], {'from': 1, 'to': 2, 'multi_edge_idx': 3})
+
+
+def test_adding_multiple_links_missing_some_from_nodes():
+    n = Network('epsg:27700')
+    with pytest.raises(RuntimeError) as error_info:
+        n.add_links({'0': {'to': 2}, '1': {'from': 2, 'to': 3}})
+    assert "You are trying to add links which are missing `from` (origin) nodes" in str(error_info.value)
+
+
+def test_adding_multiple_links_missing_from_nodes_completely():
+    n = Network('epsg:27700')
+    with pytest.raises(RuntimeError) as error_info:
+        n.add_links({'0': {'to': 2}, '1': {'to': 3}})
+    assert "You are trying to add links which are missing `from` (origin) nodes" in str(error_info.value)
+
+
+def test_adding_multiple_links_missing_some_to_nodes():
+    n = Network('epsg:27700')
+    with pytest.raises(RuntimeError) as error_info:
+        n.add_links({'0': {'from': 2}, '1': {'from': 2, 'to': 3}})
+    assert "You are trying to add links which are missing `to` (destination) nodes" in str(error_info.value)
+
+
+def test_adding_multiple_links_missing_to_nodes_completely():
+    n = Network('epsg:27700')
+    with pytest.raises(RuntimeError) as error_info:
+        n.add_links({'0': {'from': 2}, '1': {'from': 2}})
+    assert "You are trying to add links which are missing `to` (destination) nodes" in str(error_info.value)
 
 
 def test_network_modal_subgraph_using_general_subgraph_on_link_attribs():
