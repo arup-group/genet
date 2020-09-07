@@ -32,7 +32,7 @@ def combine_list(list_list):
     return return_list
 
 
-def split_dict(_dict, k=50):
+def split_dict(_dict, k=100):
     """
     Split type function. Partitions dict into list of subset dicts of _dict
     :param _dict: any dict
