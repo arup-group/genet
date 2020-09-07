@@ -1103,7 +1103,7 @@ class Network:
 
         edges_attributes = parallel.multiprocess_wrap(
             data=edges,
-            split=parallel.split_dict,
+            split=parallel.split_list,
             apply=osm_reader.generate_graph_edges,
             combine=parallel.combine_list,
             reindexing_dict=reindexing_dict,
