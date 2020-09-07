@@ -470,9 +470,9 @@ def test_add_multiple_nodes():
     n = Network('epsg:27700')
     reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
     assert n.graph.has_node(1)
-    assert n.node(1) == {'x': 1, 'y': 2}
+    assert n.node(1) == {'x': 1, 'y': 2, 'id': 1}
     assert n.graph.has_node(2)
-    assert n.node(2) == {'x': 2, 'y': 2}
+    assert n.node(2) == {'x': 2, 'y': 2, 'id': 2}
     assert reindexing_dict == {}
 
 
@@ -483,10 +483,10 @@ def test_add_nodes_with_clashing_ids():
     assert n.graph.has_node(1)
     assert n.node(1) == {}
     assert n.graph.has_node(2)
-    assert n.node(2) == {'x': 2, 'y': 2}
+    assert n.node(2) == {'x': 2, 'y': 2, 'id': 2}
     assert 1 in reindexing_dict
     assert n.graph.has_node(reindexing_dict[1])
-    assert n.node(reindexing_dict[1]) == {'x': 1, 'y': 2}
+    assert n.node(reindexing_dict[1]) == {'x': 1, 'y': 2, 'id': reindexing_dict[1]}
 
 
 def test_add_nodes_with_multiple_clashing_ids():
@@ -501,11 +501,11 @@ def test_add_nodes_with_multiple_clashing_ids():
     reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
     assert 1 in reindexing_dict
     assert n.graph.has_node(reindexing_dict[1])
-    assert n.node(reindexing_dict[1]) == {'x': 1, 'y': 2}
+    assert n.node(reindexing_dict[1]) == {'x': 1, 'y': 2, 'id': reindexing_dict[1]}
 
     assert 2 in reindexing_dict
     assert n.graph.has_node(reindexing_dict[2])
-    assert n.node(reindexing_dict[2]) == {'x': 2, 'y': 2}
+    assert n.node(reindexing_dict[2]) == {'x': 2, 'y': 2, 'id': reindexing_dict[2]}
 
 
 def test_add_edge_generates_a_link_id_and_delegated_to_add_link_id(mocker):
@@ -586,8 +586,8 @@ def test_adding_multiple_links_with_id_clashes():
     assert '0' in reindexing_dict
     assert len(n.link_id_mapping) == 3
 
-    assert_semantically_equal(links_and_attribs[reindexing_dict['0']], {'from': 1, 'to': 2})
-    assert_semantically_equal(links_and_attribs['1'], {'from': 2, 'to': 3})
+    assert_semantically_equal(links_and_attribs[reindexing_dict['0']], {'from': 1, 'to': 2, 'id': reindexing_dict['0']})
+    assert_semantically_equal(links_and_attribs['1'], {'from': 2, 'to': 3, 'id': '1'})
 
 
 def test_adding_multiple_links_with_multiple_id_clashes():
@@ -603,8 +603,8 @@ def test_adding_multiple_links_with_multiple_id_clashes():
     assert '1' in reindexing_dict
     assert len(n.link_id_mapping) == 4
 
-    assert_semantically_equal(links_and_attribs[reindexing_dict['0']], {'from': 1, 'to': 2})
-    assert_semantically_equal(links_and_attribs[reindexing_dict['1']], {'from': 2, 'to': 3})
+    assert_semantically_equal(links_and_attribs[reindexing_dict['0']], {'from': 1, 'to': 2, 'id': reindexing_dict['0']})
+    assert_semantically_equal(links_and_attribs[reindexing_dict['1']], {'from': 2, 'to': 3, 'id': reindexing_dict['1']})
 
 
 def test_adding_loads_of_multiple_links_between_same_nodes():
@@ -1627,6 +1627,14 @@ def test_generate_index_for_node_gives_uuid4_as_last_resort(mocker):
     uuid.uuid4.assert_called_once()
 
 
+def test_generating_n_indicies_for_nodes():
+    n = Network('epsg:27700')
+    n.add_nodes({str(i): {} for i in range(10)})
+    idxs = n.generate_indices_for_n_nodes(5)
+    assert len(idxs) == 5
+    assert not set(dict(n.nodes()).keys()) & idxs
+
+
 def test_generate_index_for_edge_gives_next_integer_string_when_you_have_matsim_usual_integer_index():
     n = Network('epsg:27700')
     n.link_id_mapping = {'1': {}, '2': {}}
@@ -1660,6 +1668,14 @@ def test_index_graph_edges_generates_completely_new_index():
     n.add_link('x2', 1, 2)
     n.index_graph_edges()
     assert list(n.link_id_mapping.keys()) == ['0', '1']
+
+
+def test_generating_n_indicies_for_edges():
+    n = Network('epsg:27700')
+    n.add_links({str(i): {'from': 0, 'to': 1} for i in range(10)})
+    idxs = n.generate_indices_for_n_edges(5)
+    assert len(idxs) == 5
+    assert not set(n.link_id_mapping.keys()) & idxs
 
 
 def test_has_schedule_with_valid_network_routes_with_valid_routes(route):

@@ -269,18 +269,22 @@ class Network:
         # check for clashing nodes
         clashing_node_ids = set(dict(self.nodes()).keys()) & set(nodes_and_attribs.keys())
 
-        nodes_and_attribs_to_add = {}
+        df_nodes = pd.DataFrame(nodes_and_attribs).T
         reindexing_dict = {}
-        avoid_keys = set(nodes_and_attribs.keys())
-        for n in clashing_node_ids:
-            new_idx = self.generate_index_for_node(avoid_keys=avoid_keys, silent=True)
-            # add newly generated index for keys to be avoided
-            avoid_keys |= {new_idx}
-            # create reindexing map and generate final adding dict
-            reindexing_dict[n] = new_idx
-            nodes_and_attribs_to_add[new_idx] = nodes_and_attribs[n]
-            del nodes_and_attribs[n]
-        nodes_and_attribs_to_add = {**nodes_and_attribs_to_add, **nodes_and_attribs}
+        if df_nodes.empty:
+            df_nodes = pd.DataFrame({'id': list(nodes_and_attribs.keys())})
+        elif ('id' not in df_nodes.columns) or (df_nodes['id'].isnull().any()):
+            df_nodes['id'] = df_nodes.index
+
+        if clashing_node_ids:
+            reindexing_dict = dict(
+                zip(clashing_node_ids, self.generate_indices_for_n_nodes(
+                len(nodes_and_attribs), avoid_keys=set(nodes_and_attribs.keys()), silent=silent)))
+            clashing_mask = df_nodes['id'].isin(reindexing_dict.keys())
+            df_nodes.loc[clashing_mask, 'id'] = df_nodes.loc[clashing_mask, 'id'].map(reindexing_dict)
+        df_nodes = df_nodes.set_index('id', drop=False)
+
+        nodes_and_attribs_to_add = df_nodes.T.to_dict()
 
         self.graph.add_nodes_from([(node_id, attribs) for node_id, attribs in nodes_and_attribs_to_add.items()])
         self.change_log.add_bunch(object_type='node', id_bunch=list(nodes_and_attribs_to_add.keys()),
@@ -316,20 +320,17 @@ class Network:
         :param silent: whether to mute stdout logging messages
         :return:
         """
-        links = {}
-        avoid_keys = set()
-        for edges_attribute in edges_attributes:
-            if 'from' not in edges_attribute:
-                raise RuntimeError(f'You cannot add an edge {edges_attribute} without `from` (origin) node')
-            if 'to' not in edges_attribute:
-                raise RuntimeError(f'You cannot add an edge {edges_attribute} without `to` (destination) node')
+        # check for compulsory attribs
+        df_edges = pd.DataFrame(edges_attributes)
+        if ('from' not in df_edges.columns) or (df_edges['from'].isnull().any()):
+            raise RuntimeError('You are trying to add edges which are missing `from` (origin) nodes')
+        if ('to' not in df_edges.columns) or (df_edges['to'].isnull().any()):
+            raise RuntimeError('You are trying to add edges which are missing `to` (destination) nodes')
 
-            link_id = self.generate_index_for_edge(avoid_keys=avoid_keys, silent=True)
-            # add newly generated index for keys to be avoided
-            avoid_keys |= {link_id}
-            links[link_id] = edges_attribute.copy()
-            links[link_id]['id'] = link_id
-        return self.add_links(links, silent=silent)
+        df_edges['id'] = self.generate_indices_for_n_edges(len(df_edges), silent=silent)
+        df_edges = df_edges.set_index('id', drop=False)
+
+        return self.add_links(df_edges.T.to_dict(), silent=silent)
 
     def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None,
                  attribs: dict = None, silent: bool = False):
@@ -419,20 +420,16 @@ class Network:
             df_links.loc[df_links['id'].isin(clashing_multi_idxs)] = df_links[
                 df_links['id'].isin(clashing_multi_idxs)].groupby(['from', 'to']).apply(generate_unique_multi_idx)
 
-            # TODO generate unique indices if not
+            # generate unique indices if not
             clashing_link_ids = set(self.link_id_mapping.keys()) & set(links_and_attributes.keys())
-            reindexing_dict = {}
-            avoid_keys = set(links_and_attributes.keys())
-            for idx in clashing_link_ids:
-                new_idx = self.generate_index_for_edge(avoid_keys=avoid_keys, silent=True)
-                # add newly generated index for keys to be avoided
-                avoid_keys |= {new_idx}
-                # create reindexing map and generate final adding dict
-                reindexing_dict[idx] = new_idx
-                del links_and_attributes[idx]
+            reindexing_dict = dict(
+                zip(clashing_link_ids, self.generate_indices_for_n_edges(
+                    len(clashing_link_ids),
+                    avoid_keys=set(links_and_attributes.keys()),
+                    silent=silent)))
             clashing_mask = df_links['id'].isin(reindexing_dict.keys())
             df_links.loc[clashing_mask, 'id'] = df_links.loc[clashing_mask, 'id'].map(reindexing_dict)
-            df_links = df_links.set_index('id')
+            df_links = df_links.set_index('id', drop=False)
         else:
             reindexing_dict = {}
 
@@ -968,6 +965,21 @@ class Network:
             logging.info('Generated node id {}.'.format(id))
         return str(id)
 
+    def generate_indices_for_n_nodes(self, n, avoid_keys: Union[list, set] = None, silent: bool = False):
+        existing_keys = set([i for i, attribs in self.nodes()])
+        if avoid_keys:
+            existing_keys = existing_keys | set(avoid_keys)
+        try:
+            id_set = set([str(max([int(i) for i in existing_keys]) + j) for j in range(1, n + 1)])
+        except ValueError:
+            id_set = set([str(len(existing_keys) + j) for j in range(1, n + 1)])
+        if id_set & existing_keys:
+            id_set = id_set - existing_keys
+            id_set = id_set | set([str(uuid.uuid4()) for i in range(n - len(id_set))])
+        if not silent:
+            logging.info(f'Generated {len(id_set)} node ids.')
+        return id_set
+
     def link_id_exists(self, link_id):
         if link_id in self.link_id_mapping:
             logging.warning('This link_id={} already exists.'.format(link_id))
@@ -987,6 +999,21 @@ class Network:
         if not silent:
             logging.info('Generated link id {}.'.format(id))
         return str(id)
+
+    def generate_indices_for_n_edges(self, n, avoid_keys: Union[list, set] = None, silent: bool = False):
+        existing_keys = set(self.link_id_mapping.keys())
+        if avoid_keys:
+            existing_keys = existing_keys | set(avoid_keys)
+        try:
+            id_set = set([str(max([int(i) for i in existing_keys]) + j) for j in range(1, n + 1)])
+        except ValueError:
+            id_set = set([str(len(existing_keys) + j) for j in range(1, n + 1)])
+        if id_set & existing_keys:
+            id_set = id_set - existing_keys
+            id_set = id_set | set([str(uuid.uuid4()) for i in range(n - len(id_set))])
+        if not silent:
+            logging.info(f'Generated {len(id_set)} link ids.')
+        return id_set
 
     def index_graph_edges(self):
         logging.warning('This method clears the existing link_id indexing')
