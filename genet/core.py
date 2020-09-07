@@ -279,7 +279,7 @@ class Network:
         if clashing_node_ids:
             reindexing_dict = dict(
                 zip(clashing_node_ids, self.generate_indices_for_n_nodes(
-                len(nodes_and_attribs), avoid_keys=set(nodes_and_attribs.keys()), silent=silent)))
+                    len(nodes_and_attribs), avoid_keys=set(nodes_and_attribs.keys()), silent=silent)))
             clashing_mask = df_nodes['id'].isin(reindexing_dict.keys())
             df_nodes.loc[clashing_mask, 'id'] = df_nodes.loc[clashing_mask, 'id'].map(reindexing_dict)
         df_nodes = df_nodes.set_index('id', drop=False)

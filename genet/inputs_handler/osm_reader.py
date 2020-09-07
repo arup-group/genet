@@ -4,6 +4,7 @@ import osmread
 from pyproj import Transformer
 import genet.inputs_handler.osmnx_customised as osmnx_customised
 import genet.utils.parallel as parallel
+import genet.utils.spatial as spatial
 from genet.outputs_handler.matsim_xml_values import MATSIM_JOSM_DEFAULTS
 
 
@@ -138,13 +139,20 @@ def generate_graph_edges(edges, reindexing_dict, nodes_and_attributes, config_pa
             v = reindexing_dict[v]
 
         link_attributes = find_matsim_link_values(attribs, Config(config_path)).copy()
+        if 'lanes' in attribs:
+            # overwrite the default matsim josm values
+            link_attributes['permlanes'] = float(attribs['lanes'])
+        # compute link-wide capacity
+        link_attributes['capacity'] = link_attributes['permlanes'] * link_attributes['capacity']
+
         link_attributes['oneway'] = '1'
         link_attributes['modes'] = attribs['modes']
         link_attributes['from'] = u
         link_attributes['to'] = v
         link_attributes['s2_from'] = nodes_and_attributes[u]['s2_id']
         link_attributes['s2_to'] = nodes_and_attributes[v]['s2_id']
-        link_attributes['length'] = attribs['length']
+        link_attributes['length'] = spatial.distance_between_s2cellids(
+            link_attributes['s2_from'], link_attributes['s2_to'])
         # the rest of the keys are osm attributes
         link_attributes['attributes'] = {}
         for key, val in attribs.items():

@@ -146,10 +146,13 @@ def test_reproject_changes_x_y_values_for_all_nodes(network1):
     )
     assert_semantically_equal(nodes, correct_nodes)
     for i in [3, 4]:
-        assert_semantically_equal(ast.literal_eval(target_change_log.loc[i, 'old_attributes']), ast.literal_eval(network1.change_log.log.loc[i, 'old_attributes']))
-        assert_semantically_equal(ast.literal_eval(target_change_log.loc[i, 'new_attributes']), ast.literal_eval(network1.change_log.log.loc[i, 'new_attributes']))
+        assert_semantically_equal(ast.literal_eval(target_change_log.loc[i, 'old_attributes']),
+                                  ast.literal_eval(network1.change_log.log.loc[i, 'old_attributes']))
+        assert_semantically_equal(ast.literal_eval(target_change_log.loc[i, 'new_attributes']),
+                                  ast.literal_eval(network1.change_log.log.loc[i, 'new_attributes']))
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'diff']
-    assert_frame_equal(network1.change_log.log[cols_to_compare].tail(2), target_change_log[cols_to_compare], check_dtype=False)
+    assert_frame_equal(network1.change_log.log[cols_to_compare].tail(2), target_change_log[cols_to_compare],
+                       check_dtype=False)
 
 
 def test_reproject_delegates_reprojection_to_schedules_own_method(network1, route, mocker):
@@ -535,8 +538,12 @@ def test_adding_multiple_edges():
     assert n.graph.has_edge(2, 3)
     assert '1' in n.link_id_mapping
     assert '2' in n.link_id_mapping
-    assert n.link_id_mapping['1'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
-    assert n.link_id_mapping['2'] == {'from': 2, 'to': 3, 'multi_edge_idx': 0}
+    if n.link_id_mapping['1'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}:
+        assert n.link_id_mapping['2'] == {'from': 2, 'to': 3, 'multi_edge_idx': 0}
+    elif n.link_id_mapping['2'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}:
+        assert n.link_id_mapping['1'] == {'from': 2, 'to': 3, 'multi_edge_idx': 0}
+    else:
+        raise AssertionError()
 
 
 def test_adding_multiple_edges_between_same_nodes():
@@ -636,7 +643,8 @@ def test_adding_multiple_links_with_id_and_multi_idx_clashes():
     assert '0' in n.link_id_mapping
     assert '1' in n.link_id_mapping
 
-    reindexing_dict, links_and_attribs = n.add_links({'0': {'from': 1, 'to': 2}, '1': {'from': 1, 'to': 2}, '2': {'from': 2, 'to': 3}})
+    reindexing_dict, links_and_attribs = n.add_links(
+        {'0': {'from': 1, 'to': 2}, '1': {'from': 1, 'to': 2}, '2': {'from': 2, 'to': 3}})
 
     assert '0' in reindexing_dict
     assert '1' in reindexing_dict
@@ -1333,92 +1341,85 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
     assert number_of_1_multi_idx == 4
     assert number_of_2_multi_idx == 1
 
-    assert_semantically_equal(dict(network.links()),
-                              {'1': {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
-                                     'modes': ['walk', 'bike', 'car'], 'from': '0', 'to': '1',
-                                     's2_from': 1152921492875543713, 's2_to': 1152921335974974453,
-                                     'length': 1748.4487354464366, 'attributes': {
-                                      'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                                          'text': 'unclassified'},
-                                      'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                                                        'text': '0'}}, 'id': '1'},
-                               '2': {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
-                                     'modes': ['walk', 'bike', 'car'], 'from': '1', 'to': '0',
-                                     's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
-                                     'length': 1748.4487354464366, 'attributes': {
-                                       'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                                           'text': 'unclassified'},
-                                       'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                                                         'text': '0'}}, 'id': '2'},
-                               '3': {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
-                                     'modes': ['walk', 'bike', 'car'], 'from': '0', 'to': '2',
-                                     's2_from': 1152921492875543713, 's2_to': 384307157539499829,
-                                     'length': 1748.4488584600201, 'attributes': {
-                                       'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                                           'text': 'unclassified'},
-                                       'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                                                         'text': '100'}}, 'id': '3'},
-                               '4': {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
-                                     'modes': ['walk', 'bike', 'car'], 'from': '2', 'to': '0',
-                                     's2_from': 384307157539499829, 's2_to': 1152921492875543713,
-                                     'length': 1748.4488584600201, 'attributes': {
-                                       'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                                           'text': 'unclassified'},
-                                       'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                                                         'text': '100'}}, 'id': '4'},
-                               '5': {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
-                                     'modes': ['walk', 'bike', 'car'], 'from': '1', 'to': '0',
-                                     's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
-                                     'length': 1748.4487354464366, 'attributes': {
-                                       'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                                           'text': 'unclassified'},
-                                       'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                                                         'text': '400'}}, 'id': '5'},
-                               '6': {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
-                                     'modes': ['walk', 'bike', 'car'], 'from': '0', 'to': '1',
-                                     's2_from': 1152921492875543713, 's2_to': 1152921335974974453,
-                                     'length': 1748.4487354464366, 'attributes': {
-                                       'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                                           'text': 'unclassified'},
-                                       'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                                                         'text': '400'}}, 'id': '6'},
-                               '7': {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
-                                     'modes': ['walk', 'bike', 'car'], 'from': '2', 'to': '0',
-                                     's2_from': 384307157539499829, 's2_to': 1152921492875543713,
-                                     'length': 1748.4488584600201, 'attributes': {
-                                       'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                                           'text': 'unclassified'},
-                                       'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                                                         'text': '700'}}, 'id': '7'},
-                               '8': {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
-                                     'modes': ['walk', 'bike', 'car'], 'from': '0', 'to': '2',
-                                     's2_from': 1152921492875543713, 's2_to': 384307157539499829,
-                                     'length': 1748.4488584600201, 'attributes': {
-                                       'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                                           'text': 'unclassified'},
-                                       'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                                                         'text': '700'}}, 'id': '8'},
-                               '9': {'permlanes': 3.0, 'freespeed': 12.5, 'capacity': 1800.0, 'oneway': '1',
-                                     'modes': ['walk', 'bike', 'car'], 'from': '2', 'to': '1',
-                                     's2_from': 384307157539499829, 's2_to': 1152921335974974453,
-                                     'length': 3496.897593906457, 'attributes': {
-                                       'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                                           'text': 'tertiary'},
-                                       'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                                                         'text': '47007861'},
-                                       'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String',
-                                                         'text': '3'}}, 'id': '9'},
-                               '10': {'permlanes': 3.0, 'freespeed': 12.5, 'capacity': 1800.0, 'oneway': '1',
-                                      'modes': ['car', 'walk', 'bike'], 'from': '1', 'to': '0',
-                                      's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
-                                      'length': 1748.4487354464366, 'attributes': {
-                                       'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                                                         'text': '47007861'},
-                                       'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String',
-                                                         'text': '3'},
-                                       'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                                           'text': 'tertiary'}}, 'id': '10'}
-                               })
+    correct_link_attribs = [
+        {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
+         'from': '0', 'to': '1', 's2_from': 1152921492875543713, 's2_to': 1152921335974974453,
+         'length': 1748.4487354464366,
+         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '0'},
+                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                            'text': 'unclassified'}}},
+        {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
+         'from': '1', 'to': '0', 's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
+         'length': 1748.4487354464366,
+         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '0'},
+                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                            'text': 'unclassified'}}},
+        {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
+         'from': '0', 'to': '2', 's2_from': 1152921492875543713, 's2_to': 384307157539499829,
+         'length': 1748.4488584600201,
+         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '100'},
+                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                            'text': 'unclassified'}}},
+        {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
+         'from': '2', 'to': '0', 's2_from': 384307157539499829, 's2_to': 1152921492875543713,
+         'length': 1748.4488584600201,
+         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '100'},
+                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                            'text': 'unclassified'}}},
+        {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
+         'from': '1', 'to': '0', 's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
+         'length': 1748.4487354464366,
+         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '400'},
+                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                            'text': 'unclassified'}}},
+        {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
+         'from': '0', 'to': '1', 's2_from': 1152921492875543713, 's2_to': 1152921335974974453,
+         'length': 1748.4487354464366,
+         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '400'},
+                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                            'text': 'unclassified'}}},
+        {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
+         'from': '2', 'to': '0', 's2_from': 384307157539499829, 's2_to': 1152921492875543713,
+         'length': 1748.4488584600201,
+         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '700'},
+                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                            'text': 'unclassified'}}},
+        {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
+         'from': '0', 'to': '2', 's2_from': 1152921492875543713, 's2_to': 384307157539499829,
+         'length': 1748.4488584600201,
+         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '700'},
+                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                            'text': 'unclassified'}}},
+        {'permlanes': 3.0, 'freespeed': 12.5, 'capacity': 1800.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
+         'from': '2', 'to': '1', 's2_from': 384307157539499829, 's2_to': 1152921335974974453,
+         'length': 3496.897593906457,
+         'attributes': {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
+                        'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '47007861'},
+                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                            'text': 'tertiary'}}},
+        {'permlanes': 3.0, 'freespeed': 12.5, 'capacity': 1800.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
+         'from': '1', 'to': '0', 's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
+         'length': 1748.4487354464366,
+         'attributes': {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
+                        'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '47007861'},
+                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                            'text': 'tertiary'}}}]
+
+    cols = ['permlanes', 'freespeed', 'capacity', 'oneway', 'modes', 'from', 'to', 's2_from', 's2_to', 'length',
+            'attributes']
+
+    assert len(network.link_id_mapping) == 10
+    for link in network.link_id_mapping.keys():
+        satisfied = False
+        attribs_to_test = network.link(link).copy()
+        del attribs_to_test['id']
+        for link_attrib in correct_link_attribs:
+            try:
+                assert_semantically_equal(attribs_to_test, link_attrib)
+                satisfied = True
+            except AssertionError:
+                pass
+        assert satisfied
 
 
 def test_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):
