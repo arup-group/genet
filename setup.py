@@ -20,5 +20,5 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/arup-group/genet",
     packages=find_packages(),
-    install_requires=install_requires,
+    install_requires=install_requires
 )
