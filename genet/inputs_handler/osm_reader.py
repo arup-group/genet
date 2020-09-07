@@ -3,7 +3,6 @@ import logging
 import osmread
 from pyproj import Transformer
 import genet.inputs_handler.osmnx_customised as osmnx_customised
-import genet.utils.spatial as spatial
 import genet.utils.parallel as parallel
 from genet.outputs_handler.matsim_xml_values import MATSIM_JOSM_DEFAULTS
 
@@ -110,11 +109,6 @@ def create_s2_indexed_osm_graph(response_jsons, config, num_processes, bidirecti
         config=config,
         bidirectional=bidirectional)
 
-    logging.info('OSM: add length (great circle distance between nodes) attribute to each edge and index by s2')
-    for edge, attr in edges:
-        from_n = nodes[edge[0]]['s2id']
-        to_n = nodes[edge[1]]['s2id']
-        attr['length'] = spatial.distance_between_s2cellids(from_n, to_n)
     return nodes, edges
 
 
