@@ -266,18 +266,19 @@ def simplify_graph(n, strict=True, remove_rings=True):
             modes |= set(mode_list)
         edge_attributes['modes'] = list(modes)
 
-        new_attributes = {}
-        for attribs_dict in edge_attributes['attributes']:
-            for key, val in attribs_dict.items():
-                if key in new_attributes:
-                    new_attributes[key]['text'] |= {val["text"]}
-                else:
-                    new_attributes[key] = val.copy()
-                    new_attributes[key]['text'] = {new_attributes[key]['text']}
-        for key, val in new_attributes.items():
-            val['text'] -= {None}
-            val['text'] = ','.join(val['text'])
-        edge_attributes['attributes'] = new_attributes.copy()
+        if 'attributes' in edge_attributes:
+            new_attributes = {}
+            for attribs_dict in edge_attributes['attributes']:
+                for key, val in attribs_dict.items():
+                    if key in new_attributes:
+                        new_attributes[key]['text'] |= {val["text"]}
+                    else:
+                        new_attributes[key] = val.copy()
+                        new_attributes[key]['text'] = {new_attributes[key]['text']}
+            for key, val in new_attributes.items():
+                val['text'] -= {None}
+                val['text'] = ','.join(val['text'])
+            edge_attributes['attributes'] = new_attributes.copy()
 
         for key in set(edge_attributes) - {'s2_to', 'freespeed', 'attributes', 'to', 'permlanes', 'from', 'id', 'ids',
                                            'capacity', 'length', 'modes', 's2_from'}:
@@ -342,6 +343,7 @@ def simplify_graph(n, strict=True, remove_rings=True):
             # Not all linkref ids would have changed
             pass
     nx.set_node_attributes(n.schedule._graph, new_stops_attribs)
+    logging.info(f"Updated Stop Link Reference Ids")
 
     # TODO update schedule routes
     for service_id, route in n.schedule.routes():
@@ -355,3 +357,4 @@ def simplify_graph(n, strict=True, remove_rings=True):
             elif new_route[-1] != updated_route_link:
                 new_route.append(updated_route_link)
         route.route = new_route
+    logging.info(f"Updated Network Routes")
