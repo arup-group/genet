@@ -102,14 +102,16 @@ MATSIM_JOSM_DEFAULTS = {
 
 MODE_DICT = {
     "Tram,Streetcar,Light rail".lower(): 'Tram',
+    "Tram".lower(): 'Tram',
     "Subway,Metro".lower(): 'Underground Service',
     "Subway".lower(): 'Underground Service',
     "Metro".lower(): 'Underground Service',
     "Rail".lower(): 'Rail',
     "Bus".lower(): 'Bus',
     "Ferry".lower(): 'Ferry',
-    "Cable car".lower(): 'Cable car',
+    "Cable car".lower(): 'Gondola',
     "Gondola,Suspended cable car".lower(): 'Gondola',
+    "Gondola".lower(): 'Gondola',
     "Funicular".lower(): 'Funicular'
 }
 

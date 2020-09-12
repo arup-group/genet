@@ -8,6 +8,7 @@ from typing import Union, List, Dict
 from pyproj import Transformer
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.osm_reader as osm_reader
+import genet.inputs_handler.osmnx_customised as osmnx_customised
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.geojson as geojson
 import genet.modify.change_log as change_log
@@ -152,6 +153,9 @@ class Network:
             self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
         else:
             self.transformer = None
+
+    def simplify(self):
+        osmnx_customised.simplify_graph(self)
 
     def node_attribute_summary(self, data=False):
         """
@@ -838,6 +842,8 @@ class Network:
         :return:
         """
         u, v, multi_idx = self.edge_tuple_from_link_id(link_id)
+        # if u == '5221390668059117485' or v == '5221390668059117485':
+        #     print('Heyoooo')
         return dict(self.graph[u][v][multi_idx])
 
     def services(self):

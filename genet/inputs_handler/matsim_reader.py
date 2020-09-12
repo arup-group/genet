@@ -156,6 +156,7 @@ def read_network(network_path, transformer: Transformer):
                 # reset link_attribs
                 link_attribs = {}
             elif elem.tag == 'attribute':
+                # TODO fix: some elems for osmid are being read as None
                 link_attribs = read_link_attrib(elem, link_attribs)
     # update the attributes of the last link
     if link_attribs:

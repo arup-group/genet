@@ -46,8 +46,9 @@ def write_matsim_network(output_dir, network):
                         with xf.element("link", sanitise_dictionary_for_xml(link_attributes)):
                             with xf.element("attributes"):
                                 for k, attrib in attributes.items():
-                                    text = attrib.pop('text')
-                                    rec = etree.Element("attribute", attrib)
+                                    attrib_copy = attrib.copy()
+                                    text = attrib_copy.pop('text')
+                                    rec = etree.Element("attribute", attrib_copy)
                                     rec.text = text
                                     xf.write(rec)
                     else:

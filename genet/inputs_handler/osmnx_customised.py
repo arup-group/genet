@@ -1,8 +1,13 @@
 from itertools import groupby
 import genet.utils.spatial as spatial
 import genet.inputs_handler.osm_reader as osm_reader
+import networkx as nx
+from math import ceil
+from shapely.geometry import LineString, Point
+import logging
 
-# rip of a few functions from osmnx.core to customise the tags being saved to the graph
+
+# rip and monkey patch of a few functions from osmnx.core to customise the tags being saved to the graph
 
 
 def parse_osm_nodes_paths(osm_data, config):
@@ -104,6 +109,7 @@ def return_edges(paths, config, bidirectional=False):
     :param bidirectional: bool value if True, reads all paths as both ways
     :return:
     """
+
     def extract_osm_data(data, es):
         d = {}
         for tag in (set(config.USEFUL_TAGS_PATH) | {'osmid', 'modes'}) - {'oneway'}:
@@ -148,7 +154,6 @@ def return_edges(paths, config, bidirectional=False):
 
 
 def return_edge(data, one_way):
-
     # extract the ordered list of nodes from this path element, then delete it
     # so we don't add it as an attribute to the edge later
     path_nodes = data['nodes']
@@ -169,3 +174,184 @@ def return_edge(data, one_way):
         path_edges_opposite_direction = [(v, u) for u, v in path_edges]
         path_edges.extend(path_edges_opposite_direction)
     return path_edges
+
+
+def simplify_graph(n, strict=True, remove_rings=True):
+    """
+    MONKEY PATCH OF OSMNX'S GRAPH SIMPLIFICATION ALGO TOW ORK WITH OUR MESSED UP ATTRIBS
+
+    Simplify a graph's topology by removing interstitial nodes.
+
+    Simplify graph topology by removing all nodes that are not intersections
+    or dead-ends. Create an edge directly between the end points that
+    encapsulate them, but retain the geometry of the original edges, saved as
+    attribute in new edge.
+
+    Parameters
+    ----------
+    G : genet.Network object
+    strict : bool
+        if False, allow nodes to be end points even if they fail all other
+        rules but have incident edges with different OSM IDs. Lets you keep
+        nodes at elbow two-way intersections, but sometimes individual blocks
+        have multiple OSM IDs within them too.
+    remove_rings : bool
+        if True, remove isolated self-contained rings that have no endpoints
+
+    Returns
+    -------
+    None, updates n.graph, indexing and schedule routes. Adds a new attribute to n that records map between old
+    and new link indices
+    """
+    import osmnx
+
+    if osmnx.simplification._is_simplified(n.graph):
+        raise Exception("This graph has already been simplified, cannot simplify it again.")
+
+    logging.info("Begin topologically simplifying the graph...")
+    G = n.graph.copy()
+    initial_node_count = len(list(G.nodes()))
+    initial_edge_count = len(list(G.edges()))
+    all_nodes_to_remove = []
+    all_edges_to_add = []
+
+    used_indices = set()
+    n.link_simplification_map = {}
+    # generate each path that needs to be simplified
+    for path in osmnx.simplification._get_paths_to_simplify(G, strict=strict):
+        # add the interstitial edges we're removing to a list so we can retain
+        # their spatial geometry
+        edge_attributes = {}
+        for u, v in zip(path[:-1], path[1:]):
+
+            # there should rarely be multiple edges between interstitial nodes
+            # usually happens if OSM has duplicate ways digitized for just one
+            # street... we will keep only one of the edges (see below)
+            number_of_edges = G.number_of_edges(u, v)
+            if number_of_edges != 1:
+                pass
+
+            # get edge between these nodes: if multiple edges exist between
+            # them (see above) - smoosh them
+            for multi_idx, edge in G[u][v].items():
+                for key in edge:
+                    if key in edge_attributes:
+                        # if this key already exists in the dict, append it to the
+                        # value list
+                        edge_attributes[key].append(edge[key])
+                    else:
+                        # if this key doesn't already exist, set the value to a list
+                        # containing the one value
+                        edge_attributes[key] = [edge[key]]
+
+        edge_attributes['ids'] = edge_attributes['id']
+        new_link_idx = n.generate_index_for_edge(avoid_keys=used_indices, silent=True)
+        edge_attributes['id'] = new_link_idx
+        used_indices |= {new_link_idx}
+        n.link_simplification_map = {**n.link_simplification_map,
+                                     **dict(zip(edge_attributes['ids'], [new_link_idx] * len(edge_attributes['ids'])))}
+
+        edge_attributes['from'] = path[0]
+        edge_attributes['to'] = path[-1]
+        edge_attributes['s2_from'] = n.node(path[0])['s2_id']
+        edge_attributes['s2_to'] = n.node(path[-1])['s2_id']
+
+        edge_attributes['freespeed'] = sum(edge_attributes['freespeed']) / len(edge_attributes['freespeed'])
+        edge_attributes['capacity'] = sum(edge_attributes['capacity']) / len(edge_attributes['capacity'])
+        edge_attributes['permlanes'] = ceil(sum(edge_attributes['permlanes']) / len(edge_attributes['permlanes']))
+        edge_attributes['length'] = sum(edge_attributes['length'])
+
+        modes = set()
+        for mode_list in edge_attributes['modes']:
+            modes |= set(mode_list)
+        edge_attributes['modes'] = list(modes)
+
+        new_attributes = {}
+        for attribs_dict in edge_attributes['attributes']:
+            for key, val in attribs_dict.items():
+                if key in new_attributes:
+                    new_attributes[key]['text'] |= {val["text"]}
+                else:
+                    new_attributes[key] = val.copy()
+                    new_attributes[key]['text'] = {new_attributes[key]['text']}
+        for key, val in new_attributes.items():
+            val['text'] -= {None}
+            val['text'] = ','.join(val['text'])
+        edge_attributes['attributes'] = new_attributes.copy()
+
+        for key in set(edge_attributes) - {'s2_to', 'freespeed', 'attributes', 'to', 'permlanes', 'from', 'id', 'ids',
+                                           'capacity', 'length', 'modes', 's2_from'}:
+            # don't touch the length attribute, we'll sum it at the end
+            if len(set(edge_attributes[key])) == 1:
+                # if there's only 1 unique value in this attribute list,
+                # consolidate it to the single value (the zero-th)
+                edge_attributes[key] = edge_attributes[key][0]
+            else:
+                # otherwise, if there are multiple values, keep one of each value
+                edge_attributes[key] = list(set(edge_attributes[key]))
+
+        # construct the geometry
+        edge_attributes["geometry"] = LineString(
+            [Point((G.nodes[node]["x"], G.nodes[node]["y"])) for node in path]
+        )
+
+        # link ref id mapping update
+        for link_id in edge_attributes['ids']:
+            del n.link_id_mapping[link_id]
+        n.link_id_mapping[new_link_idx] = {'from': edge_attributes['from'], 'to': edge_attributes['to'],
+                                           'multi_edge_idx': 0}
+
+        # add the nodes and edges to their lists for processing at the end
+        all_nodes_to_remove.extend(path[1:-1])
+        all_edges_to_add.append(
+            {"origin": path[0], "destination": path[-1], "attr_dict": edge_attributes}
+        )
+
+    # for each edge to add in the list we assembled, create a new edge between
+    # the origin and destination
+    for edge in all_edges_to_add:
+        G.add_edge(edge["origin"], edge["destination"], **edge["attr_dict"])
+
+    # finally remove all the interstitial nodes between the new edges
+    G.remove_nodes_from(set(all_nodes_to_remove))
+
+    # TODO
+    # if remove_rings:
+    #     # remove any connected components that form a self-contained ring
+    #     # without any endpoints
+    #     wccs = nx.weakly_connected_components(G)
+    #     nodes_in_rings = set()
+    #     for wcc in wccs:
+    #         if all([not osmnx.simplification._is_endpoint(G, n) for n in wcc]):
+    #             nodes_in_rings.update(wcc)
+    #     G.remove_nodes_from(nodes_in_rings)
+
+    # mark graph as having been simplified
+    G.graph["simplified"] = True
+
+    logging.info(f"Simplified graph: {initial_node_count} to {len(G)} nodes, {initial_edge_count} to {len(G.edges())} "
+                 f"edges")
+    n.graph = G
+
+    # update stop's link reference ids
+    new_stops_attribs = {}
+    for node, link_ref_id in n.schedule._graph.nodes(data='linkRefId'):
+        try:
+            new_stops_attribs[node] = {'linkRefId': n.link_simplification_map[link_ref_id]}
+        except KeyError:
+            # Not all linkref ids would have changed
+            pass
+    nx.set_node_attributes(n.schedule._graph, new_stops_attribs)
+
+    # TODO update schedule routes
+    for service_id, route in n.schedule.routes():
+        new_route = []
+        for link in route.route:
+            updated_route_link = link
+            if link in n.link_simplification_map:
+                updated_route_link = n.link_simplification_map[link]
+            if not new_route:
+                new_route = [updated_route_link]
+            elif new_route[-1] != updated_route_link:
+                new_route.append(updated_route_link)
+        route.route = new_route

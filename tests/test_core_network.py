@@ -19,6 +19,11 @@ pt2matsim_network_test_file = os.path.abspath(
 pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
 
+puma_network_test_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "puma", "network.xml"))
+puma_schedule_test_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "puma", "schedule.xml"))
+
 
 @pytest.fixture()
 def network1():
@@ -364,6 +369,29 @@ def test_plot_schedule_delegates_to_util_plot_plot_non_routed_schedule_graph(moc
     n = network_object_from_test_data
     n.plot_schedule()
     plot.plot_non_routed_schedule_graph.assert_called_once()
+
+
+def test_simplifing_puma_network():
+    n = Network('epsg:27700')
+    n.read_matsim_network(puma_network_test_file)
+    n.read_matsim_schedule(puma_schedule_test_file)
+
+    link_ids_pre_simplify = set(dict(n.links()).keys())
+
+    n.simplify()
+
+    link_ids_post_simplify = set(dict(n.links()).keys())
+
+    assert link_ids_post_simplify & link_ids_pre_simplify
+    new_links = link_ids_post_simplify - link_ids_pre_simplify
+    deleted_links =  link_ids_pre_simplify - link_ids_post_simplify
+    assert set(n.link_simplification_map.keys()) == deleted_links
+    assert set(n.link_simplification_map.values()) == new_links
+    assert (set(n.link_id_mapping.keys()) & new_links) == new_links
+
+    report = n.generate_validation_report()
+
+    assert report['routing']['services_have_routes_in_the_graph']
 
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
