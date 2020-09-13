@@ -2,7 +2,7 @@ import logging
 import multiprocessing as mp
 
 
-def split_list(_list, k=3000):
+def split_list(_list, k=500):
     """
     Split type function. Partitions list into list of subsets of _list
     :param _list: any list
@@ -32,7 +32,7 @@ def combine_list(list_list):
     return return_list
 
 
-def split_dict(_dict, k=3000):
+def split_dict(_dict, k=500):
     """
     Split type function. Partitions dict into list of subset dicts of _dict
     :param _dict: any dict
