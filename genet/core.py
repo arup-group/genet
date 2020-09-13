@@ -154,8 +154,8 @@ class Network:
         else:
             self.transformer = None
 
-    def simplify(self):
-        osmnx_customised.simplify_graph(self)
+    def simplify(self, no_processes=1):
+        osmnx_customised.simplify_graph(self, no_processes)
 
     def node_attribute_summary(self, data=False):
         """

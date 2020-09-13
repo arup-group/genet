@@ -3,7 +3,6 @@ import genet as gn
 import logging
 import time
 
-
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Reproject a MATSim network')
 
@@ -23,12 +22,12 @@ if __name__ == '__main__':
                             help='The projection network is in, eg. "epsg:27700"',
                             required=True)
 
-    # arg_parser.add_argument('-p',
-    #                         '--processes',
-    #                         help='The number of processes to split computation across',
-    #                         required=False,
-    #                         default=1,
-    #                         type=int)
+    arg_parser.add_argument('-np',
+                            '--processes',
+                            help='The number of processes to split computation across',
+                            required=False,
+                            default=1,
+                            type=int)
 
     arg_parser.add_argument('-od',
                             '--output_dir',
@@ -39,7 +38,7 @@ if __name__ == '__main__':
     network = args['network']
     schedule = args['schedule']
     projection = args['projection']
-    # processes = args['processes']
+    processes = args['processes']
     output_dir = args['output_dir']
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
@@ -53,14 +52,19 @@ if __name__ == '__main__':
     logging.info('Simplifying the Network.')
 
     start = time.time()
-    n.simplify()
+    n.simplify(no_processes=processes)
     end = time.time()
+
+    logging.info(
+        f'Simplification resulted in the following map between old and new link ids: {n.link_simplification_map}')
+
+    n.write_to_matsim(output_dir)
+
+    logging.info('Generating validation report')
     report = n.generate_validation_report()
     logging.info(f'Graph validation: {report["graph"]}')
     if n.schedule:
         logging.info(f'Schedule level validation: {report["schedule"]["schedule_level"]["is_valid_schedule"]}')
         logging.info(f'Routing validation: {report["routing"]["services_have_routes_in_the_graph"]}')
-
-    n.write_to_matsim(output_dir)
 
     logging.info(f'It took {round((end - start)/60, 3)} min to simplify the network.')

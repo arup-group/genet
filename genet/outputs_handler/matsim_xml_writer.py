@@ -42,8 +42,9 @@ def write_matsim_network(output_dir, network):
                     link_attributes = delete_redundant_link_attributes_for_xml(link_attributes)
                     validate_link_data(link_attributes)
                     if 'attributes' in link_attributes:
-                        attributes = link_attributes.pop('attributes')
-                        with xf.element("link", sanitise_dictionary_for_xml(link_attributes)):
+                        link_attrib_copy = link_attributes.copy()
+                        attributes = link_attrib_copy.pop('attributes')
+                        with xf.element("link", sanitise_dictionary_for_xml(link_attrib_copy)):
                             with xf.element("attributes"):
                                 for k, attrib in attributes.items():
                                     attrib_copy = attrib.copy()
@@ -52,7 +53,7 @@ def write_matsim_network(output_dir, network):
                                     rec.text = text
                                     xf.write(rec)
                     else:
-                        xf.write(etree.Element("link", sanitise_dictionary_for_xml(link_attributes)))
+                        xf.write(etree.Element("link", sanitise_dictionary_for_xml(link_attributes.copy())))
 
 
 def write_matsim_schedule(output_dir, schedule, epsg=''):

@@ -392,6 +392,7 @@ def test_simplifing_puma_network():
     report = n.generate_validation_report()
 
     assert report['routing']['services_have_routes_in_the_graph']
+    n.write_to_matsim('/Users/kasia.kozlowska/PycharmProjects/ABM/puma/outputs/fitzrovia_test/simplified_2')
 
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():

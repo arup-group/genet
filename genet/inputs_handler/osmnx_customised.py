@@ -1,6 +1,7 @@
 from itertools import groupby
 import genet.utils.spatial as spatial
 import genet.inputs_handler.osm_reader as osm_reader
+import genet.utils.parallel as parallel
 import networkx as nx
 from math import ceil
 from shapely.geometry import LineString, Point
@@ -176,7 +177,83 @@ def return_edge(data, one_way):
     return path_edges
 
 
-def simplify_graph(n, strict=True, remove_rings=True):
+def process_path(indexed_links_paths_to_simplify):
+    links_to_add = {}
+    for new_id, link_path_data in indexed_links_paths_to_simplify.items():
+        path = link_path_data['path']
+        nodes_data = link_path_data['node_data']
+        edge_attributes = link_path_data['link_data'].copy()
+
+        edge_attributes['ids'] = edge_attributes['id']
+        edge_attributes['id'] = new_id
+
+        edge_attributes['from'] = link_path_data['path'][0]
+        edge_attributes['to'] = link_path_data['path'][-1]
+        edge_attributes['s2_from'] = nodes_data[path[0]]['s2_id']
+        edge_attributes['s2_to'] = nodes_data[path[-1]]['s2_id']
+
+        edge_attributes['freespeed'] = max(edge_attributes['freespeed'])
+        edge_attributes['capacity'] = sum(edge_attributes['capacity'])
+        edge_attributes['permlanes'] = ceil(sum(edge_attributes['permlanes']))
+        edge_attributes['length'] = sum(edge_attributes['length'])
+
+        modes = set()
+        for mode_list in edge_attributes['modes']:
+            modes |= set(mode_list)
+        edge_attributes['modes'] = list(modes)
+
+        if 'attributes' in edge_attributes:
+            new_attributes = {}
+            for attribs_dict in edge_attributes['attributes']:
+                for key, val in attribs_dict.items():
+                    if key in new_attributes:
+                        new_attributes[key]['text'] |= {val["text"]}
+                    else:
+                        new_attributes[key] = val.copy()
+                        new_attributes[key]['text'] = {new_attributes[key]['text']}
+            for key, val in new_attributes.items():
+                val['text'] -= {None}
+                val['text'] = ','.join(val['text'])
+            edge_attributes['attributes'] = new_attributes.copy()
+
+        for key in set(edge_attributes) - {'s2_to', 'freespeed', 'attributes', 'to', 'permlanes', 'from', 'id', 'ids',
+                                           'capacity', 'length', 'modes', 's2_from'}:
+            # don't touch the length attribute, we'll sum it at the end
+            if len(set(edge_attributes[key])) == 1:
+                # if there's only 1 unique value in this attribute list,
+                # consolidate it to the single value (the zero-th)
+                edge_attributes[key] = edge_attributes[key][0]
+            else:
+                # otherwise, if there are multiple values, keep one of each value
+                edge_attributes[key] = list(set(edge_attributes[key]))
+
+        # construct the geometry
+        edge_attributes["geometry"] = LineString(
+            [Point((nodes_data[node]["x"], nodes_data[node]["y"])) for node in path]
+        )
+        links_to_add[new_id] = edge_attributes
+    return links_to_add
+
+
+def extract_edge_data(G, path):
+    edge_attributes = {}
+    for u, v in zip(path[:-1], path[1:]):
+        # get edge between these nodes: if multiple edges exist between
+        # them - smoosh them
+        for multi_idx, edge in G[u][v].items():
+            for key in edge:
+                if key in edge_attributes:
+                    # if this key already exists in the dict, append it to the
+                    # value list
+                    edge_attributes[key].append(edge[key])
+                else:
+                    # if this key doesn't already exist, set the value to a list
+                    # containing the one value
+                    edge_attributes[key] = [edge[key]]
+    return edge_attributes
+
+
+def simplify_graph(n, no_processes=1, strict=True, remove_rings=True):
     """
     MONKEY PATCH OF OSMNX'S GRAPH SIMPLIFICATION ALGO TOW ORK WITH OUR MESSED UP ATTRIBS
 
@@ -212,109 +289,49 @@ def simplify_graph(n, strict=True, remove_rings=True):
     G = n.graph.copy()
     initial_node_count = len(list(G.nodes()))
     initial_edge_count = len(list(G.edges()))
-    all_nodes_to_remove = []
-    all_edges_to_add = []
 
-    used_indices = set()
-    n.link_simplification_map = {}
+    logging.info('Generating paths to be simplified')
     # generate each path that needs to be simplified
-    for path in osmnx.simplification._get_paths_to_simplify(G, strict=strict):
-        # add the interstitial edges we're removing to a list so we can retain
-        # their spatial geometry
-        edge_attributes = {}
-        for u, v in zip(path[:-1], path[1:]):
+    paths_to_simplify = list(osmnx.simplification._get_paths_to_simplify(G, strict=strict))
 
-            # there should rarely be multiple edges between interstitial nodes
-            # usually happens if OSM has duplicate ways digitized for just one
-            # street... we will keep only one of the edges (see below)
-            number_of_edges = G.number_of_edges(u, v)
-            if number_of_edges != 1:
-                pass
+    indexed_paths_to_simplify = dict(zip(n.generate_indices_for_n_edges(len(paths_to_simplify)), paths_to_simplify))
+    indexed_paths_to_simplify = {
+        k: {'path': path, 'link_data': extract_edge_data(G, path), 'node_data': {node: n.node(node) for node in path}}
+        for k, path in indexed_paths_to_simplify.items()
+    }
 
-            # get edge between these nodes: if multiple edges exist between
-            # them (see above) - smoosh them
-            for multi_idx, edge in G[u][v].items():
-                for key in edge:
-                    if key in edge_attributes:
-                        # if this key already exists in the dict, append it to the
-                        # value list
-                        edge_attributes[key].append(edge[key])
-                    else:
-                        # if this key doesn't already exist, set the value to a list
-                        # containing the one value
-                        edge_attributes[key] = [edge[key]]
+    logging.info('Processing links for all paths to be simplified')
+    links_to_add = parallel.multiprocess_wrap(
+        data=indexed_paths_to_simplify,
+        split=parallel.split_dict,
+        apply=process_path,
+        combine=parallel.combine_dict,
+        processes=no_processes
+    )
 
-        edge_attributes['ids'] = edge_attributes['id']
-        new_link_idx = n.generate_index_for_edge(avoid_keys=used_indices, silent=True)
-        edge_attributes['id'] = new_link_idx
-        used_indices |= {new_link_idx}
+    logging.info('Adding new simplified links')
+    # add links
+    reindexing_dict, links_and_attributes = n.add_links(links_to_add)
+
+    # collect all links and nodes to remove, generate link simplification map between old indices and new
+    links_to_remove = set()
+    nodes_to_remove = set()
+    n.link_simplification_map = {}
+    for new_id, path_data in indexed_paths_to_simplify.items():
+        links_to_remove |= set(path_data['link_data']['id'])
+        if new_id in reindexing_dict:
+            new_id = reindexing_dict[new_id]
         n.link_simplification_map = {**n.link_simplification_map,
-                                     **dict(zip(edge_attributes['ids'], [new_link_idx] * len(edge_attributes['ids'])))}
+                                     **dict(zip(path_data['link_data']['id'], [new_id] * len(path_data['link_data']['id'])))}
+        nodes_to_remove |= set(path_data['path'][1:-1])
 
-        edge_attributes['from'] = path[0]
-        edge_attributes['to'] = path[-1]
-        edge_attributes['s2_from'] = n.node(path[0])['s2_id']
-        edge_attributes['s2_to'] = n.node(path[-1])['s2_id']
+    logging.info('Removing links which have now been replaced by simplified links')
+    # remove links
+    n.remove_links(links_to_remove)
 
-        edge_attributes['freespeed'] = sum(edge_attributes['freespeed']) / len(edge_attributes['freespeed'])
-        edge_attributes['capacity'] = sum(edge_attributes['capacity']) / len(edge_attributes['capacity'])
-        edge_attributes['permlanes'] = ceil(sum(edge_attributes['permlanes']) / len(edge_attributes['permlanes']))
-        edge_attributes['length'] = sum(edge_attributes['length'])
-
-        modes = set()
-        for mode_list in edge_attributes['modes']:
-            modes |= set(mode_list)
-        edge_attributes['modes'] = list(modes)
-
-        if 'attributes' in edge_attributes:
-            new_attributes = {}
-            for attribs_dict in edge_attributes['attributes']:
-                for key, val in attribs_dict.items():
-                    if key in new_attributes:
-                        new_attributes[key]['text'] |= {val["text"]}
-                    else:
-                        new_attributes[key] = val.copy()
-                        new_attributes[key]['text'] = {new_attributes[key]['text']}
-            for key, val in new_attributes.items():
-                val['text'] -= {None}
-                val['text'] = ','.join(val['text'])
-            edge_attributes['attributes'] = new_attributes.copy()
-
-        for key in set(edge_attributes) - {'s2_to', 'freespeed', 'attributes', 'to', 'permlanes', 'from', 'id', 'ids',
-                                           'capacity', 'length', 'modes', 's2_from'}:
-            # don't touch the length attribute, we'll sum it at the end
-            if len(set(edge_attributes[key])) == 1:
-                # if there's only 1 unique value in this attribute list,
-                # consolidate it to the single value (the zero-th)
-                edge_attributes[key] = edge_attributes[key][0]
-            else:
-                # otherwise, if there are multiple values, keep one of each value
-                edge_attributes[key] = list(set(edge_attributes[key]))
-
-        # construct the geometry
-        edge_attributes["geometry"] = LineString(
-            [Point((G.nodes[node]["x"], G.nodes[node]["y"])) for node in path]
-        )
-
-        # link ref id mapping update
-        for link_id in edge_attributes['ids']:
-            del n.link_id_mapping[link_id]
-        n.link_id_mapping[new_link_idx] = {'from': edge_attributes['from'], 'to': edge_attributes['to'],
-                                           'multi_edge_idx': 0}
-
-        # add the nodes and edges to their lists for processing at the end
-        all_nodes_to_remove.extend(path[1:-1])
-        all_edges_to_add.append(
-            {"origin": path[0], "destination": path[-1], "attr_dict": edge_attributes}
-        )
-
-    # for each edge to add in the list we assembled, create a new edge between
-    # the origin and destination
-    for edge in all_edges_to_add:
-        G.add_edge(edge["origin"], edge["destination"], **edge["attr_dict"])
-
-    # finally remove all the interstitial nodes between the new edges
-    G.remove_nodes_from(set(all_nodes_to_remove))
+    logging.info('Removing nodes')
+    # finally, remove nodes
+    n.remove_nodes(nodes_to_remove)
 
     # TODO
     # if remove_rings:
@@ -328,11 +345,10 @@ def simplify_graph(n, strict=True, remove_rings=True):
     #     G.remove_nodes_from(nodes_in_rings)
 
     # mark graph as having been simplified
-    G.graph["simplified"] = True
+    n.graph.graph["simplified"] = True
 
-    logging.info(f"Simplified graph: {initial_node_count} to {len(G)} nodes, {initial_edge_count} to {len(G.edges())} "
+    logging.info(f"Simplified graph: {initial_node_count} to {len(n.graph)} nodes, {initial_edge_count} to {len(n.graph.edges())} "
                  f"edges")
-    n.graph = G
 
     if n.schedule:
         logging.info("Updating the Schedule")
