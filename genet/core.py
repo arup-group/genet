@@ -892,27 +892,28 @@ class Network:
             conditions={'length': links_over_threshold_length}
         )
 
-        report['schedule'] = self.schedule.generate_validation_report()
+        if self.schedule:
+            report['schedule'] = self.schedule.generate_validation_report()
 
-        route_to_crow_fly_ratio = {}
-        for service_id, route in self.schedule_routes():
-            if 'not_has_uniquely_indexed_routes' in report['schedule']['service_level'][service_id]['invalid_stages']:
-                if service_id in route_to_crow_fly_ratio:
-                    route_id = len(route_to_crow_fly_ratio[service_id])
+            route_to_crow_fly_ratio = {}
+            for service_id, route in self.schedule_routes():
+                if 'not_has_uniquely_indexed_routes' in report['schedule']['service_level'][service_id]['invalid_stages']:
+                    if service_id in route_to_crow_fly_ratio:
+                        route_id = len(route_to_crow_fly_ratio[service_id])
+                    else:
+                        route_id = 0
                 else:
-                    route_id = 0
-            else:
-                route_id = route.id
-            if service_id in route_to_crow_fly_ratio:
-                route_to_crow_fly_ratio[service_id][route_id] = self.calculate_route_to_crow_fly_ratio(route)
-            else:
-                route_to_crow_fly_ratio[service_id] = {route_id: self.calculate_route_to_crow_fly_ratio(route)}
+                    route_id = route.id
+                if service_id in route_to_crow_fly_ratio:
+                    route_to_crow_fly_ratio[service_id][route_id] = self.calculate_route_to_crow_fly_ratio(route)
+                else:
+                    route_to_crow_fly_ratio[service_id] = {route_id: self.calculate_route_to_crow_fly_ratio(route)}
 
-        report['routing'] = {
-            'services_have_routes_in_the_graph': self.has_schedule_with_valid_network_routes(),
-            'service_routes_with_invalid_network_route': self.invalid_network_routes(),
-            'route_to_crow_fly_ratio': route_to_crow_fly_ratio
-        }
+            report['routing'] = {
+                'services_have_routes_in_the_graph': self.has_schedule_with_valid_network_routes(),
+                'service_routes_with_invalid_network_route': self.invalid_network_routes(),
+                'route_to_crow_fly_ratio': route_to_crow_fly_ratio
+            }
         return report
 
     def read_osm(self, osm_file_path, osm_read_config, num_processes: int = 1):
