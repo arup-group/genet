@@ -6,6 +6,7 @@ import networkx as nx
 from math import ceil
 from shapely.geometry import LineString, Point
 import logging
+import osmnx
 
 
 # rip and monkey patch of a few functions from osmnx.core to customise the tags being saved to the graph
@@ -193,8 +194,8 @@ def process_path(indexed_links_paths_to_simplify):
         edge_attributes['s2_to'] = nodes_data[path[-1]]['s2_id']
 
         edge_attributes['freespeed'] = max(edge_attributes['freespeed'])
-        edge_attributes['capacity'] = sum(edge_attributes['capacity'])
-        edge_attributes['permlanes'] = ceil(sum(edge_attributes['permlanes']))
+        edge_attributes['capacity'] = ceil(sum(edge_attributes['capacity']) / len(edge_attributes['capacity']))
+        edge_attributes['permlanes'] = ceil(sum(edge_attributes['permlanes']) / len(edge_attributes['permlanes']))
         edge_attributes['length'] = sum(edge_attributes['length'])
 
         modes = set()
@@ -253,9 +254,48 @@ def extract_edge_data(G, path):
     return edge_attributes
 
 
+def _is_endpoint(node_neighbours):
+    """
+    :param node_neighbours: dict {node_id: {successors: in_degree, out_degree)
+    :return:
+    """
+    return [node for node, data in node_neighbours.items() if
+            (len(data['successors']) != 1) or (len(data['predecessors']) != 1)]
+
+
+def _get_paths_to_simplify(G, no_processes=1):
+    # first identify all the nodes that are endpoints
+    endpoints = set(
+        parallel.multiprocess_wrap(
+            data={node: {'successors': list(G.successors(node)), 'predecessors': list(G.predecessors(node))}
+                  for node in G.nodes},
+            split=parallel.split_dict,
+            apply=_is_endpoint,
+            combine=parallel.combine_list,
+            processes=no_processes)
+    )
+
+    logging.info(f"Identified {len(endpoints)} edge endpoints")
+
+    paths = []
+
+    # for each endpoint node, look at each of its successor nodes
+    for startpoint in endpoints:
+        for successor in G.successors(startpoint):
+            path = [startpoint, successor]
+            while path[-1] not in endpoints:
+                successors = list(G.successors(path[-1]))
+                if len(successors) > 1:
+                    raise RuntimeError('Endpoints have not been generated correctly.')
+                else:
+                    path += successors
+            paths.append(path)
+    return paths
+
+
 def simplify_graph(n, no_processes=1, strict=True, remove_rings=True):
     """
-    MONKEY PATCH OF OSMNX'S GRAPH SIMPLIFICATION ALGO TOW ORK WITH OUR MESSED UP ATTRIBS
+    MONKEY PATCH OF OSMNX'S GRAPH SIMPLIFICATION ALGO
 
     Simplify a graph's topology by removing interstitial nodes.
 
@@ -280,19 +320,17 @@ def simplify_graph(n, no_processes=1, strict=True, remove_rings=True):
     None, updates n.graph, indexing and schedule routes. Adds a new attribute to n that records map between old
     and new link indices
     """
-    import osmnx
-
     if osmnx.simplification._is_simplified(n.graph):
         raise Exception("This graph has already been simplified, cannot simplify it again.")
 
-    logging.info("Begin topologically simplifying the graph...")
+    logging.info("Begin simplifying the graph")
     G = n.graph.copy()
     initial_node_count = len(list(G.nodes()))
     initial_edge_count = len(list(G.edges()))
 
     logging.info('Generating paths to be simplified')
     # generate each path that needs to be simplified
-    paths_to_simplify = list(osmnx.simplification._get_paths_to_simplify(G, strict=strict))
+    paths_to_simplify = list(_get_paths_to_simplify(G))
 
     indexed_paths_to_simplify = dict(zip(n.generate_indices_for_n_edges(len(paths_to_simplify)), paths_to_simplify))
     indexed_paths_to_simplify = {
@@ -328,11 +366,11 @@ def simplify_graph(n, no_processes=1, strict=True, remove_rings=True):
 
     logging.info('Removing links which have now been replaced by simplified links')
     # remove links
-    n.remove_links(links_to_remove)
+    n.remove_links(links_to_remove, silent=True)
 
     logging.info('Removing nodes')
     # finally, remove nodes
-    n.remove_nodes(nodes_to_remove)
+    n.remove_nodes(nodes_to_remove, silent=True)
 
     # TODO
     # if remove_rings:
