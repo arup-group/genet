@@ -263,6 +263,50 @@ def _is_endpoint(node_neighbours):
             (len(data['successors']) != 1) or (len(data['predecessors']) != 1)]
 
 
+def _build_path(data_to_simplify, endpoints):
+    # find first node
+    first_edge = ''
+    nodes = set(sum(data_to_simplify['edges'], ()))
+    for node in nodes:
+        associated_edges = [_edge for _edge in data_to_simplify['edges'] if (_edge[0] == node) or (_edge[1] == node)]
+        if len(associated_edges) == 1:
+            if associated_edges[0][0] == node:
+                first_edge = associated_edges[0]
+                break
+
+    node_len = len(data_to_simplify['edges'])
+    if not first_edge:
+        # no obvious starting point, it is a loop
+        # find the end point in the loop
+        endpt = endpoints & nodes
+        if len(endpt) > 1:
+            raise RuntimeError('There should be just one end point in the loop')
+        if len(endpt) != 0:
+            first_node = list(endpt)[0]
+            first_edge = [_edge for _edge in data_to_simplify['edges'] if _edge[0] == first_node][0]
+            node_len = node_len - 2
+        else:
+            return []
+
+    # build the path
+    path = [first_edge[0], first_edge[1]]
+    for i in range(node_len):
+        for _edge in data_to_simplify['edges']:
+            if path[-1] == _edge[0]:
+                path.append(_edge[1])
+                break
+    return path
+
+
+def _build_paths(node_sets_to_simplify, endpoints):
+    paths = []
+    for node_set in node_sets_to_simplify:
+        path = _build_path(node_set, endpoints)
+        if path:
+            paths.append(path)
+    return paths
+
+
 def _get_paths_to_simplify(G, no_processes=1):
     # first identify all the nodes that are endpoints
     endpoints = set(
@@ -277,20 +321,19 @@ def _get_paths_to_simplify(G, no_processes=1):
 
     logging.info(f"Identified {len(endpoints)} edge endpoints")
 
-    paths = []
+    working_graph = G.copy()
+    working_graph.remove_nodes_from(endpoints)
+    nodes_to_simplify = nx.weakly_connected_components(working_graph)
 
-    # for each endpoint node, look at each of its successor nodes
-    for startpoint in endpoints:
-        for successor in G.successors(startpoint):
-            path = [startpoint, successor]
-            while path[-1] not in endpoints:
-                successors = list(G.successors(path[-1]))
-                if len(successors) > 1:
-                    raise RuntimeError('Endpoints have not been generated correctly.')
-                else:
-                    path += successors
-            paths.append(path)
-    return paths
+    return parallel.multiprocess_wrap(
+        data=[{'nodes': node_set, 'edges': set(G.out_edges(node_set)) | set(G.in_edges(node_set))} for node_set in
+              nodes_to_simplify],
+        split=parallel.split_list,
+        apply=_build_paths,
+        combine=parallel.combine_list,
+        processes=no_processes,
+        endpoints=endpoints
+    )
 
 
 def simplify_graph(n, no_processes=1, strict=True, remove_rings=True):

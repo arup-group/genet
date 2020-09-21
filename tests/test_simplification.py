@@ -22,4 +22,4 @@ def test_getting_endpoints_with_simple_graph_with_junctions(simple_graph_with_ju
 def test_simplified_paths_with_simple_graph_with_junctions(simple_graph_with_junctions):
     g = simple_graph_with_junctions
     paths = oxcustom._get_paths_to_simplify(g)
-    assert set(paths) == {[1, 2], [2, 3, 4, 5], [2, 22, 33, 44, 55, 5], [5, 6], [11, 2]}
+    assert set(paths) == {[2, 3, 4, 5], [2, 22, 33, 44, 55, 5]}
