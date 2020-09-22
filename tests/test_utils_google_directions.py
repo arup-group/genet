@@ -304,14 +304,12 @@ def test_send_requests_for_road_network(mocker, tmpdir, generated_request):
     mocker.patch.object(google_directions, 'send_requests',
                         return_value={**generated_request,
                                       **{'request': google_directions_api_response, 'timestamp': 12345}})
-    mocker.patch.object(google_directions, 'parse_results', return_value={})
 
     n = Network('epsg:27700')
     google_directions.send_requests_for_network(n, 10, tmpdir)
     google_directions.generate_requests.assert_called_once_with(n)
     google_directions.send_requests.assert_called_once_with(google_directions.generate_requests.return_value, None,
                                                             None, None, False)
-    google_directions.parse_results.assert_called_once_with(google_directions.send_requests.return_value, tmpdir)
 
 
 def test_read_saved_api_results():
@@ -444,23 +442,6 @@ def test_parsing_routes_with_bad_request(caplog, bad_request_google_directions_a
     assert_logging_warning_caught_with_message_containing(caplog, 'Request was not successful.')
 
 
-def test_parse_results(mocker, tmpdir, generated_request, google_directions_api_response):
-    request = FuturesSession(max_workers=1).get('http://hello.com')
-    mocker.patch.object(request, 'result', return_value=google_directions_api_response)
-    o_d = generated_request['path_nodes'][0], generated_request['path_nodes'][-1]
-    api_requests = {o_d: generated_request}
-    api_requests[o_d]['request'] = request
-    api_requests[o_d]['timestamp'] = 12345
-
-    api_requests = google_directions.parse_results(api_requests, tmpdir)
-    assert_semantically_equal(api_requests, {('107316', '107352'): {
-        'path_nodes': ['107316', '2440643031', '4307345276', '107317', '4307345495', '4307345497', '25495448',
-                       '2503102618', '107351', '5411344775', '2440651577', '2440651556', '2440651552', '107352'],
-        'path_polyline': 'ahmyHzvYGJyBbCGHq@r@EDIJGBu@~@SToAzAEFEDIJ', 'origin': {'lat': 51.5188864, 'lon': -0.1369442},
-        'destination': {'lat': 51.5208299, 'lon': -0.1391027}, 'timestamp': 12345,
-        'parsed_response': {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}}})
-
-
 def test_mapping_results_to_edges_with_singular_route_data():
     api_requests = {('107316', '107352'): {
         'path_nodes': ['107316', '2440643031', '4307345276', '107317', '4307345495', '4307345497', '25495448',
@@ -526,10 +507,10 @@ def test_saved_results_appear_in_directory(tmpdir, generated_request):
     api_requests[o_d]['parsed_response'] = {'google_speed': 3.7183098591549295,
                                             'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}
 
-    expected_file_path = os.path.join(tmpdir, '12345_ahmyHzvYkCvCuCdDcBrB.pickle')
+    expected_file_path = os.path.join(tmpdir, 'api_requests.json')
 
     assert not os.path.exists(expected_file_path)
-    google_directions.pickle_result(api_requests[o_d], tmpdir)
+    google_directions.dump_all_api_requests_to_json(api_requests[o_d], tmpdir)
     assert os.path.exists(expected_file_path)
 
 

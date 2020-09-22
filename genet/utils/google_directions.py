@@ -1,8 +1,8 @@
+import ast
 import itertools
 import logging
 import polyline
 import osmnx as ox
-import pickle
 import os
 import time
 import json
@@ -32,16 +32,14 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir, traf
     logging.info('Generating Google Directions API requests')
     api_requests = generate_requests(n)
 
-    dump_all_api_requests_to_json(api_requests, output_dir)
+    # dump_all_api_requests_to_json(api_requests, output_dir)
 
     if len(api_requests) > request_number_threshold:
         raise RuntimeError(f'Number of requests exceeded the threshold. Number of requests: {len(api_requests)}')
 
     logging.info('Sending API requests')
     api_requests = send_requests(api_requests, key, secret_name, region_name, traffic)
-    logging.info('Parsing API requests')
-    api_requests = parse_results(api_requests, output_dir)
-
+    logging.info('Saving API requests')
     dump_all_api_requests_to_json(api_requests, output_dir)
     return api_requests
 
@@ -49,16 +47,21 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir, traf
 def read_saved_api_results(output_dir):
     """
     Read parsed Google Directions API requests in output_dir
-    :param output_dir: output directory where the google directions api parsed data was saved
+    :param output_dir: output directory where the google directions api requests were saved as JSON
     :return:
     """
     api_requests = {}
     for file in os.listdir(output_dir):
-        if file.endswith(".pickle"):
+        if file.endswith(".json"):
             response = os.path.join(output_dir, file)
             with open(response, 'rb') as handle:
-                response_attribs = pickle.load(handle)
-            api_requests[(response_attribs['path_nodes'][0], response_attribs['path_nodes'][-1])] = response_attribs
+                json_dump = json.load(handle)
+            for key in json_dump:
+                try:
+                    json_dump[key] = ast.literal_eval(json_dump[key])
+                except (ValueError, TypeError):
+                    pass
+                api_requests[(json_dump['path_nodes'][0], json_dump['path_nodes'][-1])] = json_dump
     return api_requests
 
 
@@ -176,22 +179,6 @@ def parse_routes(response, path_polyline):
     return data
 
 
-def parse_results(api_requests, output_dir):
-    """
-    Goes through all api requests, parses and pickles results to output_dir
-    :param api_requests: generated and 'sent' api requests
-    :param output_dir: output directory for parsed pickles of each api request
-    :return:
-    """
-    persistence.ensure_dir(output_dir)
-    for node_request_pair, api_requests_attribs in api_requests.items():
-        path_polyline = api_requests_attribs['path_polyline']
-        request = api_requests_attribs['request']
-        api_requests_attribs['parsed_response'] = parse_routes(request.result(), path_polyline)
-        pickle_result(api_requests_attribs, output_dir)
-    return api_requests
-
-
 def map_results_to_edges(api_requests):
     google_dir_api_edge_data = {}
     for node_request_pair, api_requests_attribs in api_requests.items():
@@ -206,14 +193,6 @@ def map_results_to_edges(api_requests):
         google_dir_api_edge_data = {**google_dir_api_edge_data,
                                     **dict(zip(left_overs, [parsed_request_data] * len(left_overs)))}
     return google_dir_api_edge_data
-
-
-def pickle_result(api_requests_attribs, output_dir):
-    del api_requests_attribs['request']
-    with open(os.path.join(output_dir, '{}_{}.pickle'.format(
-            api_requests_attribs['timestamp'],
-            api_requests_attribs['parsed_response']['google_polyline'])), 'wb') as handle:
-        pickle.dump(api_requests_attribs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def dump_all_api_requests_to_json(api_requests, output_dir):
