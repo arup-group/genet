@@ -94,24 +94,36 @@ def indexed_edge_groups():
 def test_merging_edge_data(indexed_edge_groups):
     links_to_add = simplification._process_path(indexed_edge_groups)
 
-    links_to_add['new_link_id']['attributes']['osm:way:osmid']['text'] = links_to_add['new_link_id']['attributes']['osm:way:osmid']['text'].split(',')
-    links_to_add['new_link_id']['attributes']['osm:way:highway']['text'] = links_to_add['new_link_id']['attributes']['osm:way:highway']['text'].split(',')
+    links_to_add['new_link_id']['attributes']['osm:way:osmid']['text'] = \
+        links_to_add['new_link_id']['attributes']['osm:way:osmid']['text'].split(',')
+    links_to_add['new_link_id']['attributes']['osm:way:highway']['text'] = \
+        links_to_add['new_link_id']['attributes']['osm:way:highway']['text'].split(',')
     assert_semantically_equal(links_to_add, {
-                'new_link_id': {
-                    'permlanes': 4,
-                    'freespeed': 40.0,
-                    'capacity': 1500.0,
-                    'oneway': '1',
-                    'modes': ['car'],
-                    'from': 1,
-                    'to': 3,
-                    'id': 'new_link_id',
-                    's2_from': 5221390326122671999,
-                    's2_to': 5221390326952602895,
-                    'length': 26,
-                    'attributes': {
-                        'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
-                        'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '18769878,18769879'.split(',')},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'trunk,unclassified'.split(',')}},
-                    'geometry': LineString([(528915.9309752393, 181899.48948011652), (528888.1581643537, 181892.3086225874), (528780.3405144282, 181859.84184561518)]),
-                    'ids': ['1926', '1927']}})
+        'new_link_id': {
+            'permlanes': 4,
+            'freespeed': 40.0,
+            'capacity': 1500.0,
+            'oneway': '1',
+            'modes': ['car'],
+            'from': 1,
+            'to': 3,
+            'id': 'new_link_id',
+            's2_from': 5221390326122671999,
+            's2_to': 5221390326952602895,
+            'length': 26,
+            'attributes': {
+                'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
+                'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
+                                  'text': '18769878,18769879'.split(',')},
+                'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                    'text': 'trunk,unclassified'.split(',')}},
+            'geometry': LineString([(528915.9309752393, 181899.48948011652), (528888.1581643537, 181892.3086225874),
+                                    (528780.3405144282, 181859.84184561518)]),
+            'ids': ['1926', '1927']}})
+
+
+def test_building_paths():
+    edge_groups_to_simplify = [{(1, 2), (2, 3), (3, 4)}, {(1, 22), (33, 44), (22, 33), (44, 4)}]
+    endpoints = {1, 4}
+    paths = simplification._build_paths(edge_groups_to_simplify, endpoints)
+    assert paths == [[1, 2, 3, 4], [1, 22, 33, 44, 4]]

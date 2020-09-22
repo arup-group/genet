@@ -14,11 +14,6 @@ def test_sanitising_set():
     assert sanitised == '3'
 
 
-def test_sanitising_something_other_than_list_or_set():
-    sanitised = geojson.sanitise_list()
-    assert sanitised == '3'
-
-
 def test_save_to_geojson(tmpdir):
     n = Network('epsg:27700')
     n.add_node('0', attribs={'x': 528704.1425925883, 'y': 182068.78193707118})
