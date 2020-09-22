@@ -8,7 +8,6 @@ from typing import Union, List, Dict
 from pyproj import Transformer
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.osm_reader as osm_reader
-import genet.inputs_handler.osmnx_customised as osmnx_customised
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.geojson as geojson
 import genet.modify.change_log as change_log
@@ -18,9 +17,10 @@ import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
 import genet.utils.dict_support as dict_support
-import genet.validate.network_validation as network_validation
 import genet.utils.plot as plot
+import genet.utils.simplification as simplification
 import genet.schedule_elements as schedule_elements
+import genet.validate.network_validation as network_validation
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -155,7 +155,7 @@ class Network:
             self.transformer = None
 
     def simplify(self, no_processes=1):
-        osmnx_customised.simplify_graph(self, no_processes)
+        simplification.simplify_graph(self, no_processes)
 
     def node_attribute_summary(self, data=False):
         """

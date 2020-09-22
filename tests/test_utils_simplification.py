@@ -1,4 +1,4 @@
-import genet.inputs_handler.osmnx_customised as oxcustom
+import genet.utils.simplification as simplification
 import pytest
 import networkx as nx
 from shapely.geometry import LineString
@@ -22,7 +22,7 @@ def simple_graph_with_junctions():
 
 def test_getting_endpoints_with_simple_graph_with_junctions(simple_graph_with_junctions):
     g = simple_graph_with_junctions
-    endpts = oxcustom._is_endpoint(
+    endpts = simplification._is_endpoint(
         {node: {'successors': list(g.successors(node)), 'predecessors': list(g.predecessors(node))}
          for node in g.nodes}
     )
@@ -31,7 +31,7 @@ def test_getting_endpoints_with_simple_graph_with_junctions(simple_graph_with_ju
 
 def test_simplified_paths_with_simple_graph_with_junctions(simple_graph_with_junctions):
     g = simple_graph_with_junctions
-    edge_groups = oxcustom._get_edge_groups_to_simplify(g)
+    edge_groups = simplification._get_edge_groups_to_simplify(g)
     assert_correct_edge_groups(edge_groups,
                                [[2, 3, 4, 5], [2, 22, 33, 44, 55, 5]])
 
@@ -46,7 +46,7 @@ def graph_with_junctions_directed_both_ways():
 
 def test_getting_endpoints_with_graph_with_junctions_directed_both_ways(graph_with_junctions_directed_both_ways):
     g = graph_with_junctions_directed_both_ways
-    endpts = oxcustom._is_endpoint(
+    endpts = simplification._is_endpoint(
         {node: {'successors': list(g.successors(node)), 'predecessors': list(g.predecessors(node))}
          for node in g.nodes}
     )
@@ -55,7 +55,7 @@ def test_getting_endpoints_with_graph_with_junctions_directed_both_ways(graph_wi
 
 def test_simplified_paths_with_graph_with_junctions_directed_both_ways(graph_with_junctions_directed_both_ways):
     g = graph_with_junctions_directed_both_ways
-    edge_groups = oxcustom._get_edge_groups_to_simplify(g)
+    edge_groups = simplification._get_edge_groups_to_simplify(g)
     assert_correct_edge_groups(edge_groups, [[2, 1, 2], [5, 6, 5], [2, 11, 2]])
 
 
@@ -92,7 +92,7 @@ def indexed_edge_groups():
 
 
 def test_merging_edge_data(indexed_edge_groups):
-    links_to_add = oxcustom.process_path(indexed_edge_groups)
+    links_to_add = simplification._process_path(indexed_edge_groups)
 
     links_to_add['new_link_id']['attributes']['osm:way:osmid']['text'] = links_to_add['new_link_id']['attributes']['osm:way:osmid']['text'].split(',')
     links_to_add['new_link_id']['attributes']['osm:way:highway']['text'] = links_to_add['new_link_id']['attributes']['osm:way:highway']['text'].split(',')
