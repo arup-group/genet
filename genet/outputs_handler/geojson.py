@@ -4,10 +4,10 @@ import osmnx as ox
 
 
 def sanitise_list(x):
-    if isinstance(x, (list, set)):
+    try:
         return ','.join(x)
-    else:
-        return x
+    except TypeError:
+        return ','.join(map(str, x))
 
 
 def save_nodes_and_links_geojson(graph, output_dir):
