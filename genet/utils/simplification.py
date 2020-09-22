@@ -224,18 +224,19 @@ def simplify_graph(n, no_processes=1):
     reindexing_dict, links_and_attributes = n.add_links(links_to_add)
 
     # collect all links and nodes to remove, generate link simplification map between old indices and new
-    links_to_remove = set()
     nodes_to_remove = set()
     n.link_simplification_map = {}
     # todo see if there is a quicker way to generate this
     for new_id, path_data in indexed_paths_to_simplify.items():
-        links_to_remove |= set(path_data['link_data']['id'])
-        if new_id in reindexing_dict:
+        ids = set(path_data['link_data']['id'])
+        try:
             new_id = reindexing_dict[new_id]
+        except KeyError:
+            pass
         n.link_simplification_map = {**n.link_simplification_map,
-                                     **dict(zip(path_data['link_data']['id'],
-                                                [new_id] * len(path_data['link_data']['id'])))}
+                                     **dict(zip(ids, [new_id] * len(ids)))}
         nodes_to_remove |= set(path_data['path'][1:-1])
+    links_to_remove = set(n.link_simplification_map.keys())
 
     logging.info('Removing links which have now been replaced by simplified links')
     # remove links
