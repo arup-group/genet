@@ -36,7 +36,6 @@ def _process_path(indexed_edge_groups_to_simplify):
         edge_attributes["geometry"] = LineString(
             [Point((nodes_data[node]["x"], nodes_data[node]["y"])) for node in path]
         )
-        # TODO edge_attributes['attributes']['geometry] =  {'name': 'geometry', 'class': 'java.lang.String', 'text': ''}
 
         edge_attributes['ids'] = edge_attributes['id']
         edge_attributes['id'] = new_id

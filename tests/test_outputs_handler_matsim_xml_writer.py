@@ -1,6 +1,8 @@
 import os, sys
 import pytest
 import lxml
+from copy import deepcopy
+from shapely.geometry import LineString
 from tests.fixtures import network_object_from_test_data, full_fat_default_config_path, assert_semantically_equal
 from tests import xml_diff
 from genet.outputs_handler import matsim_xml_writer
@@ -90,6 +92,60 @@ def test_network_with_extra_attribs_produces_valid_matsim_network_xml_file(tmpdi
     assert_semantically_equal(dict(_network_from_file.links()), {
         '0': {'id': '0', 'from': '0', 'to': '1', 'freespeed': 1.0, 'capacity': 20.0, 'permlanes': 1.0, 'oneway': '1',
               'modes': ['car'], 's2_from': 5205973754090365183, 's2_to': 5205973754090480551, 'length': 1.0}})
+
+
+def test_network_with_attribs_doesnt_loose_any_attributes_after_saving(tmpdir):
+    network = Network('epsg:27700')
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})
+    network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
+    network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
+                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
+                                             'extra_Special_attrib': 12})
+    network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
+                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
+                                             'attributes': {
+                                                 'osm:way:lanes': {'name': 'osm:way:lanes',
+                                                                   'class': 'java.lang.String',
+                                                                   'text': '3'}}})
+
+    link_attributes = deepcopy(dict(network.links()))
+    node_attributes = deepcopy(dict(network.nodes()))
+
+    network.write_to_matsim(tmpdir)
+
+    link_attributes_post_save = dict(network.links())
+    node_attributes_post_save = dict(network.nodes())
+
+    assert_semantically_equal(link_attributes_post_save, link_attributes)
+    assert_semantically_equal(node_attributes_post_save, node_attributes)
+
+
+def test_saving_network_with_geometry_doesnt_change_data_on_the_network(tmpdir):
+    network = Network('epsg:27700')
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})
+    network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
+    network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
+                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
+                                             'geometry': LineString([(1,2), (2,3), (3,4)]),
+                                             'extra_Special_attrib': 12})
+    network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
+                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
+                                             'geometry': LineString([(1,2), (2,3), (3,4)]),
+                                             'attributes': {
+                                                 'osm:way:lanes': {'name': 'osm:way:lanes',
+                                                                   'class': 'java.lang.String',
+                                                                   'text': '3'}}})
+
+    link_attributes = deepcopy(dict(network.links()))
+    node_attributes = deepcopy(dict(network.nodes()))
+
+    network.write_to_matsim(tmpdir)
+
+    link_attributes_post_save = dict(network.links())
+    node_attributes_post_save = dict(network.nodes())
+
+    assert_semantically_equal(link_attributes_post_save, link_attributes)
+    assert_semantically_equal(node_attributes_post_save, node_attributes)
 
 
 def test_write_matsim_network_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,

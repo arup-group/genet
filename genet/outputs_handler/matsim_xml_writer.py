@@ -1,10 +1,11 @@
 import logging
 import os
 from lxml import etree
+from copy import deepcopy
 from pyproj import Proj, Transformer
 from genet.outputs_handler import matsim_xml_values
 from genet.validate.network_validation import validate_link_data
-from genet.utils.spatial import change_proj
+from genet.utils.spatial import change_proj, encode_shapely_linestring_to_polyline
 from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES, ADDITIONAL_STOP_FACILITY_ATTRIBUTES
 
 
@@ -38,16 +39,26 @@ def write_matsim_network(output_dir, network):
 
             links_attribs = {'capperiod': '01:00:00', 'effectivecellsize': '7.5', 'effectivelanewidth': '3.75'}
             with xf.element("links", links_attribs):
-                for link_id, link_attributes in network.links():
-                    link_attributes = delete_redundant_link_attributes_for_xml(link_attributes)
+                for link_id, link_attribs in network.links():
+                    link_attributes = delete_redundant_link_attributes_for_xml(deepcopy(link_attribs))
                     validate_link_data(link_attributes)
-                    if 'attributes' in link_attributes:
-                        link_attrib_copy = link_attributes.copy()
-                        attributes = link_attrib_copy.pop('attributes')
-                        with xf.element("link", sanitise_dictionary_for_xml(link_attrib_copy)):
+                    if ('attributes' in link_attributes) or ('geometry' in link_attribs):
+                        try:
+                            attributes = link_attributes.pop('attributes')
+                        except KeyError:
+                            attributes = {}
+                        try:
+                            attributes['geometry'] = {
+                                'name': 'geometry',
+                                'class': 'java.lang.String',
+                                'text': encode_shapely_linestring_to_polyline(link_attribs['geometry'])
+                            }
+                        except KeyError:
+                            pass
+                        with xf.element("link", sanitise_dictionary_for_xml(link_attributes)):
                             with xf.element("attributes"):
                                 for k, attrib in attributes.items():
-                                    attrib_copy = attrib.copy()
+                                    attrib_copy = attrib
                                     text = attrib_copy.pop('text')
                                     rec = etree.Element("attribute", attrib_copy)
                                     rec.text = text
