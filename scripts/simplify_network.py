@@ -55,14 +55,14 @@ if __name__ == '__main__':
     n.simplify(no_processes=processes)
     end = time.time()
 
-    logging.info(
-        f'Simplification resulted in the following map between old and new link ids: {n.link_simplification_map}')
+    # logging.info(
+    #     f'Simplification resulted in the following map between old and new link ids: {n.link_simplification_map}')
 
     n.write_to_matsim(output_dir)
 
     logging.info('Generating validation report')
     report = n.generate_validation_report()
-    logging.info(f'Graph validation: {report["graph"]}')
+    logging.info(f'Graph validation: {report["graph"]["graph_connectivity"]}')
     if n.schedule:
         logging.info(f'Schedule level validation: {report["schedule"]["schedule_level"]["is_valid_schedule"]}')
         logging.info(f'Routing validation: {report["routing"]["services_have_routes_in_the_graph"]}')
