@@ -159,6 +159,10 @@ def read_network(network_path, transformer: Transformer):
                 # TODO fix: some elems for osmid are being read as None
                 link_attribs = read_link_attrib(elem, link_attribs)
     # update the attributes of the last link
+    if 'geometry' in link_attribs:
+        g[u][v][len(g[u][v]) - 1]['geometry'] = spatial.decode_polyline_to_shapely_linestring(
+            link_attribs['geometry']['text'])
+        del link_attribs['geometry']
     if link_attribs:
         g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs
     return g, link_id_mapping, duplicated_node_ids, duplicated_link_ids

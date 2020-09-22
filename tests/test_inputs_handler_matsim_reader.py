@@ -1,5 +1,5 @@
 from pyproj import Proj, Transformer
-
+from shapely.geometry import LineString
 from genet.inputs_handler import matsim_reader
 from tests.fixtures import *
 
@@ -12,6 +12,8 @@ pt2matsim_network_clashing_link_ids_test_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_clashing_link_ids.xml"))
 pt2matsim_network_clashing_node_ids_test_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_clashing_node_ids.xml"))
+pt2matsim_network_with_geometry_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_with_geometry.xml"))
 pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
 
@@ -210,6 +212,25 @@ def test_read_network_rejects_non_unique_nodes():
 
     assert_semantically_equal(correct_link_id_map, link_id_mapping)
     assert_semantically_equal(duplicated_link_ids, {})
+
+
+def test_reading_network_with_geometry_attributes():
+    correct_links = {'1': {
+        'id': "1", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
+        's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
+        'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
+        'geometry': LineString([(1,2), (2,3), (3,4)]),
+        'modes': ['subway,metro', 'walk', 'car'], 'attributes': {
+            'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
+            'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
+            'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
+            'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}
+        }}}
+
+    n = Network('epsg:27700')
+    n.read_matsim_network(pt2matsim_network_with_geometry_file)
+
+    assert_semantically_equal(dict(n.links()), correct_links)
 
 
 def test_read_schedule_reads_the_data_correctly(correct_services_from_test_pt2matsim_schedule):
