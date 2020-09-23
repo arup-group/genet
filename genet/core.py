@@ -745,11 +745,11 @@ class Network:
     def remove_nodes(self, nodes, silent: bool = False):
         """
         Removes several nodes and all adjacent edges
-        :param nodes:
+        :param nodes: list or set
         :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        self.change_log.remove_bunch(object_type='node', id_bunch=nodes,
+        self.change_log.remove_bunch(object_type='node', id_bunch=list(nodes),
                                      attributes_bunch=[self.node(node_id) for node_id in nodes])
         self.graph.remove_nodes_from(nodes)
         if not silent:
@@ -772,11 +772,11 @@ class Network:
     def remove_links(self, links, silent: bool = False):
         """
         Removes the multi edges pertaining to links given
-        :param links:
+        :param links: set or list
         :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
-        self.change_log.remove_bunch(object_type='link', id_bunch=links,
+        self.change_log.remove_bunch(object_type='link', id_bunch=list(links),
                                      attributes_bunch=[self.link(link_id) for link_id in links])
         self.graph.remove_edges_from([self.edge_tuple_from_link_id(link_id) for link_id in links])
         for link_id in links:
