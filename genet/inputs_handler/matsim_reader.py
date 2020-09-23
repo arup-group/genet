@@ -3,7 +3,6 @@ import networkx as nx
 import xml.etree.cElementTree as ET
 from pyproj import Transformer, Proj
 from genet.utils import spatial
-from genet.variables import MODE_TYPES_MAP
 from genet.schedule_elements import Route, Stop, Service
 
 
@@ -58,7 +57,7 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
     attribs = elem.attrib
     attribs['s2_from'] = node_id_mapping[attribs['from']]
     attribs['s2_to'] = node_id_mapping[attribs['to']]
-    attribs['modes'] = read_modes(attribs['modes'])
+    attribs['modes'] = list(set(attribs['modes'].split(',')))
 
     link_id, duplicated_link_id = unique_link_id(attribs['id'], link_id_mapping)
     attribs['id'] = link_id
@@ -166,16 +165,6 @@ def read_network(network_path, transformer: Transformer):
     if link_attribs:
         g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs
     return g, link_id_mapping, duplicated_node_ids, duplicated_link_ids
-
-
-def read_modes(modes_string):
-    modes = set()
-    for m in modes_string.split(','):
-        try:
-            modes.add(MODE_TYPES_MAP[m.lower()])
-        except KeyError:
-            modes.add(m.lower())
-    return list(modes)
 
 
 def read_schedule(schedule_path, epsg):

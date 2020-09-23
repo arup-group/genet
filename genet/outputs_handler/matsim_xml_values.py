@@ -101,18 +101,14 @@ MATSIM_JOSM_DEFAULTS = {
 
 
 MODE_DICT = {
-    "Tram,Streetcar,Light rail".lower(): 'Tram',
-    "Tram".lower(): 'Tram',
-    "Subway,Metro".lower(): 'Underground Service',
-    "Subway".lower(): 'Underground Service',
-    "Metro".lower(): 'Underground Service',
-    "Rail".lower(): 'Rail',
-    "Bus".lower(): 'Bus',
-    "Ferry".lower(): 'Ferry',
-    "Cable car".lower(): 'Gondola',
-    "Gondola,Suspended cable car".lower(): 'Gondola',
-    "Gondola".lower(): 'Gondola',
-    "Funicular".lower(): 'Funicular'
+    "tram": 'Tram',
+    "subway": 'Subway',
+    "rail": 'Rail',
+    "bus": 'Bus',
+    "ferry": 'Ferry',
+    "cablecar": 'Cablecar',
+    "gondola": 'Gondola',
+    "funicular": 'Funicular'
 }
 
 
@@ -131,7 +127,7 @@ VEHICLE_TYPES = {
     },
     'Rail': {
         'capacity': {
-            'seats': {'persons': '400'},
+            'seats': {'persons': '1000'},
             'standingRoom': {'persons': '0'}
         },
         'length': {'meter': '200.0'},
@@ -141,9 +137,9 @@ VEHICLE_TYPES = {
         'doorOperation': {'mode': 'serial'},
         'passengerCarEquivalents': {'pce': '27.1'}
     },
-    'Underground Service': {
+    'Subway': {
         'capacity': {
-            'seats': {'persons': '300'},
+            'seats': {'persons': '1000'},
             'standingRoom': {'persons': '0'}
         },
         'length': {'meter': '30.0'},
