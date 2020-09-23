@@ -2,6 +2,10 @@ import argparse
 import genet as gn
 import logging
 import time
+import os
+import json
+from genet.utils.persistence import ensure_dir
+
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Reproject a MATSim network')
@@ -40,6 +44,7 @@ if __name__ == '__main__':
     projection = args['projection']
     processes = args['processes']
     output_dir = args['output_dir']
+    ensure_dir(output_dir)
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
@@ -55,8 +60,10 @@ if __name__ == '__main__':
     n.simplify(no_processes=processes)
     end = time.time()
 
-    # logging.info(
-    #     f'Simplification resulted in the following map between old and new link ids: {n.link_simplification_map}')
+    logging.info(
+        f'Simplification resulted in {len(n.link_simplification_map)} links being simplified.')
+    with open(os.path.join(output_dir, 'link_simp_map.json'), 'w', encoding='utf-8') as f:
+        json.dump(n.link_simplification_map, f, ensure_ascii=False, indent=4)
 
     n.write_to_matsim(output_dir)
 
