@@ -39,7 +39,9 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir, traf
 
     logging.info('Sending API requests')
     api_requests = send_requests(api_requests, key, secret_name, region_name, traffic)
-    logging.info('Saving API requests')
+    logging.info('Parsing API requests')
+    api_requests = parse_results(api_requests, output_dir)
+
     dump_all_api_requests_to_json(api_requests, output_dir)
     return api_requests
 
@@ -177,6 +179,24 @@ def parse_routes(response, path_polyline):
         logging.warning(f'Request was not successful. Status code {response.status_code}. '
                         f'Content of the unsuccessful response: {response.json()}')
     return data
+
+
+def parse_results(api_requests, output_dir):
+    """
+    Goes through all api requests, parses and pickles results to output_dir
+    :param api_requests: generated and 'sent' api requests
+    :param output_dir: output directory for parsed pickles of each api request
+    :return:
+    """
+    api_requests_with_response = {}
+    persistence.ensure_dir(output_dir)
+    for node_request_pair, api_requests_attribs in api_requests.items():
+        path_polyline = api_requests_attribs['path_polyline']
+        request = api_requests_attribs['request']
+        del api_requests_attribs['request']
+        api_requests_attribs['parsed_response'] = parse_routes(request.result(), path_polyline)
+        api_requests_with_response[node_request_pair] = api_requests_attribs
+    return api_requests_with_response
 
 
 def map_results_to_edges(api_requests):
