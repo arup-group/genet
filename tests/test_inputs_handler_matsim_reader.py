@@ -27,7 +27,7 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
         'id': "1", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
         's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
         'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
-        'modes': ['subway,metro', 'walk', 'car'], 'attributes': {
+        'modes': ['subway', 'metro', 'walk', 'car'], 'attributes': {
             'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
             'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
             'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
