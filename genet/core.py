@@ -887,6 +887,7 @@ class Network:
 
         def links_over_threshold_length(value):
             return value >= link_length_threshold
+
         report['graph']['links_over_1km_length'] = graph_operations.extract_links_on_edge_attributes(
             self,
             conditions={'length': links_over_threshold_length}
@@ -897,7 +898,8 @@ class Network:
 
             route_to_crow_fly_ratio = {}
             for service_id, route in self.schedule_routes():
-                if 'not_has_uniquely_indexed_routes' in report['schedule']['service_level'][service_id]['invalid_stages']:
+                if 'not_has_uniquely_indexed_routes' in report['schedule']['service_level'][service_id][
+                    'invalid_stages']:
                     if service_id in route_to_crow_fly_ratio:
                         route_id = len(route_to_crow_fly_ratio[service_id])
                     else:
@@ -956,10 +958,10 @@ class Network:
             for key, val in attribs.items():
                 if key not in link_attributes:
                     link_attributes['attributes']['osm:way:{}'.format(key)] = {
-                            'name': 'osm:way:{}'.format(key),
-                            'class': 'java.lang.String',
-                            'text': str(val),
-                        }
+                        'name': 'osm:way:{}'.format(key),
+                        'class': 'java.lang.String',
+                        'text': str(val),
+                    }
 
             self.add_edge(u, v, attribs=link_attributes, silent=True)
 
