@@ -25,6 +25,51 @@ def delete_redundant_link_attributes_for_xml(d):
     return d
 
 
+def check_link_attributes(link_attribs):
+    if 'attributes' in link_attribs:
+        if isinstance(link_attribs['attributes'], dict):
+            attribs_to_delete = []
+            for attrib, value in link_attribs['attributes'].items():
+                try:
+                    name = link_attribs['attributes']['name']
+                    cl = link_attribs['attributes']['class']
+                    text = link_attribs['attributes']['text']
+                except KeyError:
+                    attribs_to_delete.append(attrib)
+            logging.warning(f'Attributes on link are not formatted correctly: {link_attribs}')
+            for attrib in attribs_to_delete:
+                del link_attribs['attributes'][attrib]
+            if not link_attribs['attributes']:
+                del link_attribs['attributes']
+        else:
+            logging.warning(f'Attributes on link are not a dictionary: {link_attribs}')
+            del link_attribs['attributes']
+    return link_attribs
+
+
+def prepare_link_attributes(link_attribs):
+    link_attributes = deepcopy(link_attribs)
+    check_link_attributes(link_attributes)
+    if 'geometry' in link_attributes:
+        if 'attributes' in link_attributes:
+            link_attributes['attributes']['geometry'] = {
+                    'name': 'geometry',
+                    'class': 'java.lang.String',
+                    'text': encode_shapely_linestring_to_polyline(link_attributes['geometry'])
+            }
+        else:
+            link_attributes['attributes'] = {
+                'geometry': {
+                    'name': 'geometry',
+                    'class': 'java.lang.String',
+                    'text': encode_shapely_linestring_to_polyline(link_attributes['geometry'])
+                }
+            }
+    link_attributes = delete_redundant_link_attributes_for_xml(link_attributes)
+    validate_link_data(link_attributes)
+    return link_attributes
+
+
 def write_matsim_network(output_dir, network):
     fname = os.path.join(output_dir, "network.xml")
     logging.info('Writing {}'.format(fname))
@@ -40,21 +85,9 @@ def write_matsim_network(output_dir, network):
             links_attribs = {'capperiod': '01:00:00', 'effectivecellsize': '7.5', 'effectivelanewidth': '3.75'}
             with xf.element("links", links_attribs):
                 for link_id, link_attribs in network.links():
-                    link_attributes = delete_redundant_link_attributes_for_xml(deepcopy(link_attribs))
-                    validate_link_data(link_attributes)
-                    if ('attributes' in link_attributes) or ('geometry' in link_attribs):
-                        try:
-                            attributes = link_attributes.pop('attributes')
-                        except KeyError:
-                            attributes = {}
-                        try:
-                            attributes['geometry'] = {
-                                'name': 'geometry',
-                                'class': 'java.lang.String',
-                                'text': encode_shapely_linestring_to_polyline(link_attribs['geometry'])
-                            }
-                        except KeyError:
-                            pass
+                    link_attributes = prepare_link_attributes(link_attribs)
+                    if 'attributes' in link_attributes:
+                        attributes = link_attributes.pop('attributes')
                         with xf.element("link", sanitise_dictionary_for_xml(link_attributes)):
                             with xf.element("attributes"):
                                 for k, attrib in attributes.items():

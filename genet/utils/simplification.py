@@ -29,8 +29,6 @@ def _process_path(indexed_edge_groups_to_simplify):
                 val['text'] -= {None}
                 val['text'] = ','.join(val['text'])
             edge_attributes['attributes'] = new_attributes.copy()
-        else:
-            edge_attributes['attributes'] = {}
 
         # construct the geometry
         edge_attributes["geometry"] = LineString(
@@ -226,7 +224,6 @@ def simplify_graph(n, no_processes=1):
     # collect all links and nodes to remove, generate link simplification map between old indices and new
     nodes_to_remove = set()
     n.link_simplification_map = {}
-    # todo see if there is a quicker way to generate this
     for new_id, path_data in indexed_paths_to_simplify.items():
         ids = set(path_data['link_data']['id'])
         try:

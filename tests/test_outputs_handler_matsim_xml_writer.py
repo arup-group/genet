@@ -166,6 +166,78 @@ def test_saving_network_with_geometry_produces_correct_polyline_in_link_attribut
     assert found_geometry_attrib
 
 
+def test_saving_network_with_wrongly_formatted_attributes_with_geometries(tmpdir):
+    # attributes are assumed to be a nested dictionary of very specific format. Due to the fact that user can
+    # do virtually anything to edge attributes, or due to calculation error, this may not be the case. If it's not
+    # of correct format, we don't expect it to get saved to the matsim network.xml
+    network = Network('epsg:27700')
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})
+    network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
+
+    link_attribs = {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
+                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
+                                             'geometry': LineString([(1,2), (2,3), (3,4)]),
+                                             'attributes': {'heyo': 'whoop'}
+                                             }
+
+    network.add_link('0', '0', '1', attribs=link_attribs)
+    network.write_to_matsim(tmpdir)
+
+    assert_semantically_equal(dict(network.links()), {'0': link_attribs})
+
+    assert_semantically_equal(matsim_xml_writer.check_link_attributes(link_attribs),
+                              {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
+                               'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
+                               'geometry': LineString([(1, 2), (2, 3), (3, 4)])
+                               }
+                              )
+
+    found_geometry_attrib = False
+    for event, elem in ET.iterparse(os.path.join(tmpdir, 'network.xml'), events=('start', 'end')):
+        if event == 'start':
+            if elem.tag == 'attribute':
+                if elem.attrib['name'] == 'geometry':
+                    assert elem.text == '_ibE_seK_ibE_ibE_ibE_ibE'
+                    found_geometry_attrib = True
+    assert found_geometry_attrib
+
+
+def test_saving_network_with_bonkers_attributes_with_geometries(tmpdir):
+    # attributes are assumed to be a nested dictionary of very specific format. Due to the fact that user can
+    # do virtually anything to edge attributes, or due to calculation error, this may not be the case. If it's not
+    # of correct format, we don't expect it to get saved to the matsim network.xml
+    network = Network('epsg:27700')
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})
+    network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
+
+    link_attribs = {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
+                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
+                                             'geometry': LineString([(1,2), (2,3), (3,4)]),
+                                             'attributes': float('nan')
+                                             }
+
+    network.add_link('0', '0', '1', attribs=link_attribs)
+    network.write_to_matsim(tmpdir)
+
+    assert_semantically_equal(dict(network.links()), {'0': link_attribs})
+
+    assert_semantically_equal(matsim_xml_writer.check_link_attributes(link_attribs),
+                              {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
+                               'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
+                               'geometry': LineString([(1, 2), (2, 3), (3, 4)])
+                               }
+                              )
+
+    found_geometry_attrib = False
+    for event, elem in ET.iterparse(os.path.join(tmpdir, 'network.xml'), events=('start', 'end')):
+        if event == 'start':
+            if elem.tag == 'attribute':
+                if elem.attrib['name'] == 'geometry':
+                    assert elem.text == '_ibE_seK_ibE_ibE_ibE_ibE'
+                    found_geometry_attrib = True
+    assert found_geometry_attrib
+
+
 def test_saving_network_with_geometry_produces_polyline_if_link_alread_has_other_attributes(tmpdir):
     network = Network('epsg:27700')
     network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})
