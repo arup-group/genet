@@ -898,8 +898,8 @@ class Network:
 
             route_to_crow_fly_ratio = {}
             for service_id, route in self.schedule_routes():
-                if 'not_has_uniquely_indexed_routes' in report['schedule']['service_level'][service_id][
-                    'invalid_stages']:
+                service_level_invalid_stages = report['schedule']['service_level'][service_id]['invalid_stages']
+                if 'not_has_uniquely_indexed_routes' in service_level_invalid_stages:
                     if service_id in route_to_crow_fly_ratio:
                         route_id = len(route_to_crow_fly_ratio[service_id])
                     else:
