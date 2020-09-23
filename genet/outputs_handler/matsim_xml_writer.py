@@ -31,15 +31,16 @@ def check_link_attributes(link_attribs):
             attribs_to_delete = []
             for attrib, value in link_attribs['attributes'].items():
                 try:
-                    name = link_attribs['attributes']['name']  # noqa: F841
-                    cl = link_attribs['attributes']['class']  # noqa: F841
-                    text = link_attribs['attributes']['text']  # noqa: F841
+                    name = link_attribs['attributes'][attrib]['name']  # noqa: F841
+                    cl = link_attribs['attributes'][attrib]['class']  # noqa: F841
+                    text = link_attribs['attributes'][attrib]['text']  # noqa: F841
                 except KeyError:
                     attribs_to_delete.append(attrib)
-            logging.warning(f'Attributes on link are not formatted correctly: {link_attribs}')
             for attrib in attribs_to_delete:
+                logging.warning(f'Deleting {attrib} under key "attributes"')
                 del link_attribs['attributes'][attrib]
             if not link_attribs['attributes']:
+                logging.warning(f'Attributes on link are not formatted correctly and will be deleted: {link_attribs}')
                 del link_attribs['attributes']
         else:
             logging.warning(f'Attributes on link are not a dictionary: {link_attribs}')
