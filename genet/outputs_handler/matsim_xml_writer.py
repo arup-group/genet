@@ -34,7 +34,9 @@ def check_link_attributes(link_attribs):
                     name = link_attribs['attributes'][attrib]['name']  # noqa: F841
                     cl = link_attribs['attributes'][attrib]['class']  # noqa: F841
                     text = link_attribs['attributes'][attrib]['text']  # noqa: F841
-                except KeyError:
+                except Exception as e:
+                    logging.warning(f'Attempt to access required keys in link data under "attributes:{attrib}" key '
+                                    f'resulted in {type(e)} with message "{e}".')
                     attribs_to_delete.append(attrib)
             for attrib in attribs_to_delete:
                 logging.warning(f'Deleting {attrib} under key "attributes"')
