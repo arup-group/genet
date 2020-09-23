@@ -220,7 +220,7 @@ def test_reading_network_with_geometry_attributes():
         's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
         'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
         'geometry': LineString([(1,2), (2,3), (3,4)]),
-        'modes': ['subway,metro', 'walk', 'car'], 'attributes': {
+        'modes': ['car'], 'attributes': {
             'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
             'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
             'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
