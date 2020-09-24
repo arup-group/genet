@@ -6,6 +6,7 @@ import time
 import os
 import sys
 from requests.models import Response
+from concurrent.futures._base import Future
 from requests_futures.sessions import FuturesSession
 from genet.utils import google_directions
 from genet.utils import secrets_vault
@@ -299,11 +300,13 @@ def bad_request_google_directions_api_response():
     return response
 
 
-def test_send_requests_for_road_network(mocker, tmpdir, generated_request):
-    mocker.patch.object(google_directions, 'generate_requests', return_value=generated_request)
+def test_send_requests_for_road_network(mocker, tmpdir, generated_request, google_directions_api_response):
+    mocker.patch.object(google_directions, 'generate_requests', return_value={('107316', '107352'): generated_request})
     mocker.patch.object(google_directions, 'send_requests',
-                        return_value={**generated_request,
-                                      **{'request': google_directions_api_response, 'timestamp': 12345}})
+                        return_value={('107316', '107352'): {**generated_request,
+                                                             **{'request': Future(), 'timestamp': 12345}}})
+    mocker.patch.object(Future, 'result', return_value=google_directions_api_response)
+
 
     n = Network('epsg:27700')
     google_directions.send_requests_for_network(n, 10, tmpdir)
