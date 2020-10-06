@@ -15,7 +15,7 @@ Please note we have a code of conduct, please follow it in all your interactions
 files that can be investigated to check places in code that have not been covered by the tests.
 3. Provide [docstrings](https://www.python.org/dev/peps/pep-0257/) for new methods 
 4. Perform linting locally using ```flake8 . --max-line-length 120 --count  --show-source --statistics --exclude=scripts,tests```
-5. Update `requirements.txt` if needed
+5. Add or update dependencies in `requirements.txt` if needed
 6. Ensure the CI build pipeline (Actions tab in GitHub) completes successfully for your branch. The pipeline performs 
 automated PEP8 checks and runs unit tests in a fresh environment and installation of dependencies.
 7. Add to or generate a new jupyter notebook in `notebooks` directory which takes the user through your new feature.
