@@ -135,7 +135,7 @@ def test_generates_valid_matsim_vehicles_xml_file(tmpdir, vehicles_xsd):
         'veh_3': 'Bus',
         'veh_4': 'Tram',
         'veh_5': 'Rail',
-        'veh_6': 'Underground Service'
+        'veh_6': 'Subway'
     }
     matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict)
 
@@ -151,7 +151,7 @@ def test_generates_matsim_vehicles_xml_file_containing_expected_vehicle_types(tm
         'veh_3': 'Bus',
         'veh_4': 'Tram',
         'veh_5': 'Rail',
-        'veh_6': 'Underground Service'
+        'veh_6': 'Subway'
     }
     matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict)
 
@@ -173,7 +173,7 @@ def test_generates_matsim_vehicles_xml_file_containing_expected_vehicles(tmpdir)
         'veh_3': 'Bus',
         'veh_4': 'Tram',
         'veh_5': 'Rail',
-        'veh_6': 'Underground Service'
+        'veh_6': 'Subway'
     }
     matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict)
 
