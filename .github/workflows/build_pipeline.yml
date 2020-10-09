@@ -28,12 +28,11 @@ jobs:
         sudo apt-get install ca-certificates
         export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
         pip install GDAL==2.2.3
-        pip install -e git+https://github.com/dezhin/osmread.git@d8d3fe5edd15fdab9526ea7a100ee6c796315663#egg=osmread
         pip install -e .
     - name: Lint with flake8
       run: |
         pip install flake8
-        flake8 . --max-line-length 120 --count  --show-source --statistics --exclude=scripts,tests,src
+        flake8 . --max-line-length 120 --count  --show-source --statistics --exclude=scripts,tests
     - name: Unit tests
       run: |
         export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
