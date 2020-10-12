@@ -10,7 +10,7 @@ from requests_futures.sessions import FuturesSession
 import genet.utils.secrets_vault as secrets_vault
 import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
-# session = FuturesSession(max_workers=1)
+session = FuturesSession(max_workers=2)
 
 
 def send_requests_for_network(n, request_number_threshold: int, output_dir, traffic: bool = False,
@@ -38,7 +38,7 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir, traf
         raise RuntimeError(f'Number of requests exceeded the threshold. Number of requests: {len(api_requests)}')
 
     logging.info('Sending API requests')
-    api_requests = send_requests(api_requests, key, secret_name, region_name, traffic, max_workers)
+    api_requests = send_requests(api_requests, key, secret_name, region_name, traffic)
     logging.info('Parsing API requests')
     api_requests = parse_results(api_requests, output_dir)
 
@@ -67,8 +67,7 @@ def read_saved_api_results(output_dir):
     return api_requests
 
 
-def make_request(origin_attributes, destination_attributes, key, traffic, max_workers: int = 4):
-    session = FuturesSession(max_workers=max_workers)
+def make_request(origin_attributes, destination_attributes, key, traffic):
     base_url = 'https://maps.googleapis.com/maps/api/directions/json'
     params = {
         'origin': '{},{}'.format(origin_attributes['lat'], origin_attributes['lon']),
@@ -107,7 +106,7 @@ def generate_requests(n):
 
 
 def send_requests(api_requests: dict, key: str = None, secret_name: str = None, region_name: str = None,
-                  traffic: bool = False, max_workers: int = 4):
+                  traffic: bool = False):
     if key is None:
         key = secrets_vault.get_google_directions_api_key(secret_name, region_name)
         if key is None:
@@ -118,12 +117,10 @@ def send_requests(api_requests: dict, key: str = None, secret_name: str = None, 
                                'using or  `!echo $GOOGLE_DIR_API_KEY` if using jupyter notebook cells. To export the '
                                'key use: `export GOOGLE_DIR_API_KEY=key` (again, use ! at the beginning of the line in '
                                'jupyter).')
-
     for request_nodes, api_request_attribs in api_requests.items():
         api_request_attribs['timestamp'] = time.time()
         api_request_attribs['request'] = make_request(
-            api_request_attribs['origin'], api_request_attribs['destination'], key, traffic, max_workers)
-
+            api_request_attribs['origin'], api_request_attribs['destination'], key, traffic, session)
     return api_requests
 
 

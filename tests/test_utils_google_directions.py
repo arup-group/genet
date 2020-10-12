@@ -312,7 +312,7 @@ def test_send_requests_for_road_network(mocker, tmpdir, generated_request, googl
     google_directions.send_requests_for_network(n, 10, tmpdir)
     google_directions.generate_requests.assert_called_once_with(n)
     google_directions.send_requests.assert_called_once_with(google_directions.generate_requests.return_value, None,
-                                                            None, None, False, 4) # adding 4 for max_workers
+                                                            None, None, False)
 
 
 def test_read_saved_api_results():
