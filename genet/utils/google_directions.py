@@ -120,7 +120,7 @@ def send_requests(api_requests: dict, key: str = None, secret_name: str = None, 
     for request_nodes, api_request_attribs in api_requests.items():
         api_request_attribs['timestamp'] = time.time()
         api_request_attribs['request'] = make_request(
-            api_request_attribs['origin'], api_request_attribs['destination'], key, traffic, session)
+            api_request_attribs['origin'], api_request_attribs['destination'], key, traffic)
     return api_requests
 
 
