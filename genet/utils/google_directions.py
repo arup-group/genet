@@ -62,7 +62,8 @@ def read_saved_api_results(output_dir):
                 try:
                     json_dump[key] = ast.literal_eval(json_dump[key])
                 except (ValueError, TypeError):
-                    pass
+                    logging.warning(str(key)+' not processed')
+                    continue
                 api_requests[(json_dump['path_nodes'][0], json_dump['path_nodes'][-1])] = json_dump
     return api_requests
 
