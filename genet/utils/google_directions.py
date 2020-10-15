@@ -64,7 +64,7 @@ def read_saved_api_results(output_dir):
                 except (ValueError, TypeError):
                     logging.warning(str(key)+' not processed')
                     continue
-                api_requests[(json_dump['path_nodes'][0], json_dump['path_nodes'][-1])] = json_dump
+                api_requests[(json_dump[key]['path_nodes'][0], json_dump[key]['path_nodes'][-1])] = json_dump[key]
     return api_requests
 
 
