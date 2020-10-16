@@ -51,8 +51,12 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
     duplicated_link_id = {}
     # update old link by link attributes (osm tags etc.)
     if link_attribs:
-        # if multiple edges, add to the one added most recently
-        g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs  # noqa: F821
+        # TODO genet saves attributes prior to link elems requires a proper fix
+        try:
+            # if multiple edges, add to the one added most recently
+            g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs  # noqa: F821
+        except KeyError:
+            pass
 
     attribs = elem.attrib
     attribs['s2_from'] = node_id_mapping[attribs['from']]
