@@ -1028,6 +1028,20 @@ def test_apply_attributes_to_multiple_edges():
     n.add_link('1', 1, 2, attribs={'b': 1})
     n.add_link('2', 2, 3, attribs={'c': 1})
     n.add_link('3', 2, 3, attribs={'d': 1})
+    n.apply_attributes_to_edges({(1, 2): {'e': 1}, (2, 3): {'f': 1}})
+
+    assert n.link('0') == {'a': 1, 'from': 1, 'to': 2, 'id': '0', 'e': 1}
+    assert n.link('1') == {'b': 1, 'from': 1, 'to': 2, 'id': '1', 'e': 1}
+    assert n.link('2') == {'c': 1, 'from': 2, 'to': 3, 'id': '2', 'f': 1}
+    assert n.link('3') == {'d': 1, 'from': 2, 'to': 3, 'id': '3', 'f': 1}
+
+
+def test_apply_attributes_to_multiple_edges_with_conditions():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'a': 1})
+    n.add_link('1', 1, 2, attribs={'b': 1})
+    n.add_link('2', 2, 3, attribs={'c': 1})
+    n.add_link('3', 2, 3, attribs={'d': 1})
     n.apply_attributes_to_edges({(1, 2): {'e': 1}, (2, 3): {'f': 1}}, conditions=[{'a': (0, 2)}, {'c': (0, 2)}])
 
     assert n.link('0') == {'a': 1, 'from': 1, 'to': 2, 'id': '0', 'e': 1}

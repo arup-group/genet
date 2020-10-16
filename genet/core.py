@@ -548,7 +548,7 @@ class Network:
         stored at the node currently so no data is lost, unless it is being overwritten.
         :param node_id: node id to perform the change to
         :param new_attributes: dictionary of data to add/replace if present
-        :param silent: whether to mute stdout logging messages, useful for big batches
+        :param silent: whether to mute stdout logging messages
         :return:
         """
         old_attributes = deepcopy(self.node(node_id))
@@ -574,7 +574,6 @@ class Network:
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the node currently so no data is lost, unless it is being overwritten.
         :param new_attributes: keys are node ids and values are dictionaries of data to add/replace if present
-        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
         nodes = list(new_attributes.keys())
@@ -613,14 +612,14 @@ class Network:
         :param new_attributes: attributes data to be applied
         :param conditions: graph_operations.Filter conditions
         :param how: graph_operations.Filter how
-        :param silent:
+        :param silent: whether to mute stdout logging messages
         :return:
         """
         filter = graph_operations.Filter(conditions=conditions, how=how)
 
-        for multi_idx, edge_atrribs in self.edge(u, v).items():
-            if filter.satisfies_conditions(edge_atrribs):
-                old_attributes = deepcopy(edge_atrribs)
+        for multi_idx, edge_attribs in self.edge(u, v).items():
+            if filter.satisfies_conditions(edge_attribs):
+                old_attributes = deepcopy(edge_attribs)
 
                 # check if change is to nested part of node data
                 if any(isinstance(v, dict) for v in new_attributes.values()):
@@ -634,26 +633,48 @@ class Network:
                     object_type='edge',
                     old_id=edge,
                     new_id=edge,
-                    old_attributes=edge_atrribs,
+                    old_attributes=edge_attribs,
                     new_attributes=new_attribs)
 
                 nx.set_edge_attributes(self.graph, {(u, v, multi_idx): new_attribs})
                 if not silent:
-                    logging.info('Changed Link attributes under index: {}'.format(edge))
+                    logging.info('Changed Edge attributes under index: {}'.format(edge))
 
-    def apply_attributes_to_edges(self, new_attributes: dict, conditions=None, how=any, silent: bool = False):
+    def apply_attributes_to_edges(self, new_attributes: dict, conditions=None, how=any):
         """
         Applies new attributes for edges (optionally satisfying certain criteria)
         :param new_attributes: dictionary where keys are two tuples (u, v) where u is the from node and v is the to
         node. The value at the key are the new attributes to be applied to links on edge (u,v)
         :param conditions: graph_operations.Filter conditions
         :param how: graph_operations.Filter how
-        :param silent:
         :return:
         """
-        # TODO optimise
-        [self.apply_attributes_to_edge(u, v, new_attribs, conditions, how, silent)
-         for (u, v), new_attribs in new_attributes.items()]
+        filter = graph_operations.Filter(conditions=conditions, how=how)
+
+        old_attribs = []
+        new_attribs = []
+        edge_tuples = []
+
+        for (u, v), attribs_to_set in new_attributes.items():
+            for multi_idx, edge_attribs in self.edge(u, v).items():
+                if filter.satisfies_conditions(edge_attribs):
+                    old_attribs.append(deepcopy(edge_attribs))
+                    new_attribs.append(dict_support.set_nested_value(edge_attribs, attribs_to_set))
+                    edge_tuples.append((u, v, multi_idx))
+
+        edge_ids = list(map(str, edge_tuples))
+        self.change_log.modify_bunch(
+            object_type='edge',
+            old_id_bunch=edge_ids,
+            old_attributes=old_attribs,
+            new_id_bunch=edge_ids,
+            new_attributes=new_attribs
+        )
+        nx.set_edge_attributes(
+            self.graph,
+            dict(zip(edge_tuples, new_attribs)))
+
+        logging.info(f'Changed Edge attributes for {len(edge_tuples)} edges')
 
     def apply_attributes_to_link(self, link_id, new_attributes, silent: bool = False):
         """
@@ -661,7 +682,7 @@ class Network:
         stored at the link currently so no data is lost, unless it is being overwritten.
         :param link_id: link id to perform the change to
         :param new_attributes: dictionary of data to add/replace if present
-        :param silent: whether to mute stdout logging messages, useful for big batches
+        :param silent: whether to mute stdout logging messages
         :return:
         """
         u, v = self.link_id_mapping[link_id]['from'], self.link_id_mapping[link_id]['to']
@@ -690,7 +711,6 @@ class Network:
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the link currently so no data is lost, unless it is being overwritten.
         :param new_attributes: keys are link ids and values are dictionaries of data to add/replace if present
-        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
         links = list(new_attributes.keys())
@@ -730,7 +750,7 @@ class Network:
         """
         Removes the node n and all adjacent edges
         :param node_id:
-        :param silent: whether to mute stdout logging messages, useful for big batches
+        :param silent: whether to mute stdout logging messages
         :return:
         """
         self.change_log.remove(object_type='node', object_id=node_id, object_attributes=self.node(node_id))
