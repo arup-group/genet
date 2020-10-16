@@ -340,7 +340,7 @@ class Network:
         """
         if link_id in self.link_id_mapping:
             new_link_id = self.generate_index_for_edge(silent=silent)
-            logging.warning('This link_id=`{link_id}` already exists. Generated a new unique_index: `{new_link_id}`')
+            logging.warning(f'`{link_id}` already exists. Generated a new unique_index: `{new_link_id}`')
             link_id = new_link_id
 
         if multi_edge_idx is None:
@@ -743,7 +743,7 @@ class Network:
         self.change_log.remove(object_type='node', object_id=node_id, object_attributes=self.node(node_id))
         self.graph.remove_node(node_id)
         if not silent:
-            logging.info(f'Removed Node under index: {node_id}')
+            logging.info(f'Removed node under index: {node_id}')
 
     def remove_nodes(self, nodes):
         """
@@ -754,7 +754,7 @@ class Network:
         self.change_log.remove_bunch(object_type='node', id_bunch=nodes,
                                      attributes_bunch=[self.node(node_id) for node_id in nodes])
         self.graph.remove_nodes_from(nodes)
-        logging.info(f'Removed Nodes under indices: {nodes}')
+        logging.info(f'Removed {len(nodes)} nodes.')
 
     def remove_link(self, link_id, silent: bool = False):
         """
@@ -768,7 +768,7 @@ class Network:
         self.graph.remove_edge(u, v, multi_idx)
         del self.link_id_mapping[link_id]
         if not silent:
-            logging.info(f'Removed Link under index: {link_id}')
+            logging.info(f'Removed link under index: {link_id}')
 
     def remove_links(self, links):
         """
@@ -781,7 +781,7 @@ class Network:
         self.graph.remove_edges_from([self.edge_tuple_from_link_id(link_id) for link_id in links])
         for link_id in links:
             del self.link_id_mapping[link_id]
-        logging.info(f'Removed {len(links)} Links')
+        logging.info(f'Removed {len(links)} links')
 
     def number_of_multi_edges(self, u, v):
         """
