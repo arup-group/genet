@@ -6,6 +6,7 @@ import os
 from copy import deepcopy
 from typing import Union, List
 from pyproj import Transformer
+from math import ceil
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.osm_reader as osm_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
@@ -938,9 +939,14 @@ class Network:
         for edge, attribs in edges:
             u, v = str(edge[0]), str(edge[1])
             link_attributes = osm_reader.find_matsim_link_values(attribs, config).copy()
+
             if 'lanes' in attribs:
-                # overwrite the default matsim josm values
-                link_attributes['permlanes'] = float(attribs['lanes'])
+                try:
+                    # overwrite the default matsim josm values
+                    link_attributes['permlanes'] = ceil(float(attribs['lanes']))
+                except Exception as e:
+                    logging.warning(f'Reading lanes from OSM resulted in {type(e)} with message "{e}".'
+                                    f'Found at edge {edge}. Defaulting to permlanes={link_attributes["permlanes"]}')
             # compute link-wide capacity
             link_attributes['capacity'] = link_attributes['permlanes'] * link_attributes['capacity']
 
