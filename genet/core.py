@@ -37,12 +37,8 @@ class Network:
         self.link_id_mapping = {}
 
     def __repr__(self):
-        return "<{} instance at {}: with \ngraph: {} and \nschedule {}".format(
-            self.__class__.__name__,
-            id(self),
-            nx.info(self.graph),
-            self.schedule.info()
-        )
+        return f"<{self.__class__.__name__} instance at {id(self)}: with \ngraph: {nx.info(self.graph)} and " \
+               f"\nschedule {self.schedule.info()}"
 
     def __str__(self):
         return self.info()
@@ -56,8 +52,8 @@ class Network:
         """
         # consolidate coordinate systems
         if other.epsg != self.epsg:
-            logging.info('Attempting to merge two networks in different coordinate systems. '
-                         'Reprojecting from {} to {}'.format(other.epsg, self.epsg))
+            logging.info(f'Attempting to merge two networks in different coordinate systems. '
+                         f'Reprojecting from {other.epsg} to {self.epsg}')
             other.reproject(other.epsg)
         # consolidate node ids
         other = graph_operations.consolidate_node_indices(self, other)
@@ -81,10 +77,7 @@ class Network:
         print(self.info())
 
     def info(self):
-        return "Graph info: {} \nSchedule info: {}".format(
-            nx.info(self.graph),
-            self.schedule.info()
-        )
+        return f"Graph info: {nx.info(self.graph)} \nSchedule info: {self.schedule.info()}"
 
     def plot(self, show=True, save=False, output_dir=''):
         """
@@ -253,7 +246,7 @@ class Network:
         :param node:
         :param attribs: should include spatial information x,y in epsg cosistent with the network or lat lon in
         epsg:4326
-        :param silent: whether to mute stdout logging messages, useful for big batches
+        :param silent: whether to mute stdout logging messages
         :return:
         """
         if attribs is not None:
@@ -262,10 +255,10 @@ class Network:
             self.graph.add_node(node)
         self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
         if not silent:
-            logging.info('Added Node with index `{}` and data={}'.format(node, attribs))
+            logging.info(f'Added Node with index `{node}` and data={attribs}')
         return node
 
-    def add_nodes(self, nodes_and_attribs: dict, silent: bool = False):
+    def add_nodes(self, nodes_and_attribs: dict):
         # check for clashing nodes
         clashing_node_ids = set(dict(self.nodes()).keys()) & set(nodes_and_attribs.keys())
 
@@ -279,7 +272,7 @@ class Network:
         if clashing_node_ids:
             reindexing_dict = dict(
                 zip(clashing_node_ids, self.generate_indices_for_n_nodes(
-                    len(nodes_and_attribs), avoid_keys=set(nodes_and_attribs.keys()), silent=silent)))
+                    len(nodes_and_attribs), avoid_keys=set(nodes_and_attribs.keys()))))
             clashing_mask = df_nodes['id'].isin(reindexing_dict.keys())
             df_nodes.loc[clashing_mask, 'id'] = df_nodes.loc[clashing_mask, 'id'].map(reindexing_dict)
         df_nodes = df_nodes.set_index('id', drop=False)
@@ -289,8 +282,8 @@ class Network:
         self.graph.add_nodes_from([(node_id, attribs) for node_id, attribs in nodes_and_attribs_to_add.items()])
         self.change_log.add_bunch(object_type='node', id_bunch=list(nodes_and_attribs_to_add.keys()),
                                   attributes_bunch=list(nodes_and_attribs_to_add.values()))
-        if not silent:
-            logging.info(f'Added {len(nodes_and_attribs)} nodes')
+
+        logging.info(f'Added {len(nodes_and_attribs)} nodes')
         return reindexing_dict, nodes_and_attribs_to_add
 
     def add_edge(self, u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None, attribs: dict = None,
@@ -309,15 +302,14 @@ class Network:
         link_id = self.generate_index_for_edge(silent=silent)
         self.add_link(link_id, u, v, multi_edge_idx, attribs, silent)
         if not silent:
-            logging.info('Added edge from `{}` to `{}` with link_id `{}`'.format(u, v, link_id))
+            logging.info(f'Added edge from `{u}` to `{v}` with link_id `{link_id}`')
         return link_id
 
-    def add_edges(self, edges_attributes: List[dict], silent: bool = False):
+    def add_edges(self, edges_attributes: List[dict]):
         """
         Adds multiple edges, generates their unique link ids
         :param edges_attributes: List of edges, each item in list is a dictionary defining the edge attributes,
         contains at least 'from': node_id and 'to': node_id entries,
-        :param silent: whether to mute stdout logging messages
         :return:
         """
         # check for compulsory attribs
@@ -327,10 +319,10 @@ class Network:
         if ('to' not in df_edges.columns) or (df_edges['to'].isnull().any()):
             raise RuntimeError('You are trying to add edges which are missing `to` (destination) nodes')
 
-        df_edges['id'] = self.generate_indices_for_n_edges(len(df_edges), silent=silent)
+        df_edges['id'] = self.generate_indices_for_n_edges(len(df_edges))
         df_edges = df_edges.set_index('id', drop=False)
 
-        return self.add_links(df_edges.T.to_dict(), silent=silent)
+        return self.add_links(df_edges.T.to_dict())
 
     def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None,
                  attribs: dict = None, silent: bool = False):
@@ -348,8 +340,7 @@ class Network:
         """
         if link_id in self.link_id_mapping:
             new_link_id = self.generate_index_for_edge(silent=silent)
-            logging.warning('This link_id=`{}` already exists. Generated a new unique_index: `{}`'.format(
-                link_id, new_link_id))
+            logging.warning('This link_id=`{link_id}` already exists. Generated a new unique_index: `{new_link_id}`')
             link_id = new_link_id
 
         if multi_edge_idx is None:
@@ -357,8 +348,8 @@ class Network:
         if self.graph.has_edge(u, v, multi_edge_idx):
             old_idx = multi_edge_idx
             multi_edge_idx = self.graph.new_edge_key(u, v)
-            logging.warning('Changing passed multi_edge_idx: `{}` as there already exists an edge stored under that '
-                            'index. New multi_edge_idx: `{}`'.format(old_idx, multi_edge_idx))
+            logging.warning(f'Changing passed multi_edge_idx: `{old_idx}` as there already exists an edge stored under'
+                            f' that index. New multi_edge_idx: `{multi_edge_idx}`')
         if not isinstance(multi_edge_idx, int):
             raise RuntimeError('Multi index key needs to be an integer')
 
@@ -371,16 +362,15 @@ class Network:
         self.graph.add_edge(u, v, key=multi_edge_idx, **attribs)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
         if not silent:
-            logging.info('Added Link with index {}, from node:{} to node:{}, under multi-index:{}, and data={}'.format(
-                link_id, u, v, multi_edge_idx, attribs))
+            logging.info(f'Added Link with index {link_id}, from node:{u} to node:{v}, under '
+                         f'multi-index:{multi_edge_idx}, and data={attribs}')
         return link_id
 
-    def add_links(self, links_and_attributes: Dict[str, dict], silent: bool = False):
+    def add_links(self, links_and_attributes: Dict[str, dict]):
         """
         Adds multiple edges, generates their unique link ids
         :param links_and_attributes: Dictionary of link ids and corresponding edge attributes, each edge attributes
         contains at least 'from': node_id and 'to': node_id entries,
-        :param silent: whether to mute stdout logging messages
         :return:
         """
         # check for compulsory attribs
@@ -425,8 +415,7 @@ class Network:
             reindexing_dict = dict(
                 zip(clashing_link_ids, self.generate_indices_for_n_edges(
                     len(clashing_link_ids),
-                    avoid_keys=set(links_and_attributes.keys()),
-                    silent=silent)))
+                    avoid_keys=set(links_and_attributes.keys()))))
             clashing_mask = df_links['id'].isin(reindexing_dict.keys())
             df_links.loc[clashing_mask, 'id'] = df_links.loc[clashing_mask, 'id'].map(reindexing_dict)
             df_links = df_links.set_index('id', drop=False)
@@ -446,8 +435,7 @@ class Network:
              in links_and_attributes.items()])
         self.change_log.add_bunch(object_type='link', id_bunch=list(links_and_attributes.keys()),
                                   attributes_bunch=list(links_and_attributes.values()))
-        if not silent:
-            logging.info(f'Added {len(links_and_attributes)} links')
+        logging.info(f'Added {len(links_and_attributes)} links')
         return reindexing_dict, links_and_attributes
 
     def reindex_node(self, node_id, new_node_id, silent: bool = False):
@@ -472,7 +460,7 @@ class Network:
         self.apply_attributes_to_node(node_id, new_attribs)
         self.graph = nx.relabel_nodes(self.graph, {node_id: new_node_id})
         if not silent:
-            logging.info('Changed Node index from {} to {}'.format(node_id, new_node_id))
+            logging.info(f'Changed Node index from {node_id} to {new_node_id}')
 
     def reindex_link(self, link_id, new_link_id, silent: bool = False):
         # check if new id is already occupied
@@ -486,7 +474,7 @@ class Network:
         self.link_id_mapping[new_link_id] = self.link_id_mapping[link_id]
         del self.link_id_mapping[link_id]
         if not silent:
-            logging.info('Changed Link index from {} to {}'.format(link_id, new_link_id))
+            logging.info(f'Changed Link index from {link_id} to {new_link_id}')
 
     def subgraph_on_link_conditions(self, conditions):
         """
@@ -567,9 +555,9 @@ class Network:
             new_attributes=new_attributes)
         nx.set_node_attributes(self.graph, {node_id: new_attributes})
         if not silent:
-            logging.info('Changed Node attributes under index: {}'.format(node_id))
+            logging.info(f'Changed Node attributes under index: {node_id}')
 
-    def apply_attributes_to_nodes(self, new_attributes: dict, silent: bool = False):
+    def apply_attributes_to_nodes(self, new_attributes: dict):
         """
         Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
         stored at the node currently so no data is lost, unless it is being overwritten.
@@ -585,13 +573,12 @@ class Network:
         nx.set_node_attributes(self.graph, dict(zip(nodes, new_attribs)))
         logging.info(f'Changed Node attributes for {len(nodes)} nodes')
 
-    def apply_function_to_nodes(self, function, location: str, silent: bool = False):
+    def apply_function_to_nodes(self, function, location: str):
         """
         Applies function to node attributes dictionary
         :param function: function of node attributes dictionary returning a value that should be stored
         under `location`
         :param location: where to save the results: string defining the key in the nodes attributes dictionary
-        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
         new_node_attribs = {}
@@ -602,7 +589,7 @@ class Network:
                 # Not all nodes/edges are required to have all the same attributes stored. Fail silently and only apply
                 # to relevant nodes/edges
                 pass
-        self.apply_attributes_to_nodes(new_node_attribs, silent=silent)
+        self.apply_attributes_to_nodes(new_node_attribs)
 
     def apply_attributes_to_edge(self, u, v, new_attributes, conditions=None, how=any, silent: bool = False):
         """
@@ -627,7 +614,7 @@ class Network:
                 else:
                     new_attribs = {**old_attributes, **new_attributes}
 
-                edge = '({}, {}, {})'.format(u, v, multi_idx)
+                edge = f'({u}, {v}, {multi_idx})'
 
                 self.change_log.modify(
                     object_type='edge',
@@ -638,7 +625,7 @@ class Network:
 
                 nx.set_edge_attributes(self.graph, {(u, v, multi_idx): new_attribs})
                 if not silent:
-                    logging.info('Changed Edge attributes under index: {}'.format(edge))
+                    logging.info(f'Changed Edge attributes under index: {edge}')
 
     def apply_attributes_to_edges(self, new_attributes: dict, conditions=None, how=any):
         """
@@ -704,7 +691,7 @@ class Network:
 
         nx.set_edge_attributes(self.graph, {(u, v, multi_idx): new_attributes})
         if not silent:
-            logging.info('Changed Link attributes under index: {}'.format(link_id))
+            logging.info(f'Changed Link attributes under index: {link_id}')
 
     def apply_attributes_to_links(self, new_attributes: dict):
         """
@@ -758,24 +745,22 @@ class Network:
         if not silent:
             logging.info(f'Removed Node under index: {node_id}')
 
-    def remove_nodes(self, nodes, silent: bool = False):
+    def remove_nodes(self, nodes):
         """
         Removes several nodes and all adjacent edges
         :param nodes:
-        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
         self.change_log.remove_bunch(object_type='node', id_bunch=nodes,
                                      attributes_bunch=[self.node(node_id) for node_id in nodes])
         self.graph.remove_nodes_from(nodes)
-        if not silent:
-            logging.info(f'Removed Nodes under indices: {nodes}')
+        logging.info(f'Removed Nodes under indices: {nodes}')
 
     def remove_link(self, link_id, silent: bool = False):
         """
         Removes the multi edge pertaining to link given
         :param link_id:
-        :param silent: whether to mute stdout logging messages, useful for big batches
+        :param silent: whether to mute stdout logging messages
         :return:
         """
         self.change_log.remove(object_type='link', object_id=link_id, object_attributes=self.link(link_id))
@@ -785,11 +770,10 @@ class Network:
         if not silent:
             logging.info(f'Removed Link under index: {link_id}')
 
-    def remove_links(self, links, silent: bool = False):
+    def remove_links(self, links):
         """
         Removes the multi edges pertaining to links given
         :param links:
-        :param silent: whether to mute stdout logging messages, useful for big batches
         :return:
         """
         self.change_log.remove_bunch(object_type='link', id_bunch=links,
@@ -797,8 +781,7 @@ class Network:
         self.graph.remove_edges_from([self.edge_tuple_from_link_id(link_id) for link_id in links])
         for link_id in links:
             del self.link_id_mapping[link_id]
-        if not silent:
-            logging.info(f'Removed Links under indices: {links}')
+        logging.info(f'Removed {len(links)} Links')
 
     def number_of_multi_edges(self, u, v):
         """
@@ -882,8 +865,8 @@ class Network:
             if _route.route:
                 route_nodes = graph_operations.convert_list_of_link_ids_to_network_nodes(self, _route.route)
                 if len(route_nodes) != 1:
-                    logging.warning('The route: {} within service {}, is disconnected. Consists of {} chunks.'
-                                    ''.format(_route.id, service_id, len(route_nodes)))
+                    logging.warning(f'The route: {_route.id} within service {service_id}, is disconnected. Consists '
+                                    f'of {len(route_nodes)} chunks.')
                     routes.extend(route_nodes)
                 else:
                     routes.append(route_nodes[0])
@@ -898,7 +881,7 @@ class Network:
 
     def node_id_exists(self, node_id):
         if node_id in [i for i, attribs in self.nodes()]:
-            logging.warning('This node_id={} already exists.'.format(node_id))
+            logging.warning(f'{node_id} already exists.')
             return True
         return False
 
@@ -918,11 +901,11 @@ class Network:
             if self.graph.has_edge(u, v, multi_idx):
                 return True
             else:
-                logging.info('Link with id {} is declared in the network with from_node: {}, to_node: {} and '
-                             'multi_index: {} but this edge is not in the graph.'.format(link_id, u, v, multi_idx))
+                logging.info(f'Link with id {link_id} is declared in the network with from_node: {u}, to_node: {v} '
+                             f'and multi_index: {multi_idx} but this edge is not in the graph.')
                 return False
         else:
-            logging.info('Link with id {} is not in the network.'.format(link_id))
+            logging.info(f'Link with id {link_id} is not in the network.')
             return False
 
     def has_links(self, link_ids: list, conditions: Union[list, dict] = None):
@@ -948,7 +931,7 @@ class Network:
             prev_link_id_to_node = self.link_id_mapping[prev_link_id]['to']
             next_link_id_from_node = self.link_id_mapping[next_link_id]['from']
             if prev_link_id_to_node != next_link_id_from_node:
-                logging.info('Links {} and {} are not connected'.format(prev_link_id, next_link_id))
+                logging.info(f'Links {prev_link_id} and {next_link_id} are not connected')
                 return False
         if not link_ids:
             logging.info('Links chain is empty')
@@ -968,7 +951,7 @@ class Network:
                     distance += length
             return distance
         else:
-            logging.warning('This route is invalid: {}'.format(link_ids))
+            logging.warning(f'This route is invalid: {link_ids}')
             return 0
 
     def generate_index_for_node(self, avoid_keys: Union[list, set] = None, silent: bool = False):
@@ -982,10 +965,10 @@ class Network:
         if (id in existing_keys) or (str(id) in existing_keys):
             id = uuid.uuid4()
         if not silent:
-            logging.info('Generated node id {}.'.format(id))
+            logging.info(f'Generated node id {id}.')
         return str(id)
 
-    def generate_indices_for_n_nodes(self, n, avoid_keys: Union[list, set] = None, silent: bool = False):
+    def generate_indices_for_n_nodes(self, n, avoid_keys: Union[list, set] = None):
         existing_keys = set([i for i, attribs in self.nodes()])
         if avoid_keys:
             existing_keys = existing_keys | set(avoid_keys)
@@ -996,13 +979,12 @@ class Network:
         if id_set & existing_keys:
             id_set = id_set - existing_keys
             id_set = id_set | set([str(uuid.uuid4()) for i in range(n - len(id_set))])
-        if not silent:
-            logging.info(f'Generated {len(id_set)} node ids.')
+        logging.info(f'Generated {len(id_set)} node ids.')
         return id_set
 
     def link_id_exists(self, link_id):
         if link_id in self.link_id_mapping:
-            logging.warning('This link_id={} already exists.'.format(link_id))
+            logging.warning(f'{link_id} already exists.')
             return True
         return False
 
@@ -1017,10 +999,10 @@ class Network:
         if (id in existing_keys) or (str(id) in existing_keys):
             id = uuid.uuid4()
         if not silent:
-            logging.info('Generated link id {}.'.format(id))
+            logging.info(f'Generated link id {id}.')
         return str(id)
 
-    def generate_indices_for_n_edges(self, n, avoid_keys: Union[list, set] = None, silent: bool = False):
+    def generate_indices_for_n_edges(self, n, avoid_keys: Union[list, set] = None):
         existing_keys = set(self.link_id_mapping.keys())
         if avoid_keys:
             existing_keys = existing_keys | set(avoid_keys)
@@ -1031,8 +1013,7 @@ class Network:
         if id_set & existing_keys:
             id_set = id_set - existing_keys
             id_set = id_set | set([str(uuid.uuid4()) for i in range(n - len(id_set))])
-        if not silent:
-            logging.info(f'Generated {len(id_set)} link ids.')
+        logging.info(f'Generated {len(id_set)} link ids.')
         return id_set
 
     def index_graph_edges(self):
@@ -1064,10 +1045,9 @@ class Network:
             valid_link_chain = self.has_valid_link_chain(route.route)
             links_have_correct_modes = self.has_links(route.route, {'modes': modal_condition})
             if not links_have_correct_modes:
-                logging.info('Some link ids in Route: {} don\'t accept the route\'s mode: {}'.format(
-                    route.id, route.mode))
+                logging.info(f'Some link ids in Route: {route.id} don\'t accept the route\'s mode: {route.mode}')
             return valid_link_chain and links_have_correct_modes
-        logging.info('Not all link ids in Route: {} are in the graph.'.format(route.id))
+        logging.info(f'Not all link ids in Route: {route.id} are in the graph.')
         return False
 
     def invalid_network_routes(self):
@@ -1089,7 +1069,7 @@ class Network:
         modes = ['car', 'walk', 'bike']
         report['graph'] = {'graph_connectivity': {}}
         for mode in modes:
-            logging.info('Checking network connectivity for mode: {}'.format(mode))
+            logging.info(f'Checking network connectivity for mode: {mode}')
             # subgraph for the mode to be tested
             G_mode = self.modal_subgraph(mode)
             # calculate how many connected subgraphs there are
@@ -1148,7 +1128,7 @@ class Network:
             combine=parallel.combine_dict,
             epsg=self.epsg
         )
-        reindexing_dict, nodes_and_attributes = self.add_nodes(nodes_and_attributes, silent=False)
+        reindexing_dict, nodes_and_attributes = self.add_nodes(nodes_and_attributes)
 
         edges_attributes = parallel.multiprocess_wrap(
             data=edges,
@@ -1159,10 +1139,10 @@ class Network:
             nodes_and_attributes=nodes_and_attributes,
             config_path=osm_read_config
         )
-        self.add_edges(edges_attributes, silent=False)
+        self.add_edges(edges_attributes)
 
         logging.info('Deleting isolated nodes which have no edges.')
-        self.remove_nodes(list(nx.isolates(self.graph)), silent=True)
+        self.remove_nodes(list(nx.isolates(self.graph)))
 
     def read_matsim_network(self, path):
         self.graph, self.link_id_mapping, duplicated_nodes, duplicated_links = \
