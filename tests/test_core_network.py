@@ -1124,7 +1124,7 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
               'lon': -0.0006545205888310243, 's2_id': 1152921335974974453},
         '2': {'id': '2', 'x': 622502.8314014417, 'y': -5527856.725358106, 'lat': -0.00716977739835831,
               'lon': -0.0006545205888310243, 's2_id': 384307157539499829}})
-    assert len(list(network.links())) == 10
+    assert len(list(network.links())) == 11
 
     number_of_0_multi_idx = 0
     number_of_1_multi_idx = 0
@@ -1224,7 +1224,17 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
                                        'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String',
                                                          'text': '3'},
                                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                                           'text': 'tertiary'}}, 'id': '10'}
+                                                           'text': 'tertiary'}}, 'id': '10'},
+                               '11': {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
+                                      'modes': ['car', 'walk', 'bike'], 'from': '1', 'to': '0',
+                                      's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
+                                      'length': 1748.4487354464366, 'attributes': {
+                                       'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
+                                                         'text': '47007862'},
+                                       'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String',
+                                                         'text': '3;2'},
+                                       'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                                           'text': 'tertiary'}}, 'id': '11'}
                                })
 
 
