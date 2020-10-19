@@ -1,21 +1,25 @@
 import logging
 import multiprocessing as mp
+from math import ceil
 
 
-def split_list(_list, k=3000):
+def split_list(_list, processes=1):
     """
     Split type function. Partitions list into list of subsets of _list
     :param _list: any list
-    :param k: batch size
+    :param processes: number of processes to split data across, takes precedence over k to split data evenly over
+    exactly the number of processes being used but is optional
     :return: list of lists
     """
+    k = ceil(len(_list) / processes)
     if len(_list) <= k:
         return [_list]
     else:
-        n = len(_list) // k
+        n = int(len(_list) // k)
         l_partitioned = [_list[(k * i):(k * (i + 1))] for i in range(n)]
-        # leftovers
-        l_partitioned.append(_list[(k * n):])
+        leftovers = _list[(k * n):]
+        if leftovers:
+            l_partitioned.append(leftovers)
         logging.info('{} or {} batches of size {} ish'.format(n, n + 1, k))
         return l_partitioned
 
@@ -32,18 +36,20 @@ def combine_list(list_list):
     return return_list
 
 
-def split_dict(_dict, k=3000):
+def split_dict(_dict, processes=1):
     """
     Split type function. Partitions dict into list of subset dicts of _dict
     :param _dict: any dict
-    :param k: batch size
+    :param processes: number of processes to split data across, takes precedence over k to split data evenly over
+    exactly the number of processes being used but is optional
     :return: list of dicts
     """
+    k = ceil(len(_dict) / processes)
     if len(_dict) <= k:
         return [_dict]
     else:
         keys = list(_dict.keys())
-        keys_partitioned = split_list(keys, k=k)
+        keys_partitioned = split_list(keys, processes=processes)
         return [{key: _dict[key] for key in keys_bunch} for keys_bunch in keys_partitioned]
 
 
@@ -66,7 +72,7 @@ def multiprocess_wrap(data, split, apply, combine, processes=1, **kwargs):
     function.
     :param data: data the function expects, which should be partitioned by split function to be processed in parallel
     :param split: function which partitions `data` into list of bunches of same type as `data` to be processed in
-    parallel
+    parallel. Include `processes` variable in this function if you want to use this variable for splitting data
     :param apply: function that expects `data`, process to be applied to `data` in parallel
     :param combine: function which expects a list of the returns of function `apply` and combines it back into
     what `apply` would have returned if it had been ran in a single process
@@ -74,7 +80,10 @@ def multiprocess_wrap(data, split, apply, combine, processes=1, **kwargs):
     :param kwargs: that need to be passed to the function `apply` which remain constant across all data
     :return: output of the combine function
     """
-    data_partitioned = split(data)
+    try:
+        data_partitioned = split(data, processes=processes)
+    except TypeError:
+        data_partitioned = split(data)
 
     pool = mp.Pool(processes=processes)
 
