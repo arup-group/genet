@@ -2,6 +2,7 @@ import yaml
 import logging
 import osmread
 from pyproj import Transformer
+from math import ceil
 import genet.inputs_handler.osmnx_customised as osmnx_customised
 import genet.utils.parallel as parallel
 import genet.utils.spatial as spatial
@@ -140,8 +141,12 @@ def generate_graph_edges(edges, reindexing_dict, nodes_and_attributes, config_pa
 
         link_attributes = find_matsim_link_values(attribs, Config(config_path)).copy()
         if 'lanes' in attribs:
-            # overwrite the default matsim josm values
-            link_attributes['permlanes'] = float(attribs['lanes'])
+            try:
+                # overwrite the default matsim josm values
+                link_attributes['permlanes'] = ceil(float(attribs['lanes']))
+            except Exception as e:
+                logging.warning(f'Reading lanes from OSM resulted in {type(e)} with message "{e}".'
+                                f'Found at edge {edge}. Defaulting to permlanes={link_attributes["permlanes"]}')
         # compute link-wide capacity
         link_attributes['capacity'] = link_attributes['permlanes'] * link_attributes['capacity']
 

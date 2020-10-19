@@ -1056,6 +1056,20 @@ def test_apply_attributes_to_multiple_edges():
     n.add_link('1', 1, 2, attribs={'b': 1})
     n.add_link('2', 2, 3, attribs={'c': 1})
     n.add_link('3', 2, 3, attribs={'d': 1})
+    n.apply_attributes_to_edges({(1, 2): {'e': 1}, (2, 3): {'f': 1}})
+
+    assert n.link('0') == {'a': 1, 'from': 1, 'to': 2, 'id': '0', 'e': 1}
+    assert n.link('1') == {'b': 1, 'from': 1, 'to': 2, 'id': '1', 'e': 1}
+    assert n.link('2') == {'c': 1, 'from': 2, 'to': 3, 'id': '2', 'f': 1}
+    assert n.link('3') == {'d': 1, 'from': 2, 'to': 3, 'id': '3', 'f': 1}
+
+
+def test_apply_attributes_to_multiple_edges_with_conditions():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'a': 1})
+    n.add_link('1', 1, 2, attribs={'b': 1})
+    n.add_link('2', 2, 3, attribs={'c': 1})
+    n.add_link('3', 2, 3, attribs={'d': 1})
     n.apply_attributes_to_edges({(1, 2): {'e': 1}, (2, 3): {'f': 1}}, conditions=[{'a': (0, 2)}, {'c': (0, 2)}])
 
     assert n.link('0') == {'a': 1, 'from': 1, 'to': 2, 'id': '0', 'e': 1}
@@ -1353,7 +1367,7 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
               'lon': -0.0006545205888310243, 's2_id': 1152921335974974453},
         '2': {'id': '2', 'x': 622502.8314014417, 'y': -5527856.725358106, 'lat': -0.00716977739835831,
               'lon': -0.0006545205888310243, 's2_id': 384307157539499829}})
-    assert len(list(network.links())) == 10
+    assert len(list(network.links())) == 11
 
     number_of_0_multi_idx = 0
     number_of_1_multi_idx = 0
@@ -1431,12 +1445,23 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
          'attributes': {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
                         'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '47007861'},
                         'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'tertiary'}}}]
+                                            'text': 'tertiary'}}},
+        {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
+         'modes': ['car', 'walk', 'bike'], 'from': '1', 'to': '0',
+         's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
+         'length': 1748.4487354464366, 'attributes': {
+            'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
+                              'text': '47007862'},
+            'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String',
+                              'text': '3;2'},
+            'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                'text': 'tertiary'}}}
+    ]
 
     cols = ['permlanes', 'freespeed', 'capacity', 'oneway', 'modes', 'from', 'to', 's2_from', 's2_to', 'length',
             'attributes']
 
-    assert len(network.link_id_mapping) == 10
+    assert len(network.link_id_mapping) == 11
     for link in network.link_id_mapping.keys():
         satisfied = False
         attribs_to_test = network.link(link).copy()
