@@ -21,5 +21,5 @@ setup(
     url="https://github.com/arup-group/genet",
     packages=find_packages(),
     python_requires='>=3.7',
-    install_requires=install_requires,
+    install_requires=install_requires
 )

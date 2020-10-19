@@ -1,4 +1,6 @@
 import pytest
+import pickle
+import os
 from genet.schedule_elements import Service
 from genet.utils import plot
 from tests.fixtures import *
@@ -257,4 +259,3 @@ def test_is_valid_with_non_network_route(service):
     service.routes['1'].route = []
     service.routes['2'].route = []
     assert not service.is_valid_service()
-

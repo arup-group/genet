@@ -1,7 +1,6 @@
 from typing import Union, Dict, List
 from pyproj import Transformer
 import networkx as nx
-import pandas as pd
 import logging
 from datetime import datetime
 import genet.utils.plot as plot
@@ -11,6 +10,8 @@ import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.gtfs_reader as gtfs_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.utils.persistence as persistence
+import genet.utils.parallel as parallel
+import genet.modify.schedule as mod_schedule
 import genet.validate.schedule_validation as schedule_validation
 
 # number of decimal places to consider when comparing lat lons
@@ -55,7 +56,7 @@ class ScheduleElement:
     def stop_to_route_ids_map(self):
         return dict(self.graph().nodes(data='routes'))
 
-    def reproject(self, new_epsg):
+    def reproject(self, new_epsg, processes=1):
         """
         Changes projection of the element to new_epsg
         :param new_epsg: 'epsg:1234'
@@ -63,14 +64,15 @@ class ScheduleElement:
         """
         if self.epsg != new_epsg:
             g = self.graph()
-            transformers = {epsg: Transformer.from_crs(epsg, new_epsg) for epsg in
-                            pd.Series(dict(g.nodes(data='epsg'))).unique()}
 
-            reprojected_node_attribs = {}
-            for node_id, node_attribs in g.nodes(data=True):
-                x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], transformers[node_attribs['epsg']])
-                reprojected_node_attribs[node_id] = {'x': x, 'y': y, 'epsg': new_epsg}
-
+            reprojected_node_attribs = parallel.multiprocess_wrap(
+                data=dict(g.nodes(data=True)),
+                split=parallel.split_dict,
+                apply=mod_schedule.reproj_stops,
+                combine=parallel.combine_dict,
+                processes=processes,
+                new_epsg=new_epsg
+            )
             nx.set_node_attributes(self._graph, reprojected_node_attribs)
             self.epsg = new_epsg
 
@@ -422,16 +424,15 @@ class Service(ScheduleElement):
     :param epsg: 'epsg:12345'
     """
 
-    def __init__(self, id: str, routes: List[Route]):
+    def __init__(self, id: str, routes: List[Route], name: str = ''):
         self.id = id
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
+        if name:
+            self.name = str(name)
         if routes:
             if routes[0].route_short_name:
-                name = routes[0].route_short_name
-            else:
-                name = routes[0].route_long_name
-            self.name = str(name)
+                self.name = str(routes[0].route_short_name)
         else:
             self.name = ''
         # create a dictionary and index if not unique ids
@@ -468,6 +469,7 @@ class Service(ScheduleElement):
         for route in self.routes.values():
             g = route.graph()
             routes_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
+            # TODO check for clashing stop ids overwriting data
             service_graph = nx.compose(g, service_graph)
         nx.set_node_attributes(service_graph, values=routes_attribs, name='routes')
         nx.set_node_attributes(service_graph, values=[self.id], name='services')
@@ -612,6 +614,7 @@ class Schedule(ScheduleElement):
             g = service.graph()
             routes_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
             services_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='services')), services_attribs)
+            # TODO check for clashing stop ids overwriting data
             schedule_graph = nx.compose(g, schedule_graph)
         nx.set_node_attributes(schedule_graph, values=routes_attribs, name='routes')
         nx.set_node_attributes(schedule_graph, values=services_attribs, name='services')
@@ -670,13 +673,13 @@ class Schedule(ScheduleElement):
     def graph(self):
         return self._graph
 
-    def reproject(self, new_epsg):
+    def reproject(self, new_epsg, processes=1):
         """
         Changes projection of the element to new_epsg
         :param new_epsg: 'epsg:1234'
         :return:
         """
-        ScheduleElement.reproject(self, new_epsg)
+        ScheduleElement.reproject(self, new_epsg, processes=processes)
         self._graph.graph['crs'] = {'init': new_epsg}
 
     def find_epsg(self):

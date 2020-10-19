@@ -327,7 +327,7 @@ def consolidate_link_indices(left, right):
             'link_id_left'].isna()].apply(
             lambda row: append_data_to_unique_clashing_links_data(row), axis=1)
 
-        right.remove_links(set(clashing_overlapping_edges['link_id_right'].dropna()), silent=True)
+        right.remove_links(set(clashing_overlapping_edges['link_id_right'].dropna()))
 
     # resolve clashing link ids for links in right which don't exist in left
     clashing_right_link_ids = set(df[df['left'].isna()]['link_id_right']) & set(df['link_id_left'].dropna())
