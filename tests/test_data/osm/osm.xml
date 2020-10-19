@@ -35,6 +35,17 @@
     <tag k='oneway' v='yes' />
     <tag k='sidewalk' v='both' />
   </way>
+  <way id='47007862' timestamp='2018-11-20T20:34:44Z' uid='322039' user='MacLondon' version='12' changeset='64713626'>
+    <nd ref='1' />
+    <nd ref='0' />
+    <tag k='highway' v='tertiary' />
+    <tag k='lanes' v='3;2' />
+    <tag k='lit' v='yes' />
+    <tag k='maxspeed' v='30 mph' />
+    <tag k='name' v='Cavendish Square' />
+    <tag k='oneway' v='yes' />
+    <tag k='sidewalk' v='both' />
+  </way>
     <relation id='12176' timestamp='2019-08-31T08:44:46Z' uid='322039' user='MacLondon' version='266' changeset='73945369'>
     <member type='relation' ref='9802731' role='' />
     <member type='way' ref='0' role='forward' />

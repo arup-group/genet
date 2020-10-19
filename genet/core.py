@@ -6,6 +6,7 @@ import os
 from copy import deepcopy
 from typing import Union, List, Dict
 from pyproj import Transformer
+from math import ceil
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.osm_reader as osm_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
