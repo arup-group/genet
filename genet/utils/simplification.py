@@ -237,11 +237,11 @@ def simplify_graph(n, no_processes=1):
 
     logging.info('Removing links which have now been replaced by simplified links')
     # remove links
-    n.remove_links(links_to_remove, silent=True)
+    n.remove_links(links_to_remove)
 
     logging.info('Removing nodes')
     # finally, remove nodes
-    n.remove_nodes(nodes_to_remove, silent=True)
+    n.remove_nodes(nodes_to_remove)
 
     # mark graph as having been simplified
     n.graph.graph["simplified"] = True
