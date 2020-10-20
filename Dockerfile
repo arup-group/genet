@@ -9,7 +9,6 @@ COPY ./scripts .
 COPY . .
 
 RUN pip3 install -e .
-
 ENV PYTHONPATH=./scripts:${PYTHONPATH}
 
 ENTRYPOINT ["python3"]

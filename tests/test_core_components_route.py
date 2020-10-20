@@ -1,3 +1,5 @@
+import os
+import pickle
 import pytest
 from genet.schedule_elements import Route, Stop
 from  genet.utils import plot
