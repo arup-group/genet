@@ -51,6 +51,15 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
     duplicated_link_id = {}
     # update old link by link attributes (osm tags etc.)
     if link_attribs:
+        if 'geometry' in link_attribs:
+            # TODO genet saves attributes prior to link elems requires a proper fix
+            if link_attribs['geometry']['text']:
+                try:
+                    g[u][v][len(g[u][v]) - 1]['geometry'] = spatial.decode_polyline_to_shapely_linestring(
+                        link_attribs['geometry']['text'])
+                    del link_attribs['geometry']
+                except KeyError:
+                    pass
         # TODO genet saves attributes prior to link elems requires a proper fix
         try:
             # if multiple edges, add to the one added most recently
@@ -162,11 +171,12 @@ def read_network(network_path, transformer: Transformer):
                 # TODO fix: some elems for osmid are being read as None
                 link_attribs = read_link_attrib(elem, link_attribs)
     # update the attributes of the last link
-    if 'geometry' in link_attribs:
-        g[u][v][len(g[u][v]) - 1]['geometry'] = spatial.decode_polyline_to_shapely_linestring(
-            link_attribs['geometry']['text'])
-        del link_attribs['geometry']
     if link_attribs:
+        if 'geometry' in link_attribs:
+            if link_attribs['geometry']['text']:
+                g[u][v][len(g[u][v]) - 1]['geometry'] = spatial.decode_polyline_to_shapely_linestring(
+                    link_attribs['geometry']['text'])
+                del link_attribs['geometry']
         g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs
     return g, link_id_mapping, duplicated_node_ids, duplicated_link_ids
 

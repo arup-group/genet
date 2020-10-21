@@ -225,7 +225,19 @@ def test_reading_network_with_geometry_attributes():
             'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
             'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
             'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}
-        }}}
+        }},
+        '2': {
+            'id': "2", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
+            's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
+            'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
+            'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
+            'modes': ['car'], 'attributes': {
+                'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
+                'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
+                'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
+                'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}
+            }}
+    }
 
     n = Network('epsg:27700')
     n.read_matsim_network(pt2matsim_network_with_geometry_file)
