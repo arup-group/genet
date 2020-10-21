@@ -8,7 +8,6 @@ RUN /usr/local/bin/python -m pip install --upgrade pip
 COPY ./scripts .
 COPY . .
 
-RUN pip3 install -e git+https://github.com/dezhin/osmread.git@d8d3fe5edd15fdab9526ea7a100ee6c796315663#egg=osmread
 RUN pip3 install -e .
 ENV PYTHONPATH=./scripts:${PYTHONPATH}
 

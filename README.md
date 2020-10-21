@@ -67,8 +67,6 @@ inspect or change it and save it out to file.
 
     virtualenv -p python3.7 venv
     source venv/bin/activate
-    pip install -e git+https://github.com/dezhin/osmread.git@d8d3fe5edd15fdab9526ea7a100ee6c796315663#egg=osmread
-    pip install -r requirements.txt
     pip install -e .
     
 ### Testing
