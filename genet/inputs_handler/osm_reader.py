@@ -1,8 +1,9 @@
 import yaml
 import logging
-import osmread
+#import osmread
 from pyproj import Transformer
 from math import ceil
+
 import genet.inputs_handler.osmnx_customised as osmnx_customised
 import genet.utils.parallel as parallel
 import genet.utils.spatial as spatial
