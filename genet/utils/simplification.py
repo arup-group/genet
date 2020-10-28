@@ -197,7 +197,7 @@ def simplify_graph(n, no_processes=1):
 
     logging.info('Generating paths to be simplified')
     # generate each path that needs to be simplified
-    edges_to_simplify = _get_edge_groups_to_simplify(G)
+    edges_to_simplify = _get_edge_groups_to_simplify(G, no_processes=no_processes)
 
     indexed_paths_to_simplify = dict(zip(n.generate_indices_for_n_edges(len(edges_to_simplify)), edges_to_simplify))
     indexed_paths_to_simplify = {
