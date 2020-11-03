@@ -1121,6 +1121,16 @@ class Network:
             }
         return report
 
+    def generate_standard_outputs(self, output_dir):
+        """
+        Generates geojsons that can be used for generating standard kepler visualisations.
+        These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
+        the shape of modal subgraphs.
+        :param output_dir: path to folder where to save resulting geojsons
+        :return: None
+        """
+        geojson.generate_standard_outputs(self, output_dir)
+
     def read_osm(self, osm_file_path, osm_read_config, num_processes: int = 1):
         """
         Reads OSM data into a graph of the Network object
@@ -1189,4 +1199,6 @@ class Network:
         if self.schedule:
             self.schedule.write_to_matsim(output_dir)
         self.change_log.export(os.path.join(output_dir, 'change_log.csv'))
-        geojson.save_nodes_and_links_geojson(self.graph, output_dir)
+
+    def save_network_to_geojson(self, output_dir):
+        geojson.save_network_to_geojson(self, output_dir)
