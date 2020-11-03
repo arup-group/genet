@@ -490,6 +490,19 @@ class Network:
             for link in links]
         return nx.MultiDiGraph(nx.edge_subgraph(self.graph, edges_for_sub))
 
+    def modes(self):
+        """
+        Scans network for 'modes' attribute and returns list of all modes present int he network
+        :return:
+        """
+        modes = set()
+        for link, link_attribs in self.links():
+            try:
+                modes |= set(link_attribs['modes'])
+            except KeyError:
+                pass
+        return modes
+
     def modal_subgraph(self, modes: Union[str, list]):
         if isinstance(modes, str):
             modes = {modes}

@@ -695,6 +695,16 @@ def test_network_modal_subgraph_using_general_subgraph_on_link_attribs():
     assert list(car_graph.edges) == [(1, 2, 0), (2, 3, 0)]
 
 
+def test_modes():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike']})
+    n.add_link('1', 2, 3, attribs={'modes': ['car']})
+    n.add_link('2', 2, 3, attribs={'modes': ['bike']})
+    n.add_link('3', 2, 3, attribs={})
+
+    assert n.modes() == {'car', 'bike'}
+
+
 def test_network_modal_subgraph_using_specific_modal_subgraph_method_single_mode():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike']})
