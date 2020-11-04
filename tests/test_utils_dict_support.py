@@ -26,6 +26,46 @@ def test_set_nested_value_creates_new_nest_in_place_of_single_value():
     assert return_d == {'attributes': {'some_tag': 'bye'}}
 
 
+def test_merging_simple_dictionaries():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'a': 1, 'b': 3},
+        {'b': 5, 'c': 8}
+    )
+    assert return_d == {'a': 1, 'b': 5, 'c': 8}
+
+
+def test_merging_dictionaries_with_lists():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'a': 1, 'b': [3, 6], 'c': [1]},
+        {'b': [5], 'c': [8, 90]}
+    )
+    assert_semantically_equal(return_d, {'a': 1, 'b': [3, 6, 5], 'c': [1, 8, 90]})
+
+
+def test_merging_nested_dictionaries():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'a': 1, 'b': {3: 5}, 'c': {1: 4}},
+        {'b': {5: 3}, 'c': {8: 90}}
+    )
+    assert_semantically_equal(return_d, {'a': 1, 'b': {3: 5, 5: 3}, 'c': {1: 4, 8: 90}})
+
+
+def test_merging_dictionaries_with_nested_lists():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'a': 1, 'b': {'a': [3, 6]}, 'c': {'b': [1]}},
+        {'b': {'a': [5]}, 'c': {'b': [8, 90]}}
+    )
+    assert_semantically_equal(return_d, {'a': 1, 'b': {'a': [3, 6, 5]}, 'c': {'b': [8, 90, 1]}})
+
+
+def test_merging_dictionaries_with_nested_sets():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'a': 1, 'b': {'a': {3, 6}}, 'c': {'b': {1}}},
+        {'b': {'a': {5}}, 'c': {'b': {8, 90}}}
+    )
+    assert_semantically_equal(return_d, {'a': 1, 'b': {'a': {3, 6, 5}}, 'c': {'b': {8, 90, 1}}})
+
+
 def test_merging_dicts_with_lists():
     d = dict_support.merge_dicts_with_lists({'1': [''], '2': []}, {'3': ['1'], '1': ['2']})
 

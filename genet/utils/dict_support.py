@@ -1,3 +1,4 @@
+import dictdiffer
 
 
 def set_nested_value(d: dict, value: dict):
@@ -19,6 +20,22 @@ def set_nested_value(d: dict, value: dict):
     else:
         d = value
     return d
+
+
+def merge_complex_dictionaries(d1, d2):
+    clashing_keys = set(d1) & set(d2)
+    for key in clashing_keys:
+        if isinstance(d1[key], dict) and isinstance(d2[key], dict):
+            d1[key] = merge_complex_dictionaries(d1[key], d2[key])
+        elif isinstance(d1[key], list) and isinstance(d2[key], list):
+            d1[key] = list(set(d1[key]) | set(d2[key]))
+        elif isinstance(d1[key], set) and isinstance(d2[key], set):
+            d1[key] = d1[key] | d2[key]
+        else:
+            d1[key] = d2[key]
+    for key in set(d2) - clashing_keys:
+        d1[key] = d2[key]
+    return d1
 
 
 def merge_dicts_with_lists(d1, d2):
