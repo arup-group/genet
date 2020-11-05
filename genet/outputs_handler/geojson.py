@@ -3,6 +3,7 @@ import logging
 import osmnx as ox
 from geopandas import GeoDataFrame, GeoSeries
 from networkx import MultiDiGraph
+import genet.use.schedule as use_schedule
 
 
 def modal_subset(row, modes):
@@ -82,4 +83,11 @@ def generate_standard_outputs(n, output_dir):
             filename=f'{mode}_subgraph_geometry.geojson',
             output_dir=output_dir)
 
-    # TODO add schedule outputs
+    # schedule outputs
+    if n.schedule:
+        logging.info('Generating geojson outputs for schedule')
+        gdf = use_schedule.generate_edge_vph_geodataframe(n.schedule)
+        save_geodataframe(
+            gdf,
+            filename='vehicles_per_hour.geojson',
+            output_dir=output_dir)

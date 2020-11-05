@@ -3,6 +3,7 @@ from pyproj import Transformer
 import networkx as nx
 import logging
 from datetime import datetime
+from pandas import DataFrame
 import genet.utils.plot as plot
 import genet.utils.spatial as spatial
 import genet.utils.dict_support as dict_support
@@ -12,6 +13,7 @@ import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.utils.persistence as persistence
 import genet.utils.parallel as parallel
 import genet.modify.schedule as mod_schedule
+import genet.use.schedule as use_schedule
 import genet.validate.schedule_validation as schedule_validation
 
 # number of decimal places to consider when comparing lat lons
@@ -318,6 +320,32 @@ class Route(ScheduleElement):
         for s in self.ordered_stops:
             yield self.stop(s)
 
+    def routes(self):
+        """
+        Iterator for routes in the service
+        """
+        yield None, self
+
+    def generate_trips_dataframe(self):
+        df = None
+        _df = DataFrame({
+            'departure_time': [use_schedule.get_offset(self.departure_offsets[i]) for i in range(len(self.ordered_stops) - 1)],
+            'arrival_time': [use_schedule.get_offset(self.arrival_offsets[i]) for i in range(1, len(self.ordered_stops))],
+            'from_stop': [self.ordered_stops[i] for i in range(len(self.ordered_stops) - 1)],
+            'to_stop': [self.ordered_stops[i] for i in range(1, len(self.ordered_stops))]
+        })
+        for trip_id, trip_dep_time in self.trips.items():
+            trip_df = _df.copy()
+            trip_df['trip'] = trip_id
+            trip_dep_time = use_schedule.sanitise_time(trip_dep_time)
+            trip_df['departure_time'] = trip_dep_time + trip_df['departure_time']
+            trip_df['arrival_time'] = trip_dep_time + trip_df['arrival_time']
+            if df is None:
+                df = trip_df
+            else:
+                df = df.append(trip_df)
+        return df
+
     def is_exact(self, other):
         same_route_name = self.route_short_name == other.route_short_name
         same_mode = self.mode.lower() == other.mode.lower()
@@ -520,6 +548,13 @@ class Service(ScheduleElement):
                 output_dir=output_dir,
                 e_c='#EC7063'
             )
+
+    def routes(self):
+        """
+        Iterator for routes in the service
+        """
+        for route in self.routes.values():
+            yield self.id, route
 
     def is_exact(self, other):
         return (self.id == other.id) and (self.routes == other.routes)
@@ -728,7 +763,7 @@ class Schedule(ScheduleElement):
 
     def routes(self):
         """
-        Iterator for routes in the schedule, returns service_id and a route
+        Iterator for routes in the schedule
         """
         for service_id, service in self.services.items():
             for route in service.routes.values():

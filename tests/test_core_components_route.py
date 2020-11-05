@@ -16,7 +16,7 @@ def route():
         route_short_name='name',
         mode='bus',
         stops=[a, b, c, d],
-        trips={'1': '1', '2': '2'},
+        trips={'1': '10:00:00', '2': '20:00:00'},
         arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
         departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'],
         route=['1', '2', '3', '4'], id='1')
@@ -305,3 +305,8 @@ def test_is_valid_with_sinlge_stop_network():
                   stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700')],
                   trips={}, arrival_offsets=[], departure_offsets=[])
     assert not route.is_valid_route()
+
+
+def test_building_trips_dataframe(route):
+    df = route.generate_trips_dataframe()
+    pass
