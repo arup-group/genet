@@ -2,7 +2,7 @@ import os
 import pickle
 import pytest
 from genet.schedule_elements import Route, Stop
-from  genet.utils import plot
+from genet.utils import plot
 from tests.fixtures import stop_epsg_27700, assert_semantically_equal
 
 
@@ -97,7 +97,10 @@ def test_build_graph_builds_correct_graph():
                                '4': {'routes': [''], 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700',
                                      'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
                                      'additional_attributes': []}})
-    assert_semantically_equal(list(g.edges), [('1', '2'), ('2', '3'), ('3', '4')])
+    assert_semantically_equal(list(g.edges(data=True)),
+                              [('1', '2', {'routes': ['']}),
+                               ('2', '3', {'routes': ['']}),
+                               ('3', '4', {'routes': ['']})])
 
 
 def test_routes_equal(stop_epsg_27700):
@@ -203,10 +206,10 @@ def test_has_correctly_ordered_route_with_a_correct_route():
     c.add_additional_attributes({'linkRefId': '30'})
 
     r = Route(route_short_name='name',
-          mode='bus',
-          stops=[a, b, c],
-          trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
-          route=['10', '15', '20', '25', '30'], id='1')
+              mode='bus',
+              stops=[a, b, c],
+              trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+              route=['10', '15', '20', '25', '30'], id='1')
     assert r.has_correctly_ordered_route()
 
 
@@ -219,10 +222,10 @@ def test_has_correctly_ordered_route_with_disordered_route():
     c.add_additional_attributes({'linkRefId': '30'})
 
     r = Route(route_short_name='name',
-          mode='bus',
-          stops=[a, b, c],
-          trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
-          route=['10', '15', '30', '25', '20'], id='1')
+              mode='bus',
+              stops=[a, b, c],
+              trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+              route=['10', '15', '30', '25', '20'], id='1')
     assert not r.has_correctly_ordered_route()
 
 
@@ -234,10 +237,10 @@ def test_has_correctly_ordered_route_with_stop_missing_linkrefid():
     c = Stop(id='3', x=4, y=2, epsg='epsg:27700')
 
     r = Route(route_short_name='name',
-          mode='bus',
-          stops=[a, b, c],
-          trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
-          route=['10', '15', '30', '25', '20'], id='1')
+              mode='bus',
+              stops=[a, b, c],
+              trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+              route=['10', '15', '30', '25', '20'], id='1')
     assert not r.has_correctly_ordered_route()
 
 
@@ -250,10 +253,10 @@ def test_has_correctly_ordered_route_with_no_route():
     c.add_additional_attributes({'linkRefId': '30'})
 
     r = Route(route_short_name='name',
-          mode='bus',
-          stops=[a, b, c],
-          trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
-          route=[], id='1')
+              mode='bus',
+              stops=[a, b, c],
+              trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+              route=[], id='1')
     assert not r.has_correctly_ordered_route()
 
 

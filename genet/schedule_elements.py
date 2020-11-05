@@ -270,7 +270,7 @@ class Route(ScheduleElement):
         route_nodes = [(stop.id, stop.__dict__) for stop in stops]
         route_graph.add_nodes_from(route_nodes, routes=[self.id])
         stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
-        route_graph.add_edges_from(stop_edges)
+        route_graph.add_edges_from(stop_edges, routes=[self.id])
         return route_graph
 
     def reindex(self, new_id):
@@ -464,15 +464,17 @@ class Service(ScheduleElement):
         return len(self.routes)
 
     def _build_graph(self, stops=None):
-        service_graph = nx.DiGraph(name='Service graph')
-        routes_attribs = {}
+        nodes = {}
+        edges = {}
         for route in self.routes.values():
             g = route.graph()
-            routes_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
-            # TODO check for clashing stop ids overwriting data
-            service_graph = nx.compose(g, service_graph)
-        nx.set_node_attributes(service_graph, values=routes_attribs, name='routes')
-        nx.set_node_attributes(service_graph, values=[self.id], name='services')
+            nodes = dict_support.merge_complex_dictionaries(dict(g.nodes(data=True)), nodes)
+            edges = dict_support.combine_edge_data_lists(list(g.edges(data=True)), edges)
+
+        service_graph = nx.DiGraph(name='Service graph')
+        service_graph.add_nodes_from(nodes, services=[self.id])
+        service_graph.add_edges_from(edges, services=[self.id])
+        nx.set_node_attributes(service_graph, nodes)
         # update route graphs by the larger graph
         self._update_graph(service_graph)
         return service_graph
@@ -606,19 +608,18 @@ class Schedule(ScheduleElement):
         return len(self.services)
 
     def _build_graph(self, stops=None):
-        schedule_graph = nx.DiGraph(name='Schedule graph')
-        routes_attribs = {}
-        services_attribs = {}
+        nodes = {}
+        edges = {}
         for service_id, service in self.services.items():
-            schedule_graph = nx.compose(service.graph(), schedule_graph)
             g = service.graph()
-            routes_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
-            services_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='services')), services_attribs)
+            nodes = dict_support.merge_complex_dictionaries(dict(g.nodes(data=True)), nodes)
+            edges = dict_support.combine_edge_data_lists(list(g.edges(data=True)), edges)
             # TODO check for clashing stop ids overwriting data
-            schedule_graph = nx.compose(g, schedule_graph)
-        nx.set_node_attributes(schedule_graph, values=routes_attribs, name='routes')
-        nx.set_node_attributes(schedule_graph, values=services_attribs, name='services')
 
+        schedule_graph = nx.DiGraph(name='Schedule graph')
+        schedule_graph.add_nodes_from(nodes)
+        schedule_graph.add_edges_from(edges)
+        nx.set_node_attributes(schedule_graph, nodes)
         # update service and route graphs by the larger graph
         self._update_graph(schedule_graph)
         return schedule_graph

@@ -2,17 +2,19 @@ import os
 import pytest
 from genet.outputs_handler import geojson
 from genet.core import Network
-from tests.fixtures import assert_semantically_equal
+from tests.fixtures import assert_semantically_equal, correct_schedule
 
 
 @pytest.fixture()
-def network():
+def network(correct_schedule):
     n = Network('epsg:27700')
     n.add_node('0', attribs={'x': 528704.1425925883, 'y': 182068.78193707118})
     n.add_node('1', attribs={'x': 528804.1425925883, 'y': 182168.78193707118})
     n.add_link('link_0', '0', '1', attribs={'length': 123, 'modes': ['car', 'walk'], 'freespeed': 10, 'capacity': 5})
     n.add_link('link_1', '0', '1', attribs={'length': 123, 'modes': ['bike']})
     n.add_link('link_2', '1', '0', attribs={'length': 123, 'modes': ['rail']})
+
+    n.schedule = correct_schedule
     return n
 
 

@@ -67,18 +67,18 @@ def test_merging_dictionaries_with_nested_sets():
 
 
 def test_merging_dicts_with_lists():
-    d = dict_support.merge_dicts_with_lists({'1': [''], '2': []}, {'3': ['1'], '1': ['2']})
+    d = dict_support.merge_complex_dictionaries({'1': [''], '2': []}, {'3': ['1'], '1': ['2']})
 
     assert_semantically_equal(d, {'1': ['', '2'], '2': [], '3': ['1']})
 
 
 def test_merging_dicts_with_lists_with_overlapping_values_returns_list_with_unique_values():
-    d = dict_support.merge_dicts_with_lists({'1': ['2'], '2': []}, {'3': ['1'], '1': ['2']})
+    d = dict_support.merge_complex_dictionaries({'1': ['2'], '2': []}, {'3': ['1'], '1': ['2']})
 
     assert_semantically_equal(d, {'1': ['2'], '2': [], '3': ['1']})
 
 
 def test_merging_dicts_with_lists_when_one_dict_is_empty():
-    d = dict_support.merge_dicts_with_lists({'1': [''], '2': []}, {})
+    d = dict_support.merge_complex_dictionaries({'1': [''], '2': []}, {})
 
     assert_semantically_equal(d, {'1': [''], '2': []})
