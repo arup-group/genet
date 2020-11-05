@@ -2,6 +2,7 @@ import os
 import logging
 import osmnx as ox
 from geopandas import GeoDataFrame, GeoSeries
+from networkx import MultiDiGraph
 
 
 def modal_subset(row, modes):
@@ -13,6 +14,8 @@ def modal_subset(row, modes):
 
 
 def generate_geodataframes(graph):
+    if not isinstance(graph, MultiDiGraph):
+        graph = MultiDiGraph(graph)
     gdf_nodes, gdf_links = ox.utils_graph.graph_to_gdfs(graph)
     gdf_nodes = gdf_nodes.to_crs("EPSG:4326")
     gdf_links = gdf_links.to_crs("EPSG:4326")
@@ -39,16 +42,22 @@ def save_geodataframe(gdf, filename, output_dir):
 
 
 def save_network_to_geojson(n, output_dir):
-    gdf_nodes, gdf_links = generate_geodataframes(n.graph)
+    graph_nodes, graph_links = generate_geodataframes(n.graph)
 
-    logging.info(f'Saving nodes and links geojsons to {output_dir}')
-    save_geodataframe(gdf_nodes, 'nodes.geojson', output_dir)
-    save_geodataframe(gdf_links, 'links.geojson', output_dir)
-    save_geodataframe(gdf_nodes['geometry'], 'nodes_geometry_only.geojson', output_dir)
-    save_geodataframe(gdf_links['geometry'], 'links_geometry_only.geojson', output_dir)
+    logging.info(f'Saving network graph nodes and links geojsons to {output_dir}')
+    save_geodataframe(graph_nodes, 'network_nodes.geojson', output_dir)
+    save_geodataframe(graph_links, 'network_links.geojson', output_dir)
+    save_geodataframe(graph_nodes['geometry'], 'network_nodes_geometry_only.geojson', output_dir)
+    save_geodataframe(graph_links['geometry'], 'network_links_geometry_only.geojson', output_dir)
 
-    # TODO add schedule outputs
-    return gdf_nodes, gdf_links
+    if n.schedule:
+        schedule_nodes, schedule_links = generate_geodataframes(MultiDiGraph(n.schedule.graph()))
+        logging.info(f'Saving schedule graph nodes and links geojsons to {output_dir}')
+        save_geodataframe(graph_nodes, 'schedule_nodes.geojson', output_dir)
+        save_geodataframe(graph_links, 'schedule_links.geojson', output_dir)
+        save_geodataframe(graph_nodes['geometry'], 'schedule_nodes_geometry_only.geojson', output_dir)
+        save_geodataframe(graph_links['geometry'], 'schedule_links_geometry_only.geojson', output_dir)
+    return graph_nodes, graph_links, schedule_nodes, schedule_links
 
 
 def generate_standard_outputs(n, output_dir):
