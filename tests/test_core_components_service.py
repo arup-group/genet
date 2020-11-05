@@ -154,12 +154,12 @@ def test_build_graph_builds_correct_graph():
                                      'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
                                      'additional_attributes': [], 'services': ['service']}})
     assert_semantically_equal(list(g.edges(data=True)),
-                              [('5', '6', {'services': ['service'], 'routes': ['2']}),
-                               ('6', '7', {'services': ['service'], 'routes': ['2']}),
-                               ('7', '8', {'services': ['service'], 'routes': ['2']}),
-                               ('1', '2', {'services': ['service'], 'routes': ['1']}),
-                               ('2', '3', {'services': ['service'], 'routes': ['1']}),
-                               ('3', '4', {'services': ['service'], 'routes': ['1']})])
+                              [('5', '6', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('6', '7', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('7', '8', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])
 
 
 def test_build_graph_builds_correct_graph_when_some_stops_overlap():

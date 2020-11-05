@@ -98,9 +98,9 @@ def test_build_graph_builds_correct_graph():
                                      'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
                                      'additional_attributes': []}})
     assert_semantically_equal(list(g.edges(data=True)),
-                              [('1', '2', {'routes': ['']}),
-                               ('2', '3', {'routes': ['']}),
-                               ('3', '4', {'routes': ['']})])
+                              [('1', '2', {'routes': [''], 'modes': ['bus']}),
+                               ('2', '3', {'routes': [''], 'modes': ['bus']}),
+                               ('3', '4', {'routes': [''], 'modes': ['bus']})])
 
 
 def test_routes_equal(stop_epsg_27700):

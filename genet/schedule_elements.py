@@ -44,6 +44,13 @@ class ScheduleElement:
         for s in self.reference_nodes:
             yield self.stop(s)
 
+    def modes(self):
+        edge_modes = self.graph().edges(data='modes')
+        modes = set()
+        for u, v, e_modes in edge_modes:
+            modes |= set(e_modes)
+        return list(modes)
+
     def _build_graph(self, stops):
         pass
 
@@ -270,7 +277,7 @@ class Route(ScheduleElement):
         route_nodes = [(stop.id, stop.__dict__) for stop in stops]
         route_graph.add_nodes_from(route_nodes, routes=[self.id])
         stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
-        route_graph.add_edges_from(stop_edges, routes=[self.id])
+        route_graph.add_edges_from(stop_edges, routes=[self.id], modes=[self.mode])
         return route_graph
 
     def reindex(self, new_id):

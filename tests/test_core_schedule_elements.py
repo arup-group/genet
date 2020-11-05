@@ -122,3 +122,7 @@ def test_lesser_element_graphs_inherit_master_graphs_attributes(schedule):
 
     assert schedule.graph().name == service_graph.name
     assert schedule.graph().graph['crs'] == service_graph.graph['crs']
+
+
+def test_modes(schedule):
+    assert set(schedule.modes()) == {'bus', 'rail'}

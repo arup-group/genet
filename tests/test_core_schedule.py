@@ -372,13 +372,14 @@ def test_build_graph_builds_correct_graph(strongly_connected_schedule):
                                      's2_id': 5205973754090531959, 'additional_attributes': ['name'], 'name': 'Stop_1'},
                                '4': {'services': ['service'], 'routes': ['1'], 'id': '4', 'x': 7.0, 'y': 5.0,
                                      'epsg': 'epsg:27700', 'lat': 49.766856648946295, 'lon': -7.5570681956375,
-                                     's2_id': 5205973754097123809, 'additional_attributes': ['name'], 'name': 'Stop_4'}})
+                                     's2_id': 5205973754097123809, 'additional_attributes': ['name'],
+                                     'name': 'Stop_4'}})
     assert_semantically_equal(list(g.edges(data=True)),
-                              [('5', '2', {'services': ['service'], 'routes': ['2']}),
-                               ('2', '7', {'services': ['service'], 'routes': ['2']}),
-                               ('2', '3', {'services': ['service'], 'routes': ['1']}),
-                               ('7', '8', {'services': ['service'], 'routes': ['2']}),
-                               ('8', '5', {'services': ['service'], 'routes': ['2']}),
-                               ('4', '1', {'services': ['service'], 'routes': ['1']}),
-                               ('1', '2', {'services': ['service'], 'routes': ['1']}),
-                               ('3', '4', {'services': ['service'], 'routes': ['1']})])
+                              [('5', '2', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('2', '7', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('7', '8', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('8', '5', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('4', '1', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])
