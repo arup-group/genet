@@ -280,6 +280,9 @@ class Route(ScheduleElement):
         route_graph.add_edges_from(stop_edges, routes=[self.id], modes=[self.mode])
         return route_graph
 
+    def modes(self):
+        return [self.mode]
+
     def reindex(self, new_id):
         if self.id != new_id:
             # change data on graph
