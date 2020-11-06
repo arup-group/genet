@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime, timedelta
 from pandas.testing import assert_frame_equal
 from shapely.geometry import LineString
 from pandas import DataFrame, Timestamp
@@ -30,6 +31,31 @@ def schedule():
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     service = Service(id='service', routes=[route_1, route_2])
     return Schedule(epsg='epsg:27700', services=[service])
+
+
+def test_sanitising_time_with_default_day():
+    t = use_schedule.sanitise_time('12:46:20')
+    assert t == datetime(year=1970, month=1, day=1, hour=12, minute=46, second=20)
+
+
+def test_sanitising_time_going_over_24_hrs():
+    t = use_schedule.sanitise_time('25:46:20')
+    assert t == datetime(year=1970, month=1, day=2, hour=1, minute=46, second=20)
+
+
+def test_sanitising_time_with_non_default_day():
+    t = use_schedule.sanitise_time('15:46:20', gtfs_day='20200401')
+    assert t == datetime(year=2020, month=4, day=1, hour=15, minute=46, second=20)
+
+
+def test_offsets():
+    t = use_schedule.get_offset('00:06:20')
+    assert t == timedelta(minutes=6, seconds=20)
+
+
+def test_offsets_going_over_24_hrs_why_not():
+    t = use_schedule.get_offset('25:06:20')
+    assert t == timedelta(hours=25, minutes=6, seconds=20)
 
 
 def test_generating_trips_geodataframe_for_schedule(schedule):
