@@ -1121,15 +1121,17 @@ class Network:
             }
         return report
 
-    def generate_standard_outputs(self, output_dir):
+    def generate_standard_outputs(self, output_dir, gtfs_day='19700101'):
         """
         Generates geojsons that can be used for generating standard kepler visualisations.
         These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
         the shape of modal subgraphs.
         :param output_dir: path to folder where to save resulting geojsons
+        :param gtfs_day: day in format YYYYMMDD for the network's schedule for consistency in visualisations,
+        defaults to 1970/01/01 otherwise
         :return: None
         """
-        geojson.generate_standard_outputs(self, output_dir)
+        geojson.generate_standard_outputs(self, output_dir, gtfs_day)
 
     def read_osm(self, osm_file_path, osm_read_config, num_processes: int = 1):
         """

@@ -54,18 +54,17 @@ def save_network_to_geojson(n, output_dir):
     if n.schedule:
         schedule_nodes, schedule_links = generate_geodataframes(MultiDiGraph(n.schedule.graph()))
         logging.info(f'Saving schedule graph nodes and links geojsons to {output_dir}')
-        save_geodataframe(graph_nodes, 'schedule_nodes.geojson', output_dir)
-        save_geodataframe(graph_links, 'schedule_links.geojson', output_dir)
-        save_geodataframe(graph_nodes['geometry'], 'schedule_nodes_geometry_only.geojson', output_dir)
-        save_geodataframe(graph_links['geometry'], 'schedule_links_geometry_only.geojson', output_dir)
-    return graph_nodes, graph_links, schedule_nodes, schedule_links
+        save_geodataframe(schedule_nodes, 'schedule_nodes.geojson', output_dir)
+        save_geodataframe(schedule_links, 'schedule_links.geojson', output_dir)
+        save_geodataframe(schedule_nodes['geometry'], 'schedule_nodes_geometry_only.geojson', output_dir)
+        save_geodataframe(schedule_links['geometry'], 'schedule_links_geometry_only.geojson', output_dir)
 
 
-def generate_standard_outputs(n, output_dir):
-    gdf_nodes, gdf_links = generate_geodataframes(n.graph)
+def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
+    graph_nodes, graph_links = generate_geodataframes(n.graph)
 
     logging.info('Generating geojson outputs for car/driving modal subgraph')
-    gdf_car = gdf_links[gdf_links.apply(lambda x: modal_subset(x, {'car'}), axis=1)]
+    gdf_car = graph_links[graph_links.apply(lambda x: modal_subset(x, {'car'}), axis=1)]
     for attribute in ['freespeed', 'capacity', 'permlanes']:
         try:
             save_geodataframe(
@@ -77,7 +76,7 @@ def generate_standard_outputs(n, output_dir):
 
     for mode in n.modes():
         logging.info(f'Generating geometry-only geojson outputs for {mode} modal subgraph')
-        gdf = gdf_links[gdf_links.apply(lambda x: modal_subset(x, {mode}), axis=1)]
+        gdf = graph_links[graph_links.apply(lambda x: modal_subset(x, {mode}), axis=1)]
         save_geodataframe(
             gdf['geometry'],
             filename=f'{mode}_subgraph_geometry.geojson',
@@ -86,8 +85,11 @@ def generate_standard_outputs(n, output_dir):
     # schedule outputs
     if n.schedule:
         logging.info('Generating geojson outputs for schedule')
-        gdf = use_schedule.generate_edge_vph_geodataframe(n.schedule)
-        save_geodataframe(
-            gdf,
-            filename='vehicles_per_hour.geojson',
-            output_dir=output_dir)
+        schedule_nodes, schedule_links = generate_geodataframes(n.schedule.graph())
+        df = use_schedule.generate_trips_dataframe(n.schedule, gtfs_day=gtfs_day)
+        for mode in n.schedule.modes():
+            logging.info(f'Generating vehicles per hour for {mode}')
+            save_geodataframe(
+                use_schedule.generate_edge_vph_geodataframe(df[df['mode'] == mode], schedule_nodes, schedule_links),
+                filename=f'{mode}_vehicles_per_hour.geojson',
+                output_dir=output_dir)

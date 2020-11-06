@@ -5,6 +5,7 @@ from pandas import DataFrame, Timestamp
 from geopandas import GeoDataFrame
 from genet import Stop, Route, Service, Schedule
 import genet.use.schedule as use_schedule
+from genet.outputs_handler import geojson as gngeojson
 
 
 @pytest.fixture()
@@ -58,7 +59,9 @@ def test_generating_trips_geodataframe_for_schedule(schedule):
                                       10: '2', 11: '2'},
                             'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
                                         5: 'service', 6: 'service', 7: 'service', 8: 'service', 9: 'service',
-                                        10: 'service', 11: 'service'}})
+                                        10: 'service', 11: 'service'},
+                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus', 6: 'bus', 7: 'bus',
+                                     8: 'bus', 9: 'bus', 10: 'bus', 11: 'bus'}})
 
     assert_frame_equal(df, correct_df)
 
@@ -78,13 +81,16 @@ def test_generating_trips_geodataframe_for_selected_route_ids_in_schedule(schedu
                             'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
                             'route': {0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2'},
                             'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
-                                        5: 'service'}})
+                                        5: 'service'},
+                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus'}})
 
     assert_frame_equal(df, correct_df)
 
 
 def test_generating_edge_vph_geodataframe(schedule):
-    df = use_schedule.generate_edge_vph_geodataframe(schedule)
+    nodes, links = gngeojson.generate_geodataframes(schedule.graph())
+    df = use_schedule.generate_trips_dataframe(schedule)
+    df = use_schedule.generate_edge_vph_geodataframe(df, nodes, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 18:00:00'),
                                         2: Timestamp('1970-01-01 17:00:00'), 3: Timestamp('1970-01-01 19:00:00'),
@@ -161,7 +167,9 @@ def test_generating_trips_geodataframe_for_service(schedule):
                                       10: '2', 11: '2'},
                             'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
                                         5: 'service', 6: 'service', 7: 'service', 8: 'service', 9: 'service',
-                                        10: 'service', 11: 'service'}})
+                                        10: 'service', 11: 'service'},
+                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus', 6: 'bus', 7: 'bus',
+                                     8: 'bus', 9: 'bus', 10: 'bus', 11: 'bus'}})
 
     assert_frame_equal(df, correct_df)
 
@@ -181,13 +189,16 @@ def test_generating_trips_geodataframe_for_selected_route_ids_in_service(schedul
                             'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
                             'route': {0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2'},
                             'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
-                                        5: 'service'}})
+                                        5: 'service'},
+                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus'}})
 
     assert_frame_equal(df, correct_df)
 
 
 def test_generating_edge_vph_geodataframe_for_service(schedule):
-    df = use_schedule.generate_edge_vph_geodataframe(schedule['service'])
+    nodes, links = gngeojson.generate_geodataframes(schedule['service'].graph())
+    df = use_schedule.generate_trips_dataframe(schedule['service'])
+    df = use_schedule.generate_edge_vph_geodataframe(df, nodes, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 18:00:00'),
                                         2: Timestamp('1970-01-01 17:00:00'), 3: Timestamp('1970-01-01 19:00:00'),
@@ -253,7 +264,8 @@ def test_generating_trips_geodataframe_for_route(schedule):
                             'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
                             'route': {0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2'},
                             'service': {0: None, 1: None, 2: None, 3: None, 4: None,
-                                        5: None}})
+                                        5: None},
+                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus'}})
 
     assert_frame_equal(df, correct_df)
 
@@ -273,13 +285,16 @@ def test_generating_trips_geodataframe_for_route_with_specifying_route_ids(sched
                             'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
                             'route': {0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2'},
                             'service': {0: None, 1: None, 2: None, 3: None, 4: None,
-                                        5: None}})
+                                        5: None},
+                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus'}})
 
     assert_frame_equal(df, correct_df)
 
 
 def test_generating_edge_vph_geodataframe_for_route(schedule):
-    df = use_schedule.generate_edge_vph_geodataframe(schedule.route('2'))
+    nodes, links = gngeojson.generate_geodataframes(schedule.route('2').graph())
+    df = use_schedule.generate_trips_dataframe(schedule.route('2'))
+    df = use_schedule.generate_edge_vph_geodataframe(df, nodes, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 19:00:00'),
                                         2: Timestamp('1970-01-01 17:00:00'), 3: Timestamp('1970-01-01 19:00:00'),
@@ -288,17 +303,17 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
                                'to_stop': {0: '1', 1: '1', 2: '2', 3: '2', 4: '3', 5: '3'},
                                'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1},
                                'geometry': {0: LineString([(-7.557148039524952, 49.766825803756994),
-                                                (-7.557106577683727, 49.76682779861249)]),
+                                                           (-7.557106577683727, 49.76682779861249)]),
                                             1: LineString([(-7.557148039524952, 49.766825803756994),
-                                                (-7.557106577683727, 49.76682779861249)]),
+                                                           (-7.557106577683727, 49.76682779861249)]),
                                             2: LineString([(-7.557121424907424, 49.76683608549253),
-                                                (-7.557148039524952, 49.766825803756994)]),
+                                                           (-7.557148039524952, 49.766825803756994)]),
                                             3: LineString([(-7.557121424907424, 49.76683608549253),
-                                                (-7.557148039524952, 49.766825803756994)]),
+                                                           (-7.557148039524952, 49.766825803756994)]),
                                             4: LineString([(-7.5570681956375, 49.766856648946295),
-                                                (-7.557121424907424, 49.76683608549253)]),
+                                                           (-7.557121424907424, 49.76683608549253)]),
                                             5: LineString([(-7.5570681956375, 49.766856648946295),
-                                                (-7.557121424907424, 49.76683608549253)])},
+                                                           (-7.557121424907424, 49.76683608549253)])},
                                'from_stop_name': {0: 'Stop_2', 1: 'Stop_2', 2: 'Stop_3', 3: 'Stop_3', 4: float('nan'),
                                                   5: float('nan')},
                                'to_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2',

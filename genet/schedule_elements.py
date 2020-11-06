@@ -337,7 +337,7 @@ class Route(ScheduleElement):
         """
         yield None, self
 
-    def generate_trips_dataframe(self):
+    def generate_trips_dataframe(self, gtfs_day='19700101'):
         df = None
         _df = DataFrame({
             'departure_time': [use_schedule.get_offset(self.departure_offsets[i]) for i in range(len(self.ordered_stops) - 1)],
@@ -348,7 +348,7 @@ class Route(ScheduleElement):
         for trip_id, trip_dep_time in self.trips.items():
             trip_df = _df.copy()
             trip_df['trip'] = trip_id
-            trip_dep_time = use_schedule.sanitise_time(trip_dep_time)
+            trip_dep_time = use_schedule.sanitise_time(trip_dep_time, gtfs_day=gtfs_day)
             trip_df['departure_time'] = trip_dep_time + trip_df['departure_time']
             trip_df['arrival_time'] = trip_dep_time + trip_df['arrival_time']
             if df is None:
