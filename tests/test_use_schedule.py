@@ -4,6 +4,7 @@ from pandas.testing import assert_frame_equal
 from shapely.geometry import LineString
 from pandas import DataFrame, Timestamp
 from geopandas import GeoDataFrame
+from geopandas.testing import assert_geodataframe_equal
 from genet import Stop, Route, Service, Schedule
 import genet.use.schedule as use_schedule
 from genet.outputs_handler import geojson as gngeojson
@@ -163,7 +164,7 @@ def test_generating_edge_vph_geodataframe(schedule):
                                                 4: 'Stop_3', 5: 'Stop_3', 6: 'Stop_2', 7: 'Stop_2',
                                                 8: float('nan'), 9: float('nan'), 10: 'Stop_3', 11: 'Stop_3'}})
 
-    assert_frame_equal(df, correct_df)
+    assert_geodataframe_equal(df, correct_df, check_less_precise=True)
 
 
 def test_generating_trips_geodataframe_for_service(schedule):
@@ -272,7 +273,7 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
                                                 4: 'Stop_3', 5: 'Stop_3', 6: 'Stop_2', 7: 'Stop_2',
                                                 8: float('nan'), 9: float('nan'), 10: 'Stop_3', 11: 'Stop_3'}})
 
-    assert_frame_equal(df, correct_df)
+    assert_geodataframe_equal(df, correct_df, check_less_precise=True)
 
 
 def test_generating_trips_geodataframe_for_route(schedule):
@@ -344,4 +345,5 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
                                                   5: float('nan')},
                                'to_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2',
                                                 4: 'Stop_3', 5: 'Stop_3'}})
-    assert_frame_equal(df, correct_df)
+
+    assert_geodataframe_equal(df, correct_df, check_less_precise=True)
