@@ -1320,7 +1320,7 @@ def test_schedule_routes(network_object_from_test_data):
 
 def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
     n = network_object_from_test_data
-    n.schedule['10314'].routes['1'] = Route(arrival_offsets=[], departure_offsets=[], mode='bus', trips={},
+    n.schedule['10314']._routes['1'] = Route(arrival_offsets=[], departure_offsets=[], mode='bus', trips={},
                                             route_short_name='', stops=[])
     assert set(n.schedule.service_ids()) == {'10314'}
     correct_routes = [['25508485', '21667818']]

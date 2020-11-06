@@ -1,4 +1,8 @@
 import pytest
+from pandas.testing import assert_frame_equal
+from shapely.geometry import LineString
+from pandas import DataFrame, Timestamp
+from geopandas import GeoDataFrame
 from genet import Stop, Route, Service, Schedule
 import genet.use.schedule as use_schedule
 
@@ -28,29 +32,275 @@ def schedule():
 
 
 def test_generating_trips_geodataframe_for_schedule(schedule):
-    use_schedule.generate_trips_dataframe(schedule)
-    pass
+    df = use_schedule.generate_trips_dataframe(schedule)
+
+    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 17:05:00'),
+                                               2: Timestamp('1970-01-01 17:09:00'), 3: Timestamp('1970-01-01 18:30:00'),
+                                               4: Timestamp('1970-01-01 18:35:00'), 5: Timestamp('1970-01-01 18:39:00'),
+                                               6: Timestamp('1970-01-01 17:00:00'), 7: Timestamp('1970-01-01 17:05:00'),
+                                               8: Timestamp('1970-01-01 17:09:00'), 9: Timestamp('1970-01-01 18:30:00'),
+                                               10: Timestamp('1970-01-01 18:35:00'),
+                                               11: Timestamp('1970-01-01 18:39:00')},
+                            'arrival_time': {0: Timestamp('1970-01-01 17:03:00'), 1: Timestamp('1970-01-01 17:07:00'),
+                                             2: Timestamp('1970-01-01 17:13:00'), 3: Timestamp('1970-01-01 18:33:00'),
+                                             4: Timestamp('1970-01-01 18:37:00'), 5: Timestamp('1970-01-01 18:43:00'),
+                                             6: Timestamp('1970-01-01 17:03:00'), 7: Timestamp('1970-01-01 17:07:00'),
+                                             8: Timestamp('1970-01-01 17:13:00'), 9: Timestamp('1970-01-01 18:33:00'),
+                                             10: Timestamp('1970-01-01 18:37:00'),
+                                             11: Timestamp('1970-01-01 18:43:00')},
+                            'from_stop': {0: '1', 1: '2', 2: '3', 3: '1', 4: '2', 5: '3', 6: '4', 7: '3', 8: '2',
+                                          9: '4', 10: '3', 11: '2'},
+                            'to_stop': {0: '2', 1: '3', 2: '4', 3: '2', 4: '3', 5: '4', 6: '3', 7: '2', 8: '1', 9: '3',
+                                        10: '2', 11: '1'},
+                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2', 6: '1', 7: '1', 8: '1', 9: '2',
+                                     10: '2', 11: '2'},
+                            'route': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '2', 7: '2', 8: '2', 9: '2',
+                                      10: '2', 11: '2'},
+                            'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
+                                        5: 'service', 6: 'service', 7: 'service', 8: 'service', 9: 'service',
+                                        10: 'service', 11: 'service'}})
+
+    assert_frame_equal(df, correct_df)
+
+
+def test_generating_trips_geodataframe_for_selected_route_ids_in_schedule(schedule):
+    df = use_schedule.generate_trips_dataframe(schedule, route_ids=['2'])
+
+    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 17:05:00'),
+                                               2: Timestamp('1970-01-01 17:09:00'), 3: Timestamp('1970-01-01 18:30:00'),
+                                               4: Timestamp('1970-01-01 18:35:00'),
+                                               5: Timestamp('1970-01-01 18:39:00')},
+                            'arrival_time': {0: Timestamp('1970-01-01 17:03:00'), 1: Timestamp('1970-01-01 17:07:00'),
+                                             2: Timestamp('1970-01-01 17:13:00'), 3: Timestamp('1970-01-01 18:33:00'),
+                                             4: Timestamp('1970-01-01 18:37:00'), 5: Timestamp('1970-01-01 18:43:00')},
+                            'from_stop': {0: '4', 1: '3', 2: '2', 3: '4', 4: '3', 5: '2'},
+                            'to_stop': {0: '3', 1: '2', 2: '1', 3: '3', 4: '2', 5: '1'},
+                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
+                            'route': {0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2'},
+                            'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
+                                        5: 'service'}})
+
+    assert_frame_equal(df, correct_df)
 
 
 def test_generating_edge_vph_geodataframe(schedule):
-    use_schedule.generate_edge_vph_geodataframe(schedule)
-    pass
+    df = use_schedule.generate_edge_vph_geodataframe(schedule)
+
+    correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 18:00:00'),
+                                        2: Timestamp('1970-01-01 17:00:00'), 3: Timestamp('1970-01-01 19:00:00'),
+                                        4: Timestamp('1970-01-01 17:00:00'), 5: Timestamp('1970-01-01 19:00:00'),
+                                        6: Timestamp('1970-01-01 17:00:00'), 7: Timestamp('1970-01-01 19:00:00'),
+                                        8: Timestamp('1970-01-01 17:00:00'), 9: Timestamp('1970-01-01 19:00:00'),
+                                        10: Timestamp('1970-01-01 17:00:00'), 11: Timestamp('1970-01-01 18:00:00')},
+                               'from_stop': {0: '1', 1: '1', 2: '2', 3: '2', 4: '2', 5: '2', 6: '3', 7: '3', 8: '3',
+                                             9: '3', 10: '4', 11: '4'},
+                               'to_stop': {0: '2', 1: '2', 2: '1', 3: '1', 4: '3', 5: '3', 6: '2', 7: '2', 8: '4',
+                                           9: '4',
+                                           10: '3', 11: '3'},
+                               'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1},
+                               'geometry': {
+                                   0: LineString([(-7.557106577683727, 49.76682779861249),
+                                                  (-7.557148039524952, 49.766825803756994)]),
+                                   1: LineString([(-7.557106577683727, 49.76682779861249),
+                                                  (-7.557148039524952, 49.766825803756994)]),
+                                   2: LineString([(-7.557148039524952, 49.766825803756994),
+                                                  (-7.557106577683727, 49.76682779861249)]),
+                                   3: LineString([(-7.557148039524952, 49.766825803756994),
+                                                  (-7.557106577683727, 49.76682779861249)]),
+                                   4: LineString([(-7.557148039524952, 49.766825803756994),
+                                                  (-7.557121424907424, 49.76683608549253)]),
+                                   5: LineString([(-7.557148039524952, 49.766825803756994),
+                                                  (-7.557121424907424, 49.76683608549253)]),
+                                   6: LineString([(-7.557121424907424, 49.76683608549253),
+                                                  (-7.557148039524952, 49.766825803756994)]),
+                                   7: LineString([(-7.557121424907424, 49.76683608549253),
+                                                  (-7.557148039524952, 49.766825803756994)]),
+                                   8: LineString([(-7.557121424907424, 49.76683608549253),
+                                                  (-7.5570681956375, 49.766856648946295)]),
+                                   9: LineString([(-7.557121424907424, 49.76683608549253),
+                                                  (-7.5570681956375, 49.766856648946295)]),
+                                   10: LineString([(-7.5570681956375, 49.766856648946295),
+                                                   (-7.557121424907424, 49.76683608549253)]),
+                                   11: LineString([(-7.5570681956375, 49.766856648946295),
+                                                   (-7.557121424907424, 49.76683608549253)])},
+                               'from_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2', 4: 'Stop_2',
+                                                  5: 'Stop_2',
+                                                  6: 'Stop_3', 7: 'Stop_3', 8: 'Stop_3', 9: 'Stop_3', 10: float('nan'),
+                                                  11: float('nan')},
+                               'to_stop_name': {0: 'Stop_2', 1: 'Stop_2', 2: 'Stop_1', 3: 'Stop_1',
+                                                4: 'Stop_3', 5: 'Stop_3', 6: 'Stop_2', 7: 'Stop_2',
+                                                8: float('nan'), 9: float('nan'), 10: 'Stop_3', 11: 'Stop_3'}})
+
+    assert_frame_equal(df, correct_df)
+
 
 def test_generating_trips_geodataframe_for_service(schedule):
-    use_schedule.generate_trips_dataframe(schedule.service('service'))
-    pass
+    df = use_schedule.generate_trips_dataframe(schedule['service'])
+
+    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 17:05:00'),
+                                               2: Timestamp('1970-01-01 17:09:00'), 3: Timestamp('1970-01-01 18:30:00'),
+                                               4: Timestamp('1970-01-01 18:35:00'), 5: Timestamp('1970-01-01 18:39:00'),
+                                               6: Timestamp('1970-01-01 17:00:00'), 7: Timestamp('1970-01-01 17:05:00'),
+                                               8: Timestamp('1970-01-01 17:09:00'), 9: Timestamp('1970-01-01 18:30:00'),
+                                               10: Timestamp('1970-01-01 18:35:00'),
+                                               11: Timestamp('1970-01-01 18:39:00')},
+                            'arrival_time': {0: Timestamp('1970-01-01 17:03:00'), 1: Timestamp('1970-01-01 17:07:00'),
+                                             2: Timestamp('1970-01-01 17:13:00'), 3: Timestamp('1970-01-01 18:33:00'),
+                                             4: Timestamp('1970-01-01 18:37:00'), 5: Timestamp('1970-01-01 18:43:00'),
+                                             6: Timestamp('1970-01-01 17:03:00'), 7: Timestamp('1970-01-01 17:07:00'),
+                                             8: Timestamp('1970-01-01 17:13:00'), 9: Timestamp('1970-01-01 18:33:00'),
+                                             10: Timestamp('1970-01-01 18:37:00'),
+                                             11: Timestamp('1970-01-01 18:43:00')},
+                            'from_stop': {0: '1', 1: '2', 2: '3', 3: '1', 4: '2', 5: '3', 6: '4', 7: '3', 8: '2',
+                                          9: '4', 10: '3', 11: '2'},
+                            'to_stop': {0: '2', 1: '3', 2: '4', 3: '2', 4: '3', 5: '4', 6: '3', 7: '2', 8: '1', 9: '3',
+                                        10: '2', 11: '1'},
+                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2', 6: '1', 7: '1', 8: '1', 9: '2',
+                                     10: '2', 11: '2'},
+                            'route': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '2', 7: '2', 8: '2', 9: '2',
+                                      10: '2', 11: '2'},
+                            'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
+                                        5: 'service', 6: 'service', 7: 'service', 8: 'service', 9: 'service',
+                                        10: 'service', 11: 'service'}})
+
+    assert_frame_equal(df, correct_df)
+
+
+def test_generating_trips_geodataframe_for_selected_route_ids_in_service(schedule):
+    df = use_schedule.generate_trips_dataframe(schedule['service'], route_ids=['2'])
+
+    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 17:05:00'),
+                                               2: Timestamp('1970-01-01 17:09:00'), 3: Timestamp('1970-01-01 18:30:00'),
+                                               4: Timestamp('1970-01-01 18:35:00'),
+                                               5: Timestamp('1970-01-01 18:39:00')},
+                            'arrival_time': {0: Timestamp('1970-01-01 17:03:00'), 1: Timestamp('1970-01-01 17:07:00'),
+                                             2: Timestamp('1970-01-01 17:13:00'), 3: Timestamp('1970-01-01 18:33:00'),
+                                             4: Timestamp('1970-01-01 18:37:00'), 5: Timestamp('1970-01-01 18:43:00')},
+                            'from_stop': {0: '4', 1: '3', 2: '2', 3: '4', 4: '3', 5: '2'},
+                            'to_stop': {0: '3', 1: '2', 2: '1', 3: '3', 4: '2', 5: '1'},
+                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
+                            'route': {0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2'},
+                            'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
+                                        5: 'service'}})
+
+    assert_frame_equal(df, correct_df)
 
 
 def test_generating_edge_vph_geodataframe_for_service(schedule):
-    use_schedule.generate_edge_vph_geodataframe(schedule)
-    pass
+    df = use_schedule.generate_edge_vph_geodataframe(schedule['service'])
+
+    correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 18:00:00'),
+                                        2: Timestamp('1970-01-01 17:00:00'), 3: Timestamp('1970-01-01 19:00:00'),
+                                        4: Timestamp('1970-01-01 17:00:00'), 5: Timestamp('1970-01-01 19:00:00'),
+                                        6: Timestamp('1970-01-01 17:00:00'), 7: Timestamp('1970-01-01 19:00:00'),
+                                        8: Timestamp('1970-01-01 17:00:00'), 9: Timestamp('1970-01-01 19:00:00'),
+                                        10: Timestamp('1970-01-01 17:00:00'), 11: Timestamp('1970-01-01 18:00:00')},
+                               'from_stop': {0: '1', 1: '1', 2: '2', 3: '2', 4: '2', 5: '2', 6: '3', 7: '3', 8: '3',
+                                             9: '3', 10: '4', 11: '4'},
+                               'to_stop': {0: '2', 1: '2', 2: '1', 3: '1', 4: '3', 5: '3', 6: '2', 7: '2', 8: '4',
+                                           9: '4',
+                                           10: '3', 11: '3'},
+                               'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1},
+                               'geometry': {
+                                   0: LineString([(-7.557106577683727, 49.76682779861249),
+                                                  (-7.557148039524952, 49.766825803756994)]),
+                                   1: LineString([(-7.557106577683727, 49.76682779861249),
+                                                  (-7.557148039524952, 49.766825803756994)]),
+                                   2: LineString([(-7.557148039524952, 49.766825803756994),
+                                                  (-7.557106577683727, 49.76682779861249)]),
+                                   3: LineString([(-7.557148039524952, 49.766825803756994),
+                                                  (-7.557106577683727, 49.76682779861249)]),
+                                   4: LineString([(-7.557148039524952, 49.766825803756994),
+                                                  (-7.557121424907424, 49.76683608549253)]),
+                                   5: LineString([(-7.557148039524952, 49.766825803756994),
+                                                  (-7.557121424907424, 49.76683608549253)]),
+                                   6: LineString([(-7.557121424907424, 49.76683608549253),
+                                                  (-7.557148039524952, 49.766825803756994)]),
+                                   7: LineString([(-7.557121424907424, 49.76683608549253),
+                                                  (-7.557148039524952, 49.766825803756994)]),
+                                   8: LineString([(-7.557121424907424, 49.76683608549253),
+                                                  (-7.5570681956375, 49.766856648946295)]),
+                                   9: LineString([(-7.557121424907424, 49.76683608549253),
+                                                  (-7.5570681956375, 49.766856648946295)]),
+                                   10: LineString([(-7.5570681956375, 49.766856648946295),
+                                                   (-7.557121424907424, 49.76683608549253)]),
+                                   11: LineString([(-7.5570681956375, 49.766856648946295),
+                                                   (-7.557121424907424, 49.76683608549253)])},
+                               'from_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2', 4: 'Stop_2',
+                                                  5: 'Stop_2',
+                                                  6: 'Stop_3', 7: 'Stop_3', 8: 'Stop_3', 9: 'Stop_3',
+                                                  10: float('nan'),
+                                                  11: float('nan')},
+                               'to_stop_name': {0: 'Stop_2', 1: 'Stop_2', 2: 'Stop_1', 3: 'Stop_1',
+                                                4: 'Stop_3', 5: 'Stop_3', 6: 'Stop_2', 7: 'Stop_2',
+                                                8: float('nan'), 9: float('nan'), 10: 'Stop_3', 11: 'Stop_3'}})
+
+    assert_frame_equal(df, correct_df)
 
 
 def test_generating_trips_geodataframe_for_route(schedule):
-    use_schedule.generate_trips_dataframe(schedule.route('1'))
-    pass
+    df = use_schedule.generate_trips_dataframe(schedule.route('2'), route_ids=['2'])
+
+    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 17:05:00'),
+                                               2: Timestamp('1970-01-01 17:09:00'), 3: Timestamp('1970-01-01 18:30:00'),
+                                               4: Timestamp('1970-01-01 18:35:00'),
+                                               5: Timestamp('1970-01-01 18:39:00')},
+                            'arrival_time': {0: Timestamp('1970-01-01 17:03:00'), 1: Timestamp('1970-01-01 17:07:00'),
+                                             2: Timestamp('1970-01-01 17:13:00'), 3: Timestamp('1970-01-01 18:33:00'),
+                                             4: Timestamp('1970-01-01 18:37:00'), 5: Timestamp('1970-01-01 18:43:00')},
+                            'from_stop': {0: '4', 1: '3', 2: '2', 3: '4', 4: '3', 5: '2'},
+                            'to_stop': {0: '3', 1: '2', 2: '1', 3: '3', 4: '2', 5: '1'},
+                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
+                            'route': {0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2'},
+                            'service': {0: None, 1: None, 2: None, 3: None, 4: None,
+                                        5: None}})
+
+    assert_frame_equal(df, correct_df)
+
+
+def test_generating_trips_geodataframe_for_route_with_specifying_route_ids(schedule):
+    df = use_schedule.generate_trips_dataframe(schedule.route('2'), route_ids=['2'])
+
+    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 17:05:00'),
+                                               2: Timestamp('1970-01-01 17:09:00'), 3: Timestamp('1970-01-01 18:30:00'),
+                                               4: Timestamp('1970-01-01 18:35:00'),
+                                               5: Timestamp('1970-01-01 18:39:00')},
+                            'arrival_time': {0: Timestamp('1970-01-01 17:03:00'), 1: Timestamp('1970-01-01 17:07:00'),
+                                             2: Timestamp('1970-01-01 17:13:00'), 3: Timestamp('1970-01-01 18:33:00'),
+                                             4: Timestamp('1970-01-01 18:37:00'), 5: Timestamp('1970-01-01 18:43:00')},
+                            'from_stop': {0: '4', 1: '3', 2: '2', 3: '4', 4: '3', 5: '2'},
+                            'to_stop': {0: '3', 1: '2', 2: '1', 3: '3', 4: '2', 5: '1'},
+                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
+                            'route': {0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2'},
+                            'service': {0: None, 1: None, 2: None, 3: None, 4: None,
+                                        5: None}})
+
+    assert_frame_equal(df, correct_df)
 
 
 def test_generating_edge_vph_geodataframe_for_route(schedule):
-    use_schedule.generate_edge_vph_geodataframe(schedule)
-    pass
+    df = use_schedule.generate_edge_vph_geodataframe(schedule.route('2'))
+
+    correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 19:00:00'),
+                                        2: Timestamp('1970-01-01 17:00:00'), 3: Timestamp('1970-01-01 19:00:00'),
+                                        4: Timestamp('1970-01-01 17:00:00'), 5: Timestamp('1970-01-01 18:00:00')},
+                               'from_stop': {0: '2', 1: '2', 2: '3', 3: '3', 4: '4', 5: '4'},
+                               'to_stop': {0: '1', 1: '1', 2: '2', 3: '2', 4: '3', 5: '3'},
+                               'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1},
+                               'geometry': {0: LineString([(-7.557148039524952, 49.766825803756994),
+                                                (-7.557106577683727, 49.76682779861249)]),
+                                            1: LineString([(-7.557148039524952, 49.766825803756994),
+                                                (-7.557106577683727, 49.76682779861249)]),
+                                            2: LineString([(-7.557121424907424, 49.76683608549253),
+                                                (-7.557148039524952, 49.766825803756994)]),
+                                            3: LineString([(-7.557121424907424, 49.76683608549253),
+                                                (-7.557148039524952, 49.766825803756994)]),
+                                            4: LineString([(-7.5570681956375, 49.766856648946295),
+                                                (-7.557121424907424, 49.76683608549253)]),
+                                            5: LineString([(-7.5570681956375, 49.766856648946295),
+                                                (-7.557121424907424, 49.76683608549253)])},
+                               'from_stop_name': {0: 'Stop_2', 1: 'Stop_2', 2: 'Stop_3', 3: 'Stop_3', 4: float('nan'),
+                                                  5: float('nan')},
+                               'to_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2',
+                                                4: 'Stop_3', 5: 'Stop_3'}})
+    assert_frame_equal(df, correct_df)

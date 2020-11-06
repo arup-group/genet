@@ -262,6 +262,6 @@ def test_is_valid_with_looping_route(self_looping_route, route):
 
 
 def test_is_valid_with_non_network_route(service):
-    service.routes['1'].route = []
-    service.routes['2'].route = []
+    service._routes['1'].route = []
+    service._routes['2'].route = []
     assert not service.is_valid_service()

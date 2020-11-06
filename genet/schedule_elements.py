@@ -320,9 +320,20 @@ class Route(ScheduleElement):
         for s in self.ordered_stops:
             yield self.stop(s)
 
+    def route(self, route_id):
+        """
+        Attempting to extract route from route given an id should yield itself unless index doesnt match
+        :param route_id:
+        :return:
+        """
+        if route_id == self.id:
+            return self
+        else:
+            raise IndexError(f"{route_id} does not match Route's id: {self.id}")
+
     def routes(self):
         """
-        Iterator for routes in the service
+        This iterator is on the same level as the object and yields itself
         """
         yield None, self
 
@@ -474,13 +485,13 @@ class Service(ScheduleElement):
         else:
             self.name = ''
         # create a dictionary and index if not unique ids
-        self.routes = {}
+        self._routes = {}
         for route in routes:
             _id = route.id
-            if (not _id) or (_id in self.routes):
-                _id = self.id + f'_{len(self.routes)}'
+            if (not _id) or (_id in self._routes):
+                _id = self.id + f'_{len(self._routes)}'
                 route.reindex(_id)
-            self.routes[_id] = route
+            self._routes[_id] = route
         super().__init__(None)
 
     def __eq__(self, other):
@@ -493,18 +504,18 @@ class Service(ScheduleElement):
             len(self))
 
     def __getitem__(self, route_id):
-        return self.routes[route_id]
+        return self._routes[route_id]
 
     def __str__(self):
         return self.info()
 
     def __len__(self):
-        return len(self.routes)
+        return len(self._routes)
 
     def _build_graph(self, stops=None):
         nodes = {}
         edges = {}
-        for route in self.routes.values():
+        for route in self._routes.values():
             g = route.graph()
             nodes = dict_support.merge_complex_dictionaries(dict(g.nodes(data=True)), nodes)
             edges = dict_support.combine_edge_data_lists(list(g.edges(data=True)), edges)
@@ -519,7 +530,7 @@ class Service(ScheduleElement):
 
     def _update_graph(self, new_graph):
         self._graph = new_graph
-        for route in self.routes.values():
+        for route in self._routes.values():
             route._graph = new_graph
 
     def reindex(self, new_id):
@@ -549,15 +560,23 @@ class Service(ScheduleElement):
                 e_c='#EC7063'
             )
 
+    def route(self, route_id):
+        """
+        Extract particular route from a Service given index
+        :param route_id:
+        :return:
+        """
+        return self._routes[route_id]
+
     def routes(self):
         """
-        Iterator for routes in the service
+        Iterator for _routes in the service
         """
-        for route in self.routes.values():
+        for route in self._routes.values():
             yield self.id, route
 
     def is_exact(self, other):
-        return (self.id == other.id) and (self.routes == other.routes)
+        return (self.id == other.id) and (self._routes == other._routes)
 
     def isin_exact(self, services: list):
         for other in services:
@@ -574,16 +593,16 @@ class Service(ScheduleElement):
         return list(nx.nodes_with_selfloops(self.graph()))
 
     def validity_of_routes(self):
-        return [route.is_valid_route() for route in self.routes.values()]
+        return [route.is_valid_route() for route in self._routes.values()]
 
     def has_valid_routes(self):
         return all(self.validity_of_routes())
 
     def invalid_routes(self):
-        return [route for route in self.routes.values() if not route.is_valid_route()]
+        return [route for route in self._routes.values() if not route.is_valid_route()]
 
     def has_uniquely_indexed_routes(self):
-        indices = set([route.id for route in self.routes.values()])
+        indices = set([route.id for route in self._routes.values()])
         if len(indices) != len(self):
             return False
         return True
@@ -673,7 +692,7 @@ class Schedule(ScheduleElement):
         self._graph = new_graph
         for service in self.services.values():
             service._graph = new_graph
-            for route in service.routes.values():
+            for route in service._routes.values():
                 route._graph = new_graph
 
     def reindex(self, new_id):
@@ -752,7 +771,7 @@ class Schedule(ScheduleElement):
         """
         routes = []
         for service_id, service in self.services.items():
-            if route_id in service.routes:
+            if route_id in service._routes:
                 routes.append(service[route_id])
         if not routes:
             raise KeyError(f'{route_id} not found in any of the Services')
@@ -763,10 +782,10 @@ class Schedule(ScheduleElement):
 
     def routes(self):
         """
-        Iterator for routes in the schedule
+        Iterator for _routes in the schedule
         """
         for service_id, service in self.services.items():
-            for route in service.routes.values():
+            for route in service._routes.values():
                 yield service_id, route
 
     def number_of_routes(self):

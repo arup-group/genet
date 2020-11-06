@@ -327,7 +327,7 @@ def test_has_valid_services_with_only_valid_services(service):
 
 
 def test_invalid_services_shows_invalid_services(service):
-    for route in service.routes.values():
+    for route in service._routes.values():
         route.route = ['1']
     s = Schedule('epsg:27700', [service])
     assert s.invalid_services() == [service]

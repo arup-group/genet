@@ -23,17 +23,23 @@ def get_offset(time):
     return timedelta(seconds=int(time_list[0]) * 60 * 60 + int(time_list[1]) * 60 + int(time_list[2]))
 
 
-def generate_trips_dataframe(schedule_element):
-    df = None
-    for _id, route in schedule_element.routes():
-        _df = route.generate_trips_dataframe()
-        _df['route'] = route.id
-        _df['service'] = _id
+def generate_trips_dataframe(schedule_element, route_ids=None):
+    """
+    Generates trips dataframe for the schedule element
+    :param schedule_element: Route, Service or Schedule
+    :param route_ids: Optional, to build the dataframe only for specific route ids. You can pass just one route id but
+    that's the same as giving that route element as schedule_element and more efficient.
+    :return:
+    """
+    df = pd.DataFrame(columns=['departure_time', 'arrival_time', 'from_stop', 'to_stop', 'trip', 'route', 'service'])
 
-        if df is None:
-            df = _df
-        else:
+    for _id, route in schedule_element.routes():
+        if (not route_ids) or (route.id in route_ids):
+            _df = route.generate_trips_dataframe()
+            _df['route'] = route.id
+            _df['service'] = _id
             df = df.append(_df)
+    df = df.reset_index(drop=True)
     return df
 
 

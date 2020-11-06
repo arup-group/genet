@@ -8,11 +8,11 @@ def assert_all_elements_share_graph(elem):
         master_graph = id(elem.graph())
         for service in elem.services.values():
             assert master_graph == id(service._graph)
-            for route in service.routes.values():
+            for route in service._routes.values():
                 assert master_graph == id(route._graph)
     elif isinstance(elem, Service):
         master_graph = id(elem.graph())
-        for route in elem.routes.values():
+        for route in elem._routes.values():
             assert master_graph == id(route._graph)
 
 

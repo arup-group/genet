@@ -63,6 +63,7 @@ def test_generating_schedule_graph_geodataframe(network):
                      'linkRefId': {'0': '1', '1': '2'}}
     correct_links = {'services': {0: ['service']},
                      'routes': {0: ['1', '2']},
+                     'modes': {0: ['bus']},
                      'u': {0: '0'},
                      'v': {0: '1'},
                      'key': {0: 0}}
@@ -110,4 +111,5 @@ def test_generating_standard_outputs(network, tmpdir):
                                        'walk_subgraph_geometry.geojson',
                                        'bike_subgraph_geometry.geojson',
                                        'rail_subgraph_geometry.geojson',
-                                       'car_subgraph_geometry.geojson'}
+                                       'car_subgraph_geometry.geojson',
+                                       'vehicles_per_hour.geojson'}
