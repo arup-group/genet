@@ -1,6 +1,6 @@
-import os
-import pickle
 import pytest
+from pandas import DataFrame, Timestamp
+from pandas.testing import assert_frame_equal
 from genet.schedule_elements import Route, Stop
 from genet.utils import plot
 from tests.fixtures import stop_epsg_27700, assert_semantically_equal
@@ -309,4 +309,16 @@ def test_is_valid_with_sinlge_stop_network():
 
 def test_building_trips_dataframe(route):
     df = route.generate_trips_dataframe()
-    pass
+
+    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 10:00:00'), 1: Timestamp('1970-01-01 10:05:00'),
+                                               2: Timestamp('1970-01-01 10:09:00'), 3: Timestamp('1970-01-01 20:00:00'),
+                                               4: Timestamp('1970-01-01 20:05:00'),
+                                               5: Timestamp('1970-01-01 20:09:00')},
+                            'arrival_time': {0: Timestamp('1970-01-01 10:03:00'), 1: Timestamp('1970-01-01 10:07:00'),
+                                             2: Timestamp('1970-01-01 10:13:00'), 3: Timestamp('1970-01-01 20:03:00'),
+                                             4: Timestamp('1970-01-01 20:07:00'), 5: Timestamp('1970-01-01 20:13:00')},
+                            'from_stop': {0: '1', 1: '2', 2: '3', 3: '1', 4: '2', 5: '3'},
+                            'to_stop': {0: '2', 1: '3', 2: '4', 3: '2', 4: '3', 5: '4'},
+                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'}})
+
+    assert_frame_equal(df, correct_df)

@@ -357,6 +357,7 @@ class Route(ScheduleElement):
                 df = trip_df
             else:
                 df = df.append(trip_df)
+        df = df.reset_index(drop=True)
         return df
 
     def is_exact(self, other):
