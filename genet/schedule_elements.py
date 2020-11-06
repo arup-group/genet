@@ -340,8 +340,10 @@ class Route(ScheduleElement):
     def generate_trips_dataframe(self, gtfs_day='19700101'):
         df = None
         _df = DataFrame({
-            'departure_time': [use_schedule.get_offset(self.departure_offsets[i]) for i in range(len(self.ordered_stops) - 1)],
-            'arrival_time': [use_schedule.get_offset(self.arrival_offsets[i]) for i in range(1, len(self.ordered_stops))],
+            'departure_time':
+                [use_schedule.get_offset(self.departure_offsets[i]) for i in range(len(self.ordered_stops) - 1)],
+            'arrival_time':
+                [use_schedule.get_offset(self.arrival_offsets[i]) for i in range(1, len(self.ordered_stops))],
             'from_stop': [self.ordered_stops[i] for i in range(len(self.ordered_stops) - 1)],
             'to_stop': [self.ordered_stops[i] for i in range(1, len(self.ordered_stops))]
         })

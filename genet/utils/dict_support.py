@@ -1,4 +1,3 @@
-import dictdiffer
 
 
 def set_nested_value(d: dict, value: dict):
