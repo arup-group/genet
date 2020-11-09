@@ -146,4 +146,8 @@ def test_generating_standard_outputs(network, tmpdir):
                                        'rail_subgraph_geometry.geojson',
                                        'car_subgraph_geometry.geojson',
                                        'bus_vehicles_per_hour.geojson',
-                                       'rail_vehicles_per_hour.geojson'}
+                                       'rail_vehicles_per_hour.geojson',
+                                       'rail_schedule_subgraph_links.geojson',
+                                       'bus_schedule_subgraph_links.geojson',
+                                       'bus_schedule_subgraph_nodes.geojson',
+                                       'rail_schedule_subgraph_nodes.geojson'}

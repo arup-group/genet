@@ -4,6 +4,7 @@ import osmnx as ox
 from geopandas import GeoDataFrame, GeoSeries
 from networkx import MultiDiGraph
 import genet.use.schedule as use_schedule
+import genet.utils.persistence as persistence
 
 
 def modal_subset(row, modes):
@@ -39,6 +40,7 @@ def sanitise_geodataframe(gdf):
 
 def save_geodataframe(gdf, filename, output_dir):
     gdf = sanitise_geodataframe(gdf)
+    persistence.ensure_dir(output_dir)
     gdf.to_file(os.path.join(output_dir, filename), driver='GeoJSON')
 
 
@@ -87,9 +89,22 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
         logging.info('Generating geojson outputs for schedule')
         schedule_nodes, schedule_links = generate_geodataframes(n.schedule.graph())
         df = use_schedule.generate_trips_dataframe(n.schedule, gtfs_day=gtfs_day)
+
+        graph_mode_map = n.schedule.mode_graph_map()
         for mode in n.schedule.modes():
             logging.info(f'Generating vehicles per hour for {mode}')
             save_geodataframe(
                 use_schedule.generate_edge_vph_geodataframe(df[df['mode'] == mode], schedule_nodes, schedule_links),
                 filename=f'{mode}_vehicles_per_hour.geojson',
+                output_dir=output_dir)
+            logging.info(f'Generating schedule graph for {mode}')
+            schedule_subgraph_nodes, schedule_subgraph_links = generate_geodataframes(
+                n.schedule.subgraph(graph_mode_map[mode]))
+            save_geodataframe(
+                schedule_subgraph_links,
+                filename=f'{mode}_schedule_subgraph_links.geojson',
+                output_dir=output_dir)
+            save_geodataframe(
+                schedule_subgraph_nodes,
+                filename=f'{mode}_schedule_subgraph_nodes.geojson',
                 output_dir=output_dir)
