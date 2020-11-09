@@ -108,15 +108,17 @@ def test_generating_standard_outputs(network, tmpdir):
         Service(id='bus_service',
                 routes=[
                     Route(id='1', route_short_name='route', mode='bus',
-                          stops=[Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='1'),
-                                 Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')],
+                          stops=[
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='1'),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')],
                           trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
                           arrival_offsets=['00:00:00', '00:02:00'],
                           departure_offsets=['00:00:00', '00:02:00'],
                           route=['1', '2']),
                     Route(id='2', route_short_name='route1', mode='bus',
-                          stops=[Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='1'),
-                                 Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')],
+                          stops=[
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='1'),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')],
                           trips={'1_05:40:00': '05:40:00',
                                  '2_05:45:00': '05:45:00',
                                  '3_05:50:00': '05:50:00',
@@ -127,27 +129,27 @@ def test_generating_standard_outputs(network, tmpdir):
                           route=['1', '2'])
                 ]),
         Service(id='rail_service',
-            routes=[Route(
-                route_short_name='RTR',
-                mode='rail',
-                stops=[Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326'),
-                       Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
-                trips={'RT1': '03:21:00', 'RT2': '03:31:00', 'RT3': '03:41:00', 'RT4': '03:51:00'},
-                arrival_offsets=['0:00:00', '0:02:00'],
-                departure_offsets=['0:00:00', '0:02:00']
-            )])
+                routes=[Route(
+                    route_short_name='RTR',
+                    mode='rail',
+                    stops=[Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326'),
+                           Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
+                    trips={'RT1': '03:21:00', 'RT2': '03:31:00', 'RT3': '03:41:00', 'RT4': '03:51:00'},
+                    arrival_offsets=['0:00:00', '0:02:00'],
+                    departure_offsets=['0:00:00', '0:02:00']
+                )])
     ])
     assert os.listdir(tmpdir) == []
     network.generate_standard_outputs(tmpdir)
-    assert set(os.listdir(tmpdir)) == {'car_freespeed_subgraph.geojson',
-                                       'car_capacity_subgraph.geojson',
-                                       'walk_subgraph_geometry.geojson',
-                                       'bike_subgraph_geometry.geojson',
-                                       'rail_subgraph_geometry.geojson',
-                                       'car_subgraph_geometry.geojson',
-                                       'bus_vehicles_per_hour.geojson',
-                                       'rail_vehicles_per_hour.geojson',
-                                       'rail_schedule_subgraph_links.geojson',
-                                       'bus_schedule_subgraph_links.geojson',
-                                       'bus_schedule_subgraph_nodes.geojson',
-                                       'rail_schedule_subgraph_nodes.geojson'}
+    assert set(os.listdir(tmpdir)) == {'car_capacity_subgraph.geojson',
+                                       'car_freespeed_subgraph.geojson',
+                                       'schedule_subgraph_links_bus.geojson',
+                                       'schedule_subgraph_links_rail.geojson',
+                                       'schedule_subgraph_nodes_bus.geojson',
+                                       'schedule_subgraph_nodes_rail.geojson',
+                                       'subgraph_geometry_bike.geojson',
+                                       'subgraph_geometry_car.geojson',
+                                       'subgraph_geometry_rail.geojson',
+                                       'subgraph_geometry_walk.geojson',
+                                       'vehicles_per_hour_bus.geojson',
+                                       'vehicles_per_hour_rail.geojson'}
