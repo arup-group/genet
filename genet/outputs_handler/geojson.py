@@ -39,9 +39,10 @@ def sanitise_geodataframe(gdf):
 
 
 def save_geodataframe(gdf, filename, output_dir):
-    gdf = sanitise_geodataframe(gdf)
-    persistence.ensure_dir(output_dir)
-    gdf.to_file(os.path.join(output_dir, filename), driver='GeoJSON')
+    if not gdf.empty:
+        gdf = sanitise_geodataframe(gdf)
+        persistence.ensure_dir(output_dir)
+        gdf.to_file(os.path.join(output_dir, filename), driver='GeoJSON')
 
 
 def save_network_to_geojson(n, output_dir):
@@ -89,14 +90,24 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
         logging.info('Generating geojson outputs for schedule')
         schedule_nodes, schedule_links = generate_geodataframes(n.schedule.graph())
         df = use_schedule.generate_trips_dataframe(n.schedule, gtfs_day=gtfs_day)
+        df_all_modes_vph = None
 
         graph_mode_map = n.schedule.mode_graph_map()
         for mode in n.schedule.modes():
             logging.info(f'Generating vehicles per hour for {mode}')
+            df_vph = use_schedule.generate_edge_vph_geodataframe(df[df['mode'] == mode], schedule_nodes, schedule_links)
             save_geodataframe(
-                use_schedule.generate_edge_vph_geodataframe(df[df['mode'] == mode], schedule_nodes, schedule_links),
+                df_vph,
                 filename=f'vehicles_per_hour_{mode}.geojson',
                 output_dir=output_dir)
+
+            if df_all_modes_vph is None:
+                df_vph['mode'] = mode
+                df_all_modes_vph = df_vph
+            else:
+                df_vph['mode'] = mode
+                df_all_modes_vph = df_all_modes_vph.append(df_vph)
+
             logging.info(f'Generating schedule graph for {mode}')
             schedule_subgraph_nodes, schedule_subgraph_links = generate_geodataframes(
                 n.schedule.subgraph(graph_mode_map[mode]))
@@ -107,4 +118,16 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
             save_geodataframe(
                 schedule_subgraph_nodes,
                 filename=f'schedule_subgraph_nodes_{mode}.geojson',
+                output_dir=output_dir)
+
+        logging.info('Saving vehicles per hour for all PT modes')
+        save_geodataframe(
+            df_all_modes_vph,
+            filename=f'vehicles_per_hour_all_modes.geojson',
+            output_dir=output_dir)
+        logging.info('Saving vehicles per hour for all PT modes for selected hour slices')
+        for h in [7, 8, 9, 13, 16, 17, 18]:
+            save_geodataframe(
+                df_all_modes_vph[df_all_modes_vph['hour'].dt.hour == h],
+                filename=f'vehicles_per_hour_all_modes_within_{h-1}:30-{h}:30.geojson',
                 output_dir=output_dir)
