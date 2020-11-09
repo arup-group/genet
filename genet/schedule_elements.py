@@ -53,11 +53,20 @@ class ScheduleElement:
             modes |= set(e_modes)
         return list(modes)
 
+    def mode_graph_map(self):
+        mode_map = {mode: set() for mode in self.modes()}
+        for _id, route in self.routes():
+            mode_map[route.mode] |= set(route.reference_edges)
+        return mode_map
+
     def _build_graph(self, stops):
         pass
 
     def graph(self):
         return nx.edge_subgraph(self._graph, self.reference_edges)
+
+    def subgraph(self, edges):
+        return nx.DiGraph(nx.edge_subgraph(self.graph(), edges))
 
     def stop_to_service_ids_map(self):
         return dict(self.graph().nodes(data='services'))
