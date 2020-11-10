@@ -53,9 +53,9 @@ def generate_edge_vph_geodataframe(df, gdf_nodes, gdf_links):
     :param gdf_links: geodataframe containing links of the schedule (element) graph
     :return:
     """
-    df['hour'] = df['departure_time'].dt.round("H")
+    df.loc[:, 'hour'] = df['departure_time'].dt.round("H")
     df = df.groupby(['hour', 'trip', 'from_stop', 'to_stop']).count().reset_index()
-    df['vph'] = 1
+    df.loc[:, 'vph'] = 1
     df = df.groupby(['hour', 'from_stop', 'to_stop']).sum().reset_index()
 
     cols_to_delete = ['departure_time', 'arrival_time']
@@ -84,11 +84,13 @@ def plot_train_frequency_bar_chart(df, output_path):
     :param output_dir: path for the plot with .jpeg, or .png extension
     :return:
     """
-    df['hour'] = df['departure_time'].dt.round("H")
-    df['hour'] = df['hour'].dt.hour
+    df.loc[:, 'hour'] = df['departure_time'].dt.round("H")
+    df.loc[:, 'hour'] = df['hour'].dt.hour
     df = df.groupby(['hour', 'trip']).count().reset_index()
-    df['vph'] = 1
+    df.loc[:, 'vph'] = 1
     df = df.groupby('hour').sum().reset_index()
-    ax = pd.DataFrame(df).plot(x='hour', y='vph', kind='bar', title=f"{os.path.basename(output_path).split('.')[0]}")
+    ax = pd.DataFrame(df).plot(
+        x='hour', y='vph', kind='bar', title=f"{os.path.basename(output_path).split('.')[0]}")
     plt.savefig(output_path)
+    plt.close()
     return ax
