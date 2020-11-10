@@ -11,7 +11,10 @@ def network(correct_schedule):
     n.add_node('0', attribs={'x': 528704.1425925883, 'y': 182068.78193707118})
     n.add_node('1', attribs={'x': 528804.1425925883, 'y': 182168.78193707118})
     n.add_link('link_0', '0', '1', attribs={'length': 123, 'modes': ['car', 'walk'], 'freespeed': 10, 'capacity': 5})
-    n.add_link('link_1', '0', '1', attribs={'length': 123, 'modes': ['bike']})
+    n.add_link('link_1', '0', '1', attribs={'length': 123, 'modes': ['bike'],
+                                            'attributes': {'osm:way:highway': {'name': 'osm:way:highway',
+                                                                               'class': 'java.lang.String',
+                                                                               'text': 'unclassified'}}})
     n.add_link('link_2', '1', '0', attribs={'length': 123, 'modes': ['rail']})
 
     n.schedule = correct_schedule
@@ -29,7 +32,12 @@ def test_generating_network_graph_geodataframe(network):
                      'capacity': {0: 5.0, 1: float('nan'), 2: float('nan')},
                      'from': {0: '0', 1: '0', 2: '1'}, 'to': {0: '1', 1: '1', 2: '0'},
                      'id': {0: 'link_0', 1: 'link_1', 2: 'link_2'}, 'u': {0: '0', 1: '0', 2: '1'},
-                     'v': {0: '1', 1: '1', 2: '0'}, 'key': {0: 0, 1: 1, 2: 0}}
+                     'v': {0: '1', 1: '1', 2: '0'}, 'key': {0: 0, 1: 1, 2: 0},
+                     'attributes': {0: float('nan'),
+                                    1: {'osm:way:highway': {'name': 'osm:way:highway',
+                                                            'class': 'java.lang.String',
+                                                            'text': 'unclassified'}},
+                                    2: float('nan')}}
 
     assert_semantically_equal(nodes[set(nodes.columns) - {'geometry'}].to_dict(), correct_nodes)
     assert_semantically_equal(links[set(links.columns) - {'geometry'}].to_dict(), correct_links)

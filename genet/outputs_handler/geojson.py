@@ -33,8 +33,7 @@ def sanitise_geodataframe(gdf):
         if gdf[col].apply(lambda x: isinstance(x, list)).any():
             gdf[col] = gdf[col].apply(lambda x: ','.join(x))
         elif gdf[col].apply(lambda x: isinstance(x, dict)).any():
-            # TODO add support for dictionaries
-            pass
+            gdf[col] = gdf[col].apply(lambda x: str(x))
     return gdf
 
 
