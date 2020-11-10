@@ -154,9 +154,16 @@ def test_generating_standard_outputs(network, tmpdir):
                                        'vehicles_per_hour_all_modes.geojson',
                                        'vehicles_per_hour_all_modes_within_6:30-7:30.geojson',
                                        'vehicles_per_hour_bus.geojson',
-                                       'vehicles_per_hour_rail.geojson'}
+                                       'vehicles_per_hour_rail.geojson',
+                                       'aggregate_vph_per_stop',
+                                       'aggregate_vph_per_service'}
 
     assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_service'))) == {'aggregate_vph_route.png',
                                                                                   'aggregate_vph_RTR.png'}
+
+    assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_stop'))) == {'aggregate_vph_RSE.png',
+                                                                                  'aggregate_vph_RSN.png',
+                                                                                  'aggregate_vph_1.png',
+                                                                                  'aggregate_vph_0.png'}
 
     assert os.path.exists(tmpdir + '.zip')

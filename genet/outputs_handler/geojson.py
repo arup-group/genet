@@ -144,4 +144,16 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
                 df[df['service'] == service_id],
                 os.path.join(per_service_vph, f'aggregate_vph_{name}.png'))
 
+        logging.info('Generating aggregate vehicles per hour per stop')
+        per_service_vph = os.path.join(output_dir, 'aggregate_vph_per_stop')
+        persistence.ensure_dir(per_service_vph)
+        for stop in n.schedule.stops():
+            try:
+                name = stop.name
+            except AttributeError:
+                name = stop.id
+            use_schedule.plot_train_frequency_bar_chart(
+                df[(df['from_stop'] == stop.id) | (df['to_stop'] == stop.id)],
+                os.path.join(per_service_vph, f'aggregate_vph_{name}.png'))
+
         persistence.zip_folder(output_dir)
