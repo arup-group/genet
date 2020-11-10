@@ -1123,7 +1123,7 @@ class Network:
 
     def generate_standard_outputs(self, output_dir, gtfs_day='19700101'):
         """
-        Generates geojsons that can be used for generating standard kepler visualisations.
+        Generates geojsons that can be used for generating standard kepler visualisations and png plots.
         These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
         the shape of modal subgraphs.
         :param output_dir: path to folder where to save resulting geojsons
@@ -1132,6 +1132,8 @@ class Network:
         :return: None
         """
         geojson.generate_standard_outputs(self, output_dir, gtfs_day)
+        logging.info('Finished generating standard outputs. Zipping folder.')
+        persistence.zip_folder(output_dir)
 
     def read_osm(self, osm_file_path, osm_read_config, num_processes: int = 1):
         """

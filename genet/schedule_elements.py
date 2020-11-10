@@ -15,6 +15,7 @@ import genet.utils.parallel as parallel
 import genet.modify.schedule as mod_schedule
 import genet.use.schedule as use_schedule
 import genet.validate.schedule_validation as schedule_validation
+import genet.outputs_handler.geojson as gngeojson
 
 # number of decimal places to consider when comparing lat lons
 SPATIAL_TOLERANCE = 8
@@ -844,6 +845,20 @@ class Schedule(ScheduleElement):
 
     def generate_validation_report(self):
         return schedule_validation.generate_validation_report(schedule=self)
+
+    def generate_standard_outputs(self, output_dir, gtfs_day='19700101'):
+        """
+        Generates geojsons that can be used for generating standard kepler visualisations.
+        These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
+        the shape of modal subgraphs.
+        :param output_dir: path to folder where to save resulting geojsons
+        :param gtfs_day: day in format YYYYMMDD for the network's schedule for consistency in visualisations,
+        defaults to 1970/01/01 otherwise
+        :return: None
+        """
+        gngeojson.generate_standard_outputs_for_schedule(self, output_dir, gtfs_day)
+        logging.info('Finished generating standard outputs. Zipping folder.')
+        persistence.zip_folder(output_dir)
 
     def read_matsim_schedule(self, path):
         services, minimal_transfer_times = matsim_reader.read_schedule(path, self.epsg)
