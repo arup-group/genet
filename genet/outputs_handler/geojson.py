@@ -123,7 +123,7 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
         logging.info('Saving vehicles per hour for all PT modes')
         save_geodataframe(
             df_all_modes_vph,
-            filename=f'vehicles_per_hour_all_modes.geojson',
+            filename='vehicles_per_hour_all_modes.geojson',
             output_dir=output_dir)
         logging.info('Saving vehicles per hour for all PT modes for selected hour slices')
         for h in [7, 8, 9, 13, 16, 17, 18]:
@@ -140,9 +140,11 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
                 name = service.name
             else:
                 name = service_id
+            _df = df[df['service'] == service_id]
+            modes = '_'.join(list(_df['mode'].unique()))
             use_schedule.plot_train_frequency_bar_chart(
-                df[df['service'] == service_id],
-                os.path.join(per_service_vph, f'aggregate_vph_{name}.png'))
+                _df,
+                os.path.join(per_service_vph, f'aggregate_vph_{modes}_{name}.png'))
 
         logging.info('Generating aggregate vehicles per hour per stop')
         per_service_vph = os.path.join(output_dir, 'aggregate_vph_per_stop')
@@ -152,8 +154,10 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
                 name = stop.name
             except AttributeError:
                 name = stop.id
+            _df = df[(df['from_stop'] == stop.id) | (df['to_stop'] == stop.id)]
+            modes = '_'.join(list(_df['mode'].unique()))
             use_schedule.plot_train_frequency_bar_chart(
-                df[(df['from_stop'] == stop.id) | (df['to_stop'] == stop.id)],
-                os.path.join(per_service_vph, f'aggregate_vph_{name}.png'))
+                _df,
+                os.path.join(per_service_vph, f'aggregate_vph_{modes}_{name}.png'))
 
         persistence.zip_folder(output_dir)

@@ -158,12 +158,12 @@ def test_generating_standard_outputs(network, tmpdir):
                                        'aggregate_vph_per_stop',
                                        'aggregate_vph_per_service'}
 
-    assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_service'))) == {'aggregate_vph_route.png',
-                                                                                  'aggregate_vph_RTR.png'}
+    assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_service'))) == {'aggregate_vph_bus_route.png',
+                                                                                  'aggregate_vph_rail_RTR.png'}
 
-    assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_stop'))) == {'aggregate_vph_RSE.png',
-                                                                                  'aggregate_vph_RSN.png',
-                                                                                  'aggregate_vph_1.png',
-                                                                                  'aggregate_vph_0.png'}
+    assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_stop'))) == {'aggregate_vph_rail_RSE.png',
+                                                                               'aggregate_vph_rail_RSN.png',
+                                                                               'aggregate_vph_bus_1.png',
+                                                                               'aggregate_vph_bus_0.png'}
 
     assert os.path.exists(tmpdir + '.zip')
