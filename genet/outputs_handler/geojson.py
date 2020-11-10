@@ -131,3 +131,5 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
                 df_all_modes_vph[df_all_modes_vph['hour'].dt.hour == h],
                 filename=f'vehicles_per_hour_all_modes_within_{h-1}:30-{h}:30.geojson',
                 output_dir=output_dir)
+
+        persistence.zip_folder(output_dir)

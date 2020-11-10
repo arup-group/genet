@@ -41,3 +41,20 @@ def test_is_zip_identifies_zip():
 def test_is_zip_identifies_folder_isnt_zip():
     zip_dir = os.path.join('path', 'to', 'dir')
     assert not persistence.is_zip(zip_dir)
+
+
+def test_zipping_folder(tmpdir):
+
+    folder = os.path.join(tmpdir, 'folder_to_zip_up')
+    persistence.ensure_dir(folder)
+
+    with open(os.path.join(folder, 'helloworld.txt'), 'wb') as f:
+        f.write(b'hello world')
+        f.close()
+
+    assert os.path.exists(os.path.join(folder, 'helloworld.txt'))
+    assert not os.path.exists(os.path.join(tmpdir, 'folder_to_zip_up.zip'))
+
+    persistence.zip_folder(folder)
+
+    assert os.path.exists(os.path.join(tmpdir, 'folder_to_zip_up.zip'))

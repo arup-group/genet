@@ -155,3 +155,5 @@ def test_generating_standard_outputs(network, tmpdir):
                                        'vehicles_per_hour_all_modes_within_6:30-7:30.geojson',
                                        'vehicles_per_hour_bus.geojson',
                                        'vehicles_per_hour_rail.geojson'}
+
+    assert os.path.exists(tmpdir + '.zip')
