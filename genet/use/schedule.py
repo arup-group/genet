@@ -1,6 +1,8 @@
+import os
 import pandas as pd
 from datetime import datetime, timedelta
 import geopandas as gpd
+from matplotlib import pyplot as plt
 
 
 def sanitise_time(time, gtfs_day='19700101'):
@@ -73,3 +75,20 @@ def generate_edge_vph_geodataframe(df, gdf_nodes, gdf_links):
 
     df = df.drop(cols_to_delete, axis=1)
     return df
+
+
+def plot_train_frequency_bar_chart(df, output_path):
+    """
+    Generates vehicles per hour for a trips dataframe
+    :param df: trips dataframe
+    :param output_dir: path for the plot with .jpeg, or .png extension
+    :return:
+    """
+    df['hour'] = df['departure_time'].dt.round("H")
+    df['hour'] = df['hour'].dt.hour
+    df = df.groupby(['hour', 'trip']).count().reset_index()
+    df['vph'] = 1
+    df = df.groupby('hour').sum().reset_index()
+    ax = pd.DataFrame(df).plot(x='hour', y='vph', kind='bar', title=f"{os.path.basename(output_path).split('.')[0]}")
+    plt.savefig(output_path)
+    return ax

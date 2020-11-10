@@ -132,4 +132,16 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
                 filename=f'vehicles_per_hour_all_modes_within_{h-1}:30-{h}:30.geojson',
                 output_dir=output_dir)
 
+        logging.info('Generating aggregate vehicles per hour for each service')
+        per_service_vph = os.path.join(output_dir, 'aggregate_vph_per_service')
+        persistence.ensure_dir(per_service_vph)
+        for service_id, service in n.schedule.services.items():
+            if service.name:
+                name = service.name
+            else:
+                name = service_id
+            use_schedule.plot_train_frequency_bar_chart(
+                df[df['service'] == service_id],
+                os.path.join(per_service_vph, f'aggregate_vph_{name}.png'))
+
         persistence.zip_folder(output_dir)
