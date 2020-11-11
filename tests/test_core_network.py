@@ -5,9 +5,11 @@ import uuid
 import pandas as pd
 import networkx as nx
 import pytest
+import lxml
 from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
     full_fat_default_config_path, correct_schedule
+from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.inputs_handler import matsim_reader
 from genet.core import Network
 from genet.schedule_elements import Route, Service, Schedule
@@ -392,6 +394,34 @@ def test_simplifing_puma_network():
     report = n.generate_validation_report()
 
     assert report['routing']['services_have_routes_in_the_graph']
+
+
+def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_dtd):
+    n = Network('epsg:27700')
+    n.read_matsim_network(puma_network_test_file)
+    n.read_matsim_schedule(puma_schedule_test_file)
+
+    n.simplify()
+
+    n.write_to_matsim(tmpdir)
+
+    generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+    xml_obj = lxml.etree.parse(generated_network_file_path)
+    assert network_dtd.validate(xml_obj), \
+        'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
+    network_dtd.error_log.filter_from_errors())
+
+    generated_schedule_file_path = os.path.join(tmpdir, 'schedule.xml')
+    xml_obj = lxml.etree.parse(generated_schedule_file_path)
+    assert schedule_dtd.validate(xml_obj), \
+        'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
+                                                                        schedule_dtd.error_log.filter_from_errors())
+
+
+def test_reading_back_simplified_network():
+    # simplified networks have additional geometry attribute and some of their attributes are composite, e.g. links
+    # now refer to a number of osm ways each with a unique id
+    pass
 
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
