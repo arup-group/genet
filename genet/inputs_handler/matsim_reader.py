@@ -52,20 +52,11 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
     # update old link by link attributes (osm tags etc.)
     if link_attribs:
         if 'geometry' in link_attribs:
-            # TODO genet saves attributes prior to link elems requires a proper fix
             if link_attribs['geometry']['text']:
-                try:
-                    g[u][v][len(g[u][v]) - 1]['geometry'] = spatial.decode_polyline_to_shapely_linestring(
-                        link_attribs['geometry']['text'])
-                    del link_attribs['geometry']
-                except KeyError:
-                    pass
-        # TODO genet saves attributes prior to link elems requires a proper fix
-        try:
-            # if multiple edges, add to the one added most recently
-            g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs  # noqa: F821
-        except KeyError:
-            pass
+                g[u][v][len(g[u][v]) - 1]['geometry'] = spatial.decode_polyline_to_shapely_linestring(
+                    link_attribs['geometry']['text'])
+                del link_attribs['geometry']
+        g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs  # noqa: F821
 
     attribs = elem.attrib
     attribs['s2_from'] = node_id_mapping[attribs['from']]
@@ -168,8 +159,10 @@ def read_network(network_path, transformer: Transformer):
                 # reset link_attribs
                 link_attribs = {}
             elif elem.tag == 'attribute':
-                # TODO fix: some elems for osmid are being read as None
-                link_attribs = read_link_attrib(elem, link_attribs)
+                if node_id_mapping:
+                    # TODO fix: some elems for osmid are being read as None
+                    link_attribs = read_link_attrib(elem, link_attribs)
+                # else the attribute is on network level and does not belong to any nodes or links
     # update the attributes of the last link
     if link_attribs:
         if 'geometry' in link_attribs:
