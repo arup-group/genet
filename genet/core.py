@@ -493,6 +493,19 @@ class Network:
             for link in links]
         return nx.MultiDiGraph(nx.edge_subgraph(self.graph, edges_for_sub))
 
+    def modes(self):
+        """
+        Scans network for 'modes' attribute and returns list of all modes present int he network
+        :return:
+        """
+        modes = set()
+        for link, link_attribs in self.links():
+            try:
+                modes |= set(link_attribs['modes'])
+            except KeyError:
+                pass
+        return modes
+
     def modal_subgraph(self, modes: Union[str, list]):
         if isinstance(modes, str):
             modes = {modes}
@@ -1111,6 +1124,20 @@ class Network:
             }
         return report
 
+    def generate_standard_outputs(self, output_dir, gtfs_day='19700101'):
+        """
+        Generates geojsons that can be used for generating standard kepler visualisations and png plots.
+        These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
+        the shape of modal subgraphs.
+        :param output_dir: path to folder where to save resulting geojsons
+        :param gtfs_day: day in format YYYYMMDD for the network's schedule for consistency in visualisations,
+        defaults to 1970/01/01 otherwise
+        :return: None
+        """
+        geojson.generate_standard_outputs(self, output_dir, gtfs_day)
+        logging.info('Finished generating standard outputs. Zipping folder.')
+        persistence.zip_folder(output_dir)
+
     def read_osm(self, osm_file_path, osm_read_config, num_processes: int = 1):
         """
         Reads OSM data into a graph of the Network object
@@ -1179,4 +1206,6 @@ class Network:
         if self.schedule:
             self.schedule.write_to_matsim(output_dir)
         self.change_log.export(os.path.join(output_dir, 'change_log.csv'))
-        geojson.save_nodes_and_links_geojson(self.graph, output_dir)
+
+    def save_network_to_geojson(self, output_dir):
+        geojson.save_network_to_geojson(self, output_dir)

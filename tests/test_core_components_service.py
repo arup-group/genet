@@ -114,15 +114,15 @@ def test_route_is_not_in_exact_list(similar_non_exact_test_route, test_service):
 
 def test_build_graph_builds_correct_graph():
     route_1 = Route(route_short_name='name', id='1',
-                  mode='bus',
-                  stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
-                         Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                  trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
+                    mode='bus',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
     route_2 = Route(route_short_name='name_2', id='2',
-                  mode='bus',
-                  stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
-                         Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
-                  trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
+                    mode='bus',
+                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
+                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
     service = Service(id='service',
                       routes=[route_1, route_2])
 
@@ -153,20 +153,26 @@ def test_build_graph_builds_correct_graph():
                                '4': {'routes': ['1'], 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700',
                                      'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
                                      'additional_attributes': [], 'services': ['service']}})
-    assert_semantically_equal(list(g.edges), [('5', '6'), ('6', '7'), ('7', '8'), ('1', '2'), ('2', '3'), ('3', '4')])
+    assert_semantically_equal(list(g.edges(data=True)),
+                              [('5', '6', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('6', '7', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('7', '8', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])
 
 
 def test_build_graph_builds_correct_graph_when_some_stops_overlap():
     route_1 = Route(route_short_name='name', id='1',
-                  mode='bus',
-                  stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
-                         Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                  trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
+                    mode='bus',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
     route_2 = Route(route_short_name='name_2', id='2',
-                  mode='bus',
-                  stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
-                         Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                  trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
+                    mode='bus',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
     service = Service(id='service',
                       routes=[route_1, route_2])
 
@@ -256,6 +262,6 @@ def test_is_valid_with_looping_route(self_looping_route, route):
 
 
 def test_is_valid_with_non_network_route(service):
-    service.routes['1'].route = []
-    service.routes['2'].route = []
+    service._routes['1'].route = []
+    service._routes['2'].route = []
     assert not service.is_valid_service()
