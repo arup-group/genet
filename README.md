@@ -550,6 +550,32 @@ the model rather than supply (network).
     
     >>> _n.apply_function_to_links(set_google_speed, 'freespeed')
 
+### Standard outputs
+
+You can generate a long list of outputs which are useful for validating and visualising the network and its schedule. 
+
+    >>> n.generate_standard_outputs(output_dir='path/to/standard_outputs', gtfs_day='19700101')
+
+Specifying `gtfs_day` is optional and only useful for generating visualisations which don't rise eyebrows.
+In this bundle you get the following outputs:
+
+    - network graph related
+        - geojsons for car mode featuring 'freespeed', 'capacity', 'permlanes' (separately, because these can get large)
+        - geojsons for all other modal subgraphs
+    - schedule related
+        - geojsons featuring schedule graph with vehicles per hour for every mode separately and all together (with 
+        mode data present) in the schedule for all hours of the day, this can be used within kepler to animate across
+        hours of the day. (Use 'filter' option on 'hour' field and click on the little clock)
+        - the same as above for all modes together but subsetted for am/inter/pm peak within hours 7, 8, 9, 13, 16, 17, 
+        18 for convenience (in case the big geojson may be too large to load in kepler)
+        - png bar plots for vehicles per hour per:
+            - PT service
+            - PT stop
+            (titles and file names include modes and human readable names for stops and services if present)
+
+You can also generate standard outputs for schedule only:
+
+    >>> n.schedule.generate_standard_outputs(output_dir='path/to/standard_outputs', gtfs_day='19700101')
 
 ### Routing
 
