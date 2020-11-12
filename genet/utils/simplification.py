@@ -26,8 +26,8 @@ def _process_path(indexed_edge_groups_to_simplify):
                         new_attributes[key] = val.copy()
                         new_attributes[key]['text'] = {new_attributes[key]['text']}
             for key, val in new_attributes.items():
-                val['text'] -= {None}
-                val['text'] = ','.join(val['text'])
+                if len(val['text']) == 1:
+                    val['text'] = list(val['text'])[0]
             edge_attributes['attributes'] = new_attributes.copy()
 
         # construct the geometry
@@ -51,11 +51,10 @@ def _process_path(indexed_edge_groups_to_simplify):
         modes = set()
         for mode_list in edge_attributes['modes']:
             modes |= set(mode_list)
-        edge_attributes['modes'] = list(modes)
+        edge_attributes['modes'] = modes
 
         for key in set(edge_attributes) - {'s2_to', 'freespeed', 'attributes', 'to', 'permlanes', 'from', 'id', 'ids',
                                            'capacity', 'length', 'modes', 's2_from', 'geometry'}:
-            # don't touch the length attribute, we'll sum it at the end
             if len(set(edge_attributes[key])) == 1:
                 # if there's only 1 unique value in this attribute list,
                 # consolidate it to the single value (the zero-th)

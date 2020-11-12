@@ -4,18 +4,10 @@ from lxml import etree
 from copy import deepcopy
 from pyproj import Proj, Transformer
 from genet.outputs_handler import matsim_xml_values
+from genet.outputs_handler import sanitiser
 from genet.validate.network_validation import validate_link_data
 from genet.utils.spatial import change_proj, encode_shapely_linestring_to_polyline
 from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES, ADDITIONAL_STOP_FACILITY_ATTRIBUTES
-
-
-def sanitise_dictionary_for_xml(d):
-    for k, v in d.items():
-        if isinstance(v, list):
-            d[k] = ','.join(v)
-        if isinstance(v, (int, float)):
-            d[k] = str(v)
-    return d
 
 
 def delete_redundant_link_attributes_for_xml(d):
@@ -52,22 +44,17 @@ def check_link_attributes(link_attribs):
 
 def prepare_link_attributes(link_attribs):
     link_attributes = deepcopy(link_attribs)
-    check_link_attributes(link_attributes)
+    link_attributes = check_link_attributes(link_attributes)
     if 'geometry' in link_attributes:
+        geom_attribute = {
+            'name': 'geometry',
+            'class': 'java.lang.String',
+            'text': encode_shapely_linestring_to_polyline(link_attributes['geometry'])
+        }
         if 'attributes' in link_attributes:
-            link_attributes['attributes']['geometry'] = {
-                    'name': 'geometry',
-                    'class': 'java.lang.String',
-                    'text': encode_shapely_linestring_to_polyline(link_attributes['geometry'])
-            }
+            link_attributes['attributes']['geometry'] = geom_attribute
         else:
-            link_attributes['attributes'] = {
-                'geometry': {
-                    'name': 'geometry',
-                    'class': 'java.lang.String',
-                    'text': encode_shapely_linestring_to_polyline(link_attributes['geometry'])
-                }
-            }
+            link_attributes['attributes'] = {'geometry': geom_attribute}
     link_attributes = delete_redundant_link_attributes_for_xml(link_attributes)
     validate_link_data(link_attributes)
     return link_attributes
@@ -91,16 +78,16 @@ def write_matsim_network(output_dir, network):
                     link_attributes = prepare_link_attributes(link_attribs)
                     if 'attributes' in link_attributes:
                         attributes = link_attributes.pop('attributes')
-                        with xf.element("link", sanitise_dictionary_for_xml(link_attributes)):
+                        with xf.element("link", sanitiser.sanitise_dictionary_for_xml(link_attributes)):
                             with xf.element("attributes"):
                                 for k, attrib in attributes.items():
-                                    attrib_copy = attrib
-                                    text = attrib_copy.pop('text')
-                                    rec = etree.Element("attribute", attrib_copy)
+                                    attrib = sanitiser.sanitise_dictionary_for_xml(attrib)
+                                    text = attrib.pop('text')
+                                    rec = etree.Element("attribute", attrib)
                                     rec.text = text
                                     xf.write(rec)
                     else:
-                        xf.write(etree.Element("link", sanitise_dictionary_for_xml(link_attributes.copy())))
+                        xf.write(etree.Element("link", sanitiser.sanitise_dictionary_for_xml(link_attributes.copy())))
 
 
 def write_matsim_schedule(output_dir, schedule, epsg=''):

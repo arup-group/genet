@@ -23,7 +23,7 @@ def set_nested_value(d: dict, value: dict):
 
 def merge_complex_dictionaries(d1, d2):
     """
-    Merges two dictionaries with where the values can be lists, sets or other dictionaries with the same behaviour.
+    Merges two dictionaries where the values can be lists, sets or other dictionaries with the same behaviour.
     If values are not list, set or dict then d2 values prevail
     :param d1:
     :param d2:

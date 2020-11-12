@@ -53,7 +53,7 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
     attribs = elem.attrib
     attribs['s2_from'] = node_id_mapping[attribs['from']]
     attribs['s2_to'] = node_id_mapping[attribs['to']]
-    attribs['modes'] = list(set(attribs['modes'].split(',')))
+    attribs['modes'] = set(attribs['modes'].split(','))
 
     link_id, duplicated_link_id = unique_link_id(attribs['id'], link_id_mapping)
     attribs['id'] = link_id

@@ -89,7 +89,7 @@ def test_network_with_extra_attribs_produces_valid_matsim_network_xml_file(tmpdi
               's2_id': 5205973754090480551}})
     assert_semantically_equal(dict(_network_from_file.links()), {
         '0': {'id': '0', 'from': '0', 'to': '1', 'freespeed': 1.0, 'capacity': 20.0, 'permlanes': 1.0, 'oneway': '1',
-              'modes': ['car'], 's2_from': 5205973754090365183, 's2_to': 5205973754090480551, 'length': 1.0}})
+              'modes': {'car'}, 's2_from': 5205973754090365183, 's2_to': 5205973754090480551, 'length': 1.0}})
 
 
 def test_network_with_attribs_doesnt_loose_any_attributes_after_saving(tmpdir):

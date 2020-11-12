@@ -31,7 +31,7 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
         'id': "1", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
         's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
         'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
-        'modes': ['subway', 'metro', 'walk', 'car'], 'attributes': {
+        'modes': {'subway', 'metro', 'walk', 'car'}, 'attributes': {
             'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
             'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
             'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
@@ -69,7 +69,7 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
             'id': "1", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
             's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
             'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
-            'modes': ['walk', 'car'], 'attributes': {
+            'modes': {'walk', 'car'}, 'attributes': {
                 'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
                 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
                 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
@@ -79,7 +79,7 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
             'id': "2", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
             's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
             'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
-            'modes': ['bus'], 'attributes': {
+            'modes': {'bus'}, 'attributes': {
                 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '1'},
                 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
                 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
@@ -125,7 +125,7 @@ def test_read_network_builds_graph_with_unique_links_given_matsim_network_with_c
             'id': "1", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
             's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
             'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
-            'modes': ['walk', 'car'], 'attributes': {
+            'modes': {'walk', 'car'}, 'attributes': {
                 'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
                 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
                 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
@@ -135,7 +135,7 @@ def test_read_network_builds_graph_with_unique_links_given_matsim_network_with_c
             'id': "1_1", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
             's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
             'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
-            'modes': ['bus'], 'attributes': {
+            'modes': {'bus'}, 'attributes': {
                 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '1'},
                 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
                 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
@@ -182,7 +182,7 @@ def test_read_network_rejects_non_unique_nodes():
             'id': "1", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
             's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
             'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
-            'modes': ['walk', 'car'], 'attributes': {
+            'modes': {'walk', 'car'}, 'attributes': {
                 'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
                 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
                 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
@@ -227,7 +227,7 @@ def test_reading_matsim_output_network():
                      'lon': -0.14930198709481451, 'lat': 51.524162533239284}}
 
     correct_edge = {'id': '1', 'from': '25508485', 'to': '21667818', 'freespeed': 4.166666666666667,
-                    'capacity': 600.0, 'permlanes': 1.0, 'oneway': '1', 'modes': ['car', 'subway', 'metro', 'walk'],
+                    'capacity': 600.0, 'permlanes': 1.0, 'oneway': '1', 'modes': {'car', 'subway', 'metro', 'walk'},
                     's2_from': 5221390301001263407, 's2_to': 5221390302696205321, 'length': 52.765151087870265,
                     'attributes': {'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String',
                                                       'text': 'permissive'},
@@ -248,7 +248,7 @@ def test_reading_network_with_geometry_attributes():
         's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
         'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
         'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
-        'modes': ['car'], 'attributes': {
+        'modes': {'car'}, 'attributes': {
             'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
             'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
             'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
@@ -259,7 +259,7 @@ def test_reading_network_with_geometry_attributes():
             's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
             'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
             'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
-            'modes': ['car'], 'attributes': {
+            'modes': {'car'}, 'attributes': {
                 'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
                 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
                 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
