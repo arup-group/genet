@@ -85,7 +85,7 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
                 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
                 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'},
                 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'},
-                'osm:relation:route': {'class': 'java.lang.String', 'name': 'osm:relation:route', 'text': 'bus,bicycle'}
+                'osm:relation:route': {'class': 'java.lang.String', 'name': 'osm:relation:route', 'text': {'bus', 'bicycle'}}
             }
         }}}
 
@@ -141,7 +141,7 @@ def test_read_network_builds_graph_with_unique_links_given_matsim_network_with_c
                 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
                 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'},
                 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'},
-                'osm:relation:route': {'class': 'java.lang.String', 'name': 'osm:relation:route', 'text': 'bus,bicycle'}
+                'osm:relation:route': {'class': 'java.lang.String', 'name': 'osm:relation:route', 'text': {'bus', 'bicycle'}}
             }
         }}}
 

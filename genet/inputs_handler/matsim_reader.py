@@ -49,14 +49,6 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
     :return:
     """
     duplicated_link_id = {}
-    # update old link by link attributes (osm tags etc.)
-    if link_attribs:
-        if 'geometry' in link_attribs:
-            if link_attribs['geometry']['text']:
-                g[u][v][len(g[u][v]) - 1]['geometry'] = spatial.decode_polyline_to_shapely_linestring(
-                    link_attribs['geometry']['text'])
-                del link_attribs['geometry']
-        g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs  # noqa: F821
 
     attribs = elem.attrib
     attribs['s2_from'] = node_id_mapping[attribs['from']]
@@ -82,6 +74,14 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
 
     u = attribs['from']
     v = attribs['to']
+
+    if link_attribs:
+        if 'geometry' in link_attribs:
+            if link_attribs['geometry']['text']:
+                attribs['geometry'] = spatial.decode_polyline_to_shapely_linestring(link_attribs['geometry']['text'])
+                del link_attribs['geometry']
+        attribs['attributes'] = link_attribs
+
     if g.has_edge(u, v):
         link_id_mapping[link_id]['multi_edge_idx'] = len(g[u][v])
     else:
@@ -98,7 +98,12 @@ def read_link_attrib(elem, link_attribs):
     :return:
     """
     d = elem.attrib
-    d['text'] = elem.text
+    if elem.text is None:
+        logging.warning(f"Elem {elem.attrib['name']} is being read as None.")
+    elif (',' in elem.text) and elem.attrib['name'] != 'geometry':
+        d['text'] = set(elem.text.split(','))
+    else:
+        d['text'] = elem.text
     link_attribs[elem.attrib['name']] = d
     return link_attribs
 
@@ -137,40 +142,30 @@ def read_network(network_path, transformer: Transformer):
     duplicated_node_ids = {}
     u, v = None, None
 
-    for event, elem in ET.iterparse(network_path, events=('start', 'end')):
-        if event == 'start':
-            if elem.tag == 'node':
-                g, duplicated_node_id = read_node(elem, g, node_id_mapping, transformer)
-                if duplicated_node_id:
-                    for key, val in duplicated_node_id.items():
-                        if key in duplicated_node_ids:
-                            duplicated_node_ids[key].append(val)
-                        else:
-                            duplicated_node_ids[key] = [val]
-            elif elem.tag == 'link':
-                g, u, v, link_id_mapping, duplicated_link_id = read_link(
-                    elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs)
-                if duplicated_link_id:
-                    for key, val in duplicated_link_id.items():
-                        if key in duplicated_link_ids:
-                            duplicated_link_ids[key].append(val)
-                        else:
-                            duplicated_link_ids[key] = [val]
-                # reset link_attribs
-                link_attribs = {}
-            elif elem.tag == 'attribute':
-                if node_id_mapping:
-                    # TODO fix: some elems for osmid are being read as None
-                    link_attribs = read_link_attrib(elem, link_attribs)
-                # else the attribute is on network level and does not belong to any nodes or links
-    # update the attributes of the last link
-    if link_attribs:
-        if 'geometry' in link_attribs:
-            if link_attribs['geometry']['text']:
-                g[u][v][len(g[u][v]) - 1]['geometry'] = spatial.decode_polyline_to_shapely_linestring(
-                    link_attribs['geometry']['text'])
-                del link_attribs['geometry']
-        g[u][v][len(g[u][v]) - 1]['attributes'] = link_attribs
+    for event, elem in ET.iterparse(network_path):
+        if elem.tag == 'node':
+            g, duplicated_node_id = read_node(elem, g, node_id_mapping, transformer)
+            if duplicated_node_id:
+                for key, val in duplicated_node_id.items():
+                    if key in duplicated_node_ids:
+                        duplicated_node_ids[key].append(val)
+                    else:
+                        duplicated_node_ids[key] = [val]
+        elif elem.tag == 'attribute':
+            if node_id_mapping:
+                link_attribs = read_link_attrib(elem, link_attribs)
+            # else the attribute is on network level and does not belong to any nodes or links
+        elif elem.tag == 'link':
+            g, u, v, link_id_mapping, duplicated_link_id = read_link(
+                elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs)
+            if duplicated_link_id:
+                for key, val in duplicated_link_id.items():
+                    if key in duplicated_link_ids:
+                        duplicated_link_ids[key].append(val)
+                    else:
+                        duplicated_link_ids[key] = [val]
+            # reset link_attribs
+            link_attribs = {}
     return g, link_id_mapping, duplicated_node_ids, duplicated_link_ids
 
 

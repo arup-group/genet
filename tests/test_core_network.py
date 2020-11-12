@@ -26,6 +26,10 @@ puma_network_test_file = os.path.abspath(
 puma_schedule_test_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "puma", "schedule.xml"))
 
+simplified_network = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "simplified_network", "network.xml"))
+simplified_schedule = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "simplified_network", "schedule.xml"))
 
 @pytest.fixture()
 def network1():
@@ -421,7 +425,12 @@ def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_
 def test_reading_back_simplified_network():
     # simplified networks have additional geometry attribute and some of their attributes are composite, e.g. links
     # now refer to a number of osm ways each with a unique id
+    n = Network('epsg:27700')
+    n.read_matsim_network(simplified_network)
+    n.read_matsim_schedule(simplified_schedule)
+
     pass
+
 
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
