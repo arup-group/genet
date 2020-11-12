@@ -13,6 +13,7 @@ from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_d
 from genet.inputs_handler import matsim_reader
 from genet.core import Network
 from genet.schedule_elements import Route, Service, Schedule
+from genet.utils import graph_operations
 from genet.utils import plot
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -422,6 +423,10 @@ def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_
                                                                         schedule_dtd.error_log.filter_from_errors())
 
 
+def has_attribute(x):
+    return True
+
+
 def test_reading_back_simplified_network():
     # simplified networks have additional geometry attribute and some of their attributes are composite, e.g. links
     # now refer to a number of osm ways each with a unique id
@@ -429,8 +434,19 @@ def test_reading_back_simplified_network():
     n.read_matsim_network(simplified_network)
     n.read_matsim_schedule(simplified_schedule)
 
-    pass
+    number_of_simplified_links = 659
 
+    links_with_geometry = graph_operations.extract_links_on_edge_attributes(n, conditions={'geometry': has_attribute})
+
+    assert len(links_with_geometry) == number_of_simplified_links
+
+    for link in links_with_geometry:
+        attribs = n.link(link)
+        if 'attributes' in attribs:
+            assert not 'geometry' in attribs['attributes']
+            for k, v in attribs['attributes'].items():
+                if isinstance(v['text'], str):
+                    assert not ',' in v['text']
 
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
