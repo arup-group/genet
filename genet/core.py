@@ -428,7 +428,8 @@ class Network:
         # end with updated links_and_attributes dict
         add_to_link_id_mapping = df_links[['from', 'to', 'multi_edge_idx']].T.to_dict()
         df_links = df_links.drop('multi_edge_idx', axis=1)
-        links_and_attributes = df_links.T.to_dict()
+        links_and_attributes = {_id: {k: v for k, v in m.items() if dict_support.notna(v)} for _id, m in
+                                df_links.T.to_dict().items()}
 
         # update link_id_mapping
         self.link_id_mapping = {**self.link_id_mapping, **add_to_link_id_mapping}

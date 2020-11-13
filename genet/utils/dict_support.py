@@ -1,3 +1,5 @@
+import pandas as pd
+from numpy import ndarray
 
 
 def set_nested_value(d: dict, value: dict):
@@ -53,3 +55,10 @@ def combine_edge_data_lists(l1, l2):
     """
     edges = merge_complex_dictionaries({(u, v): dat for u, v, dat in l1}, {(u, v): dat for u, v, dat in l2})
     return [(u, v, dat) for (u, v), dat in edges.items()]
+
+
+def notna(value):
+    nn = pd.notna(value)
+    if isinstance(nn, ndarray):
+        return any(nn)
+    return nn

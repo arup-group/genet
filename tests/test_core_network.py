@@ -765,6 +765,21 @@ def test_adding_multiple_links_missing_to_nodes_completely():
     assert "You are trying to add links which are missing `to` (destination) nodes" in str(error_info.value)
 
 
+def test_adding_links_with_different_non_overlapping_attributes():
+    # generates a nan attribute for link attributes
+    n = Network('epsg:27700')
+    reindexing_dict, links_and_attributes = n.add_links({
+        '2': {'from': 1, 'to': 2, 'speed': 20},
+        '3': {'from': 1, 'to': 2, 'capacity': 123},
+        '4': {'from': 2, 'to': 3, 'modes': [1,2,3]}})
+
+    assert reindexing_dict == {}
+    assert_semantically_equal(links_and_attributes, {
+        '2': {'id': '2', 'from': 1, 'to': 2, 'speed': 20},
+        '3': {'id': '3', 'from': 1, 'to': 2, 'capacity': 123},
+        '4': {'id': '4', 'from': 2, 'to': 3, 'modes': [1,2,3]}})
+
+
 def test_network_modal_subgraph_using_general_subgraph_on_link_attribs():
     def modal_condition(modes_list):
         return set(modes_list) & {'car'}
