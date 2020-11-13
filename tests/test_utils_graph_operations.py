@@ -37,6 +37,22 @@ def test_extract_graph_links_with_flat_condition():
     assert links == ['2']
 
 
+def test_extract_graph_links_with_flat_condition_and_list_value():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={
+        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
+    n.add_link('1', 2, 3, attribs={
+        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
+    n.add_link('2', 3, 4, attribs={'attributes': ['yes', 'no', 'bobby']})
+
+    links = graph_operations.extract_links_on_edge_attributes(
+        n,
+        conditions={'attributes': 'yes'},
+    )
+
+    assert links == ['2']
+
+
 def test_extract_graph_links_with_nested_condition():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={
@@ -88,12 +104,28 @@ def test_extract_graph_links_with_list_of_conditions_strict():
     assert links == ['1']
 
 
-def test_extract_graph_links_with_list_condition_with():
+def test_extract_graph_links_with_list_condition():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_link('1', 2, 3, attribs={
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
+    n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
+
+    links = graph_operations.extract_links_on_edge_attributes(
+        n,
+        conditions={'attributes': {'osm:way:highway': {'text': ['primary', 'some_other_highway']}}}
+    )
+
+    assert links == ['0', '1']
+
+
+def test_extract_graph_links_with_list_condition_and_list_value():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={
+        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': ['primary', 'secondary']}}})
+    n.add_link('1', 2, 3, attribs={
+        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': {'primary', 'other'}}}})
     n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
 
     links = graph_operations.extract_links_on_edge_attributes(
@@ -120,12 +152,47 @@ def test_extract_graph_links_with_bound_condition():
     assert links == ['0']
 
 
+def test_extract_graph_links_with_bound_condition_and_list_value():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={
+        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': [9, 1]}}})
+    n.add_link('1', 2, 3, attribs={
+        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': [0, 1]}}})
+    n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
+
+    links = graph_operations.extract_links_on_edge_attributes(
+        n,
+        conditions={'attributes': {'osm:way:highway': {'text': (2, 10)}}}
+    )
+
+    assert links == ['0']
+
+
 def test_extract_graph_links_with_callable_condition():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 9}}})
     n.add_link('1', 2, 3, attribs={
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 1}}})
+    n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
+
+    def condition(val):
+        return val == 9
+
+    links = graph_operations.extract_links_on_edge_attributes(
+        n,
+        conditions={'attributes': {'osm:way:highway': {'text': condition}}}
+    )
+
+    assert links == ['0']
+
+
+def test_extract_graph_links_with_callable_condition_and_list_value():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={
+        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': {9, 10}}}})
+    n.add_link('1', 2, 3, attribs={
+        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': [1, 2]}}})
     n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
 
     def condition(val):

@@ -61,37 +61,61 @@ class Filter:
                     # keep going
                     satisfies = self.evaluate_condition(val, data_dict[key])
                 elif isinstance(val, (int, float, str)):
-                    # value is that value
-                    satisfies = data_dict[key] == val
+                    if isinstance(data_dict[key], (list, set)):
+                        satisfies = val in data_dict[key]
+                    else:
+                        # value is that value
+                        satisfies = data_dict[key] == val
                 elif isinstance(val, list):
-                    # value is one of the items in the list
-                    satisfies = data_dict[key] in val
+                    if isinstance(data_dict[key], (list, set)):
+                        if set(data_dict[key]) & set(val):
+                            satisfies = True
+                    else:
+                        # value is one of the items in the list
+                        satisfies = data_dict[key] in val
                 elif isinstance(val, tuple):
-                    # value is within the bound
-                    assert len(val) == 2, 'Tuple defining the bound has to be a two-tuple: (lower_bound, upper_bound)'
-                    satisfies = data_dict[key] >= val[0] and data_dict[key] <= val[1]
+                    if len(val) != 2:
+                        raise AttributeError(
+                            'Tuple defining the bound has to be a two-tuple: (lower_bound, upper_bound)')
+                    if isinstance(data_dict[key], (list, set)):
+                        return any([val[0] <= value <= val[1] for value in data_dict[key]])
+                    else:
+                        # value is within the bound
+                        satisfies = val[0] <= data_dict[key] <= val[1]
                 elif callable(val):
-                    # value is a function of data_dict[key] that returns a bool
-                    satisfies = val(data_dict[key])
+                    if isinstance(data_dict[key], (list, set)):
+                        return any([val(value) for value in data_dict[key]])
+                    else:
+                        # value is a function of data_dict[key] that returns a bool
+                        satisfies = val(data_dict[key])
         return satisfies
 
 
 def extract_links_on_edge_attributes(network, conditions: Union[list, dict], how=any):
     """
     Extracts graph links based on values of attributes saved on the edges. Fails silently,
-    assumes not all edges have those attributes.
+    assumes not all edges have those attributes. In the case were the attributes stored are
+    a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+    an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+    deemed successful.
     :param network: genet.core.Network object
     :param conditions: {'attribute_key': 'target_value'} or nested
     {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
 
     - single value, string, int, float, where the edge_data[key] == value
-    - list of single values as above, where edge_data[key] in list(value1, value2)
+        (or in case of set/list edge_data[key], value is in edge_data[key])
+    - list or set of single values as above, where edge_data[key] in [value1, value2]
+        (or in case of set/list edge_data[key], set(edge_data[key]) & set([value1, value2]) is non-empty)
     - for int or float values, two-tuple bound (lower_bound, upper_bound) where
       lower_bound <= edge_data[key] <= upper_bound
+        (or in case of set/list edge_data[key], at least one item in edge_data[key] satisfies
+        lower_bound <= item <= upper_bound)
     - function that returns a boolean given the value e.g.
 
     def below_exclusive_upper_bound(value):
         return value < 100
+
+
 
     :param how: {all, any}, default any
     How to subset the graph if more than one condition is specified in values_to_subset_on
@@ -107,7 +131,10 @@ def extract_links_on_edge_attributes(network, conditions: Union[list, dict], how
 def extract_nodes_on_node_attributes(network, conditions: Union[list, dict], how=any):
     """
     Extracts graph nodes based on values of attributes saved on the nodes. Fails silently,
-    assumes not all nodes have all of the attributes.
+    assumes not all nodes have all of the attributes. In the case were the attributes stored are
+    a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+    an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+    deemed successful.
     :param network: genet.core.Network object
     :param conditions: {'attribute_key': 'target_value'} or nested
     {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
