@@ -2,6 +2,7 @@ import s2sphere
 import pytest
 from shapely.geometry import Point
 from geopandas import GeoDataFrame
+from pandas import DataFrame
 from genet.utils import spatial
 from genet import Network
 from tests.fixtures import *
@@ -88,7 +89,7 @@ def test_create_subsetting_area_with_two_cells_check_distance_from_centre_is_rou
     assert round(dist_1, 8) == round(dist_2, 8)
 
 
-def test_SpatialTree_adds_a_link(network):
+def test_SpatialTree_adds_links(network):
     spatial_tree = spatial.SpatialTree(network)
 
     assert_semantically_equal(list(spatial_tree.edges(data=True)), [('link_1', 'link_2', {}), ('link_1', 'link_3', {}),
@@ -107,3 +108,12 @@ def test_SpatialTree_closest_links(network):
     assert_semantically_equal(spatial_tree.find_closest_links(stops, 100, mode='car'),
                               {'stop_1': ['link_1', 'link_2', 'link_4'], 'stop_2': ['link_1', 'link_2', 'link_4'],
                                'stop_3': ['link_1', 'link_2', 'link_4']})
+
+
+def test_SpatialTree_shortest_paths(network):
+    spatial_tree = spatial.SpatialTree(network)
+    stops = DataFrame({'u': ['link_1', 'link_2', 'link_2'],
+                       'v': ['link_2', 'link_3', 'link_4']})
+
+    stops = spatial_tree.shortest_path_lengths(stops, mode='car')
+    pass

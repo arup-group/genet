@@ -6,6 +6,7 @@ import statistics
 import pandas as pd
 import geopandas as gpd
 import genet.outputs_handler.geojson as gngeojson
+
 APPROX_EARTH_RADIUS = 6371008.8
 S2_LEVELS_FOR_SPATIAL_INDEXING = [0, 6, 8, 12, 18, 24, 30]
 
@@ -125,17 +126,52 @@ class SpatialTree(nx.DiGraph):
         edges = pd.merge(self.links[cols], self.links[cols], left_on='to', right_on='from', suffixes=('_to', '_from'))
         self.add_edges_from(list(zip(edges['id_to'], edges['id_from'])))
 
-    def find_closest_links(self, points, distance_radius, mode):
+    def find_closest_links(self, gdf_points, distance_radius, mode):
+        """
+
+        :param gdf_points:
+        :param distance_radius:
+        :param mode:
+        :return:
+        """
         # todo make work with metres
-        points['geometry'] = points['geometry'].apply(lambda x: grow_point(x, distance_radius))
+        gdf_points['geometry'] = gdf_points['geometry'].apply(lambda x: grow_point(x, distance_radius))
         closest_links = gpd.sjoin(
             self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, {mode}), axis=1)],
-            points,
+            gdf_points,
             how='inner',
             op='intersects')
         return closest_links.groupby(['stop'])['id'].apply(list).to_dict()
 
-    def shortest_path(self, u, v, mode):
+    def shortest_paths(self, df_pt_edges, mode, u_col='u', v_col='v'):
+        """
+
+        :param df_pt_edges: pandas DataFrame
+        :param mode:
+        :return:
+        """
         # todo add weight
         links = self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, {mode}), axis=1)]['id']
-        return nx.shortest_path(self.subgraph(links), source=u, target=v)
+        df_pt_edges['paths'] = df_pt_edges.apply(
+            lambda x: nx.shortest_path(self.subgraph(links), source=x[u_col], target=x[v_col]), axis=1)
+
+
+    def path_length(self, n, source, target):
+        try:
+            return nx.dijkstra_path_length(n, source, target)
+        except nx.NetworkXNoPath:
+            pass
+
+
+    def shortest_path_lengths(self, df_pt_edges, mode, u_col='u', v_col='v'):
+        """
+
+        :param df_pt_edges: pandas DataFrame
+        :param mode:
+        :return:
+        """
+        # todo add weight
+        links = self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, {mode}), axis=1)]['id']
+        df_pt_edges['path_lengths'] = df_pt_edges.apply(
+            lambda x: self.path_length(self.subgraph(links), source=x[u_col], target=x[v_col]), axis=1)
+        return df_pt_edges
