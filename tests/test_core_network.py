@@ -32,6 +32,7 @@ simplified_network = os.path.abspath(
 simplified_schedule = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "simplified_network", "schedule.xml"))
 
+
 @pytest.fixture()
 def network1():
     n1 = Network('epsg:27700')
@@ -391,7 +392,7 @@ def test_simplifing_puma_network():
 
     assert link_ids_post_simplify & link_ids_pre_simplify
     new_links = link_ids_post_simplify - link_ids_pre_simplify
-    deleted_links =  link_ids_pre_simplify - link_ids_post_simplify
+    deleted_links = link_ids_pre_simplify - link_ids_post_simplify
     assert set(n.link_simplification_map.keys()) == deleted_links
     assert set(n.link_simplification_map.values()) == new_links
     assert (set(n.link_id_mapping.keys()) & new_links) == new_links
@@ -414,7 +415,7 @@ def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_
     xml_obj = lxml.etree.parse(generated_network_file_path)
     assert network_dtd.validate(xml_obj), \
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
-    network_dtd.error_log.filter_from_errors())
+                                                                        network_dtd.error_log.filter_from_errors())
 
     generated_schedule_file_path = os.path.join(tmpdir, 'schedule.xml')
     xml_obj = lxml.etree.parse(generated_schedule_file_path)
@@ -771,13 +772,28 @@ def test_adding_links_with_different_non_overlapping_attributes():
     reindexing_dict, links_and_attributes = n.add_links({
         '2': {'from': 1, 'to': 2, 'speed': 20},
         '3': {'from': 1, 'to': 2, 'capacity': 123},
-        '4': {'from': 2, 'to': 3, 'modes': [1,2,3]}})
+        '4': {'from': 2, 'to': 3, 'modes': [1, 2, 3]}})
 
     assert reindexing_dict == {}
     assert_semantically_equal(links_and_attributes, {
         '2': {'id': '2', 'from': 1, 'to': 2, 'speed': 20},
         '3': {'id': '3', 'from': 1, 'to': 2, 'capacity': 123},
-        '4': {'id': '4', 'from': 2, 'to': 3, 'modes': [1,2,3]}})
+        '4': {'id': '4', 'from': 2, 'to': 3, 'modes': [1, 2, 3]}})
+
+
+def test_adding_multiple_links_to_same_edge_clashing_with_existing_edge():
+    n = Network('epsg:27700')
+    n.add_link(link_id='0', u='2', v='2', attribs={'speed': 20})
+
+    n.add_links({'1': {'from': '2', 'to': '2', 'something': 20},
+                 '2': {'from': '2', 'to': '2', 'capacity': 123}})
+
+    assert_semantically_equal(dict(n.links()), {'0': {'speed': 20, 'from': '2', 'to': '2', 'id': '0'},
+                                                '1': {'from': '2', 'to': '2', 'something': 20.0, 'id': '1'},
+                                                '2': {'from': '2', 'to': '2', 'capacity': 123.0, 'id': '2'}})
+    assert_semantically_equal(n.link_id_mapping, {'0': {'from': '2', 'to': '2', 'multi_edge_idx': 0},
+                                                  '1': {'from': '2', 'to': '2', 'multi_edge_idx': 1},
+                                                  '2': {'from': '2', 'to': '2', 'multi_edge_idx': 2}})
 
 
 def test_network_modal_subgraph_using_general_subgraph_on_link_attribs():
@@ -1419,7 +1435,7 @@ def test_schedule_routes(network_object_from_test_data):
 def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
     n = network_object_from_test_data
     n.schedule['10314']._routes['1'] = Route(arrival_offsets=[], departure_offsets=[], mode='bus', trips={},
-                                            route_short_name='', stops=[])
+                                             route_short_name='', stops=[])
     assert set(n.schedule.service_ids()) == {'10314'}
     correct_routes = [['25508485', '21667818']]
     routes = n.schedule_routes_nodes()
