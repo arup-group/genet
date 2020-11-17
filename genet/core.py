@@ -484,13 +484,14 @@ class Network:
         if not silent:
             logging.info(f'Changed Link index from {link_id} to {new_link_id}')
 
-    def subgraph_on_link_conditions(self, conditions):
+    def subgraph_on_link_conditions(self, conditions, mixed_dtypes=True):
         """
         Gives a subgraph of network.graph based on matching conditions defined in conditions
-        :param conditions as describen in graph_operations.extract_links_on_edge_attributes
+        :param conditions as described in graph_operations.extract_links_on_edge_attributes
+        :param mixed_dtypes as described in graph_operations.extract_links_on_edge_attributes
         :return:
         """
-        links = graph_operations.extract_links_on_edge_attributes(self, conditions)
+        links = graph_operations.extract_links_on_edge_attributes(self, conditions, mixed_dtypes=mixed_dtypes)
         edges_for_sub = [
             (self.link_id_mapping[link]['from'],
              self.link_id_mapping[link]['to'],
@@ -512,15 +513,7 @@ class Network:
         return modes
 
     def modal_subgraph(self, modes: Union[str, list]):
-        if isinstance(modes, str):
-            modes = {modes}
-        else:
-            modes = set(modes)
-
-        def modal_condition(modes_list):
-            return set(modes_list) & modes
-
-        return self.subgraph_on_link_conditions(conditions={'modes': modal_condition})
+        return self.subgraph_on_link_conditions(conditions={'modes': modes}, mixed_dtypes=True)
 
     def find_shortest_path(self, from_node, to_node, modes: Union[str, list] = None, subgraph: nx.MultiDiGraph = None,
                            return_nodes=False):
@@ -929,10 +922,10 @@ class Network:
             logging.info(f'Link with id {link_id} is not in the network.')
             return False
 
-    def has_links(self, link_ids: list, conditions: Union[list, dict] = None):
+    def has_links(self, link_ids: list, conditions: Union[list, dict] = None, mixed_dtypes=True):
         """
-        Whether the Network contains the links given in the link_ids list. If attribs is specified, checks whether the
-        Network contains the links specified and those links match the attributes in the attribs dict.
+        Whether the Network contains the links given in the link_ids list. If conditions is specified, checks whether
+        the Network contains the links specified and those links match the attributes in the conditions dict.
         :param link_ids: list of link ids e.g. ['1', '102']
         :param conditions: confer graph_operations.Filter conditions
         :return:
@@ -941,7 +934,7 @@ class Network:
         if not conditions:
             return has_all_links
         elif has_all_links:
-            filter = graph_operations.Filter(conditions, how=any)
+            filter = graph_operations.Filter(conditions, how=any, mixed_dtypes=mixed_dtypes)
             links_satisfy = [link_id for link_id in link_ids if filter.satisfies_conditions(self.link(link_id))]
             return set(links_satisfy) == set(link_ids)
         else:
@@ -1059,12 +1052,9 @@ class Network:
             return 'Division by zero'
 
     def is_valid_network_route(self, route: schedule_elements.Route):
-        def modal_condition(modes_list):
-            return set(modes_list) & {route.mode}
-
         if self.has_links(route.route):
             valid_link_chain = self.has_valid_link_chain(route.route)
-            links_have_correct_modes = self.has_links(route.route, {'modes': modal_condition})
+            links_have_correct_modes = self.has_links(route.route, {'modes': route.mode}, mixed_dtypes=True)
             if not links_have_correct_modes:
                 logging.info(f'Some link ids in Route: {route.id} don\'t accept the route\'s mode: {route.mode}')
             return valid_link_chain and links_have_correct_modes

@@ -797,15 +797,12 @@ def test_adding_multiple_links_to_same_edge_clashing_with_existing_edge():
 
 
 def test_network_modal_subgraph_using_general_subgraph_on_link_attribs():
-    def modal_condition(modes_list):
-        return set(modes_list) & {'car'}
-
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike']})
     n.add_link('1', 2, 3, attribs={'modes': ['car']})
     n.add_link('2', 2, 3, attribs={'modes': ['bike']})
 
-    car_graph = n.subgraph_on_link_conditions(conditions={'modes': modal_condition})
+    car_graph = n.subgraph_on_link_conditions(conditions={'modes': 'car'}, mixed_dtypes=True)
     assert list(car_graph.edges) == [(1, 2, 0), (2, 3, 0)]
 
 
