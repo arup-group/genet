@@ -29,7 +29,7 @@ class Network:
     def __init__(self, epsg):
         self.epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
-        self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg})
+        self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg}, simplified=False)
         self.schedule = schedule_elements.Schedule(epsg)
         self.change_log = change_log.ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
@@ -46,11 +46,15 @@ class Network:
 
     def add(self, other):
         """
+        This let's you add on `other` genet.Network to the network this method is called on.
         This is deliberately not a magic function to discourage `new_network = network_1 + network_2` (and memory
         goes out the window)
         :param other:
         :return:
         """
+        if self.graph.graph['simplified'] != other.graph.graph['simplified']:
+            raise RuntimeError('You cannot add simplified and non-simplified networks together')
+
         # consolidate coordinate systems
         if other.epsg != self.epsg:
             logging.info(f'Attempting to merge two networks in different coordinate systems. '
@@ -149,6 +153,8 @@ class Network:
 
     def simplify(self, no_processes=1):
         simplification.simplify_graph(self, no_processes)
+        # mark graph as having been simplified
+        self.graph.graph["simplified"] = True
 
     def node_attribute_summary(self, data=False):
         """
@@ -1174,6 +1180,8 @@ class Network:
             matsim_reader.read_network(path, self.transformer)
         self.graph.graph['name'] = 'Network graph'
         self.graph.graph['crs'] = {'init': self.epsg}
+        if 'simplified' not in self.graph.graph:
+            self.graph.graph['simplified'] = False
 
         for node_id, duplicated_node_attribs in duplicated_nodes.items():
             for duplicated_node_attrib in duplicated_node_attribs:

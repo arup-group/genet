@@ -121,6 +121,11 @@ def network2():
     return n2
 
 
+def test_network_graph_initiates_as_not_simplififed():
+    n = Network('epsg:27700')
+    assert not n.graph.graph['simplified']
+
+
 def test__repr__shows_graph_info_and_schedule_info():
     n = Network('epsg:4326')
     assert 'instance at' in n.__repr__()
@@ -349,6 +354,16 @@ def test_adding_disjoint_networks_with_clashing_ids():
                                 'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387}
     assert len(n_left.link_id_mapping) == 2
     assert n_left.link('1') == {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}
+
+
+def test_adding_simplified_network_and_not_throws_error():
+    n = Network('epsg:2770')
+    m = Network('epsg:2770')
+    m.graph.graph['simplified'] = True
+
+    with pytest.raises(RuntimeError) as error_info:
+        n.add(m)
+    assert "cannot add" in str(error_info.value)
 
 
 def test_print_shows_info(mocker):

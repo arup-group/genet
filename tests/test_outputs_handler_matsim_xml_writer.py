@@ -161,8 +161,9 @@ def test_saving_network_with_geometry_produces_correct_polyline_in_link_attribut
     for event, elem in ET.iterparse(os.path.join(tmpdir, 'network.xml'), events=('start', 'end')):
         if event == 'start':
             if elem.tag == 'attribute':
-                assert elem.text == '_ibE_seK_ibE_ibE_ibE_ibE'
-                found_geometry_attrib = True
+                if elem.attrib['name'] == 'geometry':
+                    assert elem.text == '_ibE_seK_ibE_ibE_ibE_ibE'
+                    found_geometry_attrib = True
     assert found_geometry_attrib
 
 

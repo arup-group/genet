@@ -155,6 +155,8 @@ def read_network(network_path, transformer: Transformer):
             if node_id_mapping:
                 link_attribs = read_link_attrib(elem, link_attribs)
             # else the attribute is on network level and does not belong to any nodes or links
+            elif elem.attrib['name'] == 'simplified':
+                g.graph['simplified'] = 'True' == elem.text
         elif elem.tag == 'link':
             g, u, v, link_id_mapping, duplicated_link_id = read_link(
                 elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs)

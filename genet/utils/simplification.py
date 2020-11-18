@@ -242,9 +242,6 @@ def simplify_graph(n, no_processes=1):
     # finally, remove nodes
     n.remove_nodes(nodes_to_remove)
 
-    # mark graph as having been simplified
-    n.graph.graph["simplified"] = True
-
     logging.info(
         f"Simplified graph: {initial_node_count} to {len(n.graph)} nodes, {initial_edge_count} to "
         f"{len(n.graph.edges())} edges")

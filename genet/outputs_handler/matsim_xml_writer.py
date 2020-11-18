@@ -66,6 +66,13 @@ def write_matsim_network(output_dir, network):
     with open(fname, "wb") as f, etree.xmlfile(f, encoding='utf-8') as xf:
         xf.write_declaration(doctype='<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v2.dtd">')
         with xf.element("network"):
+            if network.graph.graph:
+                with xf.element("attributes"):
+                    for key in set(network.graph.graph.keys()) - {'name'}:
+                        rec = etree.Element("attribute", {'name': key, 'class': 'java.lang.String'})
+                        rec.text = str(network.graph.graph[key])
+                        xf.write(rec)
+
             with xf.element("nodes"):
                 for node_id, node_attributes in network.nodes():
                     node_attrib = {'id': str(node_id), 'x': str(node_attributes['x']), 'y': str(node_attributes['y'])}
