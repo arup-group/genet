@@ -448,7 +448,12 @@ link is saved in the following way:
 
 ### ! Attention - Always make sure to validate connectivity of the simplified network
 
-In case of `Network`s featuring a `Schedule`
+In case of `Network`s featuring a `Schedule`. After the process of simplifying the `Network` graph is complete
+all of the link references for PT stops get checked and updated by simplified links. All of the network routes
+also get updated by simplified links. Because our condition for simplification is in-degree = out-degree = 1,
+the updated do not have the potential to disrupt the PT network route. It could mean that two or more stops 
+could now refer to the same long link. It is encouraged that you run validation on your network post 
+simplififcation (included in `scripts/simplify_network.py`) and verify your network visually.
 
 ## Validation
 
