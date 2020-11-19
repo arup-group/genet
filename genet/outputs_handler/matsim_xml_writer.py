@@ -81,7 +81,6 @@ def write_matsim_network(output_dir, network):
             links_attribs = {'capperiod': '01:00:00', 'effectivecellsize': '7.5', 'effectivelanewidth': '3.75'}
             with xf.element("links", links_attribs):
                 for link_id, link_attribs in network.links():
-                    # todo dups check ids in link_attributes correspond to link_id
                     link_attributes = prepare_link_attributes(deepcopy(link_attribs))
                     if 'attributes' in link_attributes:
                         attributes = link_attributes.pop('attributes')
