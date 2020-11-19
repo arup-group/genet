@@ -248,27 +248,27 @@ def simplify_graph(n, no_processes=1):
 
     if n.schedule:
         logging.info("Updating the Schedule")
-    # update stop's link reference ids
-    new_stops_attribs = {}
-    for node, link_ref_id in n.schedule._graph.nodes(data='linkRefId'):
-        try:
-            new_stops_attribs[node] = {'linkRefId': n.link_simplification_map[link_ref_id]}
-        except KeyError:
-            # Not all linkref ids would have changed
-            pass
-    nx.set_node_attributes(n.schedule._graph, new_stops_attribs)
-    logging.info("Updated Stop Link Reference Ids")
+        # update stop's link reference ids
+        new_stops_attribs = {}
+        for node, link_ref_id in n.schedule._graph.nodes(data='linkRefId'):
+            try:
+                new_stops_attribs[node] = {'linkRefId': n.link_simplification_map[link_ref_id]}
+            except KeyError:
+                # Not all linkref ids would have changed
+                pass
+        nx.set_node_attributes(n.schedule._graph, new_stops_attribs)
+        logging.info("Updated Stop Link Reference Ids")
 
-    # update schedule routes
-    for service_id, route in n.schedule.routes():
-        new_route = []
-        for link in route.route:
-            updated_route_link = link
-            if link in n.link_simplification_map:
-                updated_route_link = n.link_simplification_map[link]
-            if not new_route:
-                new_route = [updated_route_link]
-            elif new_route[-1] != updated_route_link:
-                new_route.append(updated_route_link)
-        route.route = new_route
-    logging.info("Updated Network Routes")
+        # update schedule routes
+        for service_id, route in n.schedule.routes():
+            new_route = []
+            for link in route.route:
+                updated_route_link = link
+                if link in n.link_simplification_map:
+                    updated_route_link = n.link_simplification_map[link]
+                if not new_route:
+                    new_route = [updated_route_link]
+                elif new_route[-1] != updated_route_link:
+                    new_route.append(updated_route_link)
+            route.route = new_route
+        logging.info("Updated Network Routes")
