@@ -2,12 +2,10 @@ from geopandas import GeoDataFrame, GeoSeries
 
 
 def sanitise_list(x):
-    if isinstance(x, (set, list)):
-        try:
-            return ','.join(x)
-        except TypeError:
-            return ','.join(map(str, x))
-    return x
+    try:
+        return ','.join(x)
+    except TypeError:
+        return ','.join(map(str, x))
 
 
 def sanitise_geodataframe(gdf):
