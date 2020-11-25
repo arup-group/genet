@@ -15,7 +15,7 @@ def assert_correct_edge_groups(edge_groups_1, edge_groups_2):
 
 @pytest.fixture()
 def simple_graph_with_junctions():
-    g = nx.DiGraph()
+    g = nx.MultiDiGraph()
     g.add_edges_from([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (11, 2), (2, 22), (22, 33), (33, 44), (44, 55), (55, 5)])
     return g
 
@@ -23,7 +23,7 @@ def simple_graph_with_junctions():
 def test_getting_endpoints_with_simple_graph_with_junctions(simple_graph_with_junctions):
     g = simple_graph_with_junctions
     endpts = simplification._is_endpoint(
-        {node: {'successors': list(g.successors(node)), 'predecessors': list(g.predecessors(node))}
+        {node: {'successors': set(g.successors(node)), 'predecessors': set(g.predecessors(node))}
          for node in g.nodes}
     )
     assert set(endpts) == {1, 2, 5, 6, 11}
@@ -37,26 +37,29 @@ def test_simplified_paths_with_simple_graph_with_junctions(simple_graph_with_jun
 
 
 @pytest.fixture()
-def graph_with_junctions_directed_both_ways():
-    g = nx.DiGraph()
+def graph_with_junctions_directed_both_ways_and_loop():
+    g = nx.MultiDiGraph()
     g.add_edges_from([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (11, 2), (2, 22), (22, 33), (33, 44), (44, 55), (55, 5),
-                      (2, 1), (3, 2), (4, 3), (5, 4), (6, 5), (2, 11), (22, 2), (33, 22), (44, 33), (55, 44), (5, 55)])
+                      (2, 1), (3, 2), (4, 3), (5, 4), (6, 5), (2, 11), (22, 2), (33, 22), (44, 33), (55, 44), (5, 55),
+                      (11, 11)])
     return g
 
 
-def test_getting_endpoints_with_graph_with_junctions_directed_both_ways(graph_with_junctions_directed_both_ways):
-    g = graph_with_junctions_directed_both_ways
+def test_getting_endpoints_with_graph_with_junctions_directed_both_ways(graph_with_junctions_directed_both_ways_and_loop):
+    g = graph_with_junctions_directed_both_ways_and_loop
     endpts = simplification._is_endpoint(
-        {node: {'successors': list(g.successors(node)), 'predecessors': list(g.predecessors(node))}
+        {node: {'successors': set(g.successors(node)), 'predecessors': set(g.predecessors(node))}
          for node in g.nodes}
     )
-    assert set(endpts) == {2, 3, 4, 5, 22, 33, 44, 55}
+    assert set(endpts) == {2, 5}
 
 
-def test_simplified_paths_with_graph_with_junctions_directed_both_ways(graph_with_junctions_directed_both_ways):
-    g = graph_with_junctions_directed_both_ways
+def test_simplified_paths_with_graph_with_junctions_directed_both_ways(graph_with_junctions_directed_both_ways_and_loop):
+    g = graph_with_junctions_directed_both_ways_and_loop
     edge_groups = simplification._get_edge_groups_to_simplify(g)
-    assert_correct_edge_groups(edge_groups, [[2, 1, 2], [5, 6, 5], [2, 11, 2]])
+    assert_correct_edge_groups(edge_groups, [[2, 1, 2], [5, 6, 5], [2, 11, 11, 2],
+                                             [2, 3, 4, 5], [2, 22, 33, 44, 55, 5],
+                                             [5, 4, 3, 2], [5, 55, 44, 33, 22, 2]])
 
 
 @pytest.fixture()

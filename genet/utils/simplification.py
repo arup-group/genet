@@ -91,8 +91,8 @@ def _is_endpoint(node_neighbours):
     :param node_neighbours: dict {node_id: {successors: in_degree, out_degree)
     :return:
     """
-    return [node for node, data in node_neighbours.items() if
-            (len(data['successors']) != 1) or (len(data['predecessors']) != 1)]
+    return [node for node, data in node_neighbours.items() if (len(data['successors'] | data['predecessors']) > 2) or
+            (len(data['successors']) == 0 or len(data['predecessors']) == 0)]
 
 
 def _build_path(edge_group, endpoints):
@@ -135,7 +135,7 @@ def _get_edge_groups_to_simplify(G, no_processes=1):
     # first identify all the nodes that are endpoints
     endpoints = set(
         parallel.multiprocess_wrap(
-            data={node: {'successors': list(G.successors(node)), 'predecessors': list(G.predecessors(node))}
+            data={node: {'successors': set(G.successors(node)), 'predecessors': set(G.predecessors(node))}
                   for node in G.nodes},
             split=parallel.split_dict,
             apply=_is_endpoint,
@@ -144,19 +144,30 @@ def _get_edge_groups_to_simplify(G, no_processes=1):
     )
 
     logging.info(f"Identified {len(endpoints)} edge endpoints")
+    path_start_points = G.out_edges(endpoints)
 
-    working_graph = G.copy()
-    working_graph.remove_nodes_from(endpoints)
-    nodes_to_simplify = nx.weakly_connected_components(working_graph)
+    paths = []
+    for path_start_point in path_start_points:
+        if path_start_point[1] not in endpoints:
+            path = list(path_start_point)
+            end_node = path[-1]
+            while end_node not in endpoints:
+                next_nodes = list(G.neighbors(end_node))
+                if len(next_nodes) > 1:
+                    next_nodes = list(set(next_nodes) - set(path))
+                    if len(next_nodes) > 1:
+                        raise RuntimeError('Path building found additional branching. Simplification failed to find'
+                                           'all of the correct end points.')
+                    if not next_nodes:
+                        # is a loop, build the rest of the path except the end point i.e. from [1,2,3] to [1,2,3,3,2]
+                        path += path[::-1][:-1]
+                        next_nodes = [path[0]]
+                end_node = next_nodes[0]
+                path.append(end_node)
+            if path:
+                paths.append(path)
 
-    return parallel.multiprocess_wrap(
-        data=[set(G.out_edges(node_set)) | set(G.in_edges(node_set)) for node_set in nodes_to_simplify],
-        split=parallel.split_list,
-        apply=_build_paths,
-        combine=parallel.combine_list,
-        processes=no_processes,
-        endpoints=endpoints
-    )
+    return paths
 
 
 def simplify_graph(n, no_processes=1):
