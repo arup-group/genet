@@ -1009,30 +1009,29 @@ class Network:
         return False
 
     def generate_index_for_edge(self, avoid_keys: Union[list, set] = None, silent: bool = False):
-        existing_keys = set(self.link_id_mapping.keys())
-        if avoid_keys:
-            existing_keys = existing_keys | set(avoid_keys)
-        try:
-            id = max([int(i) for i in existing_keys]) + 1
-        except ValueError:
-            id = len(existing_keys) + 1
-        if (id in existing_keys) or (str(id) in existing_keys):
-            id = uuid.uuid4()
+        _id = list(self.generate_indices_for_n_edges(n=1, avoid_keys=avoid_keys))[0]
         if not silent:
-            logging.info(f'Generated link id {id}.')
-        return str(id)
+            logging.info(f'Generated link id {_id}.')
+        return str(_id)
 
     def generate_indices_for_n_edges(self, n, avoid_keys: Union[list, set] = None):
         existing_keys = set(self.link_id_mapping.keys())
         if avoid_keys:
             existing_keys = existing_keys | set(avoid_keys)
-        try:
-            id_set = set([str(max([int(i) for i in existing_keys]) + j) for j in range(1, n + 1)])
-        except ValueError:
-            id_set = set([str(len(existing_keys) + j) for j in range(1, n + 1)])
-        if id_set & existing_keys:
-            id_set = id_set - existing_keys
-            id_set = id_set | set([str(uuid.uuid4()) for i in range(n - len(id_set))])
+        id_set = set(map(str, range(n))) - existing_keys
+        _max = 0
+
+        while len(id_set) != n:
+            try:
+                _max = max(map(int, id_set))
+            except ValueError:
+                if not _max:
+                    _max = n
+                else:
+                    _max += n
+            missing_ns = n - len(id_set)
+            id_set |= set(map(str, range(_max + 1, _max + missing_ns + 1))) - existing_keys
+
         logging.info(f'Generated {len(id_set)} link ids.')
         return id_set
 

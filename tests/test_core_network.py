@@ -635,12 +635,12 @@ def test_adding_multiple_edges():
     n.add_edges([{'from': 1, 'to': 2}, {'from': 2, 'to': 3}])
     assert n.graph.has_edge(1, 2)
     assert n.graph.has_edge(2, 3)
+    assert '0' in n.link_id_mapping
     assert '1' in n.link_id_mapping
-    assert '2' in n.link_id_mapping
-    if n.link_id_mapping['1'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}:
-        assert n.link_id_mapping['2'] == {'from': 2, 'to': 3, 'multi_edge_idx': 0}
-    elif n.link_id_mapping['2'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}:
+    if n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}:
         assert n.link_id_mapping['1'] == {'from': 2, 'to': 3, 'multi_edge_idx': 0}
+    elif n.link_id_mapping['1'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}:
+        assert n.link_id_mapping['0'] == {'from': 2, 'to': 3, 'multi_edge_idx': 0}
     else:
         raise AssertionError()
 
@@ -1880,28 +1880,25 @@ def test_generating_n_indicies_for_nodes():
 def test_generate_index_for_edge_gives_next_integer_string_when_you_have_matsim_usual_integer_index():
     n = Network('epsg:27700')
     n.link_id_mapping = {'1': {}, '2': {}}
-    assert n.generate_index_for_edge() == '3'
+    new_idx = n.generate_index_for_edge()
+    assert isinstance(new_idx, str)
+    assert new_idx not in ['1', '2']
 
 
 def test_generate_index_for_edge_gives_string_based_on_length_link_id_mapping_when_you_have_mixed_index():
     n = Network('epsg:27700')
     n.link_id_mapping = {'1': {}, 'x2': {}}
-    assert n.generate_index_for_edge() == '3'
+    new_idx = n.generate_index_for_edge()
+    assert isinstance(new_idx, str)
+    assert new_idx not in ['1', 'x2']
 
 
 def test_generate_index_for_edge_gives_string_based_on_length_link_id_mapping_when_you_have_all_non_int_index():
     n = Network('epsg:27700')
     n.link_id_mapping = {'1x': {}, 'x2': {}}
-    assert n.generate_index_for_edge() == '3'
-
-
-def test_generate_index_for_edge_gives_uuid4_as_last_resort(mocker):
-    mocker.patch.object(uuid, 'uuid4')
-    n = Network('epsg:27700')
-    n.add_link('1x', 1, 2)
-    n.add_link('3', 1, 2)
-    n.generate_index_for_edge()
-    uuid.uuid4.assert_called_once()
+    new_idx = n.generate_index_for_edge()
+    assert isinstance(new_idx, str)
+    assert new_idx not in ['1x', 'x2']
 
 
 def test_index_graph_edges_generates_completely_new_index():
@@ -1914,9 +1911,11 @@ def test_index_graph_edges_generates_completely_new_index():
 
 def test_generating_n_indicies_for_edges():
     n = Network('epsg:27700')
-    n.add_links({str(i): {'from': 0, 'to': 1} for i in range(10)})
-    idxs = n.generate_indices_for_n_edges(5)
-    assert len(idxs) == 5
+    n.add_links({str(i): {'from': 0, 'to': 1} for i in range(11)})
+    idxs = n.generate_indices_for_n_edges(7)
+    assert len(idxs) == 7
+    for i in idxs:
+        assert isinstance(i, str)
     assert not set(n.link_id_mapping.keys()) & idxs
 
 
