@@ -87,16 +87,16 @@ def test_simplified_paths_with_graph_with_loop_at_the_end(graph_with_loop_at_the
 @pytest.fixture()
 def indexed_edge_groups():
     return {'new_link_id': {
-        'path': [1, 2, 3],
-        'link_data': {'permlanes': [3.0, 5.0], 'freespeed': [20, 40],
-                      'capacity': [1000.0, 2000.0], 'oneway': ['1', '1'],
-                      'modes': [['car'], ['car']],
-                      'from': [1, 2],
-                      'to': [2, 3],
-                      'id': ['1926', '1927'],
+        'path': [1, 2, 3, 4],
+        'link_data': {'permlanes': [3.0, 3.0, 5.0], 'freespeed': [20, 20, 40],
+                      'capacity': [1000.0, 1000.0, 2000.0], 'oneway': ['1', '1', '1'],
+                      'modes': [['car'], ['car'], ['car']],
+                      'from': [1, 2, 3],
+                      'to': [2, 3, 4],
+                      'id': ['1926', '1927', '1928'],
                       's2_from': [5221390326122671999, 5221390326036762795],
                       's2_to': [5221390326036762795, 5221390326952602895],
-                      'length': [12.0, 14.0],
+                      'length': [12.0, 14.0, 5.0],
                       'attributes': [
                           {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
                            'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '18769878'},
@@ -112,7 +112,10 @@ def indexed_edge_groups():
             2: {'id': 2, 'x': 528888.1581643537, 'y': 181892.3086225874, 'lon': -0.14367308749449406,
                 'lat': 51.52125089540575, 's2_id': 5221390326036762795},
             3: {'id': 3, 'x': 528780.3405144282, 'y': 181859.84184561518, 'lon': -0.14523808749533396,
-                'lat': 51.520983695405526, 's2_id': 5221390326952602895}}}
+                'lat': 51.520983695405526, 's2_id': 5221390326952602895},
+            4: {'id': 3, 'x': 528780.3405144282, 'y': 181859.84184561518, 'lon': -0.14523808749533396,
+                'lat': 51.520983695405526, 's2_id': 5221390326952602895}
+        }}
     }
 
 
@@ -121,17 +124,17 @@ def test_merging_edge_data(indexed_edge_groups):
 
     assert_semantically_equal(links_to_add, {
         'new_link_id': {
-            'permlanes': 4,
+            'permlanes': 3,
             'freespeed': 40.0,
-            'capacity': 1500.0,
+            'capacity': 1000.0,
             'oneway': '1',
             'modes': {'car'},
             'from': 1,
-            'to': 3,
+            'to': 4,
             'id': 'new_link_id',
             's2_from': 5221390326122671999,
             's2_to': 5221390326952602895,
-            'length': 26,
+            'length': 31,
             'attributes': {
                 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
                 'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
@@ -140,8 +143,8 @@ def test_merging_edge_data(indexed_edge_groups):
                                     'text': {'trunk', 'unclassified'}}
             },
             'geometry': LineString([(528915.9309752393, 181899.48948011652), (528888.1581643537, 181892.3086225874),
-                                    (528780.3405144282, 181859.84184561518)]),
-            'ids': ['1926', '1927']}})
+                                    (528780.3405144282, 181859.84184561518), (528780.3405144282, 181859.84184561518)]),
+            'ids': ['1926', '1927', '1928']}})
 
 
 def test_merging_edge_data_without_attributes():

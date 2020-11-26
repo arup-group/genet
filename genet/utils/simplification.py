@@ -4,6 +4,7 @@ from math import ceil
 from shapely.geometry import LineString, Point
 import logging
 import osmnx
+from statistics import median
 
 
 # rip and monkey patch of a few functions from osmnx.simplification to customise graph simplification
@@ -44,8 +45,8 @@ def _process_path(indexed_edge_groups_to_simplify):
         edge_attributes['s2_to'] = nodes_data[path[-1]]['s2_id']
 
         edge_attributes['freespeed'] = max(edge_attributes['freespeed'])
-        edge_attributes['capacity'] = ceil(sum(edge_attributes['capacity']) / len(edge_attributes['capacity']))
-        edge_attributes['permlanes'] = ceil(sum(edge_attributes['permlanes']) / len(edge_attributes['permlanes']))
+        edge_attributes['capacity'] = ceil(median(edge_attributes['capacity']))
+        edge_attributes['permlanes'] = ceil(median(edge_attributes['permlanes']))
         edge_attributes['length'] = sum(edge_attributes['length'])
 
         modes = set()
