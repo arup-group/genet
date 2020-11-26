@@ -6,6 +6,7 @@ from tests.fixtures import assert_semantically_equal
 
 
 def assert_correct_edge_groups(edge_groups_1, edge_groups_2):
+    assert len(edge_groups_1) == len(edge_groups_2)
     for edge_group_1 in edge_groups_1:
         for edge_group_2 in edge_groups_2:
             if edge_group_1 == edge_group_2:
@@ -51,21 +52,20 @@ def test_getting_endpoints_with_graph_with_junctions_directed_both_ways(graph_wi
         {node: {'successors': set(g.successors(node)), 'predecessors': set(g.predecessors(node))}
          for node in g.nodes}
     )
-    assert set(endpts) == {2, 5}
+    assert set(endpts) == {1, 2, 5, 6}
 
 
 def test_simplified_paths_with_graph_with_junctions_directed_both_ways(graph_with_junctions_directed_both_ways_and_loop):
     g = graph_with_junctions_directed_both_ways_and_loop
     edge_groups = simplification._get_edge_groups_to_simplify(g)
-    assert_correct_edge_groups(edge_groups, [[2, 1, 2], [5, 6, 5], [2, 11, 11, 2],
-                                             [2, 3, 4, 5], [2, 22, 33, 44, 55, 5],
+    assert_correct_edge_groups(edge_groups, [[2, 11, 11, 2], [2, 3, 4, 5], [2, 22, 33, 44, 55, 5],
                                              [5, 4, 3, 2], [5, 55, 44, 33, 22, 2]])
 
 
 @pytest.fixture()
 def graph_with_loop_at_the_end():
     g = nx.MultiDiGraph()
-    g.add_edges_from([(1, 2), (2, 1), (2, 3), (3, 4), (4, 4)])
+    g.add_edges_from([(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 4), (4, 4)])
     return g
 
 
@@ -75,13 +75,13 @@ def test_getting_endpoints_with_graph_with_loop_at_the_end(graph_with_loop_at_th
         {node: {'successors': set(g.successors(node)), 'predecessors': set(g.predecessors(node))}
          for node in g.nodes}
     )
-    assert set(endpts) == {2, 4}
+    assert set(endpts) == {0, 2, 4}
 
 
 def test_simplified_paths_with_graph_with_loop_at_the_end(graph_with_loop_at_the_end):
     g = graph_with_loop_at_the_end
     edge_groups = simplification._get_edge_groups_to_simplify(g)
-    assert_correct_edge_groups(edge_groups, [[2, 1, 2], [2, 3, 4]])
+    assert_correct_edge_groups(edge_groups, [[2, 1, 0], [0, 1, 2], [2, 3, 4]])
 
 
 @pytest.fixture()

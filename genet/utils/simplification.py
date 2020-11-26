@@ -94,7 +94,8 @@ def _is_endpoint(node_neighbours):
             ((len(data['successors'] | data['predecessors']) > 2) or
              (not data['successors'] or not data['predecessors']) or
              (data['successors'] == {node}) or
-             (len(data['successors']) != len(data['predecessors'])))]
+             (len(data['successors']) != len(data['predecessors'])) or
+             ((len(data['successors'] | data['predecessors']) == 1) and (data['successors'] == data['predecessors'])))]
 
 
 def _build_paths(path_start_points, endpoints, neighbours):
