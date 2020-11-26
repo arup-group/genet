@@ -74,4 +74,6 @@ if __name__ == '__main__':
         logging.info(f'Schedule level validation: {report["schedule"]["schedule_level"]["is_valid_schedule"]}')
         logging.info(f'Routing validation: {report["routing"]["services_have_routes_in_the_graph"]}')
 
+    n.generate_standard_outputs(os.path.join(output_dir, 'standard_outputs'))
+
     logging.info(f'It took {round((end - start)/60, 3)} min to simplify the network.')
