@@ -63,6 +63,28 @@ def test_simplified_paths_with_graph_with_junctions_directed_both_ways(graph_wit
 
 
 @pytest.fixture()
+def graph_with_loop_at_the_end():
+    g = nx.MultiDiGraph()
+    g.add_edges_from([(1, 2), (2, 1), (2, 3), (3, 4), (4, 4)])
+    return g
+
+
+def test_getting_endpoints_with_graph_with_loop_at_the_end(graph_with_loop_at_the_end):
+    g = graph_with_loop_at_the_end
+    endpts = simplification._is_endpoint(
+        {node: {'successors': set(g.successors(node)), 'predecessors': set(g.predecessors(node))}
+         for node in g.nodes}
+    )
+    assert set(endpts) == {2, 4}
+
+
+def test_simplified_paths_with_graph_with_loop_at_the_end(graph_with_loop_at_the_end):
+    g = graph_with_loop_at_the_end
+    edge_groups = simplification._get_edge_groups_to_simplify(g)
+    assert_correct_edge_groups(edge_groups, [[2, 1, 2], [2, 3, 4]])
+
+
+@pytest.fixture()
 def indexed_edge_groups():
     return {'new_link_id': {
         'path': [1, 2, 3],
@@ -180,7 +202,8 @@ def test_merging_edge_data_without_attributes():
 
 
 def test_building_paths():
-    edge_groups_to_simplify = [{(1, 2), (2, 3), (3, 4)}, {(1, 22), (33, 44), (22, 33), (44, 4)}]
+    path_start_points = {(1, 2), (1, 22)}
     endpoints = {1, 4}
-    paths = simplification._build_paths(edge_groups_to_simplify, endpoints)
+    neighbours = {1: {2, 22}, 2: {3}, 3: {4}, 4: {}, 22: {33}, 33: {44}, 44: {4}}
+    paths = simplification._build_paths(path_start_points, endpoints, neighbours)
     assert paths == [[1, 2, 3, 4], [1, 22, 33, 44, 4]]

@@ -72,7 +72,6 @@ def _extract_edge_data(G, path):
     for u, v in zip(path[:-1], path[1:]):
         # get edge between these nodes: if multiple edges exist between
         # them - smoosh them
-        # TODO this shouldn't be the case anymore, multiple edges will result in a non simplified edge
         for multi_idx, edge in G[u][v].items():
             for key in edge:
                 if key in edge_attributes:
@@ -91,43 +90,37 @@ def _is_endpoint(node_neighbours):
     :param node_neighbours: dict {node_id: {successors: in_degree, out_degree)
     :return:
     """
-    return [node for node, data in node_neighbours.items() if (len(data['successors'] | data['predecessors']) > 2) or
-            (len(data['successors']) == 0 or len(data['predecessors']) == 0)]
+    return [node for node, data in node_neighbours.items() if
+            ((len(data['successors'] | data['predecessors']) > 2) or
+             (not data['successors'] or not data['predecessors']) or
+             (data['successors'] == {node}) or
+             (len(data['successors']) != len(data['predecessors'])))]
 
 
-def _build_path(edge_group, endpoints):
-    # find first node
-    first_edge = ()
-    nodes = set(sum(edge_group, ()))
-    groups_endpts = endpoints & nodes
-
-    for _edge in edge_group:
-        if _edge[0] in groups_endpts:
-            first_edge = _edge
-            break
-
-    if not first_edge:
-        # is disconnected, don't mess with it
-        return []
-
-    # build the path
-    ordered_edge_group = [first_edge]
-    edge_group -= {first_edge}
-    for i in range(len(edge_group)):
-        for _edge in edge_group:
-            if _edge[0] == ordered_edge_group[-1][1]:
-                ordered_edge_group.append(_edge)
-    path = [_edge[0] for _edge in ordered_edge_group]
-    path.append(ordered_edge_group[-1][1])
-    return path
-
-
-def _build_paths(edge_groups_to_simplify, endpoints):
+def _build_paths(path_start_points, endpoints, neighbours):
     paths = []
-    for edge_group in edge_groups_to_simplify:
-        path = _build_path(edge_group, endpoints)
-        if path:
+    logging.info(f"Processing {len(path_start_points)} paths")
+    i = 0
+    for path_start_point in path_start_points:
+        if path_start_point[1] not in endpoints:
+            path = list(path_start_point)
+            end_node = path[-1]
+            while end_node not in endpoints:
+                if neighbours[end_node] == {path[0]}:
+                    end_node = path[0]
+                elif len(neighbours[end_node]) > 1:
+                    next_nodes = neighbours[end_node] - {path[-2]}
+                    if len(next_nodes) > 1:
+                        raise RuntimeError('Path building found additional branching. Simplification failed to find'
+                                           'all of the correct end points.')
+                    end_node = list(next_nodes)[0]
+                else:
+                    end_node = list(neighbours[end_node])[0]
+                path.append(end_node)
             paths.append(path)
+        i += 1
+        if not i % 10000:
+            logging.info(f"Processed {i} out of {len(path_start_points)} paths")
     return paths
 
 
@@ -144,30 +137,18 @@ def _get_edge_groups_to_simplify(G, no_processes=1):
     )
 
     logging.info(f"Identified {len(endpoints)} edge endpoints")
-    path_start_points = G.out_edges(endpoints)
+    path_start_points = list(G.out_edges(endpoints))
 
-    paths = []
-    for path_start_point in path_start_points:
-        if path_start_point[1] not in endpoints:
-            path = list(path_start_point)
-            end_node = path[-1]
-            while end_node not in endpoints:
-                next_nodes = list(G.neighbors(end_node))
-                if len(next_nodes) > 1:
-                    next_nodes = list(set(next_nodes) - set(path))
-                    if len(next_nodes) > 1:
-                        raise RuntimeError('Path building found additional branching. Simplification failed to find'
-                                           'all of the correct end points.')
-                    if not next_nodes:
-                        # is a loop, build the rest of the path except the end point i.e. from [1,2,3] to [1,2,3,3,2]
-                        path += path[::-1][:-1]
-                        next_nodes = [path[0]]
-                end_node = next_nodes[0]
-                path.append(end_node)
-            if path:
-                paths.append(path)
-
-    return paths
+    logging.info(f"Identified {len(path_start_points)} paths")
+    return parallel.multiprocess_wrap(
+        data=path_start_points,
+        split=parallel.split_list,
+        apply=_build_paths,
+        combine=parallel.combine_list,
+        processes=no_processes,
+        endpoints=endpoints,
+        neighbours={node: set(G.neighbors(node)) for node in G.nodes}
+    )
 
 
 def simplify_graph(n, no_processes=1):
@@ -208,6 +189,7 @@ def simplify_graph(n, no_processes=1):
     logging.info('Generating paths to be simplified')
     # generate each path that needs to be simplified
     edges_to_simplify = _get_edge_groups_to_simplify(G, no_processes=no_processes)
+    logging.info(f'Found {len(edges_to_simplify)} paths to simplify.')
 
     indexed_paths_to_simplify = dict(zip(n.generate_indices_for_n_edges(len(edges_to_simplify)), edges_to_simplify))
     indexed_paths_to_simplify = {
