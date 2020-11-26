@@ -101,7 +101,6 @@ def _is_endpoint(node_neighbours):
 def _build_paths(path_start_points, endpoints, neighbours):
     paths = []
     logging.info(f"Processing {len(path_start_points)} paths")
-    i = 0
     for path_start_point in path_start_points:
         if path_start_point[1] not in endpoints:
             path = list(path_start_point)
@@ -119,9 +118,6 @@ def _build_paths(path_start_points, endpoints, neighbours):
                     end_node = list(neighbours[end_node])[0]
                 path.append(end_node)
             paths.append(path)
-        i += 1
-        if not i % 10000:
-            logging.info(f"Processed {i} out of {len(path_start_points)} paths")
     return paths
 
 
@@ -140,7 +136,7 @@ def _get_edge_groups_to_simplify(G, no_processes=1):
     logging.info(f"Identified {len(endpoints)} edge endpoints")
     path_start_points = list(G.out_edges(endpoints))
 
-    logging.info(f"Identified {len(path_start_points)} paths")
+    logging.info(f"Identified {len(path_start_points)} possible paths")
     return parallel.multiprocess_wrap(
         data=path_start_points,
         split=parallel.split_list,
