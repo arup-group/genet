@@ -210,3 +210,38 @@ def test_building_paths():
     neighbours = {1: {2, 22}, 2: {3}, 3: {4}, 4: {}, 22: {33}, 33: {44}, 44: {4}}
     paths = simplification._build_paths(path_start_points, endpoints, neighbours)
     assert paths == [[1, 2, 3, 4], [1, 22, 33, 44, 4]]
+
+
+def test_building_path_for_link_that_is_already_simple_enough():
+    # i.e. the from and to nodes are both endpoints
+    path_start_points = {(1, 2)}
+    endpoints = {1, 2}
+    neighbours = {1: {2}, 2: {}}
+    paths = simplification._build_paths(path_start_points, endpoints, neighbours)
+    assert paths == []
+
+
+def test_building_path_for_loop():
+    path_start_points = {(1, 2)}
+    endpoints = {1}
+    neighbours = {1: {2}, 2: {3}, 3: {4}, 4: {1}}
+    paths = simplification._build_paths(path_start_points, endpoints, neighbours)
+    assert paths == [[1, 2, 3, 4, 1]]
+
+
+def test_building_path_for_bidirected_links():
+    path_start_points = {(1, 2), (4, 3)}
+    endpoints = {1, 4}
+    neighbours = {1: {2}, 2: {3, 1}, 3: {2, 4}, 4: {3}}
+    paths = simplification._build_paths(path_start_points, endpoints, neighbours)
+    assert paths == [[1, 2, 3, 4], [4, 3, 2, 1]]
+
+
+def test_building_path_throws_error_when_there_is_undetected_branching():
+    # i.e. shouldnt happen as the condition automatically makes anything with more than two neighbours an endpoint but..
+    path_start_points = {(1, 2)}
+    endpoints = {1}
+    neighbours = {1: {2}, 2: {3, 1}, 3: {2, 4, 11}, 4: {3}}
+    with pytest.raises(RuntimeError) as error_info:
+        simplification._build_paths(path_start_points, endpoints, neighbours)
+    assert "branching" in str(error_info.value)
