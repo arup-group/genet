@@ -345,28 +345,34 @@ Specifying number of processes is optional but defaults to 1. It is recommended 
 the machine you're using to spread the computational load. This is a complicated process and takes a long time. To that
 end, it is more convenient to use a script, see `scripts/simplify_network.py`.
 
-The process is an altered version of graph simplification available in the `osmnx` package. The main difference is the 
-condition for a node to be an end point of a simplified path. The current version of GeNet simplifies nodes which
-have the in-degree and out-degree equal to 1 (through nodes), i.e.
+The process is an altered version of graph simplification available in the `osmnx` package. Network links will be
+simplified between end-point nodes which meet the following conditions:
+- the number of nodes in the union of successor and predecessor nodes of that node is greater than two
+    - i.e. if the node is connected to more than one node in any direction it cannot be simplified
+- the node has no successor or predecessor nodes
+    - i.e. the node is a sink or source
+- there is a loop at the node 
+    - the only successor node is the node itself
+- the number of successor and predecessor nodes is not equal
+    - this should be thought of cases where number of successor and predecessor nodes is 0, 1 or 2 (earlier condition
+    prohibits other cases). This condition means we end link simplification at nodes where direction of flow changes
+    so in a situation where `... NODE_1 ---> NODE_2 <--> NODE_3 ...` NODE_2 will be be an endpoint and remain in the
+    graph
+- if the number of nodes in the union of successor and predecessor nodes is 1 and that node is both the successor and 
+predecessor node
+    - i.e. ... NODE_1 <--> NODE_2 <--> NODE_3, NODE_3 will be an endpoint to avoid cul-de-sacs being big loops at 
+    single point in the graph
 
-    NODE_1 ---> NODE_2 ---> NODE_3 ---> NODE_4 
-
-will be simplified to 
-
-    NODE_1 ---> NODE_4
-    
-whereas
-
-    NODE_1 <--> NODE_2 <--> NODE_3 <--> NODE_4 
-    
-will not be simplified.
+Below is an example of a simplified network.
+![GeNet Simplified Network split view](images/simplified_split_view.png)
+![GeNet Simplified Network overlay view](images/simplified_overlay.png)
 
 Upon simplification, the nodes which are being simplified are used for the creation of geometry for the link. This
 geometry is used in any geojson outputs, preserving the original look of the network. The data stored under links 
 which are being simplified is fused handles in the following way:
 - `freespeed`: The maximum value across links is taken
-- `capacity`: Rounded up to integer of average across links
-- `permlanes`: Rounded up to integer of average across links
+- `capacity`: Rounded up to integer of median across links
+- `permlanes`: Rounded up to integer of median across links
 - `length`: Sum across links
 - `modes`: Union across links, i.e. {'bus'} | {'car'} = {'bus', 'car}'
 - In the case of overlapping OSM attributes such as osm ids or highway types they are stored as sets under the same 
