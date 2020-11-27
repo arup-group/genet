@@ -152,6 +152,8 @@ class Network:
             self.transformer = None
 
     def simplify(self, no_processes=1):
+        if self.graph.graph["simplified"]:
+            raise RuntimeError('This network has already been simplified. You cannot simplify the graph twice.')
         simplification.simplify_graph(self, no_processes)
         # mark graph as having been simplified
         self.graph.graph["simplified"] = True

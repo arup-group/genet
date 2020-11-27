@@ -394,6 +394,15 @@ def test_plot_schedule_delegates_to_util_plot_plot_non_routed_schedule_graph(moc
     plot.plot_non_routed_schedule_graph.assert_called_once()
 
 
+def test_attempt_to_simplify_already_simplified_network_throws_error():
+    n = Network('epsg:27700')
+    n.graph.graph["simplified"] = True
+
+    with pytest.raises(RuntimeError) as error_info:
+        n.simplify()
+    assert "cannot simplify" in str(error_info.value)
+
+
 def test_simplifing_puma_network():
     n = Network('epsg:27700')
     n.read_matsim_network(puma_network_test_file)
@@ -402,6 +411,8 @@ def test_simplifing_puma_network():
     link_ids_pre_simplify = set(dict(n.links()).keys())
 
     n.simplify()
+
+    assert n.graph.graph["simplified"]
 
     link_ids_post_simplify = set(dict(n.links()).keys())
 
