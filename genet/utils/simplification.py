@@ -88,7 +88,10 @@ def _extract_edge_data(G, path):
 
 def _is_endpoint(node_neighbours):
     """
-    :param node_neighbours: dict {node_id: {successors: in_degree, out_degree)
+    :param node_neighbours: dict {node: {
+     successors: {set of nodes that you can reach from node},
+     predecessors: {set of nodes that lead to node}
+    }}
     :return:
     """
     return [node for node, data in node_neighbours.items() if
@@ -162,23 +165,14 @@ def simplify_graph(n, no_processes=1):
 
     Parameters
     ----------
-    G : genet.Network object
-    strict : bool
-        if False, allow nodes to be end points even if they fail all other
-        rules but have incident edges with different OSM IDs. Lets you keep
-        nodes at elbow two-way intersections, but sometimes individual blocks
-        have multiple OSM IDs within them too.
-    remove_rings : bool
-        if True, remove isolated self-contained rings that have no endpoints
+    n: genet.Network object
+    no_processes: number of processes to split some of the processess across
 
     Returns
     -------
     None, updates n.graph, indexing and schedule routes. Adds a new attribute to n that records map between old
     and new link indices
     """
-    if osmnx.simplification._is_simplified(n.graph):
-        raise Exception("This graph has already been simplified, cannot simplify it again.")
-
     logging.info("Begin simplifying the graph")
     G = n.graph.copy()
     initial_node_count = len(list(G.nodes()))
