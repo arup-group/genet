@@ -3,7 +3,6 @@ import networkx as nx
 from math import ceil
 from shapely.geometry import LineString, Point
 import logging
-import osmnx
 from statistics import median
 
 
