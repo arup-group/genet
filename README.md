@@ -364,7 +364,9 @@ predecessor node
     single point in the graph
 
 Below is an example of a simplified network.
+
 ![GeNet Simplified Network split view](images/simplified_split_view.png)
+
 ![GeNet Simplified Network overlay view](images/simplified_overlay.png)
 
 Upon simplification, the nodes which are being simplified are used for the creation of geometry for the link. This
@@ -374,7 +376,7 @@ which are being simplified is fused handles in the following way:
 - `capacity`: Rounded up to integer of median across links
 - `permlanes`: Rounded up to integer of median across links
 - `length`: Sum across links
-- `modes`: Union across links, i.e. {'bus'} | {'car'} = {'bus', 'car}'
+- `modes`: Union across links, i.e. `{'bus'} | {'car'} = {'bus', 'car}'`
 - In the case of overlapping OSM attributes such as osm ids or highway types they are stored as sets under the same 
 attributes in the graph.
 ```python
