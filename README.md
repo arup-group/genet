@@ -356,11 +356,11 @@ simplified between end-point nodes which meet the following conditions:
 - the number of successor and predecessor nodes is not equal
     - this should be thought of cases where number of successor and predecessor nodes is 0, 1 or 2 (earlier condition
     prohibits other cases). This condition means we end link simplification at nodes where direction of flow changes
-    so in a situation where `... NODE_1 ---> NODE_2 <--> NODE_3 ...` NODE_2 will be be an endpoint and remain in the
+    so in a situation where `... NODE_1 ---> NODE_2 <--> NODE_3 ...`, `NODE_2` will be be an endpoint and remain in the
     graph
 - if the number of nodes in the union of successor and predecessor nodes is 1 and that node is both the successor and 
 predecessor node
-    - i.e. ... NODE_1 <--> NODE_2 <--> NODE_3, NODE_3 will be an endpoint to avoid cul-de-sacs being big loops at 
+    - i.e. `... NODE_1 <--> NODE_2 <--> NODE_3`, `NODE_3` will be an endpoint to avoid cul-de-sacs being big loops at 
     single point in the graph
 
 Below is an example of a simplified network.
