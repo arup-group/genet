@@ -139,9 +139,9 @@ class SpatialTree(nx.DiGraph):
         closest_links = gpd.sjoin(
             self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, {mode}), axis=1)],
             gdf_points,
-            how='inner',
+            how='right',
             op='intersects')
-        return closest_links.groupby(['stop'])['id'].apply(list).to_dict()
+        return closest_links[['stop', 'id']]
 
     def shortest_paths(self, df_pt_edges, mode, u_col='u', v_col='v'):
         """
@@ -152,8 +152,9 @@ class SpatialTree(nx.DiGraph):
         """
         # todo add weight
         links = self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, {mode}), axis=1)]['id']
-        df_pt_edges['paths'] = df_pt_edges.apply(
+        df_pt_edges['shortest_path'] = df_pt_edges.apply(
             lambda x: nx.shortest_path(self.subgraph(links), source=x[u_col], target=x[v_col]), axis=1)
+        return df_pt_edges
 
 
     def path_length(self, n, source, target):

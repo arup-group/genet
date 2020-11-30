@@ -1,6 +1,6 @@
 import s2sphere
 import pytest
-from shapely.geometry import Point
+from shapely.geometry import Point, LineString
 from geopandas import GeoDataFrame
 from pandas import DataFrame
 from genet.utils import spatial
@@ -12,17 +12,39 @@ from tests.fixtures import *
 def network():
     n = Network('epsg:27700')
     n.add_nodes({
-        'node_1': {'x': 1, 'y': 2},
-        'node_2': {'x': 2, 'y': 2},
-        'node_3': {'x': 3, 'y': 2},
-        'node_4': {'x': 3, 'y': 3},
-        'node_5': {'x': 1, 'y': 1}
+        '5221390309039202089': {'x': 528344.70518, 'y': 181583.80217},
+        '5221390307703020221': {'x': 528328.94676, 'y': 181736.07904},
+        '5221390306965404303': {'x': 528320.26640, 'y': 181814.06237},
     })
     n.add_links({
-        'link_1': {'from': 'node_1', 'to': 'node_2', 'modes': ['car', 'walk']},
-        'link_2': {'from': 'node_2', 'to': 'node_3', 'modes': ['car']},
-        'link_3': {'from': 'node_2', 'to': 'node_3', 'modes': ['walk']},
-        'link_4': {'from': 'node_3', 'to': 'node_2', 'modes': ['car', 'walk']},
+        'link_1': {'from': '5221390309039202089',
+                   'to': '5221390307703020221',
+                   'modes': ['car', 'walk'],
+                   'length': 153.0294,
+                   'geometry': LineString(
+                       [(528344.70518, 181583.80217), (528342.99487, 181598.89393), (528337.75892, 181652.61953),
+                        (528333.77989, 181689.01855), (528330.46435, 181722.27602), (528328.94676, 181736.07904)])},
+        'link_2': {'from': '5221390307703020221',
+                   'to': '5221390306965404303',
+                   'modes': ['car'],
+                   'length': 78.443,
+                   'geometry': LineString(
+                       [(528328.94676, 181736.07904), (528327.95867, 181743.58574), (528320.87099, 181810.80295),
+                        (528320.2664, 181814.06237)])},
+        'link_3': {'from': '5221390307703020221',
+                   'to': '5221390306965404303',
+                   'modes': ['walk'],
+                   'length': 78.443,
+                   'geometry': LineString(
+                       [(528328.94676, 181736.07904), (528327.95867, 181743.58574), (528320.87099, 181810.80295),
+                        (528320.2664, 181814.06237)])},
+        'link_4': {'from': '5221390306965404303',
+                   'to': '5221390307703020221',
+                   'modes': ['car', 'walk'],
+                   'length': 78.443,
+                   'geometry': LineString(
+                       [(528320.2664, 181814.06237), (528320.87099, 181810.80295), (528327.95867, 181743.58574),
+                        (528328.94676, 181736.07904)])},
     })
     return n
 
@@ -95,19 +117,23 @@ def test_SpatialTree_adds_links(network):
     assert_semantically_equal(list(spatial_tree.edges(data=True)), [('link_1', 'link_2', {}), ('link_1', 'link_3', {}),
                                                                     ('link_2', 'link_4', {}), ('link_3', 'link_4', {}),
                                                                     ('link_4', 'link_2', {}), ('link_4', 'link_3', {})])
-    assert_semantically_equal(dict(spatial_tree.nodes(data=True)), {})
+    assert_semantically_equal(dict(spatial_tree.nodes(data=True)),
+                              {'link_1': {}, 'link_2': {}, 'link_3': {}, 'link_4': {}})
 
 
 def test_SpatialTree_closest_links(network):
     spatial_tree = spatial.SpatialTree(network)
-    stops = GeoDataFrame({'stop': ['stop_1', 'stop_2', 'stop_3'],
-                          'geometry': [Point(1.5, 2), Point(2.9, 2.8), Point(1.1, 0.8)]})
-    stops.crs = {'init': 'epsg:27700'}
-    stops = stops.to_crs("EPSG:4326")
+    stops = GeoDataFrame({'stop': ['stop_10m_to_link_1', 'stop_20m_to_link_1', 'stop_15m_to_link_2'],
+                          'geometry': [Point(-0.15186089346604492, 51.51950409732838),
+                                       Point(-0.1520233977548685, 51.51952913606585),
+                                       Point(-0.15164747576623197, 51.520660715220636)]})
+    stops.crs = {'init': 'epsg:4326'}
 
-    assert_semantically_equal(spatial_tree.find_closest_links(stops, 100, mode='car'),
-                              {'stop_1': ['link_1', 'link_2', 'link_4'], 'stop_2': ['link_1', 'link_2', 'link_4'],
-                               'stop_3': ['link_1', 'link_2', 'link_4']})
+    closest_links = spatial_tree.find_closest_links(stops, 30, mode='car')
+    assert_semantically_equal(closest_links,
+                              {'stop_10m_to_link_1': ['link_1'],
+                               'stop_20m_to_link_1': ['link_1'],
+                               'stop_15m_to_link_2': ['link_2', 'link_4']})
 
 
 def test_SpatialTree_shortest_paths(network):
