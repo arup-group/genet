@@ -182,7 +182,7 @@ def parse_routes(response, path_polyline):
 
 def parse_results(api_requests):
     """
-    Goes through all api requests, parses results to output_dir
+    Goes through all api requests and parses results
     :param api_requests: generated and 'sent' api requests
     :return:
     """
