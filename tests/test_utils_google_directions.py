@@ -6,6 +6,7 @@ import time
 import os
 import sys
 from requests.models import Response
+from concurrent.futures._base import Future
 from requests_futures.sessions import FuturesSession
 from genet.utils import google_directions
 from genet.utils import secrets_vault
@@ -299,19 +300,19 @@ def bad_request_google_directions_api_response():
     return response
 
 
-def test_send_requests_for_road_network(mocker, tmpdir, generated_request):
-    mocker.patch.object(google_directions, 'generate_requests', return_value=generated_request)
+def test_send_requests_for_road_network(mocker, tmpdir, generated_request, google_directions_api_response):
+    mocker.patch.object(google_directions, 'generate_requests', return_value={('107316', '107352'): generated_request})
     mocker.patch.object(google_directions, 'send_requests',
-                        return_value={**generated_request,
-                                      **{'request': google_directions_api_response, 'timestamp': 12345}})
-    mocker.patch.object(google_directions, 'parse_results', return_value={})
+                        return_value={('107316', '107352'): {**generated_request,
+                                                             **{'request': Future(), 'timestamp': 12345}}})
+    mocker.patch.object(Future, 'result', return_value=google_directions_api_response)
+
 
     n = Network('epsg:27700')
     google_directions.send_requests_for_network(n, 10, tmpdir)
     google_directions.generate_requests.assert_called_once_with(n)
     google_directions.send_requests.assert_called_once_with(google_directions.generate_requests.return_value, None,
                                                             None, None, False)
-    google_directions.parse_results.assert_called_once_with(google_directions.send_requests.return_value, tmpdir)
 
 
 def test_read_saved_api_results():
@@ -452,7 +453,7 @@ def test_parse_results(mocker, tmpdir, generated_request, google_directions_api_
     api_requests[o_d]['request'] = request
     api_requests[o_d]['timestamp'] = 12345
 
-    api_requests = google_directions.parse_results(api_requests, tmpdir)
+    api_requests = google_directions.parse_results(api_requests)
     assert_semantically_equal(api_requests, {('107316', '107352'): {
         'path_nodes': ['107316', '2440643031', '4307345276', '107317', '4307345495', '4307345497', '25495448',
                        '2503102618', '107351', '5411344775', '2440651577', '2440651556', '2440651552', '107352'],
@@ -526,10 +527,10 @@ def test_saved_results_appear_in_directory(tmpdir, generated_request):
     api_requests[o_d]['parsed_response'] = {'google_speed': 3.7183098591549295,
                                             'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}
 
-    expected_file_path = os.path.join(tmpdir, '12345_ahmyHzvYkCvCuCdDcBrB.pickle')
+    expected_file_path = os.path.join(tmpdir, 'api_requests.json')
 
     assert not os.path.exists(expected_file_path)
-    google_directions.pickle_result(api_requests[o_d], tmpdir)
+    google_directions.dump_all_api_requests_to_json(api_requests[o_d], tmpdir)
     assert os.path.exists(expected_file_path)
 
 
