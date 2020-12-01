@@ -453,7 +453,7 @@ def test_parse_results(mocker, tmpdir, generated_request, google_directions_api_
     api_requests[o_d]['request'] = request
     api_requests[o_d]['timestamp'] = 12345
 
-    api_requests = google_directions.parse_results(api_requests, tmpdir)
+    api_requests = google_directions.parse_results(api_requests)
     assert_semantically_equal(api_requests, {('107316', '107352'): {
         'path_nodes': ['107316', '2440643031', '4307345276', '107317', '4307345495', '4307345497', '25495448',
                        '2503102618', '107351', '5411344775', '2440651577', '2440651556', '2440651552', '107352'],

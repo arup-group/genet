@@ -1,6 +1,6 @@
 import yaml
 import logging
-#import osmread
+import osmread
 from pyproj import Transformer
 from math import ceil
 
