@@ -403,7 +403,7 @@ def test_attempt_to_simplify_already_simplified_network_throws_error():
     assert "cannot simplify" in str(error_info.value)
 
 
-def test_simplifing_puma_network():
+def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_expected_graph_data():
     n = Network('epsg:27700')
     n.read_matsim_network(puma_network_test_file)
     n.read_matsim_schedule(puma_schedule_test_file)
@@ -450,10 +450,6 @@ def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_
                                                                         schedule_dtd.error_log.filter_from_errors())
 
 
-def has_attribute(x):
-    return True
-
-
 def test_reading_back_simplified_network():
     # simplified networks have additional geometry attribute and some of their attributes are composite, e.g. links
     # now refer to a number of osm ways each with a unique id
@@ -463,7 +459,7 @@ def test_reading_back_simplified_network():
 
     number_of_simplified_links = 659
 
-    links_with_geometry = graph_operations.extract_links_on_edge_attributes(n, conditions={'geometry': has_attribute})
+    links_with_geometry = graph_operations.extract_links_on_edge_attributes(n, conditions={'geometry': lambda x: True})
 
     assert len(links_with_geometry) == number_of_simplified_links
 

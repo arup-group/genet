@@ -23,9 +23,9 @@ def check_link_attributes(link_attribs):
             attribs_to_delete = []
             for attrib, value in link_attribs['attributes'].items():
                 try:
-                    name = link_attribs['attributes'][attrib]['name']  # noqa: F841
-                    cl = link_attribs['attributes'][attrib]['class']  # noqa: F841
-                    text = link_attribs['attributes'][attrib]['text']  # noqa: F841
+                    link_attribs['attributes'][attrib]['name']
+                    link_attribs['attributes'][attrib]['class']
+                    link_attribs['attributes'][attrib]['text']
                 except Exception as e:
                     logging.warning(f'Attempt to access required keys in link data under "attributes:{attrib}" key '
                                     f'resulted in {type(e)} with message "{e}".')
