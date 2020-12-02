@@ -1,20 +1,13 @@
 import logging
 import os
 from lxml import etree
+from copy import deepcopy
 from pyproj import Proj, Transformer
 from genet.outputs_handler import matsim_xml_values
+from genet.outputs_handler import sanitiser
 from genet.validate.network_validation import validate_link_data
-from genet.utils.spatial import change_proj
+from genet.utils.spatial import change_proj, encode_shapely_linestring_to_polyline
 from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES, ADDITIONAL_STOP_FACILITY_ATTRIBUTES
-
-
-def sanitise_dictionary_for_xml(d):
-    for k, v in d.items():
-        if isinstance(v, list):
-            d[k] = ','.join(v)
-        if isinstance(v, (int, float)):
-            d[k] = str(v)
-    return d
 
 
 def delete_redundant_link_attributes_for_xml(d):
@@ -24,6 +17,48 @@ def delete_redundant_link_attributes_for_xml(d):
     return d
 
 
+def check_link_attributes(link_attribs):
+    if 'attributes' in link_attribs:
+        if isinstance(link_attribs['attributes'], dict):
+            attribs_to_delete = []
+            for attrib, value in link_attribs['attributes'].items():
+                try:
+                    link_attribs['attributes'][attrib]['name']
+                    link_attribs['attributes'][attrib]['class']
+                    link_attribs['attributes'][attrib]['text']
+                except Exception as e:
+                    logging.warning(f'Attempt to access required keys in link data under "attributes:{attrib}" key '
+                                    f'resulted in {type(e)} with message "{e}".')
+                    attribs_to_delete.append(attrib)
+            for attrib in attribs_to_delete:
+                logging.warning(f'Deleting {attrib} under key "attributes"')
+                del link_attribs['attributes'][attrib]
+            if not link_attribs['attributes']:
+                logging.warning(f'Attributes on link are not formatted correctly and will be deleted: {link_attribs}')
+                del link_attribs['attributes']
+        else:
+            logging.warning(f'Attributes on link are not a dictionary: {link_attribs}')
+            del link_attribs['attributes']
+    return link_attribs
+
+
+def prepare_link_attributes(link_attribs):
+    link_attributes = check_link_attributes(link_attribs)
+    if 'geometry' in link_attributes:
+        geom_attribute = {
+            'name': 'geometry',
+            'class': 'java.lang.String',
+            'text': encode_shapely_linestring_to_polyline(link_attributes['geometry'])
+        }
+        if 'attributes' in link_attributes:
+            link_attributes['attributes']['geometry'] = geom_attribute
+        else:
+            link_attributes['attributes'] = {'geometry': geom_attribute}
+    link_attributes = delete_redundant_link_attributes_for_xml(link_attributes)
+    validate_link_data(link_attributes)
+    return link_attributes
+
+
 def write_matsim_network(output_dir, network):
     fname = os.path.join(output_dir, "network.xml")
     logging.info('Writing {}'.format(fname))
@@ -31,6 +66,13 @@ def write_matsim_network(output_dir, network):
     with open(fname, "wb") as f, etree.xmlfile(f, encoding='utf-8') as xf:
         xf.write_declaration(doctype='<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v2.dtd">')
         with xf.element("network"):
+            if network.graph.graph:
+                with xf.element("attributes"):
+                    for key in set(network.graph.graph.keys()) - {'name'}:
+                        rec = etree.Element("attribute", {'name': key, 'class': 'java.lang.String'})
+                        rec.text = str(network.graph.graph[key])
+                        xf.write(rec)
+
             with xf.element("nodes"):
                 for node_id, node_attributes in network.nodes():
                     node_attrib = {'id': str(node_id), 'x': str(node_attributes['x']), 'y': str(node_attributes['y'])}
@@ -38,20 +80,20 @@ def write_matsim_network(output_dir, network):
 
             links_attribs = {'capperiod': '01:00:00', 'effectivecellsize': '7.5', 'effectivelanewidth': '3.75'}
             with xf.element("links", links_attribs):
-                for link_id, link_attributes in network.links():
-                    link_attributes = delete_redundant_link_attributes_for_xml(link_attributes)
-                    validate_link_data(link_attributes)
+                for link_id, link_attribs in network.links():
+                    link_attributes = prepare_link_attributes(deepcopy(link_attribs))
                     if 'attributes' in link_attributes:
                         attributes = link_attributes.pop('attributes')
-                        with xf.element("link", sanitise_dictionary_for_xml(link_attributes)):
+                        with xf.element("link", sanitiser.sanitise_dictionary_for_xml(link_attributes)):
                             with xf.element("attributes"):
                                 for k, attrib in attributes.items():
+                                    attrib = sanitiser.sanitise_dictionary_for_xml(attrib)
                                     text = attrib.pop('text')
                                     rec = etree.Element("attribute", attrib)
                                     rec.text = text
                                     xf.write(rec)
                     else:
-                        xf.write(etree.Element("link", sanitise_dictionary_for_xml(link_attributes)))
+                        xf.write(etree.Element("link", sanitiser.sanitise_dictionary_for_xml(link_attributes)))
 
 
 def write_matsim_schedule(output_dir, schedule, epsg=''):

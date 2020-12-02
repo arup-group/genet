@@ -5,12 +5,15 @@ import uuid
 import pandas as pd
 import networkx as nx
 import pytest
+import lxml
 from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
     full_fat_default_config_path, correct_schedule
+from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.inputs_handler import matsim_reader
 from genet.core import Network
 from genet.schedule_elements import Route, Service, Schedule
+from genet.utils import graph_operations
 from genet.utils import plot
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -18,6 +21,16 @@ pt2matsim_network_test_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network.xml"))
 pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
+
+puma_network_test_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "puma", "network.xml"))
+puma_schedule_test_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "puma", "schedule.xml"))
+
+simplified_network = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "simplified_network", "network.xml"))
+simplified_schedule = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "simplified_network", "schedule.xml"))
 
 
 @pytest.fixture()
@@ -106,6 +119,11 @@ def network2():
                                                          'class': 'java.lang.String',
                                                          'text': 'Brunswick Place'}}})
     return n2
+
+
+def test_network_graph_initiates_as_not_simplififed():
+    n = Network('epsg:27700')
+    assert not n.graph.graph['simplified']
 
 
 def test__repr__shows_graph_info_and_schedule_info():
@@ -338,6 +356,16 @@ def test_adding_disjoint_networks_with_clashing_ids():
     assert n_left.link('1') == {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}
 
 
+def test_adding_simplified_network_and_not_throws_error():
+    n = Network('epsg:2770')
+    m = Network('epsg:2770')
+    m.graph.graph['simplified'] = True
+
+    with pytest.raises(RuntimeError) as error_info:
+        n.add(m)
+    assert "cannot add" in str(error_info.value)
+
+
 def test_print_shows_info(mocker):
     mocker.patch.object(Network, 'info')
     n = Network('epsg:27700')
@@ -364,6 +392,84 @@ def test_plot_schedule_delegates_to_util_plot_plot_non_routed_schedule_graph(moc
     n = network_object_from_test_data
     n.plot_schedule()
     plot.plot_non_routed_schedule_graph.assert_called_once()
+
+
+def test_attempt_to_simplify_already_simplified_network_throws_error():
+    n = Network('epsg:27700')
+    n.graph.graph["simplified"] = True
+
+    with pytest.raises(RuntimeError) as error_info:
+        n.simplify()
+    assert "cannot simplify" in str(error_info.value)
+
+
+def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_expected_graph_data():
+    n = Network('epsg:27700')
+    n.read_matsim_network(puma_network_test_file)
+    n.read_matsim_schedule(puma_schedule_test_file)
+
+    link_ids_pre_simplify = set(dict(n.links()).keys())
+
+    n.simplify()
+
+    assert n.graph.graph["simplified"]
+
+    link_ids_post_simplify = set(dict(n.links()).keys())
+
+    assert link_ids_post_simplify & link_ids_pre_simplify
+    new_links = link_ids_post_simplify - link_ids_pre_simplify
+    deleted_links = link_ids_pre_simplify - link_ids_post_simplify
+    assert set(n.link_simplification_map.keys()) == deleted_links
+    assert set(n.link_simplification_map.values()) == new_links
+    assert (set(n.link_id_mapping.keys()) & new_links) == new_links
+
+    report = n.generate_validation_report()
+
+    assert report['routing']['services_have_routes_in_the_graph']
+
+
+def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_dtd):
+    n = Network('epsg:27700')
+    n.read_matsim_network(puma_network_test_file)
+    n.read_matsim_schedule(puma_schedule_test_file)
+
+    n.simplify()
+
+    n.write_to_matsim(tmpdir)
+
+    generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+    xml_obj = lxml.etree.parse(generated_network_file_path)
+    assert network_dtd.validate(xml_obj), \
+        'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
+                                                                        network_dtd.error_log.filter_from_errors())
+
+    generated_schedule_file_path = os.path.join(tmpdir, 'schedule.xml')
+    xml_obj = lxml.etree.parse(generated_schedule_file_path)
+    assert schedule_dtd.validate(xml_obj), \
+        'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
+                                                                        schedule_dtd.error_log.filter_from_errors())
+
+
+def test_reading_back_simplified_network():
+    # simplified networks have additional geometry attribute and some of their attributes are composite, e.g. links
+    # now refer to a number of osm ways each with a unique id
+    n = Network('epsg:27700')
+    n.read_matsim_network(simplified_network)
+    n.read_matsim_schedule(simplified_schedule)
+
+    number_of_simplified_links = 659
+
+    links_with_geometry = graph_operations.extract_links_on_edge_attributes(n, conditions={'geometry': lambda x: True})
+
+    assert len(links_with_geometry) == number_of_simplified_links
+
+    for link in links_with_geometry:
+        attribs = n.link(link)
+        if 'attributes' in attribs:
+            assert not 'geometry' in attribs['attributes']
+            for k, v in attribs['attributes'].items():
+                if isinstance(v['text'], str):
+                    assert not ',' in v['text']
 
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
@@ -536,12 +642,12 @@ def test_adding_multiple_edges():
     n.add_edges([{'from': 1, 'to': 2}, {'from': 2, 'to': 3}])
     assert n.graph.has_edge(1, 2)
     assert n.graph.has_edge(2, 3)
+    assert '0' in n.link_id_mapping
     assert '1' in n.link_id_mapping
-    assert '2' in n.link_id_mapping
-    if n.link_id_mapping['1'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}:
-        assert n.link_id_mapping['2'] == {'from': 2, 'to': 3, 'multi_edge_idx': 0}
-    elif n.link_id_mapping['2'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}:
+    if n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}:
         assert n.link_id_mapping['1'] == {'from': 2, 'to': 3, 'multi_edge_idx': 0}
+    elif n.link_id_mapping['1'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}:
+        assert n.link_id_mapping['0'] == {'from': 2, 'to': 3, 'multi_edge_idx': 0}
     else:
         raise AssertionError()
 
@@ -682,16 +788,43 @@ def test_adding_multiple_links_missing_to_nodes_completely():
     assert "You are trying to add links which are missing `to` (destination) nodes" in str(error_info.value)
 
 
-def test_network_modal_subgraph_using_general_subgraph_on_link_attribs():
-    def modal_condition(modes_list):
-        return set(modes_list) & {'car'}
+def test_adding_links_with_different_non_overlapping_attributes():
+    # generates a nan attribute for link attributes
+    n = Network('epsg:27700')
+    reindexing_dict, links_and_attributes = n.add_links({
+        '2': {'from': 1, 'to': 2, 'speed': 20},
+        '3': {'from': 1, 'to': 2, 'capacity': 123},
+        '4': {'from': 2, 'to': 3, 'modes': [1, 2, 3]}})
 
+    assert reindexing_dict == {}
+    assert_semantically_equal(links_and_attributes, {
+        '2': {'id': '2', 'from': 1, 'to': 2, 'speed': 20},
+        '3': {'id': '3', 'from': 1, 'to': 2, 'capacity': 123},
+        '4': {'id': '4', 'from': 2, 'to': 3, 'modes': [1, 2, 3]}})
+
+
+def test_adding_multiple_links_to_same_edge_clashing_with_existing_edge():
+    n = Network('epsg:27700')
+    n.add_link(link_id='0', u='2', v='2', attribs={'speed': 20})
+
+    n.add_links({'1': {'from': '2', 'to': '2', 'something': 20},
+                 '2': {'from': '2', 'to': '2', 'capacity': 123}})
+
+    assert_semantically_equal(dict(n.links()), {'0': {'speed': 20, 'from': '2', 'to': '2', 'id': '0'},
+                                                '1': {'from': '2', 'to': '2', 'something': 20.0, 'id': '1'},
+                                                '2': {'from': '2', 'to': '2', 'capacity': 123.0, 'id': '2'}})
+    assert_semantically_equal(n.link_id_mapping, {'0': {'from': '2', 'to': '2', 'multi_edge_idx': 0},
+                                                  '1': {'from': '2', 'to': '2', 'multi_edge_idx': 1},
+                                                  '2': {'from': '2', 'to': '2', 'multi_edge_idx': 2}})
+
+
+def test_network_modal_subgraph_using_general_subgraph_on_link_attribs():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike']})
     n.add_link('1', 2, 3, attribs={'modes': ['car']})
     n.add_link('2', 2, 3, attribs={'modes': ['bike']})
 
-    car_graph = n.subgraph_on_link_conditions(conditions={'modes': modal_condition})
+    car_graph = n.subgraph_on_link_conditions(conditions={'modes': 'car'}, mixed_dtypes=True)
     assert list(car_graph.edges) == [(1, 2, 0), (2, 3, 0)]
 
 
@@ -1321,7 +1454,7 @@ def test_schedule_routes(network_object_from_test_data):
 def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
     n = network_object_from_test_data
     n.schedule['10314']._routes['1'] = Route(arrival_offsets=[], departure_offsets=[], mode='bus', trips={},
-                                            route_short_name='', stops=[])
+                                             route_short_name='', stops=[])
     assert set(n.schedule.service_ids()) == {'10314'}
     correct_routes = [['25508485', '21667818']]
     routes = n.schedule_routes_nodes()
@@ -1754,28 +1887,25 @@ def test_generating_n_indicies_for_nodes():
 def test_generate_index_for_edge_gives_next_integer_string_when_you_have_matsim_usual_integer_index():
     n = Network('epsg:27700')
     n.link_id_mapping = {'1': {}, '2': {}}
-    assert n.generate_index_for_edge() == '3'
+    new_idx = n.generate_index_for_edge()
+    assert isinstance(new_idx, str)
+    assert new_idx not in ['1', '2']
 
 
 def test_generate_index_for_edge_gives_string_based_on_length_link_id_mapping_when_you_have_mixed_index():
     n = Network('epsg:27700')
     n.link_id_mapping = {'1': {}, 'x2': {}}
-    assert n.generate_index_for_edge() == '3'
+    new_idx = n.generate_index_for_edge()
+    assert isinstance(new_idx, str)
+    assert new_idx not in ['1', 'x2']
 
 
 def test_generate_index_for_edge_gives_string_based_on_length_link_id_mapping_when_you_have_all_non_int_index():
     n = Network('epsg:27700')
     n.link_id_mapping = {'1x': {}, 'x2': {}}
-    assert n.generate_index_for_edge() == '3'
-
-
-def test_generate_index_for_edge_gives_uuid4_as_last_resort(mocker):
-    mocker.patch.object(uuid, 'uuid4')
-    n = Network('epsg:27700')
-    n.add_link('1x', 1, 2)
-    n.add_link('3', 1, 2)
-    n.generate_index_for_edge()
-    uuid.uuid4.assert_called_once()
+    new_idx = n.generate_index_for_edge()
+    assert isinstance(new_idx, str)
+    assert new_idx not in ['1x', 'x2']
 
 
 def test_index_graph_edges_generates_completely_new_index():
@@ -1788,9 +1918,11 @@ def test_index_graph_edges_generates_completely_new_index():
 
 def test_generating_n_indicies_for_edges():
     n = Network('epsg:27700')
-    n.add_links({str(i): {'from': 0, 'to': 1} for i in range(10)})
-    idxs = n.generate_indices_for_n_edges(5)
-    assert len(idxs) == 5
+    n.add_links({str(i): {'from': 0, 'to': 1} for i in range(11)})
+    idxs = n.generate_indices_for_n_edges(7)
+    assert len(idxs) == 7
+    for i in idxs:
+        assert isinstance(i, str)
     assert not set(n.link_id_mapping.keys()) & idxs
 
 

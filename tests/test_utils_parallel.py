@@ -35,7 +35,7 @@ def test_split_dict_returns_list_with_one_dict_with_one_process():
     assert patitioned_dict == [dict_to_be_partitioned]
 
 
-def test_split_dict_returns_correctly_partitioned_lists():
+def test_split_dict_returns_correctly_partitioned_dicts():
     dict_to_be_partitioned = dict(zip(range(10), [str(2*i) for i in range(10)]))
     patitioned_dict = parallel.split_dict(dict_to_be_partitioned, processes=3)
 

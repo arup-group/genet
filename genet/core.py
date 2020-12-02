@@ -17,9 +17,10 @@ import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
 import genet.utils.dict_support as dict_support
-import genet.validate.network_validation as network_validation
 import genet.utils.plot as plot
+import genet.utils.simplification as simplification
 import genet.schedule_elements as schedule_elements
+import genet.validate.network_validation as network_validation
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -28,7 +29,7 @@ class Network:
     def __init__(self, epsg):
         self.epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
-        self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg})
+        self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg}, simplified=False)
         self.schedule = schedule_elements.Schedule(epsg)
         self.change_log = change_log.ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
@@ -45,11 +46,15 @@ class Network:
 
     def add(self, other):
         """
+        This let's you add on `other` genet.Network to the network this method is called on.
         This is deliberately not a magic function to discourage `new_network = network_1 + network_2` (and memory
         goes out the window)
         :param other:
         :return:
         """
+        if self.graph.graph['simplified'] != other.graph.graph['simplified']:
+            raise RuntimeError('You cannot add simplified and non-simplified networks together')
+
         # consolidate coordinate systems
         if other.epsg != self.epsg:
             logging.info(f'Attempting to merge two networks in different coordinate systems. '
@@ -145,6 +150,13 @@ class Network:
             self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
         else:
             self.transformer = None
+
+    def simplify(self, no_processes=1):
+        if self.graph.graph["simplified"]:
+            raise RuntimeError('This network has already been simplified. You cannot simplify the graph twice.')
+        simplification.simplify_graph(self, no_processes)
+        # mark graph as having been simplified
+        self.graph.graph["simplified"] = True
 
     def node_attribute_summary(self, data=False):
         """
@@ -282,7 +294,6 @@ class Network:
         self.graph.add_nodes_from([(node_id, attribs) for node_id, attribs in nodes_and_attribs_to_add.items()])
         self.change_log.add_bunch(object_type='node', id_bunch=list(nodes_and_attribs_to_add.keys()),
                                   attributes_bunch=list(nodes_and_attribs_to_add.values()))
-
         logging.info(f'Added {len(nodes_and_attribs)} nodes')
         return reindexing_dict, nodes_and_attribs_to_add
 
@@ -407,6 +418,10 @@ class Network:
                 return group
 
             clashing_multi_idxs = _df[_df['id_in_graph'].notna()]['id_to_add']
+            df_clashing_midx = _df[_df['id_to_add'].isin(clashing_multi_idxs)]
+            clashing_multi_idxs = \
+                _df[_df['from'].isin(df_clashing_midx['from']) & _df['to'].isin(df_clashing_midx['to'])]['id_to_add']
+
             df_links.loc[df_links['id'].isin(clashing_multi_idxs)] = df_links[
                 df_links['id'].isin(clashing_multi_idxs)].groupby(['from', 'to']).apply(generate_unique_multi_idx)
 
@@ -425,7 +440,8 @@ class Network:
         # end with updated links_and_attributes dict
         add_to_link_id_mapping = df_links[['from', 'to', 'multi_edge_idx']].T.to_dict()
         df_links = df_links.drop('multi_edge_idx', axis=1)
-        links_and_attributes = df_links.T.to_dict()
+        links_and_attributes = {_id: {k: v for k, v in m.items() if dict_support.notna(v)} for _id, m in
+                                df_links.T.to_dict().items()}
 
         # update link_id_mapping
         self.link_id_mapping = {**self.link_id_mapping, **add_to_link_id_mapping}
@@ -476,13 +492,14 @@ class Network:
         if not silent:
             logging.info(f'Changed Link index from {link_id} to {new_link_id}')
 
-    def subgraph_on_link_conditions(self, conditions):
+    def subgraph_on_link_conditions(self, conditions, mixed_dtypes=True):
         """
         Gives a subgraph of network.graph based on matching conditions defined in conditions
-        :param conditions as describen in graph_operations.extract_links_on_edge_attributes
+        :param conditions as described in graph_operations.extract_links_on_edge_attributes
+        :param mixed_dtypes as described in graph_operations.extract_links_on_edge_attributes
         :return:
         """
-        links = graph_operations.extract_links_on_edge_attributes(self, conditions)
+        links = graph_operations.extract_links_on_edge_attributes(self, conditions, mixed_dtypes=mixed_dtypes)
         edges_for_sub = [
             (self.link_id_mapping[link]['from'],
              self.link_id_mapping[link]['to'],
@@ -504,15 +521,7 @@ class Network:
         return modes
 
     def modal_subgraph(self, modes: Union[str, list]):
-        if isinstance(modes, str):
-            modes = {modes}
-        else:
-            modes = set(modes)
-
-        def modal_condition(modes_list):
-            return set(modes_list) & modes
-
-        return self.subgraph_on_link_conditions(conditions={'modes': modal_condition})
+        return self.subgraph_on_link_conditions(conditions={'modes': modes}, mixed_dtypes=True)
 
     def find_shortest_path(self, from_node, to_node, modes: Union[str, list] = None, subgraph: nx.MultiDiGraph = None,
                            return_nodes=False):
@@ -726,7 +735,7 @@ class Network:
 
     def apply_function_to_links(self, function, location: str):
         """
-        Applies function to node attributes dictionary
+        Applies function to link attributes dictionary
         :param function: function of node attributes dictionary returning a value that should be stored
         under `location`
         :param location: where to save the results: string defining the key in the nodes attributes dictionary
@@ -756,12 +765,12 @@ class Network:
         self.change_log.remove(object_type='node', object_id=node_id, object_attributes=self.node(node_id))
         self.graph.remove_node(node_id)
         if not silent:
-            logging.info(f'Removed node under index: {node_id}')
+            logging.info(f'Removed Node under index: {node_id}')
 
     def remove_nodes(self, nodes):
         """
         Removes several nodes and all adjacent edges
-        :param nodes:
+        :param nodes: list or set
         :return:
         """
         self.change_log.remove_bunch(object_type='node', id_bunch=nodes,
@@ -786,7 +795,7 @@ class Network:
     def remove_links(self, links):
         """
         Removes the multi edges pertaining to links given
-        :param links:
+        :param links: set or list
         :return:
         """
         self.change_log.remove_bunch(object_type='link', id_bunch=links,
@@ -921,10 +930,10 @@ class Network:
             logging.info(f'Link with id {link_id} is not in the network.')
             return False
 
-    def has_links(self, link_ids: list, conditions: Union[list, dict] = None):
+    def has_links(self, link_ids: list, conditions: Union[list, dict] = None, mixed_dtypes=True):
         """
-        Whether the Network contains the links given in the link_ids list. If attribs is specified, checks whether the
-        Network contains the links specified and those links match the attributes in the attribs dict.
+        Whether the Network contains the links given in the link_ids list. If conditions is specified, checks whether
+        the Network contains the links specified and those links match the attributes in the conditions dict.
         :param link_ids: list of link ids e.g. ['1', '102']
         :param conditions: confer graph_operations.Filter conditions
         :return:
@@ -933,7 +942,7 @@ class Network:
         if not conditions:
             return has_all_links
         elif has_all_links:
-            filter = graph_operations.Filter(conditions, how=any)
+            filter = graph_operations.Filter(conditions, how=any, mixed_dtypes=mixed_dtypes)
             links_satisfy = [link_id for link_id in link_ids if filter.satisfies_conditions(self.link(link_id))]
             return set(links_satisfy) == set(link_ids)
         else:
@@ -1002,30 +1011,29 @@ class Network:
         return False
 
     def generate_index_for_edge(self, avoid_keys: Union[list, set] = None, silent: bool = False):
-        existing_keys = set(self.link_id_mapping.keys())
-        if avoid_keys:
-            existing_keys = existing_keys | set(avoid_keys)
-        try:
-            id = max([int(i) for i in existing_keys]) + 1
-        except ValueError:
-            id = len(existing_keys) + 1
-        if (id in existing_keys) or (str(id) in existing_keys):
-            id = uuid.uuid4()
+        _id = list(self.generate_indices_for_n_edges(n=1, avoid_keys=avoid_keys))[0]
         if not silent:
-            logging.info(f'Generated link id {id}.')
-        return str(id)
+            logging.info(f'Generated link id {_id}.')
+        return str(_id)
 
     def generate_indices_for_n_edges(self, n, avoid_keys: Union[list, set] = None):
         existing_keys = set(self.link_id_mapping.keys())
         if avoid_keys:
             existing_keys = existing_keys | set(avoid_keys)
-        try:
-            id_set = set([str(max([int(i) for i in existing_keys]) + j) for j in range(1, n + 1)])
-        except ValueError:
-            id_set = set([str(len(existing_keys) + j) for j in range(1, n + 1)])
-        if id_set & existing_keys:
-            id_set = id_set - existing_keys
-            id_set = id_set | set([str(uuid.uuid4()) for i in range(n - len(id_set))])
+        id_set = set(map(str, range(n))) - existing_keys
+        _max = 0
+
+        while len(id_set) != n:
+            try:
+                _max = max(map(int, id_set))
+            except ValueError:
+                if not _max:
+                    _max = n
+                else:
+                    _max += n
+            missing_ns = n - len(id_set)
+            id_set |= set(map(str, range(_max + 1, _max + missing_ns + 1))) - existing_keys
+
         logging.info(f'Generated {len(id_set)} link ids.')
         return id_set
 
@@ -1051,12 +1059,9 @@ class Network:
             return 'Division by zero'
 
     def is_valid_network_route(self, route: schedule_elements.Route):
-        def modal_condition(modes_list):
-            return set(modes_list) & {route.mode}
-
         if self.has_links(route.route):
             valid_link_chain = self.has_valid_link_chain(route.route)
-            links_have_correct_modes = self.has_links(route.route, {'modes': modal_condition})
+            links_have_correct_modes = self.has_links(route.route, {'modes': route.mode}, mixed_dtypes=True)
             if not links_have_correct_modes:
                 logging.info(f'Some link ids in Route: {route.id} don\'t accept the route\'s mode: {route.mode}')
             return valid_link_chain and links_have_correct_modes
@@ -1176,6 +1181,8 @@ class Network:
             matsim_reader.read_network(path, self.transformer)
         self.graph.graph['name'] = 'Network graph'
         self.graph.graph['crs'] = {'init': self.epsg}
+        if 'simplified' not in self.graph.graph:
+            self.graph.graph['simplified'] = False
 
         for node_id, duplicated_node_attribs in duplicated_nodes.items():
             for duplicated_node_attrib in duplicated_node_attribs:

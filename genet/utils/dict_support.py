@@ -1,3 +1,5 @@
+import pandas as pd
+from numpy import ndarray
 
 
 def set_nested_value(d: dict, value: dict):
@@ -23,7 +25,7 @@ def set_nested_value(d: dict, value: dict):
 
 def merge_complex_dictionaries(d1, d2):
     """
-    Merges two dictionaries with where the values can be lists, sets or other dictionaries with the same behaviour.
+    Merges two dictionaries where the values can be lists, sets or other dictionaries with the same behaviour.
     If values are not list, set or dict then d2 values prevail
     :param d1:
     :param d2:
@@ -53,3 +55,10 @@ def combine_edge_data_lists(l1, l2):
     """
     edges = merge_complex_dictionaries({(u, v): dat for u, v, dat in l1}, {(u, v): dat for u, v, dat in l2})
     return [(u, v, dat) for (u, v), dat in edges.items()]
+
+
+def notna(value):
+    nn = pd.notna(value)
+    if isinstance(nn, ndarray):
+        return any(nn)
+    return nn

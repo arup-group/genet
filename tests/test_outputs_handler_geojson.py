@@ -1,6 +1,6 @@
 import os
 import pytest
-from genet.outputs_handler import geojson
+from genet.outputs_handler import geojson as gngeojson
 from genet import Network, Schedule, Service, Route, Stop
 from tests.fixtures import assert_semantically_equal, correct_schedule
 
@@ -22,7 +22,7 @@ def network(correct_schedule):
 
 
 def test_generating_network_graph_geodataframe(network):
-    nodes, links = geojson.generate_geodataframes(network.graph)
+    nodes, links = gngeojson.generate_geodataframes(network.graph)
     correct_nodes = {
         'x': {'0': 528704.1425925883, '1': 528804.1425925883},
         'y': {'0': 182068.78193707118, '1': 182168.78193707118}}
@@ -58,7 +58,7 @@ def test_generating_network_graph_geodataframe(network):
 
 
 def test_generating_schedule_graph_geodataframe(network):
-    nodes, links = geojson.generate_geodataframes(network.schedule.graph())
+    nodes, links = gngeojson.generate_geodataframes(network.schedule.graph())
     correct_nodes = {'services': {'0': ['service'], '1': ['service']},
                      'routes': {'0': ['1', '2'], '1': ['1', '2']},
                      'id': {'0': '0', '1': '1'}, 'x': {'0': 529455.7452394223, '1': 529350.7866124967},
@@ -95,8 +95,8 @@ def test_generating_schedule_graph_geodataframe(network):
 
 
 def test_modal_subset(network):
-    nodes, links = geojson.generate_geodataframes(network.graph)
-    car = links[links.apply(lambda x: geojson.modal_subset(x, {'car'}), axis=1)]
+    nodes, links = gngeojson.generate_geodataframes(network.graph)
+    car = links[links.apply(lambda x: gngeojson.modal_subset(x, {'car'}), axis=1)]
 
     assert len(car) == 1
     assert car.loc[0, 'modes'] == ['car', 'walk']

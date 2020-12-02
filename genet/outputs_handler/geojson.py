@@ -1,10 +1,10 @@
 import os
 import logging
 import osmnx as ox
-from geopandas import GeoDataFrame, GeoSeries
 from networkx import MultiDiGraph
 import genet.use.schedule as use_schedule
 import genet.utils.persistence as persistence
+import genet.outputs_handler.sanitiser as sanitiser
 
 
 def modal_subset(row, modes):
@@ -24,22 +24,9 @@ def generate_geodataframes(graph):
     return gdf_nodes, gdf_links
 
 
-def sanitise_geodataframe(gdf):
-    if isinstance(gdf, GeoSeries):
-        gdf = GeoDataFrame(gdf)
-    gdf = gdf.fillna('None')
-    object_columns = gdf.select_dtypes(['object']).columns
-    for col in object_columns:
-        if gdf[col].apply(lambda x: isinstance(x, list)).any():
-            gdf[col] = gdf[col].apply(lambda x: ','.join(x))
-        elif gdf[col].apply(lambda x: isinstance(x, dict)).any():
-            gdf[col] = gdf[col].apply(lambda x: str(x))
-    return gdf
-
-
 def save_geodataframe(gdf, filename, output_dir):
     if not gdf.empty:
-        gdf = sanitise_geodataframe(gdf)
+        gdf = sanitiser.sanitise_geodataframe(gdf)
         persistence.ensure_dir(output_dir)
         gdf.to_file(os.path.join(output_dir, filename), driver='GeoJSON')
 
