@@ -1050,17 +1050,17 @@ class Network:
             existing_keys = existing_keys | set(avoid_keys)
         id_set = set(map(str, range(n))) - existing_keys
         _max = 0
+        loop_no = 0
 
         while len(id_set) != n:
-            try:
-                _max = max(map(int, id_set))
-            except ValueError:
+            if loop_no > 0:
                 if not _max:
                     _max = n
                 else:
                     _max += n
             missing_ns = n - len(id_set)
             id_set |= set(map(str, range(_max + 1, _max + missing_ns + 1))) - existing_keys
+            loop_no += 1
 
         logging.info(f'Generated {len(id_set)} link ids.')
         return id_set
