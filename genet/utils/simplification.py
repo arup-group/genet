@@ -219,7 +219,7 @@ def simplify_graph(n, no_processes=1):
 
     logging.info('Adding new simplified links')
     # add links
-    reindexing_dict = n.add_links(links_to_add)[0]
+    reindexing_dict = n.add_links(links_to_add, ignore_change_log=True)[0]
 
     # generate link simplification map between old indices and new, add changelog event
     for old_id, new_id in reindexing_dict.items():
