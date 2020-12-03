@@ -140,7 +140,7 @@ def test_generating_standard_outputs(network, tmpdir):
                 routes=[Route(
                     route_short_name='RTR',
                     mode='rail',
-                    stops=[Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326'),
+                    stops=[Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326', name="I/love\_being//difficult"),
                            Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
                     trips={'RT1': '03:21:00', 'RT2': '03:31:00', 'RT3': '03:41:00', 'RT4': '03:51:00'},
                     arrival_offsets=['0:00:00', '0:02:00'],
@@ -170,7 +170,7 @@ def test_generating_standard_outputs(network, tmpdir):
                                                                                   'aggregate_vph_rail_RTR.png'}
 
     assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_stop'))) == {'aggregate_vph_rail_RSE.png',
-                                                                               'aggregate_vph_rail_RSN.png',
+                                                                               "aggregate_vph_rail_I_love__being__difficult.png",
                                                                                'aggregate_vph_bus_1.png',
                                                                                'aggregate_vph_bus_0.png'}
 

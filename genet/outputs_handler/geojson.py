@@ -114,7 +114,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
     persistence.ensure_dir(per_service_vph)
     for stop in schedule.stops():
         try:
-            name = stop.name
+            name = stop.name.replace("\\", "_").replace("/", "_")
         except AttributeError:
             name = stop.id
         _df = df[(df['from_stop'] == stop.id) | (df['to_stop'] == stop.id)]
