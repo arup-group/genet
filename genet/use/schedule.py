@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 import geopandas as gpd
+import numpy as np
 from matplotlib import pyplot as plt
 
 
@@ -45,11 +46,10 @@ def generate_trips_dataframe(schedule_element, route_ids=None, gtfs_day='1970010
     return df
 
 
-def generate_edge_vph_geodataframe(df, gdf_nodes, gdf_links):
+def generate_edge_vph_geodataframe(df, gdf_links):
     """
     Generates vehicles per hour for a trips dataframe
     :param df: trips dataframe
-    :param gdf_nodes: geodataframe containing nodes of the schedule (element) graph
     :param gdf_links: geodataframe containing links of the schedule (element) graph
     :return:
     """
@@ -66,37 +66,32 @@ def generate_edge_vph_geodataframe(df, gdf_nodes, gdf_links):
     df = pd.merge(gpd.GeoDataFrame(df), gdf_links[['u', 'v', 'geometry']], left_on=['from_stop', 'to_stop'],
                   right_on=['u', 'v'])
     cols_to_delete.extend(['u', 'v'])
-    if 'name' in gdf_nodes:
-        df = pd.merge(df, gdf_nodes[['id', 'name']], left_on='from_stop', right_on='id', how='left')
-        df = df.rename(columns={'name': 'from_stop_name'})
-        df = pd.merge(df, gdf_nodes[['id', 'name']], left_on='to_stop', right_on='id', how='left')
-        df = df.rename(columns={'name': 'to_stop_name'})
-        cols_to_delete.extend(['id_x', 'id_y'])
 
     df = df.drop(cols_to_delete, axis=1)
     return df
 
 
-def plot_vehicle_frequency_bar_chart(df, output_path):
+def vehicles_per_hour(df, aggregate_by: list, output_path=''):
     """
     Generates vehicles per hour for a trips dataframe
     :param df: trips dataframe
-    :param output_path: path for the plot with .jpeg, or .png extension
+    :param aggregate_by:
+    :param output_path: path for the frame with .csv extension
     :return:
     """
     df.loc[:, 'hour'] = df['departure_time'].dt.round("H")
     df.loc[:, 'hour'] = df['hour'].dt.hour
-    df = df.groupby(['hour', 'trip']).count().reset_index()
+    df = df.groupby(['hour', 'trip'] + aggregate_by).count().reset_index()
     df.loc[:, 'vph'] = 1
-    df = df.groupby('hour').sum().reset_index()
-    ax = pd.DataFrame(df).plot(
-        x='hour', y='vph', kind='bar', title=f"{os.path.basename(output_path).split('.')[0]}")
-    plt.savefig(output_path)
-    plt.close()
-    return ax
+    df = pd.pivot_table(df, values='vph', index=aggregate_by, columns=['hour'],
+                        aggfunc=np.sum).reset_index()
+    df = df.fillna(0)
+    if output_path:
+        df.to_csv(output_path)
+    return df
 
 
-def trips_per_day_per_service_csv(df, output_dir=''):
+def trips_per_day_per_service(df, output_dir=''):
     """
     Generates trips per day per service for a trips dataframe
     :param df: trips dataframe
@@ -110,7 +105,7 @@ def trips_per_day_per_service_csv(df, output_dir=''):
     return trips_per_day
 
 
-def trips_per_day_per_route_csv(df, output_dir=''):
+def trips_per_day_per_route(df, output_dir=''):
     """
     Generates trips per day per route for a trips dataframe
     :param df: trips dataframe

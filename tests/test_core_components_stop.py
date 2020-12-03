@@ -58,10 +58,9 @@ def test_info_shows_id_projection_and_lat_lon():
 
 
 def test_add_additional_attributes_to_stops():
-    a = Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')
-    a.add_additional_attributes({'isBlocking': True, 'name': 'Brunswick Place (Stop P)'})
+    a = Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700', name='Brunswick Place (Stop P)')
+    a.add_additional_attributes({'isBlocking': True})
 
-    assert a.name == 'Brunswick Place (Stop P)'
     assert a.isBlocking == True
 
 

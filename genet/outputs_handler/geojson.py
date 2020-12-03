@@ -53,14 +53,20 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
     logging.info('Generating geojson outputs for schedule')
     schedule_nodes, schedule_links = generate_geodataframes(schedule.graph())
     df = use_schedule.generate_trips_dataframe(schedule, gtfs_day=gtfs_day)
-    df['service_name'] = df['service'].apply(lambda x: schedule[x].name)
-    df['route_name'] = df['route'].apply(lambda x: schedule.route(x).route_short_name)
+    df['service_name'] = df['service'].apply(
+        lambda x: schedule[x].name.replace("\\", "_").replace("/", "_"))
+    df['route_name'] = df['route'].apply(
+        lambda x: schedule.route(x).route_short_name.replace("\\", "_").replace("/", "_"))
+    df['from_stop_name'] = df['from_stop'].apply(
+        lambda x: schedule.stop(x).name.replace("\\", "_").replace("/", "_"))
+    df['to_stop_name'] = df['to_stop'].apply(
+        lambda x: schedule.stop(x).name.replace("\\", "_").replace("/", "_"))
     df_all_modes_vph = None
 
     graph_mode_map = schedule.mode_graph_map()
     for mode in schedule.modes():
         logging.info(f'Generating vehicles per hour for {mode}')
-        df_vph = use_schedule.generate_edge_vph_geodataframe(df[df['mode'] == mode], schedule_nodes, schedule_links)
+        df_vph = use_schedule.generate_edge_vph_geodataframe(df[df['mode'] == mode], schedule_links)
         save_geodataframe(
             df_vph,
             filename=f'vehicles_per_hour_{mode}.geojson',
@@ -97,38 +103,25 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
             filename=f'vehicles_per_hour_all_modes_within_{h-1}:30-{h}:30.geojson',
             output_dir=output_dir)
 
-    logging.info('Generating aggregate vehicles per hour for each service')
-    per_service_vph = os.path.join(output_dir, 'aggregate_vph_per_service')
-    persistence.ensure_dir(per_service_vph)
-    for service_id, service in schedule.services.items():
-        if service.name:
-            name = service.name
-        else:
-            name = service_id
-        name = name.replace("\\", "_").replace("/", "_")
-        _df = df[df['service'] == service_id]
-        modes = '_'.join(list(_df['mode'].unique()))
-        use_schedule.plot_vehicle_frequency_bar_chart(
-            _df,
-            os.path.join(per_service_vph, f'aggregate_vph_{modes}_{name}.png'))
-    logging.info('Generating csv for aggregate trips per day')
-    use_schedule.trips_per_day_per_service_csv(df, output_dir=output_dir)
-    use_schedule.trips_per_day_per_route_csv(df, output_dir=output_dir)
+    logging.info('Generating csv for vehicles per hour for each service')
+    use_schedule.vehicles_per_hour(
+        df,
+        aggregate_by=['service', 'service_name', 'mode'],
+        output_path=os.path.join(output_dir, 'vph_per_service.csv'))
 
-    logging.info('Generating aggregate vehicles per hour per stop')
-    per_service_vph = os.path.join(output_dir, 'aggregate_vph_per_stop')
-    persistence.ensure_dir(per_service_vph)
-    for stop in schedule.stops():
-        try:
-            name = stop.name
-        except AttributeError:
-            name = stop.id
-        name = name.replace("\\", "_").replace("/", "_")
-        _df = df[(df['from_stop'] == stop.id) | (df['to_stop'] == stop.id)]
-        modes = '_'.join(list(_df['mode'].unique()))
-        use_schedule.plot_vehicle_frequency_bar_chart(
-            _df,
-            os.path.join(per_service_vph, f'aggregate_vph_{modes}_{name}.png'))
+    logging.info('Generating csv for vehicles per hour per stop')
+    use_schedule.vehicles_per_hour(
+        df,
+        aggregate_by=['from_stop', 'from_stop_name', 'mode'],
+        output_path=os.path.join(output_dir, 'vph_per_stop_departing_from.csv'))
+    use_schedule.vehicles_per_hour(
+        df,
+        aggregate_by=['to_stop', 'to_stop_name', 'mode'],
+        output_path=os.path.join(output_dir, 'vph_per_stop_arriving_at.csv'))
+
+    logging.info('Generating csvs for trips per day')
+    use_schedule.trips_per_day_per_service(df, output_dir=output_dir)
+    use_schedule.trips_per_day_per_route(df, output_dir=output_dir)
 
 
 def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):

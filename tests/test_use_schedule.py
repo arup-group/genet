@@ -117,7 +117,7 @@ def test_generating_trips_geodataframe_for_selected_route_ids_in_schedule(schedu
 def test_generating_edge_vph_geodataframe(schedule):
     nodes, links = gngeojson.generate_geodataframes(schedule.graph())
     df = use_schedule.generate_trips_dataframe(schedule)
-    df = use_schedule.generate_edge_vph_geodataframe(df, nodes, links)
+    df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 18:00:00'),
                                         2: Timestamp('1970-01-01 17:00:00'), 3: Timestamp('1970-01-01 19:00:00'),
@@ -155,14 +155,7 @@ def test_generating_edge_vph_geodataframe(schedule):
                                    10: LineString([(-7.5570681956375, 49.766856648946295),
                                                    (-7.557121424907424, 49.76683608549253)]),
                                    11: LineString([(-7.5570681956375, 49.766856648946295),
-                                                   (-7.557121424907424, 49.76683608549253)])},
-                               'from_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2', 4: 'Stop_2',
-                                                  5: 'Stop_2',
-                                                  6: 'Stop_3', 7: 'Stop_3', 8: 'Stop_3', 9: 'Stop_3', 10: float('nan'),
-                                                  11: float('nan')},
-                               'to_stop_name': {0: 'Stop_2', 1: 'Stop_2', 2: 'Stop_1', 3: 'Stop_1',
-                                                4: 'Stop_3', 5: 'Stop_3', 6: 'Stop_2', 7: 'Stop_2',
-                                                8: float('nan'), 9: float('nan'), 10: 'Stop_3', 11: 'Stop_3'}})
+                                                   (-7.557121424907424, 49.76683608549253)])}})
 
     assert_geodataframe_equal(df, correct_df, check_less_precise=True)
 
@@ -225,7 +218,7 @@ def test_generating_trips_geodataframe_for_selected_route_ids_in_service(schedul
 def test_generating_edge_vph_geodataframe_for_service(schedule):
     nodes, links = gngeojson.generate_geodataframes(schedule['service'].graph())
     df = use_schedule.generate_trips_dataframe(schedule['service'])
-    df = use_schedule.generate_edge_vph_geodataframe(df, nodes, links)
+    df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 18:00:00'),
                                         2: Timestamp('1970-01-01 17:00:00'), 3: Timestamp('1970-01-01 19:00:00'),
@@ -263,15 +256,7 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
                                    10: LineString([(-7.5570681956375, 49.766856648946295),
                                                    (-7.557121424907424, 49.76683608549253)]),
                                    11: LineString([(-7.5570681956375, 49.766856648946295),
-                                                   (-7.557121424907424, 49.76683608549253)])},
-                               'from_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2', 4: 'Stop_2',
-                                                  5: 'Stop_2',
-                                                  6: 'Stop_3', 7: 'Stop_3', 8: 'Stop_3', 9: 'Stop_3',
-                                                  10: float('nan'),
-                                                  11: float('nan')},
-                               'to_stop_name': {0: 'Stop_2', 1: 'Stop_2', 2: 'Stop_1', 3: 'Stop_1',
-                                                4: 'Stop_3', 5: 'Stop_3', 6: 'Stop_2', 7: 'Stop_2',
-                                                8: float('nan'), 9: float('nan'), 10: 'Stop_3', 11: 'Stop_3'}})
+                                                   (-7.557121424907424, 49.76683608549253)])}})
 
     assert_geodataframe_equal(df, correct_df, check_less_precise=True)
 
@@ -321,7 +306,7 @@ def test_generating_trips_geodataframe_for_route_with_specifying_route_ids(sched
 def test_generating_edge_vph_geodataframe_for_route(schedule):
     nodes, links = gngeojson.generate_geodataframes(schedule.route('2').graph())
     df = use_schedule.generate_trips_dataframe(schedule.route('2'))
-    df = use_schedule.generate_edge_vph_geodataframe(df, nodes, links)
+    df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 19:00:00'),
                                         2: Timestamp('1970-01-01 17:00:00'), 3: Timestamp('1970-01-01 19:00:00'),
@@ -340,10 +325,6 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
                                             4: LineString([(-7.5570681956375, 49.766856648946295),
                                                            (-7.557121424907424, 49.76683608549253)]),
                                             5: LineString([(-7.5570681956375, 49.766856648946295),
-                                                           (-7.557121424907424, 49.76683608549253)])},
-                               'from_stop_name': {0: 'Stop_2', 1: 'Stop_2', 2: 'Stop_3', 3: 'Stop_3', 4: float('nan'),
-                                                  5: float('nan')},
-                               'to_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2',
-                                                4: 'Stop_3', 5: 'Stop_3'}})
+                                                           (-7.557121424907424, 49.76683608549253)])}})
 
     assert_geodataframe_equal(df, correct_df, check_less_precise=True)

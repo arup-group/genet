@@ -68,7 +68,9 @@ def test_generating_schedule_graph_geodataframe(network):
                      'lon': {'0': -0.13530998708775874, '1': -0.13682698708848137},
                      's2_id': {'0': 5221390668020036699, '1': 5221390668558830581},
                      'additional_attributes': {'0': ['linkRefId'], '1': ['linkRefId']},
-                     'linkRefId': {'0': '1', '1': '2'}}
+                     'linkRefId': {'0': '1', '1': '2'},
+                     'name': {'0': '', '1': ''}
+                     }
     correct_links = {'services': {0: ['service']},
                      'routes': {0: ['1', '2']},
                      'modes': {0: ['bus']},
@@ -163,17 +165,11 @@ def test_generating_standard_outputs(network, tmpdir):
                                        'vehicles_per_hour_all_modes_within_6:30-7:30.geojson',
                                        'vehicles_per_hour_bus.geojson',
                                        'vehicles_per_hour_rail.geojson',
-                                       'aggregate_vph_per_stop',
-                                       'aggregate_vph_per_service',
                                        'trips_per_day_per_service.csv',
-                                       'trips_per_day_per_route.csv'}
-
-    assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_service'))) == {'aggregate_vph_bus_route2.png',
-                                                                                  'aggregate_vph_rail_RTR_I_love__being__difficult.png'}
-
-    assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_stop'))) == {'aggregate_vph_rail_RSE.png',
-                                                                               "aggregate_vph_rail_I_love__being__difficult.png",
-                                                                               'aggregate_vph_bus_1.png',
-                                                                               'aggregate_vph_bus_0.png'}
+                                       'trips_per_day_per_route.csv',
+                                       'vph_per_stop_departing_from.csv',
+                                       'vph_per_service.csv',
+                                       'vph_per_stop_arriving_at.csv'
+                                       }
 
     assert os.path.exists(tmpdir + '.zip')

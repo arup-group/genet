@@ -117,11 +117,12 @@ class Stop:
     """
 
     def __init__(self, id: Union[str, int], x: Union[str, int, float], y: Union[str, int, float], epsg: str,
-                 transformer: Transformer = None, **kwargs):
+                 transformer: Transformer = None, name: str = '', **kwargs):
         self.id = id
         self.x = float(x)
         self.y = float(y)
         self.epsg = epsg
+        self.name = name
 
         if ('lat' in kwargs) and ('lon' in kwargs):
             self.lat, self.lon = kwargs['lat'], kwargs['lon']
@@ -193,7 +194,7 @@ class Stop:
         :return:
         """
         for k, v in attribs.items():
-            if k not in self.__dict__:
+            if k not in self.__dict__ or not self.__dict__[k]:
                 setattr(self, k, v)
                 self.additional_attributes.append(k)
 
@@ -490,10 +491,8 @@ class Service(ScheduleElement):
         self.id = id
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
-        self.name = ''
-        if name:
-            self.name = str(name)
-        if routes:
+        self.name = str(name)
+        if not name and routes:
             for route in routes:
                 if route.route_short_name:
                     self.name = str(route.route_short_name)
