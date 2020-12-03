@@ -53,6 +53,8 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
     logging.info('Generating geojson outputs for schedule')
     schedule_nodes, schedule_links = generate_geodataframes(schedule.graph())
     df = use_schedule.generate_trips_dataframe(schedule, gtfs_day=gtfs_day)
+    df['service_name'] = df['service'].apply(lambda x: schedule[x].name)
+    df['route_name'] = df['route'].apply(lambda x: schedule.route(x).route_short_name)
     df_all_modes_vph = None
 
     graph_mode_map = schedule.mode_graph_map()
@@ -105,9 +107,12 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
             name = service_id
         _df = df[df['service'] == service_id]
         modes = '_'.join(list(_df['mode'].unique()))
-        use_schedule.plot_train_frequency_bar_chart(
+        use_schedule.plot_vehicle_frequency_bar_chart(
             _df,
             os.path.join(per_service_vph, f'aggregate_vph_{modes}_{name}.png'))
+    logging.info('Generating csv for aggregate trips per day per service')
+    use_schedule.trips_per_day_per_service_csv(df, output_dir=output_dir)
+    use_schedule.trips_per_day_per_route_csv(df, output_dir=output_dir)
 
     logging.info('Generating aggregate vehicles per hour per stop')
     per_service_vph = os.path.join(output_dir, 'aggregate_vph_per_stop')
@@ -119,7 +124,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
             name = stop.id
         _df = df[(df['from_stop'] == stop.id) | (df['to_stop'] == stop.id)]
         modes = '_'.join(list(_df['mode'].unique()))
-        use_schedule.plot_train_frequency_bar_chart(
+        use_schedule.plot_vehicle_frequency_bar_chart(
             _df,
             os.path.join(per_service_vph, f'aggregate_vph_{modes}_{name}.png'))
 

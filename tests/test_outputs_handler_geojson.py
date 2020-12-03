@@ -115,7 +115,7 @@ def test_generating_standard_outputs(network, tmpdir):
     network.schedule = Schedule(epsg='epsg:27700', services=[
         Service(id='bus_service',
                 routes=[
-                    Route(id='1', route_short_name='route', mode='bus',
+                    Route(id='1', route_short_name='', mode='bus',
                           stops=[
                               Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='1'),
                               Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')],
@@ -123,7 +123,7 @@ def test_generating_standard_outputs(network, tmpdir):
                           arrival_offsets=['00:00:00', '00:02:00'],
                           departure_offsets=['00:00:00', '00:02:00'],
                           route=['1', '2']),
-                    Route(id='2', route_short_name='route1', mode='bus',
+                    Route(id='2', route_short_name='route2', mode='bus',
                           stops=[
                               Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='1'),
                               Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')],
@@ -164,9 +164,11 @@ def test_generating_standard_outputs(network, tmpdir):
                                        'vehicles_per_hour_bus.geojson',
                                        'vehicles_per_hour_rail.geojson',
                                        'aggregate_vph_per_stop',
-                                       'aggregate_vph_per_service'}
+                                       'aggregate_vph_per_service',
+                                       'trips_per_day_per_service.csv',
+                                       'trips_per_day_per_route.csv'}
 
-    assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_service'))) == {'aggregate_vph_bus_route.png',
+    assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_service'))) == {'aggregate_vph_bus_route2.png',
                                                                                   'aggregate_vph_rail_RTR.png'}
 
     assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_stop'))) == {'aggregate_vph_rail_RSE.png',

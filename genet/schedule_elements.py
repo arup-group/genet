@@ -490,13 +490,14 @@ class Service(ScheduleElement):
         self.id = id
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
+        self.name = ''
         if name:
             self.name = str(name)
         if routes:
-            if routes[0].route_short_name:
-                self.name = str(routes[0].route_short_name)
-        else:
-            self.name = ''
+            for route in routes:
+                if route.route_short_name:
+                    self.name = str(route.route_short_name)
+                    break
         # create a dictionary and index if not unique ids
         self._routes = {}
         for route in routes:

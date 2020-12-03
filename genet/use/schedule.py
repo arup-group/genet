@@ -77,11 +77,11 @@ def generate_edge_vph_geodataframe(df, gdf_nodes, gdf_links):
     return df
 
 
-def plot_train_frequency_bar_chart(df, output_path):
+def plot_vehicle_frequency_bar_chart(df, output_path):
     """
     Generates vehicles per hour for a trips dataframe
     :param df: trips dataframe
-    :param output_dir: path for the plot with .jpeg, or .png extension
+    :param output_path: path for the plot with .jpeg, or .png extension
     :return:
     """
     df.loc[:, 'hour'] = df['departure_time'].dt.round("H")
@@ -94,3 +94,31 @@ def plot_train_frequency_bar_chart(df, output_path):
     plt.savefig(output_path)
     plt.close()
     return ax
+
+
+def trips_per_day_per_service_csv(df, output_dir=''):
+    """
+    Generates trips per day per service for a trips dataframe
+    :param df: trips dataframe
+    :param output_dir: directory to save `trips_per_day_per_service.csv`
+    :return:
+    """
+    trips_per_day = df.groupby(['service', 'service_name']).count()['trip'].reset_index()
+    trips_per_day = trips_per_day.rename(columns={'trip': 'number_of_trips'})
+    if output_dir:
+        trips_per_day.to_csv(os.path.join(output_dir, 'trips_per_day_per_service.csv'))
+    return trips_per_day
+
+
+def trips_per_day_per_route_csv(df, output_dir=''):
+    """
+    Generates trips per day per route for a trips dataframe
+    :param df: trips dataframe
+    :param output_dir: directory to save `trips_per_day_per_service.csv`
+    :return:
+    """
+    trips_per_day = df.groupby(['route', 'route_name']).count()['trip'].reset_index()
+    trips_per_day = trips_per_day.rename(columns={'trip': 'number_of_trips'})
+    if output_dir:
+        trips_per_day.to_csv(os.path.join(output_dir, 'trips_per_day_per_route.csv'))
+    return trips_per_day
