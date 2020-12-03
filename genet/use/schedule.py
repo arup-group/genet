@@ -103,7 +103,7 @@ def trips_per_day_per_service_csv(df, output_dir=''):
     :param output_dir: directory to save `trips_per_day_per_service.csv`
     :return:
     """
-    trips_per_day = df.groupby(['service', 'service_name']).count()['trip'].reset_index()
+    trips_per_day = df.groupby(['service', 'service_name', 'mode']).count()['trip'].reset_index()
     trips_per_day = trips_per_day.rename(columns={'trip': 'number_of_trips'})
     if output_dir:
         trips_per_day.to_csv(os.path.join(output_dir, 'trips_per_day_per_service.csv'))
@@ -117,7 +117,7 @@ def trips_per_day_per_route_csv(df, output_dir=''):
     :param output_dir: directory to save `trips_per_day_per_service.csv`
     :return:
     """
-    trips_per_day = df.groupby(['route', 'route_name']).count()['trip'].reset_index()
+    trips_per_day = df.groupby(['route', 'route_name', 'mode']).count()['trip'].reset_index()
     trips_per_day = trips_per_day.rename(columns={'trip': 'number_of_trips'})
     if output_dir:
         trips_per_day.to_csv(os.path.join(output_dir, 'trips_per_day_per_route.csv'))
