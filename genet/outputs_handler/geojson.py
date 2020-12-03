@@ -105,12 +105,13 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
             name = service.name
         else:
             name = service_id
+        name = name.replace("\\", "_").replace("/", "_")
         _df = df[df['service'] == service_id]
         modes = '_'.join(list(_df['mode'].unique()))
         use_schedule.plot_vehicle_frequency_bar_chart(
             _df,
             os.path.join(per_service_vph, f'aggregate_vph_{modes}_{name}.png'))
-    logging.info('Generating csv for aggregate trips per day per service')
+    logging.info('Generating csv for aggregate trips per day')
     use_schedule.trips_per_day_per_service_csv(df, output_dir=output_dir)
     use_schedule.trips_per_day_per_route_csv(df, output_dir=output_dir)
 
@@ -119,9 +120,10 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
     persistence.ensure_dir(per_service_vph)
     for stop in schedule.stops():
         try:
-            name = stop.name.replace("\\", "_").replace("/", "_")
+            name = stop.name
         except AttributeError:
             name = stop.id
+        name = name.replace("\\", "_").replace("/", "_")
         _df = df[(df['from_stop'] == stop.id) | (df['to_stop'] == stop.id)]
         modes = '_'.join(list(_df['mode'].unique()))
         use_schedule.plot_vehicle_frequency_bar_chart(

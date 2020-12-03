@@ -138,7 +138,7 @@ def test_generating_standard_outputs(network, tmpdir):
                 ]),
         Service(id='rail_service',
                 routes=[Route(
-                    route_short_name='RTR',
+                    route_short_name="RTR_I/love\_being//difficult",
                     mode='rail',
                     stops=[Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326', name="I/love\_being//difficult"),
                            Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
@@ -169,7 +169,7 @@ def test_generating_standard_outputs(network, tmpdir):
                                        'trips_per_day_per_route.csv'}
 
     assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_service'))) == {'aggregate_vph_bus_route2.png',
-                                                                                  'aggregate_vph_rail_RTR.png'}
+                                                                                  'aggregate_vph_rail_RTR_I_love__being__difficult.png'}
 
     assert set(os.listdir(os.path.join(tmpdir, 'aggregate_vph_per_stop'))) == {'aggregate_vph_rail_RSE.png',
                                                                                "aggregate_vph_rail_I_love__being__difficult.png",
