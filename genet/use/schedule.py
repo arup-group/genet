@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import datetime, timedelta
 import geopandas as gpd
 import numpy as np
-from matplotlib import pyplot as plt
 
 
 def sanitise_time(time, gtfs_day='19700101'):
