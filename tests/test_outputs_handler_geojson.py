@@ -110,7 +110,7 @@ def test_save_to_geojson(network, tmpdir):
     assert set(os.listdir(tmpdir)) == {
         'network_nodes.geojson', 'network_links.geojson', 'network_links_geometry_only.geojson',
         'network_nodes_geometry_only.geojson', 'schedule_nodes.geojson', 'schedule_links.geojson',
-        'schedule_links_geometry_only.geojson', 'schedule_nodes_geometry_only.geojson'}
+        'schedule_links_geometry_only.geojson', 'schedule_nodes_geometry_only.geojson', 'shp_files'}
 
 
 def test_generating_standard_outputs(network, tmpdir):
