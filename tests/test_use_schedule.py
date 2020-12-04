@@ -59,64 +59,9 @@ def test_offsets_going_over_24_hrs_why_not():
     assert t == timedelta(hours=25, minutes=6, seconds=20)
 
 
-def test_generating_trips_geodataframe_for_schedule(schedule):
-    df = use_schedule.generate_trips_dataframe(schedule)
-
-    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 17:05:00'),
-                                               2: Timestamp('1970-01-01 17:09:00'), 3: Timestamp('1970-01-01 18:30:00'),
-                                               4: Timestamp('1970-01-01 18:35:00'), 5: Timestamp('1970-01-01 18:39:00'),
-                                               6: Timestamp('1970-01-01 17:00:00'), 7: Timestamp('1970-01-01 17:05:00'),
-                                               8: Timestamp('1970-01-01 17:09:00'), 9: Timestamp('1970-01-01 18:30:00'),
-                                               10: Timestamp('1970-01-01 18:35:00'),
-                                               11: Timestamp('1970-01-01 18:39:00')},
-                            'arrival_time': {0: Timestamp('1970-01-01 17:03:00'), 1: Timestamp('1970-01-01 17:07:00'),
-                                             2: Timestamp('1970-01-01 17:13:00'), 3: Timestamp('1970-01-01 18:33:00'),
-                                             4: Timestamp('1970-01-01 18:37:00'), 5: Timestamp('1970-01-01 18:43:00'),
-                                             6: Timestamp('1970-01-01 17:03:00'), 7: Timestamp('1970-01-01 17:07:00'),
-                                             8: Timestamp('1970-01-01 17:13:00'), 9: Timestamp('1970-01-01 18:33:00'),
-                                             10: Timestamp('1970-01-01 18:37:00'),
-                                             11: Timestamp('1970-01-01 18:43:00')},
-                            'from_stop': {0: '1', 1: '2', 2: '3', 3: '1', 4: '2', 5: '3', 6: '4', 7: '3', 8: '2',
-                                          9: '4', 10: '3', 11: '2'},
-                            'to_stop': {0: '2', 1: '3', 2: '4', 3: '2', 4: '3', 5: '4', 6: '3', 7: '2', 8: '1', 9: '3',
-                                        10: '2', 11: '1'},
-                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2', 6: '1', 7: '1', 8: '1', 9: '2',
-                                     10: '2', 11: '2'},
-                            'route': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '2', 7: '2', 8: '2', 9: '2',
-                                      10: '2', 11: '2'},
-                            'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
-                                        5: 'service', 6: 'service', 7: 'service', 8: 'service', 9: 'service',
-                                        10: 'service', 11: 'service'},
-                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus', 6: 'bus', 7: 'bus',
-                                     8: 'bus', 9: 'bus', 10: 'bus', 11: 'bus'}})
-
-    assert_frame_equal(df, correct_df)
-
-
-def test_generating_trips_geodataframe_for_selected_route_ids_in_schedule(schedule):
-    df = use_schedule.generate_trips_dataframe(schedule, route_ids=['2'])
-
-    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 17:05:00'),
-                                               2: Timestamp('1970-01-01 17:09:00'), 3: Timestamp('1970-01-01 18:30:00'),
-                                               4: Timestamp('1970-01-01 18:35:00'),
-                                               5: Timestamp('1970-01-01 18:39:00')},
-                            'arrival_time': {0: Timestamp('1970-01-01 17:03:00'), 1: Timestamp('1970-01-01 17:07:00'),
-                                             2: Timestamp('1970-01-01 17:13:00'), 3: Timestamp('1970-01-01 18:33:00'),
-                                             4: Timestamp('1970-01-01 18:37:00'), 5: Timestamp('1970-01-01 18:43:00')},
-                            'from_stop': {0: '4', 1: '3', 2: '2', 3: '4', 4: '3', 5: '2'},
-                            'to_stop': {0: '3', 1: '2', 2: '1', 3: '3', 4: '2', 5: '1'},
-                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
-                            'route': {0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2'},
-                            'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
-                                        5: 'service'},
-                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus'}})
-
-    assert_frame_equal(df, correct_df)
-
-
 def test_generating_edge_vph_geodataframe(schedule):
     nodes, links = gngeojson.generate_geodataframes(schedule.graph())
-    df = use_schedule.generate_trips_dataframe(schedule)
+    df = schedule.generate_trips_dataframe()
     df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 18:00:00'),
@@ -158,66 +103,11 @@ def test_generating_edge_vph_geodataframe(schedule):
                                                    (-7.557121424907424, 49.76683608549253)])}})
 
     assert_geodataframe_equal(df, correct_df, check_less_precise=True)
-
-
-def test_generating_trips_geodataframe_for_service(schedule):
-    df = use_schedule.generate_trips_dataframe(schedule['service'])
-
-    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 17:05:00'),
-                                               2: Timestamp('1970-01-01 17:09:00'), 3: Timestamp('1970-01-01 18:30:00'),
-                                               4: Timestamp('1970-01-01 18:35:00'), 5: Timestamp('1970-01-01 18:39:00'),
-                                               6: Timestamp('1970-01-01 17:00:00'), 7: Timestamp('1970-01-01 17:05:00'),
-                                               8: Timestamp('1970-01-01 17:09:00'), 9: Timestamp('1970-01-01 18:30:00'),
-                                               10: Timestamp('1970-01-01 18:35:00'),
-                                               11: Timestamp('1970-01-01 18:39:00')},
-                            'arrival_time': {0: Timestamp('1970-01-01 17:03:00'), 1: Timestamp('1970-01-01 17:07:00'),
-                                             2: Timestamp('1970-01-01 17:13:00'), 3: Timestamp('1970-01-01 18:33:00'),
-                                             4: Timestamp('1970-01-01 18:37:00'), 5: Timestamp('1970-01-01 18:43:00'),
-                                             6: Timestamp('1970-01-01 17:03:00'), 7: Timestamp('1970-01-01 17:07:00'),
-                                             8: Timestamp('1970-01-01 17:13:00'), 9: Timestamp('1970-01-01 18:33:00'),
-                                             10: Timestamp('1970-01-01 18:37:00'),
-                                             11: Timestamp('1970-01-01 18:43:00')},
-                            'from_stop': {0: '1', 1: '2', 2: '3', 3: '1', 4: '2', 5: '3', 6: '4', 7: '3', 8: '2',
-                                          9: '4', 10: '3', 11: '2'},
-                            'to_stop': {0: '2', 1: '3', 2: '4', 3: '2', 4: '3', 5: '4', 6: '3', 7: '2', 8: '1', 9: '3',
-                                        10: '2', 11: '1'},
-                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2', 6: '1', 7: '1', 8: '1', 9: '2',
-                                     10: '2', 11: '2'},
-                            'route': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '2', 7: '2', 8: '2', 9: '2',
-                                      10: '2', 11: '2'},
-                            'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
-                                        5: 'service', 6: 'service', 7: 'service', 8: 'service', 9: 'service',
-                                        10: 'service', 11: 'service'},
-                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus', 6: 'bus', 7: 'bus',
-                                     8: 'bus', 9: 'bus', 10: 'bus', 11: 'bus'}})
-
-    assert_frame_equal(df, correct_df)
-
-
-def test_generating_trips_geodataframe_for_selected_route_ids_in_service(schedule):
-    df = use_schedule.generate_trips_dataframe(schedule['service'], route_ids=['2'])
-
-    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 17:05:00'),
-                                               2: Timestamp('1970-01-01 17:09:00'), 3: Timestamp('1970-01-01 18:30:00'),
-                                               4: Timestamp('1970-01-01 18:35:00'),
-                                               5: Timestamp('1970-01-01 18:39:00')},
-                            'arrival_time': {0: Timestamp('1970-01-01 17:03:00'), 1: Timestamp('1970-01-01 17:07:00'),
-                                             2: Timestamp('1970-01-01 17:13:00'), 3: Timestamp('1970-01-01 18:33:00'),
-                                             4: Timestamp('1970-01-01 18:37:00'), 5: Timestamp('1970-01-01 18:43:00')},
-                            'from_stop': {0: '4', 1: '3', 2: '2', 3: '4', 4: '3', 5: '2'},
-                            'to_stop': {0: '3', 1: '2', 2: '1', 3: '3', 4: '2', 5: '1'},
-                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
-                            'route': {0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2'},
-                            'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
-                                        5: 'service'},
-                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus'}})
-
-    assert_frame_equal(df, correct_df)
 
 
 def test_generating_edge_vph_geodataframe_for_service(schedule):
     nodes, links = gngeojson.generate_geodataframes(schedule['service'].graph())
-    df = use_schedule.generate_trips_dataframe(schedule['service'])
+    df = schedule['service'].generate_trips_dataframe()
     df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 18:00:00'),
@@ -261,51 +151,9 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
     assert_geodataframe_equal(df, correct_df, check_less_precise=True)
 
 
-def test_generating_trips_geodataframe_for_route(schedule):
-    df = use_schedule.generate_trips_dataframe(schedule.route('2'), route_ids=['2'])
-
-    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 17:05:00'),
-                                               2: Timestamp('1970-01-01 17:09:00'), 3: Timestamp('1970-01-01 18:30:00'),
-                                               4: Timestamp('1970-01-01 18:35:00'),
-                                               5: Timestamp('1970-01-01 18:39:00')},
-                            'arrival_time': {0: Timestamp('1970-01-01 17:03:00'), 1: Timestamp('1970-01-01 17:07:00'),
-                                             2: Timestamp('1970-01-01 17:13:00'), 3: Timestamp('1970-01-01 18:33:00'),
-                                             4: Timestamp('1970-01-01 18:37:00'), 5: Timestamp('1970-01-01 18:43:00')},
-                            'from_stop': {0: '4', 1: '3', 2: '2', 3: '4', 4: '3', 5: '2'},
-                            'to_stop': {0: '3', 1: '2', 2: '1', 3: '3', 4: '2', 5: '1'},
-                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
-                            'route': {0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2'},
-                            'service': {0: None, 1: None, 2: None, 3: None, 4: None,
-                                        5: None},
-                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus'}})
-
-    assert_frame_equal(df, correct_df)
-
-
-def test_generating_trips_geodataframe_for_route_with_specifying_route_ids(schedule):
-    df = use_schedule.generate_trips_dataframe(schedule.route('2'), route_ids=['2'])
-
-    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 17:05:00'),
-                                               2: Timestamp('1970-01-01 17:09:00'), 3: Timestamp('1970-01-01 18:30:00'),
-                                               4: Timestamp('1970-01-01 18:35:00'),
-                                               5: Timestamp('1970-01-01 18:39:00')},
-                            'arrival_time': {0: Timestamp('1970-01-01 17:03:00'), 1: Timestamp('1970-01-01 17:07:00'),
-                                             2: Timestamp('1970-01-01 17:13:00'), 3: Timestamp('1970-01-01 18:33:00'),
-                                             4: Timestamp('1970-01-01 18:37:00'), 5: Timestamp('1970-01-01 18:43:00')},
-                            'from_stop': {0: '4', 1: '3', 2: '2', 3: '4', 4: '3', 5: '2'},
-                            'to_stop': {0: '3', 1: '2', 2: '1', 3: '3', 4: '2', 5: '1'},
-                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
-                            'route': {0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2'},
-                            'service': {0: None, 1: None, 2: None, 3: None, 4: None,
-                                        5: None},
-                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus'}})
-
-    assert_frame_equal(df, correct_df)
-
-
 def test_generating_edge_vph_geodataframe_for_route(schedule):
     nodes, links = gngeojson.generate_geodataframes(schedule.route('2').graph())
-    df = use_schedule.generate_trips_dataframe(schedule.route('2'))
+    df = schedule.route('2').generate_trips_dataframe()
     df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 19:00:00'),
@@ -328,3 +176,27 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
                                                            (-7.557121424907424, 49.76683608549253)])}})
 
     assert_geodataframe_equal(df, correct_df, check_less_precise=True)
+
+
+def test_genereating_trips_per_day_per_service(schedule):
+    df_trips = use_schedule.trips_per_day_per_service(schedule.generate_trips_dataframe())
+
+    correct_df = DataFrame(
+        {'service': {0: 'service'},
+         'service_name': {0: 'name'},
+         'mode': {0: 'bus'},
+         'number_of_trips': {0: 4}})
+
+    assert_frame_equal(df_trips, correct_df)
+
+
+def test_genereating_trips_per_day_per_route(schedule):
+    df_trips = use_schedule.trips_per_day_per_route(schedule.generate_trips_dataframe())
+
+    correct_df = DataFrame(
+        {'route': {0: '1', 1: '2'},
+         'route_name': {0: 'name', 1: 'name_2'},
+         'mode': {0: 'bus', 1: 'bus'},
+         'number_of_trips': {0: 2, 1: 2}})
+
+    assert_frame_equal(df_trips, correct_df)

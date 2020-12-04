@@ -368,6 +368,11 @@ class Route(ScheduleElement):
                 df = trip_df
             else:
                 df = df.append(trip_df)
+        df['route'] = self.id
+        df['route_name'] = self.route_short_name.replace("\\", "_").replace("/", "_")
+        df['mode'] = self.mode
+        df['from_stop_name'] = df['from_stop'].apply(lambda x: self.stop(x).name.replace("\\", "_").replace("/", "_"))
+        df['to_stop_name'] = df['to_stop'].apply(lambda x: self.stop(x).name.replace("\\", "_").replace("/", "_"))
         df = df.reset_index(drop=True)
         return df
 
@@ -573,6 +578,19 @@ class Service(ScheduleElement):
                 e_c='#EC7063'
             )
 
+    def generate_trips_dataframe(self, gtfs_day='19700101'):
+        df = None
+        for route_id, route in self.routes():
+            _df = route.generate_trips_dataframe(gtfs_day=gtfs_day)
+            if df is None:
+                df = _df
+            else:
+                df = df.append(_df)
+        df['service'] = self.id
+        df['service_name'] = self.name.replace("\\", "_").replace("/", "_")
+        df = df.reset_index(drop=True)
+        return df
+
     def route(self, route_id):
         """
         Extract particular route from a Service given index
@@ -772,6 +790,17 @@ class Schedule(ScheduleElement):
             output_dir=output_dir,
             e_c='#EC7063'
         )
+
+    def generate_trips_dataframe(self, gtfs_day='19700101'):
+        df = None
+        for service_id, service in self.services.items():
+            _df = service.generate_trips_dataframe(gtfs_day=gtfs_day)
+            if df is None:
+                df = _df
+            else:
+                df = df.append(_df)
+        df = df.reset_index(drop=True)
+        return df
 
     def service_ids(self):
         return list(self.services.keys())

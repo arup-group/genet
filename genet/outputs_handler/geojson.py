@@ -58,15 +58,7 @@ def save_network_to_geojson(n, output_dir):
 def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700101'):
     logging.info('Generating geojson outputs for schedule')
     schedule_nodes, schedule_links = generate_geodataframes(schedule.graph())
-    df = use_schedule.generate_trips_dataframe(schedule, gtfs_day=gtfs_day)
-    df['service_name'] = df['service'].apply(
-        lambda x: schedule[x].name.replace("\\", "_").replace("/", "_"))
-    df['route_name'] = df['route'].apply(
-        lambda x: schedule.route(x).route_short_name.replace("\\", "_").replace("/", "_"))
-    df['from_stop_name'] = df['from_stop'].apply(
-        lambda x: schedule.stop(x).name.replace("\\", "_").replace("/", "_"))
-    df['to_stop_name'] = df['to_stop'].apply(
-        lambda x: schedule.stop(x).name.replace("\\", "_").replace("/", "_"))
+    df = schedule.generate_trips_dataframe(gtfs_day=gtfs_day)
     df_all_modes_vph = None
 
     vph_dir = os.path.join(output_dir, 'vehicles_per_hour')
