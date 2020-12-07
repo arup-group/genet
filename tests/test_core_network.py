@@ -180,6 +180,11 @@ def test_reproject_delegates_reprojection_to_schedules_own_method(network1, rout
     network1.schedule.reproject.assert_called_once_with('epsg:4326', 1)
 
 
+def test_reproject_updates_graph_crs(network1):
+    network1.reproject('epsg:4326')
+    assert network1.graph.graph['crs'] == {'init': 'epsg:4326'}
+
+
 def test_adding_the_same_networks():
     n_left = Network('epsg:27700')
     n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,

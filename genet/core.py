@@ -143,6 +143,7 @@ class Network:
         if self.schedule:
             self.schedule.reproject(new_epsg, processes)
         self.initiate_crs_transformer(new_epsg)
+        self.graph.graph['crs'] = {'init': self.epsg}
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
