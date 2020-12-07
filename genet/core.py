@@ -1,5 +1,6 @@
 import networkx as nx
 import pandas as pd
+import geopandas as gpd
 import uuid
 import logging
 import os
@@ -134,11 +135,7 @@ class Network:
         new_nodes_attribs = parallel.multiprocess_wrap(
             data=nodes_attribs, split=parallel.split_dict, apply=modify_graph.reproj, combine=parallel.combine_dict,
             processes=processes, from_proj=self.epsg, to_proj=new_epsg)
-
-        node_keys = list(nodes_attribs.keys())
-        self.change_log.modify_bunch('node', node_keys, [nodes_attribs[node] for node in node_keys], node_keys,
-                                     [{**nodes_attribs[node], **new_nodes_attribs[node]} for node in node_keys])
-        nx.set_node_attributes(self.graph, new_nodes_attribs)
+        self.apply_attributes_to_nodes(new_nodes_attribs)
 
         if self.schedule:
             self.schedule.reproject(new_epsg, processes)
