@@ -6,6 +6,7 @@ import pandas as pd
 import networkx as nx
 import pytest
 import lxml
+from shapely.geometry import LineString
 from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
     full_fat_default_config_path, correct_schedule
@@ -183,6 +184,29 @@ def test_reproject_delegates_reprojection_to_schedules_own_method(network1, rout
 def test_reproject_updates_graph_crs(network1):
     network1.reproject('epsg:4326')
     assert network1.graph.graph['crs'] == {'init': 'epsg:4326'}
+
+
+def test_reprojecting_links_with_geometries():
+    n = Network('epsg:27700')
+    n.add_nodes({'A': {'x': -82514.72274, 'y': 220772.02798},
+                 'B':{'x': -82769.25894, 'y': 220773.0637}})
+    n.add_links({'1': {'from': 'A', 'to': 'B',
+                       'geometry': LineString([(-82514.72274, 220772.02798),
+                                              (-82546.23894, 220772.88254),
+                                              (-82571.87107, 220772.53339),
+                                              (-82594.92709, 220770.68385),
+                                              (-82625.33255, 220770.45579),
+                                              (-82631.26842, 220770.40158),
+                                              (-82669.7309, 220770.04349),
+                                              (-82727.94946, 220770.79793),
+                                              (-82757.38528, 220771.75412),
+                                              (-82761.82425, 220771.95614),
+                                              (-82769.25894, 220773.0637)])}})
+    n.reproject('epsg:2157')
+
+    geometry_coords = list(n.link('1')['geometry'].coords)
+    assert geometry_coords[0] == (n.node('A')['x'], n.node('A')['y'])
+    assert geometry_coords[-1] == (n.node('B')['x'], n.node('B')['y'])
 
 
 def test_adding_the_same_networks():
