@@ -65,8 +65,18 @@ inspect or change it and save it out to file.
     
 #### Installation  
 
+Create and activate virtual environment
+
     virtualenv -p python3.7 venv
     source venv/bin/activate
+    
+before installing dependencies you may need to install a dependency of `rtree`: `libspatialindex-dev`, the command 
+for linux:
+    
+    sudo apt-get install -y libspatialindex-dev
+    
+Finally install `GeNet` dependencies
+
     pip install -e .
     
 ### Testing
