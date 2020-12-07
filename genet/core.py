@@ -789,12 +789,9 @@ class Network:
         """
         Removes several nodes and all adjacent edges
         :param nodes: list or set
-<<<<<<< HEAD
         :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
         and not recommended.
         :param silent: whether to mute stdout logging messages
-=======
->>>>>>> master
         :return:
         """
         if not ignore_change_log:
@@ -822,12 +819,9 @@ class Network:
         """
         Removes the multi edges pertaining to links given
         :param links: set or list
-<<<<<<< HEAD
         :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
         and not recommended.
         :param silent: whether to mute stdout logging messages
-=======
->>>>>>> master
         :return:
         """
         if not ignore_change_log:
