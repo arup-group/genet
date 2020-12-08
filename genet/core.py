@@ -1,5 +1,6 @@
 import networkx as nx
 import pandas as pd
+import geopandas as gpd
 import uuid
 import logging
 import os
@@ -130,19 +131,24 @@ class Network:
         :param processes: max number of process to split computation across
         :return:
         """
+        # reproject nodes
         nodes_attribs = dict(self.nodes())
         new_nodes_attribs = parallel.multiprocess_wrap(
             data=nodes_attribs, split=parallel.split_dict, apply=modify_graph.reproj, combine=parallel.combine_dict,
             processes=processes, from_proj=self.epsg, to_proj=new_epsg)
+        self.apply_attributes_to_nodes(new_nodes_attribs)
 
-        node_keys = list(nodes_attribs.keys())
-        self.change_log.modify_bunch('node', node_keys, [nodes_attribs[node] for node in node_keys], node_keys,
-                                     [{**nodes_attribs[node], **new_nodes_attribs[node]} for node in node_keys])
-        nx.set_node_attributes(self.graph, new_nodes_attribs)
+        # reproject geometries
+        gdf_geometries = gpd.GeoDataFrame(self.link_attribute_data_under_keys(['geometry']))
+        gdf_geometries.crs = self.epsg
+        gdf_geometries = gdf_geometries.to_crs(new_epsg)
+        new_link_attribs = gdf_geometries.T.to_dict()
+        self.apply_attributes_to_links(new_link_attribs)
 
         if self.schedule:
             self.schedule.reproject(new_epsg, processes)
         self.initiate_crs_transformer(new_epsg)
+        self.graph.graph['crs'] = {'init': self.epsg}
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
