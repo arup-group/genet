@@ -99,6 +99,7 @@ def read_link_attrib(elem, link_attribs):
     """
     d = elem.attrib
     if elem.text is None:
+        d['text'] = ''
         logging.warning(f"Elem {elem.attrib['name']} is being read as None.")
     elif (',' in elem.text) and elem.attrib['name'] != 'geometry':
         d['text'] = set(elem.text.split(','))
