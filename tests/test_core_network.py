@@ -205,8 +205,12 @@ def test_reprojecting_links_with_geometries():
     n.reproject('epsg:2157')
 
     geometry_coords = list(n.link('1')['geometry'].coords)
-    assert geometry_coords[0] == (n.node('A')['x'], n.node('A')['y'])
-    assert geometry_coords[-1] == (n.node('B')['x'], n.node('B')['y'])
+
+    assert round(geometry_coords[0][0], 7) == 532006.5605980
+    assert round(geometry_coords[0][1], 7) == 547653.3751768
+
+    assert round(geometry_coords[-1][0], 7) == 531753.4315189
+    assert round(geometry_coords[-1][1], 7) == 547633.5224837
 
 
 def test_adding_the_same_networks():
