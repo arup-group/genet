@@ -81,7 +81,7 @@ def multiprocess_wrap(data, split, apply, combine, processes=1, **kwargs):
     :return: output of the combine function
     """
     if processes == 1:
-        return apply(data)
+        return apply(data, **kwargs)
     try:
         data_partitioned = split(data, processes=processes)
     except TypeError:
