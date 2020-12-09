@@ -121,7 +121,14 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
 
     logging.info('Generating csvs for trips per day')
     use_schedule.trips_per_day_per_service(df, output_dir=output_dir)
-    use_schedule.trips_per_day_per_route(df, output_dir=output_dir)
+    df_trips_per_route = use_schedule.trips_per_day_per_route(df, output_dir=output_dir)
+
+    # stop-to-stop trips per day aggregation
+    aggregated_per_stops = use_schedule.aggregate_trips_per_day_per_route_by_end_stop_pairs(
+        schedule, df_trips_per_route)
+    aggregated_per_stops.to_csv(os.path.join(output_dir, 'trips_per_day_per_route_aggregated_per_stop_id_pair.csv'))
+    use_schedule.aggregate_by_stop_names(aggregated_per_stops).to_csv(
+        os.path.join(output_dir, 'trips_per_day_per_route_aggregated_per_stop_name_pair.csv'))
 
 
 def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):

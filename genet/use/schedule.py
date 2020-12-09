@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import geopandas as gpd
 import numpy as np
+import itertools
 
 
 def sanitise_time(time, gtfs_day='19700101'):
@@ -96,3 +97,47 @@ def trips_per_day_per_route(df, output_dir=''):
     if output_dir:
         trips_per_day.to_csv(os.path.join(output_dir, 'trips_per_day_per_route.csv'))
     return trips_per_day
+
+
+def aggregate_trips_per_day_per_route_by_end_stop_pairs(schedule, trips_per_day_per_route):
+    def route_id_intersect(row):
+        intersect = set(schedule.graph().nodes[row['station_A']]['routes']) & set(
+            schedule.graph().nodes[row['station_B']]['routes'])
+        if intersect:
+            return intersect
+        else:
+            return float('nan')
+
+    df = None
+    for mode in schedule.modes():
+        end_points = set()
+        for route_id, route in schedule.routes():
+            if route.mode == mode:
+                end_points |= {stop.id for stop in route.stops() if
+                               (route.graph().out_degree(stop.id) == 0) or (route.graph().in_degree(stop.id) == 0)}
+        df_stops = pd.DataFrame.from_records(
+            list(itertools.combinations({schedule.stop(pt).id for pt in end_points}, 2)),
+            columns=['station_A', 'station_B']
+        )
+        df_stops['station_A_name'] = df_stops['station_A'].apply(lambda x: schedule.stop(x).name)
+        df_stops['station_B_name'] = df_stops['station_B'].apply(lambda x: schedule.stop(x).name)
+        df_stops['mode'] = mode
+        if df is None:
+            df = df_stops
+        else:
+            df = df.append(df_stops)
+    df['routes_in_common'] = df.apply(lambda x: route_id_intersect(x), axis=1)
+    df = df.dropna()
+    trips_per_day_per_route = trips_per_day_per_route.set_index('route')
+    df['number_of_trips'] = df['routes_in_common'].apply(
+        lambda x: sum([trips_per_day_per_route.loc[r_id, 'number_of_trips'] for r_id in x]))
+    return df
+
+
+def aggregate_by_stop_names(df_aggregate_trips_per_day_per_route_by_end_stop_pairs):
+    df = df_aggregate_trips_per_day_per_route_by_end_stop_pairs
+    df = df[(df['station_A_name'] != '') & (df['station_B_name'] != '')]
+    if not df.empty:
+        df[['station_A_name', 'station_B_name']] = np.sort(df[['station_A_name', 'station_B_name']], axis=1)
+        df = df.groupby(['station_A_name', 'station_B_name', 'mode']).sum()['number_of_trips'].reset_index()
+    return df
