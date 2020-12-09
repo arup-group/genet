@@ -80,7 +80,8 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
             if link_attribs['geometry']['text']:
                 attribs['geometry'] = spatial.decode_polyline_to_shapely_linestring(link_attribs['geometry']['text'])
                 del link_attribs['geometry']
-        attribs['attributes'] = link_attribs
+        if link_attribs:
+            attribs['attributes'] = link_attribs
 
     if g.has_edge(u, v):
         link_id_mapping[link_id]['multi_edge_idx'] = len(g[u][v])

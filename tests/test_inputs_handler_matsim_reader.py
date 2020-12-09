@@ -16,6 +16,8 @@ matsim_output_network = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "matsim_output_network.xml"))
 pt2matsim_network_with_geometry_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_with_geometry.xml"))
+pt2matsim_network_with_singular_geometry_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_with_singular_geometry.xml"))
 pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
 
@@ -269,6 +271,30 @@ def test_reading_network_with_geometry_attributes():
 
     n = Network('epsg:27700')
     n.read_matsim_network(pt2matsim_network_with_geometry_file)
+
+    assert_semantically_equal(dict(n.links()), correct_links)
+
+
+def test_reading_network_with_singular_geometry_attribute_cleans_up_empty_attributes_dict():
+    correct_links = {
+        '1': {
+            'id': "1", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
+            's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
+            'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
+            'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
+            'modes': {'car'}
+        },
+        '2': {
+            'id': "2", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
+            's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
+            'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
+            'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
+            'modes': {'car'}
+        }
+    }
+
+    n = Network('epsg:27700')
+    n.read_matsim_network(pt2matsim_network_with_singular_geometry_file)
 
     assert_semantically_equal(dict(n.links()), correct_links)
 
