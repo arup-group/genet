@@ -33,6 +33,8 @@ simplified_network = os.path.abspath(
 simplified_schedule = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "simplified_network", "schedule.xml"))
 
+network_link_attrib_text_missing = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_link_attrib_text_missing.xml"))
 
 @pytest.fixture()
 def network1():
@@ -503,6 +505,12 @@ def test_reading_back_simplified_network():
             for k, v in attribs['attributes'].items():
                 if isinstance(v['text'], str):
                     assert not ',' in v['text']
+
+
+def test_network_with_missing_link_attribute_elem_text_is_read_and_able_to_save_again(tmpdir):
+    n = Network('epsg:27700')
+    n.read_matsim_network(network_link_attrib_text_missing)
+    n.write_to_matsim(tmpdir)
 
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
