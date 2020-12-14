@@ -25,7 +25,6 @@ def setify(x):
         return x
 
 
-
 def generate_geodataframes(graph):
     if not isinstance(graph, MultiDiGraph):
         graph = MultiDiGraph(graph)
