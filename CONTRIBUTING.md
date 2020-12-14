@@ -1,13 +1,48 @@
 # Contributing
 
 Thank you for considering contributing to GeNet! We're really excited to hear your opinions on the project and any ideas
-you may have on how it can be better! Please discuss the change you wish to make via GitHub issue,
-e-mail ([citymodelling@arup.com](mailto:citymodelling@arup.com)), or any other method with the owners of 
-this repository before making a change. 
+you may have on how it can be better!
 
 Please note we have a code of conduct. Please follow it in all your interactions with the project.
 
-## Pull Request Process
+## Ways to Contribute
+
+There are a number of ways you can contribute to the project. The major two are:
+- Submitting a GitHub issue. This could involve:
+    - Logging a bug or undesirable behaviour
+    - Recording area of possible improvement
+    - Requesting a change or addition of a new feature
+- Contributing code. Our work is never done, if you have an idea how you could make GeNet better or if you think you 
+could generalise it:
+    - You can outline the new feature or desired behaviour in a GitHub issue and send us an email on [citymodelling@arup.com](mailto:citymodelling@arup.com) 
+    to let us know you're willing to work on it. We may invite you for a brief rubber-ducking session to go through 
+    your idea in more detail. The aim is to mature your idea with one (or more) GeNet developers and to flag 
+    any possible blocks or implementation issues to be aware of.
+    - Please follow advice below on Contributing Code, working in a branch and the Pull Request process.
+    - You may continue to, and are encouraged to, keep in touch and reach out to us throughout your development work.
+
+See this helpful site on [How to Contribute to Open Source](https://opensource.guide/how-to-contribute/) for more ideas
+ on how you could contribute. Get in touch with us via email [citymodelling@arup.com](mailto:citymodelling@arup.com).
+
+## Submitting Issues
+
+If you have an idea for an enhancement, a change or addition of new feature or behaviour for GeNet or a record of a bug 
+you can communicate this to us in detail through a written account as a GitHub issue on GeNet's [issues page](https://github.com/arup-group/genet/issues).
+ 
+A good issue will outline the problem in a full written format. It is helpful to include screenshots, especially to 
+highlight any physical issues with the network. It is also helpful to include why you think the new feature would be
+useful, what problem is it solving and whether there is a real-world cases study that would benefit from this 
+improvement.
+
+In case of bugs, please provide the full error message, the OS and 
+information about the environment in which the process had been ran. It is also helpful to include a small 
+(if possible) set of data on which the problem can be recreated---at the very least, a thorough description of the 
+input data should be included.
+
+See this page on [Creating an issue](https://github.com/arup-group/genet/issues) on GitHub to learn how to submit an 
+issue.
+
+## Contributing Code - Pull Request Process
 
 1. All new work is done in a branch taken from master, details can be found here:
 [feature branch workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/feature-branch-workflow)
@@ -19,21 +54,27 @@ Please note we have a code of conduct. Please follow it in all your interactions
 4. Perform linting locally using ```flake8 . --max-line-length 120 --count  --show-source --statistics --exclude=scripts,tests```
 5. Add or update dependencies in `requirements.txt` if applicable
 6. Ensure the CI build pipeline (Actions tab in GitHub) completes successfully for your branch. The pipeline performs 
-automated PEP8 checks and runs unit tests in a fresh environment, as well as installation of all dependencies.
-7. Add to or generate a new jupyter notebook in `notebooks` directory which takes the user through your new feature or
-change.
+automated `PEP8` checks and runs unit tests in a fresh environment, as well as installation of all dependencies.
+7. Update/add to or generate a new jupyter notebook in `notebooks` directory which takes the user through your new feature or
+change. You may use example data already in `example_data` directory of this repo, or add more (small amount of) data to
+it to show off your new features.
 8. Add section in the `README.md` which shows usage of your new feature. This can be paraphrased from the jupyter
-notebook.
-9. If the feature is to be used in an automated workflow through the docker image, create a script in the `scripts`
-directory. Please use existing scripts as templates.
-10. Submit your Pull Request, describing the feature, linking to any relevant GitHub issues and request review from at 
-least two developers.
+notebook in point above.
+9. If the feature is to be used in an automated workflow through the docker image, create n example script in the 
+`scripts` directory. Please use existing scripts as templates.
+10. Submit your Pull Request (see [GitHub Docs on Creating a Pull Request](https://docs.github.com/en/free-pro-team@latest/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request)),
+ describing the feature, linking to any relevant GitHub issues and request review from at 
+least two developers. (Please take a look at latest commits to find out which developers you should request review from)
 11. You may merge the Pull Request in once you have the sign-off of two other developers, or if you 
-do not have permission to do that, you may request one of the reviewers to merge it for you.
+do not have permission to do that, please request one of the reviewers to merge it for you.
 
-## Code of Conduct
+## Attribution
 
-### Our Pledge
+The Contribution Guide was adapted from [PurpleBooth's Template](https://gist.github.com/PurpleBooth/b24679402957c63ec426).
+
+# Code of Conduct
+
+## Our Pledge
 
 In the interest of fostering an open and welcoming environment, we as
 contributors and maintainers pledge to making participation in our project and
@@ -42,7 +83,7 @@ size, disability, ethnicity, gender identity and expression, level of experience
 nationality, personal appearance, race, religion, or sexual identity and
 orientation.
 
-### Our Standards
+## Our Standards
 
 Examples of behavior that contributes to creating a positive environment
 include:
@@ -55,7 +96,7 @@ include:
 
 Examples of unacceptable behavior by participants include:
 
-* The use of sexualized language or imagery and unwelcome sexual attention or
+* The use of sexualised language or imagery and unwelcome sexual attention or
 advances
 * Trolling, insulting/derogatory comments, and personal or political attacks
 * Public or private harassment
@@ -64,7 +105,7 @@ advances
 * Other conduct which could reasonably be considered inappropriate in a
   professional setting
 
-### Our Responsibilities
+## Our Responsibilities
 
 Project maintainers are responsible for clarifying the standards of acceptable
 behavior and are expected to take appropriate and fair corrective action in
@@ -76,7 +117,7 @@ that are not aligned to this Code of Conduct, or to ban temporarily or
 permanently any contributor for other behaviors that they deem inappropriate,
 threatening, offensive, or harmful.
 
-### Scope
+## Scope
 
 This Code of Conduct applies both within project spaces and in public spaces
 when an individual is representing the project or its community. Examples of
@@ -85,7 +126,7 @@ address, posting via an official social media account, or acting as an appointed
 representative at an online or offline event. Representation of a project may be
 further defined and clarified by project maintainers.
 
-### Enforcement
+## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported by contacting the project team at [citymodelling@arup.com](mailto:citymodelling@arup.com). All
@@ -98,10 +139,11 @@ Project maintainers who do not follow or enforce the Code of Conduct in good
 faith may face temporary or permanent repercussions as determined by other
 members of the project's leadership.
 
-### Attribution
+## Attribution
 
-This Code of Conduct is adapted from the [Contributor Covenant][homepage], version 1.4,
-available at [http://contributor-covenant.org/version/1/4][version]
+This Code of Conduct is adapted from [PurpleBooth's Template](https://gist.github.com/PurpleBooth/b24679402957c63ec426) 
+which was adapted from [Contributor Covenant][homepage], version 1.4,
+available at [http://contributor-covenant.org/version/1/4][version].
 
 [homepage]: http://contributor-covenant.org
 [version]: http://contributor-covenant.org/version/1/4/
