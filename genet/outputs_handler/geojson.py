@@ -2,9 +2,11 @@ import os
 import logging
 import osmnx as ox
 from networkx import MultiDiGraph
+from itertools import chain
 import genet.use.schedule as use_schedule
 import genet.utils.persistence as persistence
 import genet.outputs_handler.sanitiser as sanitiser
+import genet.utils.graph_operations as graph_operations
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
 
 
@@ -14,6 +16,14 @@ def modal_subset(row, modes):
         return True
     else:
         return False
+
+
+def setify(x):
+    if not isinstance(x, set):
+        return {x}
+    else:
+        return x
+
 
 
 def generate_geodataframes(graph):
@@ -132,6 +142,9 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
 
 
 def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
+    logging.info(f'Generating geojson outputs for the entire network in {output_dir}')
+    save_network_to_geojson(n, output_dir)
+
     graph_nodes, graph_links = generate_geodataframes(n.graph)
 
     logging.info('Generating geojson outputs for car/driving modal subgraph')
@@ -145,6 +158,19 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
                 output_dir=graph_output_dir)
         except KeyError:
             logging.warning(f'Your network is missing a vital attribute {attribute}')
+
+    logging.info('Generating geojson outputs for different highway tags in car modal subgraph')
+    highway_tags = n.link_attribute_data_under_key({'attributes': {'osm:way:highway': 'text'}})
+    highway_tags = set(chain.from_iterable(highway_tags.apply(lambda x: setify(x))))
+    for tag in highway_tags:
+        tag_links = graph_operations.extract_links_on_edge_attributes(
+            network=n,
+            conditions={'attributes': {'osm:way:highway': {'text': tag}}},
+            mixed_dtypes=True)
+        save_geodataframe(
+            graph_links[graph_links['id'].isin(tag_links)],
+            filename=f'car_osm_highway_{tag}',
+            output_dir=graph_output_dir)
 
     for mode in n.modes():
         logging.info(f'Generating geometry-only geojson outputs for {mode} modal subgraph')

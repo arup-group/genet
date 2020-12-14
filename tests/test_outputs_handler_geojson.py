@@ -152,20 +152,30 @@ def test_generating_standard_outputs(network, tmpdir):
     ])
     assert os.listdir(tmpdir) == []
     network.generate_standard_outputs(tmpdir)
-    assert set(os.listdir(tmpdir)) == {'graph', 'schedule'}
+    assert set(os.listdir(tmpdir)) == {'graph', 'schedule_links_geometry_only.geojson',
+                                       'network_nodes_geometry_only.geojson', 'network_links.geojson',
+                                       'network_links_geometry_only.geojson', 'schedule_nodes.geojson',
+                                       'schedule_nodes_geometry_only.geojson', 'schedule', 'network_nodes.geojson',
+                                       'shp_files', 'schedule_links.geojson'}
     assert set(os.listdir(os.path.join(tmpdir, 'graph'))) == {'car_capacity_subgraph.geojson',
-                                                              'car_freespeed_subgraph.geojson', 'shp_files',
-                                                              'geometry_only_subgraphs'}
-    assert set(os.listdir(os.path.join(tmpdir, 'graph', 'shp_files'))) == {'car_capacity_subgraph.prj',
-                                                                           'car_freespeed_subgraph.dbf',
+                                                              'car_freespeed_subgraph.geojson',
+                                                              'car_osm_highway_unclassified.geojson',
+                                                              'geometry_only_subgraphs', 'shp_files'}
+    assert set(os.listdir(os.path.join(tmpdir, 'graph', 'shp_files'))) == {'car_osm_highway_unclassified.dbf',
                                                                            'car_capacity_subgraph.cpg',
-                                                                           'car_capacity_subgraph.dbf',
-                                                                           'car_capacity_subgraph.shp',
                                                                            'car_freespeed_subgraph.shx',
                                                                            'car_freespeed_subgraph.cpg',
+                                                                           'car_capacity_subgraph.prj',
+                                                                           'car_osm_highway_unclassified.prj',
+                                                                           'car_osm_highway_unclassified.shp',
+                                                                           'car_freespeed_subgraph.prj',
+                                                                           'car_osm_highway_unclassified.shx',
+                                                                           'car_capacity_subgraph.shp',
+                                                                           'car_capacity_subgraph.dbf',
                                                                            'car_capacity_subgraph.shx',
+                                                                           'car_freespeed_subgraph.dbf',
                                                                            'car_freespeed_subgraph.shp',
-                                                                           'car_freespeed_subgraph.prj'}
+                                                                           'car_osm_highway_unclassified.cpg'}
     assert set(os.listdir(os.path.join(tmpdir, 'graph', 'geometry_only_subgraphs'))) == {
         'subgraph_geometry_walk.geojson', 'subgraph_geometry_rail.geojson', 'subgraph_geometry_car.geojson',
         'shp_files',
@@ -207,11 +217,11 @@ def test_generating_standard_outputs(network, tmpdir):
                                                                               'schedule_subgraph_nodes_bus.geojson',
                                                                               'schedule_subgraph_nodes_rail.geojson'}
     assert set(os.listdir(os.path.join(tmpdir, 'schedule', 'subgraphs', 'shp_files'))) == {
-    'schedule_subgraph_nodes_bus.shx', 'schedule_subgraph_links_rail.dbf', 'schedule_subgraph_nodes_rail.cpg',
-    'schedule_subgraph_nodes_bus.prj', 'schedule_subgraph_links_bus.prj', 'schedule_subgraph_nodes_rail.shx',
-    'schedule_subgraph_links_bus.cpg', 'schedule_subgraph_nodes_rail.shp', 'schedule_subgraph_nodes_rail.dbf',
-    'schedule_subgraph_nodes_bus.dbf', 'schedule_subgraph_nodes_rail.prj', 'schedule_subgraph_nodes_bus.shp',
-    'schedule_subgraph_links_rail.shx', 'schedule_subgraph_links_rail.shp', 'schedule_subgraph_links_rail.prj',
-    'schedule_subgraph_links_rail.cpg', 'schedule_subgraph_nodes_bus.cpg', 'schedule_subgraph_links_bus.shp',
-    'schedule_subgraph_links_bus.shx', 'schedule_subgraph_links_bus.dbf'}
+        'schedule_subgraph_nodes_bus.shx', 'schedule_subgraph_links_rail.dbf', 'schedule_subgraph_nodes_rail.cpg',
+        'schedule_subgraph_nodes_bus.prj', 'schedule_subgraph_links_bus.prj', 'schedule_subgraph_nodes_rail.shx',
+        'schedule_subgraph_links_bus.cpg', 'schedule_subgraph_nodes_rail.shp', 'schedule_subgraph_nodes_rail.dbf',
+        'schedule_subgraph_nodes_bus.dbf', 'schedule_subgraph_nodes_rail.prj', 'schedule_subgraph_nodes_bus.shp',
+        'schedule_subgraph_links_rail.shx', 'schedule_subgraph_links_rail.shp', 'schedule_subgraph_links_rail.prj',
+        'schedule_subgraph_links_rail.cpg', 'schedule_subgraph_nodes_bus.cpg', 'schedule_subgraph_links_bus.shp',
+        'schedule_subgraph_links_bus.shx', 'schedule_subgraph_links_bus.dbf'}
     assert os.path.exists(tmpdir + '.zip')
