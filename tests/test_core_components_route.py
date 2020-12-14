@@ -1,6 +1,8 @@
 import pytest
+from pandas import DataFrame, Timestamp
+from pandas.testing import assert_frame_equal
 from genet.schedule_elements import Route, Stop
-from  genet.utils import plot
+from genet.utils import plot
 from tests.fixtures import stop_epsg_27700, assert_semantically_equal
 
 
@@ -14,7 +16,7 @@ def route():
         route_short_name='name',
         mode='bus',
         stops=[a, b, c, d],
-        trips={'1': '1', '2': '2'},
+        trips={'1': '10:00:00', '2': '20:00:00'},
         arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
         departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'],
         route=['1', '2', '3', '4'], id='1')
@@ -95,7 +97,10 @@ def test_build_graph_builds_correct_graph():
                                '4': {'routes': [''], 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700',
                                      'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
                                      'additional_attributes': []}})
-    assert_semantically_equal(list(g.edges), [('1', '2'), ('2', '3'), ('3', '4')])
+    assert_semantically_equal(list(g.edges(data=True)),
+                              [('1', '2', {'routes': [''], 'modes': ['bus']}),
+                               ('2', '3', {'routes': [''], 'modes': ['bus']}),
+                               ('3', '4', {'routes': [''], 'modes': ['bus']})])
 
 
 def test_routes_equal(stop_epsg_27700):
@@ -201,10 +206,10 @@ def test_has_correctly_ordered_route_with_a_correct_route():
     c.add_additional_attributes({'linkRefId': '30'})
 
     r = Route(route_short_name='name',
-          mode='bus',
-          stops=[a, b, c],
-          trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
-          route=['10', '15', '20', '25', '30'], id='1')
+              mode='bus',
+              stops=[a, b, c],
+              trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+              route=['10', '15', '20', '25', '30'], id='1')
     assert r.has_correctly_ordered_route()
 
 
@@ -217,10 +222,10 @@ def test_has_correctly_ordered_route_with_disordered_route():
     c.add_additional_attributes({'linkRefId': '30'})
 
     r = Route(route_short_name='name',
-          mode='bus',
-          stops=[a, b, c],
-          trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
-          route=['10', '15', '30', '25', '20'], id='1')
+              mode='bus',
+              stops=[a, b, c],
+              trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+              route=['10', '15', '30', '25', '20'], id='1')
     assert not r.has_correctly_ordered_route()
 
 
@@ -232,10 +237,10 @@ def test_has_correctly_ordered_route_with_stop_missing_linkrefid():
     c = Stop(id='3', x=4, y=2, epsg='epsg:27700')
 
     r = Route(route_short_name='name',
-          mode='bus',
-          stops=[a, b, c],
-          trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
-          route=['10', '15', '30', '25', '20'], id='1')
+              mode='bus',
+              stops=[a, b, c],
+              trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+              route=['10', '15', '30', '25', '20'], id='1')
     assert not r.has_correctly_ordered_route()
 
 
@@ -248,10 +253,10 @@ def test_has_correctly_ordered_route_with_no_route():
     c.add_additional_attributes({'linkRefId': '30'})
 
     r = Route(route_short_name='name',
-          mode='bus',
-          stops=[a, b, c],
-          trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
-          route=[], id='1')
+              mode='bus',
+              stops=[a, b, c],
+              trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+              route=[], id='1')
     assert not r.has_correctly_ordered_route()
 
 
@@ -300,3 +305,20 @@ def test_is_valid_with_sinlge_stop_network():
                   stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700')],
                   trips={}, arrival_offsets=[], departure_offsets=[])
     assert not route.is_valid_route()
+
+
+def test_building_trips_dataframe(route):
+    df = route.generate_trips_dataframe()
+
+    correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 10:00:00'), 1: Timestamp('1970-01-01 10:05:00'),
+                                               2: Timestamp('1970-01-01 10:09:00'), 3: Timestamp('1970-01-01 20:00:00'),
+                                               4: Timestamp('1970-01-01 20:05:00'),
+                                               5: Timestamp('1970-01-01 20:09:00')},
+                            'arrival_time': {0: Timestamp('1970-01-01 10:03:00'), 1: Timestamp('1970-01-01 10:07:00'),
+                                             2: Timestamp('1970-01-01 10:13:00'), 3: Timestamp('1970-01-01 20:03:00'),
+                                             4: Timestamp('1970-01-01 20:07:00'), 5: Timestamp('1970-01-01 20:13:00')},
+                            'from_stop': {0: '1', 1: '2', 2: '3', 3: '1', 4: '2', 5: '3'},
+                            'to_stop': {0: '2', 1: '3', 2: '4', 3: '2', 4: '3', 5: '4'},
+                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'}})
+
+    assert_frame_equal(df, correct_df)

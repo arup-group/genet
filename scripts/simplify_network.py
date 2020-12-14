@@ -2,6 +2,9 @@ import argparse
 import genet as gn
 import logging
 import time
+import os
+import json
+from genet.utils.persistence import ensure_dir
 
 
 if __name__ == '__main__':
@@ -18,17 +21,12 @@ if __name__ == '__main__':
                             required=False,
                             default='')
 
-    arg_parser.add_argument('-cp',
-                            '--current_projection',
-                            help='The projection network is currently in, eg. "epsg:27700"',
+    arg_parser.add_argument('-p',
+                            '--projection',
+                            help='The projection network is in, eg. "epsg:27700"',
                             required=True)
 
     arg_parser.add_argument('-np',
-                            '--new_projection',
-                            help='The projection desired, eg. "epsg:27700"',
-                            required=True)
-
-    arg_parser.add_argument('-p',
                             '--processes',
                             help='The number of processes to split computation across',
                             required=False,
@@ -43,27 +41,39 @@ if __name__ == '__main__':
     args = vars(arg_parser.parse_args())
     network = args['network']
     schedule = args['schedule']
-    current_projection = args['current_projection']
-    new_projection = args['new_projection']
+    projection = args['projection']
     processes = args['processes']
     output_dir = args['output_dir']
+    ensure_dir(output_dir)
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
-    n = gn.Network(current_projection)
+    n = gn.Network(projection)
     logging.info('Reading in network at {}'.format(network))
     n.read_matsim_network(network)
     if schedule:
         logging.info('Reading in schedule at {}'.format(schedule))
         n.read_matsim_schedule(schedule)
-    else:
-        logging.info('You have not passed the schedule.xml file. If your network is road only, that is fine, otherwise'
-                     'if you mix and match them, you will have a bad time.')
-    logging.info('Reprojecting the network.')
+    logging.info('Simplifying the Network.')
 
     start = time.time()
-    n.reproject(new_projection, processes=processes)
+    n.simplify(no_processes=processes)
     end = time.time()
+
+    logging.info(
+        f'Simplification resulted in {len(n.link_simplification_map)} links being simplified.')
+    with open(os.path.join(output_dir, 'link_simp_map.json'), 'w', encoding='utf-8') as f:
+        json.dump(n.link_simplification_map, f, ensure_ascii=False, indent=4)
+
     n.write_to_matsim(output_dir)
 
-    logging.info(f'It took {round((end - start)/60, 3)} min to reproject the network.')
+    logging.info('Generating validation report')
+    report = n.generate_validation_report()
+    logging.info(f'Graph validation: {report["graph"]["graph_connectivity"]}')
+    if n.schedule:
+        logging.info(f'Schedule level validation: {report["schedule"]["schedule_level"]["is_valid_schedule"]}')
+        logging.info(f'Routing validation: {report["routing"]["services_have_routes_in_the_graph"]}')
+
+    n.generate_standard_outputs(os.path.join(output_dir, 'standard_outputs'))
+
+    logging.info(f'It took {round((end - start)/60, 3)} min to simplify the network.')

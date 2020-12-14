@@ -39,17 +39,23 @@ def schedule():
 def strongly_connected_schedule():
     route_1 = Route(route_short_name='name',
                     mode='bus',
-                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
-                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700'),
-                           Stop(id='1', x=4, y=2, epsg='epsg:27700')],
-                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700', name='Stop_1'),
+                           Stop(id='2', x=1, y=2, epsg='epsg:27700', name='Stop_2'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700', name='Stop_3'),
+                           Stop(id='4', x=7, y=5, epsg='epsg:27700', name='Stop_4'),
+                           Stop(id='1', x=4, y=2, epsg='epsg:27700', name='Stop_1')],
+                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+                    id='1')
     route_2 = Route(route_short_name='name_2',
                     mode='bus',
-                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
-                           Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700'),
-                           Stop(id='5', x=4, y=2, epsg='epsg:27700')],
+                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700', name='Stop_5'),
+                           Stop(id='2', x=1, y=2, epsg='epsg:27700', name='Stop_2'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700', name='Stop_7'),
+                           Stop(id='8', x=7, y=5, epsg='epsg:27700', name='Stop_8'),
+                           Stop(id='5', x=4, y=2, epsg='epsg:27700', name='Stop_5')],
                     trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2', '3', '4', '5'],
-                    departure_offsets=['1', '2', '3', '4', '5'])
+                    departure_offsets=['1', '2', '3', '4', '5'],
+                    id='2')
     service = Service(id='service', routes=[route_1, route_2])
     return Schedule(epsg='epsg:27700', services=[service])
 
@@ -62,12 +68,14 @@ def test__getitem__returns_a_service(test_service):
 
 def test_accessing_route(schedule):
     assert schedule.route('1') == Route(route_short_name='name',
-                    mode='bus', id='1',
-                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
-                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '1', '2': '2'},
-                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
-                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+                                        mode='bus', id='1',
+                                        stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'),
+                                               Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                                               Stop(id='3', x=3, y=3, epsg='epsg:27700'),
+                                               Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                                        trips={'1': '1', '2': '2'},
+                                        arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                                        departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
 
 
 def test__repr__shows_number_of_services(mocker):
@@ -249,7 +257,8 @@ def test_read_matsim_schedule_returns_expected_schedule():
                                '26997928P.link:1': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']})
 
 
-def test_read_gtfs_returns_expected_schedule(correct_stops_to_service_mapping_from_test_gtfs, correct_stops_to_route_mapping_from_test_gtfs):
+def test_read_gtfs_returns_expected_schedule(correct_stops_to_service_mapping_from_test_gtfs,
+                                             correct_stops_to_route_mapping_from_test_gtfs):
     schedule = Schedule('epsg:4326')
     schedule.read_gtfs_schedule(gtfs_test_file, '20190604')
 
@@ -318,7 +327,7 @@ def test_has_valid_services_with_only_valid_services(service):
 
 
 def test_invalid_services_shows_invalid_services(service):
-    for route in service.routes.values():
+    for route in service._routes.values():
         route.route = ['1']
     s = Schedule('epsg:27700', [service])
     assert s.invalid_services() == [service]
@@ -337,3 +346,40 @@ def test_generate_validation_report_delegates_to_method_in_schedule_operations(m
     mocker.patch.object(schedule_validation, 'generate_validation_report')
     schedule.generate_validation_report()
     schedule_validation.generate_validation_report.assert_called_once()
+
+
+def test_build_graph_builds_correct_graph(strongly_connected_schedule):
+    g = strongly_connected_schedule.graph()
+
+    assert_semantically_equal(dict(g.nodes(data=True)),
+                              {'5': {'services': ['service'], 'routes': ['2'], 'id': '5', 'x': 4.0, 'y': 2.0,
+                                     'epsg': 'epsg:27700', 'lat': 49.76682779861249, 'lon': -7.557106577683727,
+                                     's2_id': 5205973754090531959, 'additional_attributes': ['name'], 'name': 'Stop_5'},
+                               '2': {'services': ['service'], 'routes': ['1', '2'], 'id': '2', 'x': 1.0, 'y': 2.0,
+                                     'epsg': 'epsg:27700', 'lat': 49.766825803756994, 'lon': -7.557148039524952,
+                                     's2_id': 5205973754090365183, 'additional_attributes': ['name'], 'name': 'Stop_2'},
+                               '7': {'services': ['service'], 'routes': ['2'], 'id': '7', 'x': 3.0, 'y': 3.0,
+                                     'epsg': 'epsg:27700', 'lat': 49.76683608549253, 'lon': -7.557121424907424,
+                                     's2_id': 5205973754090203369, 'additional_attributes': ['name'], 'name': 'Stop_7'},
+                               '8': {'services': ['service'], 'routes': ['2'], 'id': '8', 'x': 7.0, 'y': 5.0,
+                                     'epsg': 'epsg:27700', 'lat': 49.766856648946295, 'lon': -7.5570681956375,
+                                     's2_id': 5205973754097123809, 'additional_attributes': ['name'], 'name': 'Stop_8'},
+                               '3': {'services': ['service'], 'routes': ['1'], 'id': '3', 'x': 3.0, 'y': 3.0,
+                                     'epsg': 'epsg:27700', 'lat': 49.76683608549253, 'lon': -7.557121424907424,
+                                     's2_id': 5205973754090203369, 'additional_attributes': ['name'], 'name': 'Stop_3'},
+                               '1': {'services': ['service'], 'routes': ['1'], 'id': '1', 'x': 4.0, 'y': 2.0,
+                                     'epsg': 'epsg:27700', 'lat': 49.76682779861249, 'lon': -7.557106577683727,
+                                     's2_id': 5205973754090531959, 'additional_attributes': ['name'], 'name': 'Stop_1'},
+                               '4': {'services': ['service'], 'routes': ['1'], 'id': '4', 'x': 7.0, 'y': 5.0,
+                                     'epsg': 'epsg:27700', 'lat': 49.766856648946295, 'lon': -7.5570681956375,
+                                     's2_id': 5205973754097123809, 'additional_attributes': ['name'],
+                                     'name': 'Stop_4'}})
+    assert_semantically_equal(list(g.edges(data=True)),
+                              [('5', '2', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('2', '7', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('7', '8', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('8', '5', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('4', '1', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])

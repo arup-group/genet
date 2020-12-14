@@ -1,9 +1,9 @@
 from typing import Union, Dict, List
 from pyproj import Transformer
 import networkx as nx
-import pandas as pd
 import logging
 from datetime import datetime
+from pandas import DataFrame
 import genet.utils.plot as plot
 import genet.utils.spatial as spatial
 import genet.utils.dict_support as dict_support
@@ -11,7 +11,11 @@ import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.gtfs_reader as gtfs_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.utils.persistence as persistence
+import genet.utils.parallel as parallel
+import genet.modify.schedule as mod_schedule
+import genet.use.schedule as use_schedule
 import genet.validate.schedule_validation as schedule_validation
+import genet.outputs_handler.geojson as gngeojson
 
 # number of decimal places to consider when comparing lat lons
 SPATIAL_TOLERANCE = 8
@@ -43,11 +47,27 @@ class ScheduleElement:
         for s in self.reference_nodes:
             yield self.stop(s)
 
+    def modes(self):
+        edge_modes = self.graph().edges(data='modes')
+        modes = set()
+        for u, v, e_modes in edge_modes:
+            modes |= set(e_modes)
+        return list(modes)
+
+    def mode_graph_map(self):
+        mode_map = {mode: set() for mode in self.modes()}
+        for _id, route in self.routes():
+            mode_map[route.mode] |= set(route.reference_edges)
+        return mode_map
+
     def _build_graph(self, stops):
         pass
 
     def graph(self):
         return nx.edge_subgraph(self._graph, self.reference_edges)
+
+    def subgraph(self, edges):
+        return nx.DiGraph(nx.edge_subgraph(self.graph(), edges))
 
     def stop_to_service_ids_map(self):
         return dict(self.graph().nodes(data='services'))
@@ -55,7 +75,7 @@ class ScheduleElement:
     def stop_to_route_ids_map(self):
         return dict(self.graph().nodes(data='routes'))
 
-    def reproject(self, new_epsg):
+    def reproject(self, new_epsg, processes=1):
         """
         Changes projection of the element to new_epsg
         :param new_epsg: 'epsg:1234'
@@ -63,14 +83,15 @@ class ScheduleElement:
         """
         if self.epsg != new_epsg:
             g = self.graph()
-            transformers = {epsg: Transformer.from_crs(epsg, new_epsg) for epsg in
-                            pd.Series(dict(g.nodes(data='epsg'))).unique()}
 
-            reprojected_node_attribs = {}
-            for node_id, node_attribs in g.nodes(data=True):
-                x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], transformers[node_attribs['epsg']])
-                reprojected_node_attribs[node_id] = {'x': x, 'y': y, 'epsg': new_epsg}
-
+            reprojected_node_attribs = parallel.multiprocess_wrap(
+                data=dict(g.nodes(data=True)),
+                split=parallel.split_dict,
+                apply=mod_schedule.reproj_stops,
+                combine=parallel.combine_dict,
+                processes=processes,
+                new_epsg=new_epsg
+            )
             nx.set_node_attributes(self._graph, reprojected_node_attribs)
             self.epsg = new_epsg
 
@@ -268,8 +289,11 @@ class Route(ScheduleElement):
         route_nodes = [(stop.id, stop.__dict__) for stop in stops]
         route_graph.add_nodes_from(route_nodes, routes=[self.id])
         stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
-        route_graph.add_edges_from(stop_edges)
+        route_graph.add_edges_from(stop_edges, routes=[self.id], modes=[self.mode])
         return route_graph
+
+    def modes(self):
+        return [self.mode]
 
     def reindex(self, new_id):
         if self.id != new_id:
@@ -305,6 +329,46 @@ class Route(ScheduleElement):
         """
         for s in self.ordered_stops:
             yield self.stop(s)
+
+    def route(self, route_id):
+        """
+        Attempting to extract route from route given an id should yield itself unless index doesnt match
+        :param route_id:
+        :return:
+        """
+        if route_id == self.id:
+            return self
+        else:
+            raise IndexError(f"{route_id} does not match Route's id: {self.id}")
+
+    def routes(self):
+        """
+        This iterator is on the same level as the object and yields itself
+        """
+        yield None, self
+
+    def generate_trips_dataframe(self, gtfs_day='19700101'):
+        df = None
+        _df = DataFrame({
+            'departure_time':
+                [use_schedule.get_offset(self.departure_offsets[i]) for i in range(len(self.ordered_stops) - 1)],
+            'arrival_time':
+                [use_schedule.get_offset(self.arrival_offsets[i]) for i in range(1, len(self.ordered_stops))],
+            'from_stop': [self.ordered_stops[i] for i in range(len(self.ordered_stops) - 1)],
+            'to_stop': [self.ordered_stops[i] for i in range(1, len(self.ordered_stops))]
+        })
+        for trip_id, trip_dep_time in self.trips.items():
+            trip_df = _df.copy()
+            trip_df['trip'] = trip_id
+            trip_dep_time = use_schedule.sanitise_time(trip_dep_time, gtfs_day=gtfs_day)
+            trip_df['departure_time'] = trip_dep_time + trip_df['departure_time']
+            trip_df['arrival_time'] = trip_dep_time + trip_df['arrival_time']
+            if df is None:
+                df = trip_df
+            else:
+                df = df.append(trip_df)
+        df = df.reset_index(drop=True)
+        return df
 
     def is_exact(self, other):
         same_route_name = self.route_short_name == other.route_short_name
@@ -422,26 +486,25 @@ class Service(ScheduleElement):
     :param epsg: 'epsg:12345'
     """
 
-    def __init__(self, id: str, routes: List[Route]):
+    def __init__(self, id: str, routes: List[Route], name: str = ''):
         self.id = id
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
+        if name:
+            self.name = str(name)
         if routes:
             if routes[0].route_short_name:
-                name = routes[0].route_short_name
-            else:
-                name = routes[0].route_long_name
-            self.name = str(name)
+                self.name = str(routes[0].route_short_name)
         else:
             self.name = ''
         # create a dictionary and index if not unique ids
-        self.routes = {}
+        self._routes = {}
         for route in routes:
             _id = route.id
-            if (not _id) or (_id in self.routes):
-                _id = self.id + f'_{len(self.routes)}'
+            if (not _id) or (_id in self._routes):
+                _id = self.id + f'_{len(self._routes)}'
                 route.reindex(_id)
-            self.routes[_id] = route
+            self._routes[_id] = route
         super().__init__(None)
 
     def __eq__(self, other):
@@ -454,30 +517,33 @@ class Service(ScheduleElement):
             len(self))
 
     def __getitem__(self, route_id):
-        return self.routes[route_id]
+        return self._routes[route_id]
 
     def __str__(self):
         return self.info()
 
     def __len__(self):
-        return len(self.routes)
+        return len(self._routes)
 
     def _build_graph(self, stops=None):
-        service_graph = nx.DiGraph(name='Service graph')
-        routes_attribs = {}
-        for route in self.routes.values():
+        nodes = {}
+        edges = {}
+        for route in self._routes.values():
             g = route.graph()
-            routes_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
-            service_graph = nx.compose(g, service_graph)
-        nx.set_node_attributes(service_graph, values=routes_attribs, name='routes')
-        nx.set_node_attributes(service_graph, values=[self.id], name='services')
+            nodes = dict_support.merge_complex_dictionaries(dict(g.nodes(data=True)), nodes)
+            edges = dict_support.combine_edge_data_lists(list(g.edges(data=True)), edges)
+
+        service_graph = nx.DiGraph(name='Service graph')
+        service_graph.add_nodes_from(nodes, services=[self.id])
+        service_graph.add_edges_from(edges, services=[self.id])
+        nx.set_node_attributes(service_graph, nodes)
         # update route graphs by the larger graph
         self._update_graph(service_graph)
         return service_graph
 
     def _update_graph(self, new_graph):
         self._graph = new_graph
-        for route in self.routes.values():
+        for route in self._routes.values():
             route._graph = new_graph
 
     def reindex(self, new_id):
@@ -507,8 +573,23 @@ class Service(ScheduleElement):
                 e_c='#EC7063'
             )
 
+    def route(self, route_id):
+        """
+        Extract particular route from a Service given index
+        :param route_id:
+        :return:
+        """
+        return self._routes[route_id]
+
+    def routes(self):
+        """
+        Iterator for _routes in the service
+        """
+        for route in self._routes.values():
+            yield self.id, route
+
     def is_exact(self, other):
-        return (self.id == other.id) and (self.routes == other.routes)
+        return (self.id == other.id) and (self._routes == other._routes)
 
     def isin_exact(self, services: list):
         for other in services:
@@ -525,16 +606,16 @@ class Service(ScheduleElement):
         return list(nx.nodes_with_selfloops(self.graph()))
 
     def validity_of_routes(self):
-        return [route.is_valid_route() for route in self.routes.values()]
+        return [route.is_valid_route() for route in self._routes.values()]
 
     def has_valid_routes(self):
         return all(self.validity_of_routes())
 
     def invalid_routes(self):
-        return [route for route in self.routes.values() if not route.is_valid_route()]
+        return [route for route in self._routes.values() if not route.is_valid_route()]
 
     def has_uniquely_indexed_routes(self):
-        indices = set([route.id for route in self.routes.values()])
+        indices = set([route.id for route in self._routes.values()])
         if len(indices) != len(self):
             return False
         return True
@@ -604,18 +685,18 @@ class Schedule(ScheduleElement):
         return len(self.services)
 
     def _build_graph(self, stops=None):
-        schedule_graph = nx.DiGraph(name='Schedule graph')
-        routes_attribs = {}
-        services_attribs = {}
+        nodes = {}
+        edges = {}
         for service_id, service in self.services.items():
-            schedule_graph = nx.compose(service.graph(), schedule_graph)
             g = service.graph()
-            routes_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='routes')), routes_attribs)
-            services_attribs = dict_support.merge_dicts_with_lists(dict(g.nodes(data='services')), services_attribs)
-            schedule_graph = nx.compose(g, schedule_graph)
-        nx.set_node_attributes(schedule_graph, values=routes_attribs, name='routes')
-        nx.set_node_attributes(schedule_graph, values=services_attribs, name='services')
+            nodes = dict_support.merge_complex_dictionaries(dict(g.nodes(data=True)), nodes)
+            edges = dict_support.combine_edge_data_lists(list(g.edges(data=True)), edges)
+            # TODO check for clashing stop ids overwriting data
 
+        schedule_graph = nx.DiGraph(name='Schedule graph')
+        schedule_graph.add_nodes_from(nodes)
+        schedule_graph.add_edges_from(edges)
+        nx.set_node_attributes(schedule_graph, nodes)
         # update service and route graphs by the larger graph
         self._update_graph(schedule_graph)
         return schedule_graph
@@ -624,7 +705,7 @@ class Schedule(ScheduleElement):
         self._graph = new_graph
         for service in self.services.values():
             service._graph = new_graph
-            for route in service.routes.values():
+            for route in service._routes.values():
                 route._graph = new_graph
 
     def reindex(self, new_id):
@@ -670,13 +751,13 @@ class Schedule(ScheduleElement):
     def graph(self):
         return self._graph
 
-    def reproject(self, new_epsg):
+    def reproject(self, new_epsg, processes=1):
         """
         Changes projection of the element to new_epsg
         :param new_epsg: 'epsg:1234'
         :return:
         """
-        ScheduleElement.reproject(self, new_epsg)
+        ScheduleElement.reproject(self, new_epsg, processes=processes)
         self._graph.graph['crs'] = {'init': new_epsg}
 
     def find_epsg(self):
@@ -703,7 +784,7 @@ class Schedule(ScheduleElement):
         """
         routes = []
         for service_id, service in self.services.items():
-            if route_id in service.routes:
+            if route_id in service._routes:
                 routes.append(service[route_id])
         if not routes:
             raise KeyError(f'{route_id} not found in any of the Services')
@@ -714,10 +795,10 @@ class Schedule(ScheduleElement):
 
     def routes(self):
         """
-        Iterator for routes in the schedule, returns service_id and a route
+        Iterator for _routes in the schedule
         """
         for service_id, service in self.services.items():
-            for route in service.routes.values():
+            for route in service._routes.values():
                 yield service_id, route
 
     def number_of_routes(self):
@@ -764,6 +845,20 @@ class Schedule(ScheduleElement):
 
     def generate_validation_report(self):
         return schedule_validation.generate_validation_report(schedule=self)
+
+    def generate_standard_outputs(self, output_dir, gtfs_day='19700101'):
+        """
+        Generates geojsons that can be used for generating standard kepler visualisations.
+        These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
+        the shape of modal subgraphs.
+        :param output_dir: path to folder where to save resulting geojsons
+        :param gtfs_day: day in format YYYYMMDD for the network's schedule for consistency in visualisations,
+        defaults to 1970/01/01 otherwise
+        :return: None
+        """
+        gngeojson.generate_standard_outputs_for_schedule(self, output_dir, gtfs_day)
+        logging.info('Finished generating standard outputs. Zipping folder.')
+        persistence.zip_folder(output_dir)
 
     def read_matsim_schedule(self, path):
         services, minimal_transfer_times = matsim_reader.read_schedule(path, self.epsg)

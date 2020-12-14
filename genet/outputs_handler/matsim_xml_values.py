@@ -172,5 +172,41 @@ VEHICLE_TYPES = {
         'egressTime': {'secondsPerPerson': '0.25'},
         'doorOperation': {'mode': 'serial'},
         'passengerCarEquivalents': {'pce': '5.2'}
+    },
+    'Funicular': {
+            'capacity': {
+                'seats': {'persons': '180'},
+                'standingRoom': {'persons': '0'}
+            },
+            'length': {'meter': '36.0'},
+            'width': {'meter': '2.4'},
+            'accessTime': {'secondsPerPerson': '0.25'},
+            'egressTime': {'secondsPerPerson': '0.25'},
+            'doorOperation': {'mode': 'serial'},
+            'passengerCarEquivalents': {'pce': '5.2'}
+        },
+    'Gondola': {
+            'capacity': {
+                'seats': {'persons': '250'},
+                'standingRoom': {'persons': '0'}
+            },
+            'length': {'meter': '50.0'},
+            'width': {'meter': '6.0'},
+            'accessTime': {'secondsPerPerson': '0.5'},
+            'egressTime': {'secondsPerPerson': '0.5'},
+            'doorOperation': {'mode': 'serial'},
+            'passengerCarEquivalents': {'pce': '7.1'}
+        },
+    'Cablecar': {
+        'capacity': {
+            'seats': {'persons': '250'},
+            'standingRoom': {'persons': '0'}
+        },
+        'length': {'meter': '50.0'},
+        'width': {'meter': '6.0'},
+        'accessTime': {'secondsPerPerson': '0.5'},
+        'egressTime': {'secondsPerPerson': '0.5'},
+        'doorOperation': {'mode': 'serial'},
+        'passengerCarEquivalents': {'pce': '7.1'}
     }
 }

@@ -3,6 +3,7 @@ import s2sphere as s2
 import networkx as nx
 import numpy as np
 import statistics
+from shapely.geometry import LineString
 APPROX_EARTH_RADIUS = 6371008.8
 S2_LEVELS_FOR_SPATIAL_INDEXING = [0, 6, 8, 12, 18, 24, 30]
 
@@ -14,6 +15,23 @@ def decode_polyline_to_s2_points(_polyline):
     """
     decoded = polyline.decode(_polyline)
     return [grab_index_s2(lat, lon) for lat, lon in decoded]
+
+
+def encode_shapely_linestring_to_polyline(linestring):
+    """
+    :param linestring: shapely.geometry.LineString
+    :return: google encoded polyline
+    """
+    return polyline.encode(linestring.coords)
+
+
+def decode_polyline_to_shapely_linestring(_polyline):
+    """
+    :param _polyline: google encoded polyline
+    :return: shapely.geometry.LineString
+    """
+    decoded = polyline.decode(_polyline)
+    return LineString(decoded)
 
 
 def compute_average_proximity_to_polyline(poly_1, poly_2):

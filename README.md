@@ -65,9 +65,18 @@ inspect or change it and save it out to file.
     
 #### Installation  
 
+Create and activate virtual environment
+
     virtualenv -p python3.7 venv
     source venv/bin/activate
-    pip install -r requirements.txt
+    
+before installing dependencies you may need to install a dependency of `rtree`: `libspatialindex-dev`, the command 
+for linux:
+    
+    sudo apt-get install -y libspatialindex-dev
+    
+Finally install `GeNet` dependencies
+
     pip install -e .
     
 ### Testing
@@ -123,11 +132,11 @@ You can now use methods to read in MATSim network files:
     
 ![GeNet Network diagram](images/genet_network.png)
 
-### Using a Network object
+## Using a Network object
 
 Once you have a `genet.Network` object, you can use it to produce auxiliary files, analyse of modify the network.
 
-#### Summary
+### Summary
 The data saved on the edges of the graph can be nested. There are a couple of convenient methods that summarise the 
 schema of the data found on the nodes and links to show you what the keys (and if `data=True`, also values) of those 
 dictionaries look like. If `data=True`, the output shows up to 5 unique values stored in that location.
@@ -233,7 +242,7 @@ And for more keys:
     | 1000 |     4.16667 | residential                         |
     | 1001 |     4.16667 | residential                         |
 
-#### Extracting links of interest
+### Extracting links of interest
 
 You can extract the unique ids of links in the network which satisfy certain conditions pertaining to the
 data being stored on graph edges.
@@ -258,13 +267,13 @@ list: `['primary', 'secondary', 'something else']`:
 
 and many more. You can find the examples in the jupyter notebook: `notebooks/GeNet walk-through.ipynb`
 
-### Modifying a Network object
+## Modifying a Network object
 
 `GeNet` supports some simple modifications like adding, reindexing and removing nodes and links and some involved 
 modifications like changing the data stored under nodes or links (which will be discussed below). All of these 
 changes get recorded in `n.change_log`.
 
-#### 1.) Adding nodes/links
+### 1.) Adding nodes/links
 
     >>> n.add_link(link_id='proposed_index', u='4356572310', v='5811263955')
     >>> n.add_node(node='proposed_index', attribs={'data':'some_data'})
@@ -272,21 +281,21 @@ changes get recorded in `n.change_log`.
 The index passed is only a proposition. If a node or link under this link exists, a new, unique index will be 
 generated.
 
-#### 2.) Reindexing
+### 2.) Reindexing
 
 To reindex a node or link:
 
     >>> n.reindex_node('proposed_index', 'another_index')
     >>> n.reindex_link('proposed_index', 'another_index')
 
-#### 3.) Removing nodes/links
+### 3.) Removing nodes/links
 
 To remove a link or node:
 
     >>> n.remove_links('another_index')
     >>> n.remove_node('another_index')
 
-#### 4.) Modifying data stored on nodes or edges:
+### 4.) Modifying data stored on nodes or edges:
 
 Let's say you have extracted `genet.Network` link ids of interest, they are stored in the list `links` as above, and 
 now you want to make changes to the network. Let's 
@@ -334,6 +343,135 @@ gets saved to a csv together with any `Network` outputs.
     |  0 | 2020-06-02 10:47:03 | modify         | link          |     1007 |     1007 | {'id': '1007', 'from': '4356572310', 'to': '5811263955', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390723045407809, 's2_to': 5221390723040504387, 'length': 13.941905154249884, 'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '589660342'}, 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '2'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Shaftesbury Avenue'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}}                  | {'id': '1007', 'from': '4356572310', 'to': '5811263955', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390723045407809, 's2_to': 5221390723040504387, 'length': 13.941905154249884, 'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'SOMETHING'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '589660342'}, 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '2'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Shaftesbury Avenue'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}}                  | [('change', 'attributes.osm:way:highway.text', ('primary', 'SOMETHING'))] |
     |  1 | 2020-06-02 10:47:03 | modify         | link          |     1008 |     1008 | {'id': '1008', 'from': '5811263955', 'to': '21665588', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390723040504387, 's2_to': 5221390723204000715, 'length': 25.86037080854938, 'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '614324183'}, 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '2'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Shaftesbury Avenue'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}}                     | {'id': '1008', 'from': '5811263955', 'to': '21665588', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390723040504387, 's2_to': 5221390723204000715, 'length': 25.86037080854938, 'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'SOMETHING'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '614324183'}, 'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '2'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Shaftesbury Avenue'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}}                     | [('change', 'attributes.osm:way:highway.text', ('primary', 'SOMETHING'))] |
     |  2 | 2020-06-02 10:47:03 | modify         | link          |     1023 |     1023 | {'id': '1023', 'from': '1611125463', 'to': '108234', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['bus', 'car', 'pt'], 's2_from': 5221390319884366911, 's2_to': 5221390320040783993, 'length': 53.767011109096586, 'attributes': {'osm:relation:route': {'name': 'osm:relation:route', 'class': 'java.lang.String', 'text': 'bus'}, 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '59718434'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Cavendish Place'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}} | {'id': '1023', 'from': '1611125463', 'to': '108234', 'freespeed': 22.22222222222222, 'capacity': 3000.0, 'permlanes': 2.0, 'oneway': '1', 'modes': ['bus', 'car', 'pt'], 's2_from': 5221390319884366911, 's2_to': 5221390320040783993, 'length': 53.767011109096586, 'attributes': {'osm:relation:route': {'name': 'osm:relation:route', 'class': 'java.lang.String', 'text': 'bus'}, 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'SOMETHING'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '59718434'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Cavendish Place'}, 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'}}} | [('change', 'attributes.osm:way:highway.text', ('primary', 'SOMETHING'))] |
+
+
+## Simplification
+
+You can simplify a `genet.Network` using
+
+    >>> n.simplify(no_processes=4)
+
+Specifying number of processes is optional but defaults to 1. It is recommended you select a number appropriate for 
+the machine you're using to spread the computational load. This is a complicated process and takes a long time. To that
+end, it is more convenient to use a script, see `scripts/simplify_network.py`.
+
+The process is an altered version of graph simplification available in the `osmnx` package. Network links will be
+simplified between end-point nodes which meet the following conditions:
+- the number of nodes in the union of successor and predecessor nodes of that node is greater than two
+    - i.e. if the node is connected to more than one node in any direction it cannot be simplified
+- the node has no successor or predecessor nodes
+    - i.e. the node is a sink or source
+- there is a loop at the node 
+    - the only successor node is the node itself
+- the number of successor and predecessor nodes is not equal
+    - this should be thought of cases where number of successor and predecessor nodes is 0, 1 or 2 (earlier condition
+    prohibits other cases). This condition means we end link simplification at nodes where direction of flow changes
+    so in a situation where `... NODE_1 ---> NODE_2 <--> NODE_3 ...`, `NODE_2` will be be an endpoint and remain in the
+    graph
+- if the number of nodes in the union of successor and predecessor nodes is 1 and that node is both the successor and 
+predecessor node
+    - i.e. `... NODE_1 <--> NODE_2 <--> NODE_3`, `NODE_3` will be an endpoint to avoid cul-de-sacs being big loops at 
+    single point in the graph
+
+Below is an example of a simplified network.
+
+![GeNet Simplified Network split view](images/simplified_split_view.png)
+
+![GeNet Simplified Network overlay view](images/simplified_overlay.png)
+
+Upon simplification, the nodes which are being simplified are used for the creation of geometry for the link. This
+geometry is used in any geojson outputs, preserving the original look of the network. The data stored under links 
+which are being simplified is fused handles in the following way:
+- `freespeed`: The maximum value across links is taken
+- `capacity`: Rounded up to integer of median across links
+- `permlanes`: Rounded up to integer of median across links
+- `length`: Sum across links
+- `modes`: Union across links, i.e. `{'bus'} | {'car'} = {'bus', 'car}'`
+- In the case of overlapping OSM attributes such as osm ids or highway types they are stored as sets under the same 
+attributes in the graph.
+```python
+>>> n.link('12')['attributes']['osm:way:osmid'] = {
+        'name': 'osm:way:osmid', 
+        'class': 'java.lang.String', 
+        'text': {'123','124'}
+    }
+```
+GeNet by default supports such mixture of data types when filtering the network on conditions e.g. to get
+links with OSM ids 123, you need only use the familiar syntax:
+```python
+osm_id_123_links = genet.graph_operations.extract_links_on_edge_attributes(
+        n,
+        conditions= {'attributes': {'osm:way:highway': {'text': '123'}}}
+    )
+```
+If you need this method to work only for non iterable values, you need to specify `mixed_dtypes=False`:
+```python
+osm_id_123_links = genet.graph_operations.extract_links_on_edge_attributes(
+        n,
+        conditions= {'attributes': {'osm:way:highway': {'text': '123'}}},
+        mixed_dtypes=False
+    )
+```
+This will result in link with id `12` not being included in the resulting `osm_id_123_links`.
+
+In the output MATSim network these are saved as comma separated values under link attributes. Upon reading 
+such a network into GeNet, the attributes become sets again. The geometry is also saved to a MATSim network
+under attributes and [encoded as polyline](https://pypi.org/project/polyline/). Unlike other attributes, upon 
+reading it back with GeNet the geometry is decoded into `shapely.LineString` and becomes a main data key, i.e.
+
+    >>> n.link_attribute_summary()
+    
+    attribute
+    ├── id ['12']
+    ├── geometry [LineString((x,y), (v,w)]
+    ...
+    └── attributes
+        ...
+        └── osm:way:highway
+            ├── name ['osm:way:highway']
+            ├── class ['java.lang.String']
+            └── text [{'residential','minor'}]
+
+instead of
+
+    >>> n.link_attribute_summary()
+    
+    attribute
+    ├── id ['12']
+    ...
+    └── attributes
+        ├── geometry
+        │   ├── name ['geometry']
+        │   ├── class ['java.lang.String']
+        │   └── text ['}qtqa{aBwfc`_y`@jfq|Hdzm~A...']
+        ...
+        └── osm:way:highway
+            ├── name ['osm:way:highway']
+            ├── class ['java.lang.String']
+            └── text [{'residential','minor'}]
+
+This is the same schema as for the network right after simplification, before it is saved. The output MATSim 
+link is saved in the following way:
+
+```xml
+<link id="12" from="NODE_1" to="NODE_4" freespeed="12.5" capacity="600" permlanes="1" oneway="1" modes="car,walk,bike" length="232.733">
+    <attributes>
+        <attribute name="osm:way:osmid" class="java.lang.String">123,124</attribute>
+        <attribute name="osm:way:highway" class="java.lang.String">residential,minor</attribute>
+        <attribute name="osm:way:lanes" class="java.lang.String">1</attribute>
+        <attribute name="geometry" class="java.lang.String">}qtqa{aBwfc`_y`@jfq|Hdzm~Adn~tMlnkoDlpa|OttblF</attribute>
+    </attributes>
+</link>
+```
+
+### ! Attention - Always make sure to validate connectivity of the simplified network
+
+In case of `Network`s featuring a `Schedule`. After the process of simplifying the `Network` graph is complete
+all of the link references for PT stops get checked and updated by simplified links. All of the network routes
+also get updated by simplified links. Because our condition for simplification is in-degree = out-degree = 1,
+the updated do not have the potential to disrupt the PT network route. It could mean that two or more stops 
+could now refer to the same long link. It is encouraged that you run validation on your network post 
+simplififcation (included in `scripts/simplify_network.py`) and verify your network visually.
 
 ## Validation
 
@@ -550,6 +688,32 @@ the model rather than supply (network).
     
     >>> _n.apply_function_to_links(set_google_speed, 'freespeed')
 
+### Standard outputs
+
+You can generate a long list of outputs which are useful for validating and visualising the network and its schedule. 
+
+    >>> n.generate_standard_outputs(output_dir='path/to/standard_outputs', gtfs_day='19700101')
+
+Specifying `gtfs_day` is optional and only useful for generating visualisations which don't rise eyebrows.
+In this bundle you get the following outputs:
+
+    - network graph related
+        - geojsons for car mode featuring 'freespeed', 'capacity', 'permlanes' (separately, because these can get large)
+        - geojsons for all other modal subgraphs
+    - schedule related
+        - geojsons featuring schedule graph with vehicles per hour for every mode separately and all together (with 
+        mode data present) in the schedule for all hours of the day, this can be used within kepler to animate across
+        hours of the day. (Use 'filter' option on 'hour' field and click on the little clock)
+        - the same as above for all modes together but subsetted for am/inter/pm peak within hours 7, 8, 9, 13, 16, 17, 
+        18 for convenience (in case the big geojson may be too large to load in kepler)
+        - png bar plots for vehicles per hour per:
+            - PT service
+            - PT stop
+            (titles and file names include modes and human readable names for stops and services if present)
+
+You can also generate standard outputs for schedule only:
+
+    >>> n.schedule.generate_standard_outputs(output_dir='path/to/standard_outputs', gtfs_day='19700101')
 
 ### Routing
 

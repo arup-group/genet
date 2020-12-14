@@ -1,6 +1,8 @@
 from genet.schedule_elements import Stop
 from tests.fixtures import stop_epsg_27700, assert_semantically_equal
 from pyproj import Proj, Transformer
+import os
+import pickle
 
 
 def test_initiate_stop_with_kwargs():

@@ -1,8 +1,12 @@
 import yaml
 import logging
 import osmread
+from pyproj import Transformer
+from math import ceil
+
 import genet.inputs_handler.osmnx_customised as osmnx_customised
 import genet.utils.parallel as parallel
+import genet.utils.spatial as spatial
 from genet.outputs_handler.matsim_xml_values import MATSIM_JOSM_DEFAULTS
 
 
@@ -99,14 +103,73 @@ def create_s2_indexed_osm_graph(response_jsons, config, num_processes, bidirecti
             paths[key] = value
 
     logging.info('OSM: Add each OSM way (aka, path) to the OSM graph')
-    edges = parallel.multiprocess_wrap_function_processing_dict_data(
-        osmnx_customised.return_edges,
-        paths,
+    edges = parallel.multiprocess_wrap(
+        data=paths,
+        split=parallel.split_dict,
+        apply=osmnx_customised.return_edges,
+        combine=parallel.combine_list,
         processes=num_processes,
         config=config,
         bidirectional=bidirectional)
 
     return nodes, edges
+
+
+def generate_graph_nodes(nodes, epsg):
+    input_to_output_transformer = Transformer.from_crs('epsg:4326', epsg)
+    nodes_and_attributes = {}
+    for node_id, attribs in nodes.items():
+        x, y = spatial.change_proj(attribs['x'], attribs['y'], input_to_output_transformer)
+        nodes_and_attributes[str(node_id)] = {
+            'id': str(node_id),
+            'x': x,
+            'y': y,
+            'lat': attribs['x'],
+            'lon': attribs['y'],
+            's2_id': attribs['s2id']
+        }
+    return nodes_and_attributes
+
+
+def generate_graph_edges(edges, reindexing_dict, nodes_and_attributes, config_path):
+    edges_attributes = []
+    for edge, attribs in edges:
+        u, v = str(edge[0]), str(edge[1])
+        if u in reindexing_dict:
+            u = reindexing_dict[u]
+        if v in reindexing_dict:
+            v = reindexing_dict[v]
+
+        link_attributes = find_matsim_link_values(attribs, Config(config_path)).copy()
+        if 'lanes' in attribs:
+            try:
+                # overwrite the default matsim josm values
+                link_attributes['permlanes'] = ceil(float(attribs['lanes']))
+            except Exception as e:
+                logging.warning(f'Reading lanes from OSM resulted in {type(e)} with message "{e}".'
+                                f'Found at edge {edge}. Defaulting to permlanes={link_attributes["permlanes"]}')
+        # compute link-wide capacity
+        link_attributes['capacity'] = link_attributes['permlanes'] * link_attributes['capacity']
+
+        link_attributes['oneway'] = '1'
+        link_attributes['modes'] = attribs['modes']
+        link_attributes['from'] = u
+        link_attributes['to'] = v
+        link_attributes['s2_from'] = nodes_and_attributes[u]['s2_id']
+        link_attributes['s2_to'] = nodes_and_attributes[v]['s2_id']
+        link_attributes['length'] = spatial.distance_between_s2cellids(
+            link_attributes['s2_from'], link_attributes['s2_to'])
+        # the rest of the keys are osm attributes
+        link_attributes['attributes'] = {}
+        for key, val in attribs.items():
+            if key not in link_attributes:
+                link_attributes['attributes']['osm:way:{}'.format(key)] = {
+                    'name': 'osm:way:{}'.format(key),
+                    'class': 'java.lang.String',
+                    'text': str(val),
+                }
+        edges_attributes.append(link_attributes)
+    return edges_attributes
 
 
 def read_node(entity):

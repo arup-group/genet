@@ -22,6 +22,22 @@ def test_change_log_records_adding_objects():
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
     assert_frame_equal(log.log[cols_to_compare], target[cols_to_compare], check_dtype=False)
 
+
+def test_change_log_records_adding_objects_in_bunch():
+    log = ChangeLog()
+    log.add_bunch('link', ['1234', '1235'], [{'attrib': 'hey'}, {'attrib': 'helloooo'}])
+
+    target = DataFrame(
+        {'timestamp': {0: '2020-07-09 09:56:05', 1: '2020-07-09 09:56:05'}, 'change_event': {0: 'add', 1: 'add'},
+         'object_type': {0: 'link', 1: 'link'}, 'old_id': {0: None, 1: None}, 'new_id': {0: '1234', 1: '1235'},
+         'old_attributes': {0: None, 1: None}, 'new_attributes': {0: "{'attrib': 'hey'}", 1: "{'attrib': 'helloooo'}"},
+         'diff': {0: [('add', '', [('attrib', 'hey')]), ('add', 'id', '1234')],
+                  1: [('add', '', [('attrib', 'helloooo')]), ('add', 'id', '1235')]}})
+
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(log.log[cols_to_compare], target[cols_to_compare], check_dtype=False)
+
+
 def test_change_log_records_modifying_objects():
     log = ChangeLog()
     log.modify('link', '1234', {'attrib': 'old'}, '1234', {'attrib': 'new'})
@@ -40,6 +56,23 @@ def test_change_log_records_modifying_objects():
     assert_frame_equal(log.log[cols_to_compare], target[cols_to_compare], check_dtype=False)
 
 
+def test_change_log_records_modifying_objects_in_bunch():
+    log = ChangeLog()
+    log.modify_bunch('link', ['1234', '1235'], [{'attrib': 'hey'}, {'attrib': 'helloooo'}],
+                     ['1', '2'], [{'attrib': 'HEY'}, {'attrib': 'HELLOOOO'}])
+
+    target = DataFrame(
+        {'timestamp': {0: '2020-07-09 19:31:35', 1: '2020-07-09 19:31:35'}, 'change_event': {0: 'modify', 1: 'modify'},
+         'object_type': {0: 'link', 1: 'link'}, 'old_id': {0: '1234', 1: '1235'}, 'new_id': {0: '1', 1: '2'},
+         'old_attributes': {0: "{'attrib': 'hey'}", 1: "{'attrib': 'helloooo'}"},
+         'new_attributes': {0: "{'attrib': 'HEY'}", 1: "{'attrib': 'HELLOOOO'}"},
+         'diff': {0: [('change', 'attrib', ('hey', 'HEY')), ('change', 'id', ('1234', '1'))],
+                  1: [('change', 'attrib', ('helloooo', 'HELLOOOO')), ('change', 'id', ('1235', '2'))]}})
+
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(log.log[cols_to_compare], target[cols_to_compare], check_dtype=False)
+
+
 def test_change_log_records_removing_objects():
     log = ChangeLog()
     log.remove('link', '1234', {'attrib': 'hey'})
@@ -53,6 +86,21 @@ def test_change_log_records_removing_objects():
         'new_attributes': {0: None},
         'diff': {0: [('remove', '', [('attrib', 'hey')]), ('remove', 'id', '1234')]}
     })
+
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    assert_frame_equal(log.log[cols_to_compare], target[cols_to_compare], check_dtype=False)
+
+
+def test_change_log_records_removing_objects_in_bunch():
+    log = ChangeLog()
+    log.remove_bunch('link', ['1234', '1235'], [{'attrib': 'hey'}, {'attrib': 'helloooo'}])
+
+    target = DataFrame(
+        {'timestamp': {0: '2020-07-09 09:56:05', 1: '2020-07-09 09:56:05'}, 'change_event': {0: 'remove', 1: 'remove'},
+         'object_type': {0: 'link', 1: 'link'}, 'old_id': {0: '1234', 1: '1235'}, 'new_id': {0: None, 1: None},
+         'old_attributes': {0: "{'attrib': 'hey'}", 1: "{'attrib': 'helloooo'}"}, 'new_attributes': {0: None, 1: None},
+         'diff': {0: [('remove', '', [('attrib', 'hey')]), ('remove', 'id', '1234')],
+                  1: [('remove', '', [('attrib', 'helloooo')]), ('remove', 'id', '1235')]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
     assert_frame_equal(log.log[cols_to_compare], target[cols_to_compare], check_dtype=False)

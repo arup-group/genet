@@ -1,5 +1,6 @@
 import os
 import logging
+import shutil
 
 
 def ensure_dir(direc):
@@ -12,3 +13,7 @@ def ensure_dir(direc):
 
 def is_zip(path):
     return path.lower().endswith(".zip")
+
+
+def zip_folder(folder_path):
+    shutil.make_archive(folder_path, 'zip', folder_path)

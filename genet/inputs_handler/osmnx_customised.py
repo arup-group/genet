@@ -2,7 +2,8 @@ from itertools import groupby
 import genet.utils.spatial as spatial
 import genet.inputs_handler.osm_reader as osm_reader
 
-# rip of a few functions from osmnx.core to customise the tags being saved to the graph
+
+# rip and monkey patch of a few functions from osmnx.core to customise the tags being saved to the graph
 
 
 def parse_osm_nodes_paths(osm_data, config):
@@ -104,6 +105,7 @@ def return_edges(paths, config, bidirectional=False):
     :param bidirectional: bool value if True, reads all paths as both ways
     :return:
     """
+
     def extract_osm_data(data, es):
         d = {}
         for tag in (set(config.USEFUL_TAGS_PATH) | {'osmid', 'modes'}) - {'oneway'}:
@@ -148,7 +150,6 @@ def return_edges(paths, config, bidirectional=False):
 
 
 def return_edge(data, one_way):
-
     # extract the ordered list of nodes from this path element, then delete it
     # so we don't add it as an attribute to the edge later
     path_nodes = data['nodes']
