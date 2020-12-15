@@ -1,5 +1,8 @@
 # Contributing
 
+When it comes to planning in the built environment, we think transparency is critical. The shape and operations of our shared infrastructure and public spaces impacts individuals’ access to employment opportunities, education, social communities, clean air, and safe mobility options. 
+We think open source, agent based models are the future for transparent, granular city planning. So we built GeNet which helps to make the process of modifying and validating MATSim transport networks a little less painful. 
+
 Thank you for considering contributing to GeNet! We're really excited to hear your opinions on the project and any ideas
 you may have on how it can be better!
 
