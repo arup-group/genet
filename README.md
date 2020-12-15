@@ -90,47 +90,7 @@ Finally install `GeNet` dependencies
 To generate XML & HTML coverage reports to `reports/coverage`:
     
     ./bash_scripts/code-coverage.sh
-
-## Usage
-This section goes through basic usage examples.
-
-### Setting-up a Network object
-
-Instantiate an empty network
-
-    >>> import genet
-    >>> n = genet.Network()
-    >>> n
     
-    <Network instance at 4683796240: with 
-    graph: Name: 
-    Type: MultiDiGraph
-    Number of nodes: 0
-    Number of edges: 0
-     and 
-    schedule Number of services: 0
-    Number of unique routes: 0
-
-You can now use methods to read in MATSim network files:
-
-    >>> pt2matsim_network = 'path/to/network.xml'
-    >>> pt2matsim_schedule = 'path/to/schedule.xml'
-    
-    >>> n.read_matsim_network(pt2matsim_network, epsg='epsg:27700')
-    >>> n.read_matsim_schedule(pt2matsim_schedule, epsg='epsg:27700')
-    >>> n
-    
-    <Network instance at 4683796240: with 
-    graph: Name: 
-    Type: MultiDiGraph
-    Number of nodes: 1662
-    Number of edges: 3166
-    Average in degree:   1.9049
-    Average out degree:   1.9049 and 
-    schedule Number of services: 62
-    Number of unique routes: 520
-    
-![GeNet Network diagram](images/genet_network.png)
 
 ## Using a Network object
 
