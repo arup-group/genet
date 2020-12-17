@@ -91,12 +91,6 @@ To generate XML & HTML coverage reports to `reports/coverage`:
     
     ./bash_scripts/code-coverage.sh
     
-
-## Using a Network object
-
-Once you have a `genet.Network` object, you can use it to produce auxiliary files, analyse of modify the network.
-
-
 ## Modifying a Network object
 
 `GeNet` supports some simple modifications like adding, reindexing and removing nodes and links and some involved 

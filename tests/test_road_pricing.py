@@ -42,6 +42,22 @@ def road_pricing_xml_tree():
     xml_tree_root = road_pricing.build_tree_from_csv_json(path_csv, path_json)
     yield xml_tree_root
 
+
+def test_bulding_tree_where_no_links_repeat(tmpdir):
+    path_json = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                            'test_data/road_pricing/osm_to_network_ids_no_link_repeat.json'))
+    path_csv = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                             'test_data/road_pricing/osm_tolls_with_network_ids_no_link_overlap.csv'))
+    xml_tree_root = road_pricing.build_tree_from_csv_json(path_csv, path_json)
+    road_pricing.write_xml(xml_tree_root, tmpdir)
+
+    expected_xml = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                             'test_data/road_pricing/roadpricing-file_no_link_repeat.xml'))
+    expected_xml_obj = lxml.etree.parse(expected_xml)
+    generated_xml_obj = lxml.etree.parse(os.path.join(tmpdir, 'roadpricing-file.xml'))
+    assert_xml_trees_equal(generated_xml_obj, expected_xml_obj)
+
+
 def test_extract_network_id_from_osm_csv(tmpdir,
                                          network_object,
                                          attribute_name = 'osm:way:id',

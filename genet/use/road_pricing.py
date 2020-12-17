@@ -96,7 +96,10 @@ def build_tree_from_csv_json(csv_input, json_input):
     # Time-of-day pricing:
     # links with multiple tolling amounts throughout the day appear as multiple rows in the .csv config
     # links with uniform pricing throughout the day appear only once in .csv config
-    links_repeat = pd.concat(g for _, g in tolled_links_df.groupby('osm_ids') if len(g) > 1)
+    try:
+        links_repeat = pd.concat(g for _, g in tolled_links_df.groupby('osm_ids') if len(g) > 1)
+    except ValueError:
+        links_repeat = pd.DataFrame()
     links_no_repeat = tolled_links_df[~tolled_links_df.index.isin(links_repeat.index)]
 
     # JSON input
@@ -123,23 +126,24 @@ def build_tree_from_csv_json(csv_input, json_input):
 
     # links with time-of-day pricing:
     # get unique ids of these links and iterate through them
-    unique_repeated_ids = links_repeat['osm_ids'].unique()
-    for link_id in unique_repeated_ids:
+    if not links_repeat.empty:
+        unique_repeated_ids = links_repeat['osm_ids'].unique()
+        for link_id in unique_repeated_ids:
 
-        link_time_of_day_df = links_repeat[links_repeat['osm_ids'] == link_id]
+            link_time_of_day_df = links_repeat[links_repeat['osm_ids'] == link_id]
 
-        link_ref = link_time_of_day_df['osm_refs'].unique()[0]
-        if link_ref not in commented_tolls:
-            links.append(Comment(' === '+str(link_ref)+' === '))
-            commented_tolls.append(str(link_ref))
+            link_ref = link_time_of_day_df['osm_refs'].unique()[0]
+            if link_ref not in commented_tolls:
+                links.append(Comment(' === '+str(link_ref)+' === '))
+                commented_tolls.append(str(link_ref))
 
-        # from the JSON input, obtain all network_ids that match this row's specific osm_id
-        list_of_network_ids = osm_id_to_network_id_dict[link_id]
-        # each network link in list_of_network_ids is now matched with multiple rows of link_time_of_day_df
-        for net_id in list_of_network_ids:
-            link = SubElement(links, "link", id=str(net_id))
-            for index, row in link_time_of_day_df.iterrows():
-                SubElement(link, "cost", start_time=str(row['start_time']),
-                           end_time=str(row['end_time']), amount=str(row['toll_amount']))
+            # from the JSON input, obtain all network_ids that match this row's specific osm_id
+            list_of_network_ids = osm_id_to_network_id_dict[link_id]
+            # each network link in list_of_network_ids is now matched with multiple rows of link_time_of_day_df
+            for net_id in list_of_network_ids:
+                link = SubElement(links, "link", id=str(net_id))
+                for index, row in link_time_of_day_df.iterrows():
+                    SubElement(link, "cost", start_time=str(row['start_time']),
+                               end_time=str(row['end_time']), amount=str(row['toll_amount']))
 
     return roadpricing
