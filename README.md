@@ -79,7 +79,7 @@ Finally install `GeNet` dependencies
 
     pip install -e .
     
-### Testing
+### Unit Testing
 
 #### Run the unit tests (from root dir)
 
@@ -90,39 +90,3 @@ Finally install `GeNet` dependencies
 To generate XML & HTML coverage reports to `reports/coverage`:
     
     ./bash_scripts/code-coverage.sh
-
-## Adding two networks
-
-You can add one network to another. The network you're adding the other network too will be updated with the nodes, 
-link and data from the other network. Before the network you are adding will go through a process of having it's node
-and link indices consolidated to match the network it's being added to. The node ids are consolidated based on their
-spatial information, i.e. the network-to-add will inherit the node ids from the main network if the nodes share the
-`s2` index. The link ids and the multi index the edge is stored under in the graph are consolidated based on shared 
-from and to nodes and modes and the modes stored in the links data.
-
-For now, the method only supports non overlapping services.
-
-    >>> n.add(other_network)
-
-### Writing results
-
-At the moment GeNet supports saving `Network` and `Schedule` objects to MATSim's `network.xml`, `schedule.xml` and
-`vehicles.xml`.
-
-    >>> n.write_to_matsim('/path/to/matsim/networks/genet_output'))
-    
-Saving a `Network` will result in `network.xml`, `schedule.xml` and `vehicles.xml` files if the Network has a non-empty 
-`Schedule`.
-
-Saving a `Schedule` will result in `schedule.xml` and `vehicles.xml` files.
-
-You can check that a `Network` that had been read in from MATSim files results in semantically equal xml files 
-(if not changes were applied to the `Network` of course)
-
-    >>> from tests.xml_diff import assert_semantically_equal
-    >>> assert_semantically_equal(
-            pt2matsim_schedule, 
-            '/path/to/matsim/networks/genet_output/schedule.xml')
-            
-            
-    path/to/schedule.xml and /path/to/matsim/networks/genet_output/schedule.xml are semantically equal
