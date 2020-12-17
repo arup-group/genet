@@ -276,7 +276,16 @@ class Network:
             logging.info(f'Added Node with index `{node}` and data={attribs}')
         return node
 
-    def add_nodes(self, nodes_and_attribs: dict):
+    def add_nodes(self, nodes_and_attribs: dict, silent: bool = False, ignore_change_log: bool = False):
+        """
+        Adds nodes, reindexes if indices are clashing with nodes already in the network
+        :param nodes_and_attribs: {index_for_node: {attribute dictionary for that node}}
+        :param silent: whether to mute stdout logging messages
+        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
+        :return:
+        """
         # check for clashing nodes
         clashing_node_ids = set(dict(self.nodes()).keys()) & set(nodes_and_attribs.keys())
 
@@ -298,9 +307,11 @@ class Network:
         nodes_and_attribs_to_add = df_nodes.T.to_dict()
 
         self.graph.add_nodes_from([(node_id, attribs) for node_id, attribs in nodes_and_attribs_to_add.items()])
-        self.change_log.add_bunch(object_type='node', id_bunch=list(nodes_and_attribs_to_add.keys()),
-                                  attributes_bunch=list(nodes_and_attribs_to_add.values()))
-        logging.info(f'Added {len(nodes_and_attribs)} nodes')
+        if not ignore_change_log:
+            self.change_log.add_bunch(object_type='node', id_bunch=list(nodes_and_attribs_to_add.keys()),
+                                      attributes_bunch=list(nodes_and_attribs_to_add.values()))
+        if not silent:
+            logging.info(f'Added {len(nodes_and_attribs)} nodes')
         return reindexing_dict, nodes_and_attribs_to_add
 
     def add_edge(self, u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None, attribs: dict = None,
@@ -322,11 +333,15 @@ class Network:
             logging.info(f'Added edge from `{u}` to `{v}` with link_id `{link_id}`')
         return link_id
 
-    def add_edges(self, edges_attributes: List[dict]):
+    def add_edges(self, edges_attributes: List[dict], silent: bool = False, ignore_change_log: bool = False):
         """
         Adds multiple edges, generates their unique link ids
         :param edges_attributes: List of edges, each item in list is a dictionary defining the edge attributes,
         contains at least 'from': node_id and 'to': node_id entries,
+        :param silent: whether to mute stdout logging messages
+        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
         :return:
         """
         # check for compulsory attribs
@@ -339,7 +354,7 @@ class Network:
         df_edges['id'] = self.generate_indices_for_n_edges(len(df_edges))
         df_edges = df_edges.set_index('id', drop=False)
 
-        return self.add_links(df_edges.T.to_dict())
+        return self.add_links(df_edges.T.to_dict(), silent=silent, ignore_change_log=ignore_change_log)
 
     def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None,
                  attribs: dict = None, silent: bool = False):
@@ -383,11 +398,15 @@ class Network:
                          f'multi-index:{multi_edge_idx}, and data={attribs}')
         return link_id
 
-    def add_links(self, links_and_attributes: Dict[str, dict]):
+    def add_links(self, links_and_attributes: Dict[str, dict], silent: bool = False, ignore_change_log: bool = False):
         """
         Adds multiple edges, generates their unique link ids
         :param links_and_attributes: Dictionary of link ids and corresponding edge attributes, each edge attributes
         contains at least 'from': node_id and 'to': node_id entries,
+        :param silent: whether to mute stdout logging messages
+        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
         :return:
         """
         # check for compulsory attribs
@@ -455,9 +474,11 @@ class Network:
         self.graph.add_edges_from(
             [(attribs['from'], attribs['to'], add_to_link_id_mapping[link]['multi_edge_idx'], attribs) for link, attribs
              in links_and_attributes.items()])
-        self.change_log.add_bunch(object_type='link', id_bunch=list(links_and_attributes.keys()),
-                                  attributes_bunch=list(links_and_attributes.values()))
-        logging.info(f'Added {len(links_and_attributes)} links')
+        if not ignore_change_log:
+            self.change_log.add_bunch(object_type='link', id_bunch=list(links_and_attributes.keys()),
+                                      attributes_bunch=list(links_and_attributes.values()))
+        if not silent:
+            logging.info(f'Added {len(links_and_attributes)} links')
         return reindexing_dict, links_and_attributes
 
     def reindex_node(self, node_id, new_node_id, silent: bool = False):
@@ -773,16 +794,22 @@ class Network:
         if not silent:
             logging.info(f'Removed Node under index: {node_id}')
 
-    def remove_nodes(self, nodes):
+    def remove_nodes(self, nodes, ignore_change_log=False, silent=False):
         """
         Removes several nodes and all adjacent edges
         :param nodes: list or set
+        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
+        :param silent: whether to mute stdout logging messages
         :return:
         """
-        self.change_log.remove_bunch(object_type='node', id_bunch=nodes,
-                                     attributes_bunch=[self.node(node_id) for node_id in nodes])
+        if not ignore_change_log:
+            self.change_log.remove_bunch(object_type='node', id_bunch=nodes,
+                                         attributes_bunch=[self.node(node_id) for node_id in nodes])
         self.graph.remove_nodes_from(nodes)
-        logging.info(f'Removed {len(nodes)} nodes.')
+        if not silent:
+            logging.info(f'Removed {len(nodes)} nodes.')
 
     def remove_link(self, link_id, silent: bool = False):
         """
@@ -798,18 +825,24 @@ class Network:
         if not silent:
             logging.info(f'Removed link under index: {link_id}')
 
-    def remove_links(self, links):
+    def remove_links(self, links, ignore_change_log=False, silent=False):
         """
         Removes the multi edges pertaining to links given
         :param links: set or list
+        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
+        :param silent: whether to mute stdout logging messages
         :return:
         """
-        self.change_log.remove_bunch(object_type='link', id_bunch=links,
-                                     attributes_bunch=[self.link(link_id) for link_id in links])
+        if not ignore_change_log:
+            self.change_log.remove_bunch(object_type='link', id_bunch=links,
+                                         attributes_bunch=[self.link(link_id) for link_id in links])
         self.graph.remove_edges_from([self.edge_tuple_from_link_id(link_id) for link_id in links])
         for link_id in links:
             del self.link_id_mapping[link_id]
-        logging.info(f'Removed {len(links)} links')
+        if not silent:
+            logging.info(f'Removed {len(links)} links')
 
     def number_of_multi_edges(self, u, v):
         """
@@ -1028,17 +1061,17 @@ class Network:
             existing_keys = existing_keys | set(avoid_keys)
         id_set = set(map(str, range(n))) - existing_keys
         _max = 0
+        loop_no = 0
 
         while len(id_set) != n:
-            try:
-                _max = max(map(int, id_set))
-            except ValueError:
+            if loop_no > 0:
                 if not _max:
                     _max = n
                 else:
                     _max += n
             missing_ns = n - len(id_set)
             id_set |= set(map(str, range(_max + 1, _max + missing_ns + 1))) - existing_keys
+            loop_no += 1
 
         logging.info(f'Generated {len(id_set)} link ids.')
         return id_set

@@ -67,12 +67,12 @@ def _process_path(indexed_edge_groups_to_simplify):
     return links_to_add
 
 
-def _extract_edge_data(G, path):
+def _extract_edge_data(n, path):
     edge_attributes = {}
     for u, v in zip(path[:-1], path[1:]):
         # get edge between these nodes: if multiple edges exist between
         # them - smoosh them
-        for multi_idx, edge in G[u][v].items():
+        for multi_idx, edge in n.graph[u][v].items():
             for key in edge:
                 if key in edge_attributes:
                     # if this key already exists in the dict, append it to the
@@ -82,7 +82,25 @@ def _extract_edge_data(G, path):
                     # if this key doesn't already exist, set the value to a list
                     # containing the one value
                     edge_attributes[key] = [edge[key]]
+    n.remove_links(edge_attributes['id'], ignore_change_log=True, silent=True)
     return edge_attributes
+
+
+def _extract_node_data(n, path):
+    return {node: n.node(node) for node in path}
+
+
+def _assemble_path_data(n, indexed_paths_to_simplify):
+    return_d = {}
+    for k, path in indexed_paths_to_simplify.items():
+        return_d[k] = {
+            'path': path,
+            'link_data': _extract_edge_data(n, path),
+            'node_data': _extract_node_data(n, path),
+            'nodes_to_remove': path[1:-1]
+        }
+        return_d[k]['ids'] = return_d[k]['link_data']['id']
+    return return_d
 
 
 def _is_endpoint(node_neighbours):
@@ -173,23 +191,21 @@ def simplify_graph(n, no_processes=1):
     and new link indices
     """
     logging.info("Begin simplifying the graph")
-    G = n.graph.copy()
-    initial_node_count = len(list(G.nodes()))
-    initial_edge_count = len(list(G.edges()))
+    initial_node_count = len(list(n.graph.nodes()))
+    initial_edge_count = len(list(n.graph.edges()))
 
     logging.info('Generating paths to be simplified')
     # generate each path that needs to be simplified
-    edges_to_simplify = _get_edge_groups_to_simplify(G, no_processes=no_processes)
+    edges_to_simplify = _get_edge_groups_to_simplify(n.graph, no_processes=no_processes)
     logging.info(f'Found {len(edges_to_simplify)} paths to simplify.')
 
     indexed_paths_to_simplify = dict(zip(n.generate_indices_for_n_edges(len(edges_to_simplify)), edges_to_simplify))
-    indexed_paths_to_simplify = {
-        k: {'path': path,
-            'link_data': _extract_edge_data(G, path),
-            'node_data': {node: n.node(node) for node in path}
-            }
-        for k, path in indexed_paths_to_simplify.items()
-    }
+    indexed_paths_to_simplify = _assemble_path_data(n, indexed_paths_to_simplify)
+
+    nodes_to_remove = set()
+    for k, data in indexed_paths_to_simplify.items():
+        nodes_to_remove |= set(data['nodes_to_remove'])
+    n.remove_nodes(nodes_to_remove, ignore_change_log=True, silent=True)
 
     logging.info('Processing links for all paths to be simplified')
     links_to_add = parallel.multiprocess_wrap(
@@ -202,29 +218,22 @@ def simplify_graph(n, no_processes=1):
 
     logging.info('Adding new simplified links')
     # add links
-    reindexing_dict, links_and_attributes = n.add_links(links_to_add)
+    reindexing_dict = n.add_links(links_to_add, ignore_change_log=True)[0]
 
-    # collect all links and nodes to remove, generate link simplification map between old indices and new
-    nodes_to_remove = set()
+    # generate link simplification map between old indices and new, add changelog event
+    for old_id, new_id in reindexing_dict.items():
+        indexed_paths_to_simplify[new_id] = indexed_paths_to_simplify[old_id]
+        del indexed_paths_to_simplify[old_id]
+    new_ids = list(indexed_paths_to_simplify.keys())
+    old_ids = [set(indexed_paths_to_simplify[_id]['ids']) for _id in new_ids]
+    n.change_log.simplify_bunch(old_ids, new_ids, indexed_paths_to_simplify, links_to_add)
+    del links_to_add
+
+    # generate map between old and new ids
     n.link_simplification_map = {}
-    for new_id, path_data in indexed_paths_to_simplify.items():
-        ids = set(path_data['link_data']['id'])
-        try:
-            new_id = reindexing_dict[new_id]
-        except KeyError:
-            pass
-        n.link_simplification_map = {**n.link_simplification_map,
-                                     **dict(zip(ids, [new_id] * len(ids)))}
-        nodes_to_remove |= set(path_data['path'][1:-1])
-    links_to_remove = set(n.link_simplification_map.keys())
-
-    logging.info('Removing links which have now been replaced by simplified links')
-    # remove links
-    n.remove_links(links_to_remove)
-
-    logging.info('Removing nodes')
-    # finally, remove nodes
-    n.remove_nodes(nodes_to_remove)
+    for old_id_list, new_id in zip(old_ids, new_ids):
+        for _id in old_id_list:
+            n.link_simplification_map[_id] = new_id
 
     logging.info(
         f"Simplified graph: {initial_node_count} to {len(n.graph)} nodes, {initial_edge_count} to "
