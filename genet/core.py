@@ -276,7 +276,8 @@ class Network:
         :param nodes_and_attribs: {index_for_node: {attribute dictionary for that node}}
         :param silent: whether to mute stdout logging messages
         :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
-        and not recommended.
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
         :return:
         """
         # check for clashing nodes
@@ -333,7 +334,8 @@ class Network:
         contains at least 'from': node_id and 'to': node_id entries,
         :param silent: whether to mute stdout logging messages
         :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
-        and not recommended.
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
         :return:
         """
         # check for compulsory attribs
@@ -397,7 +399,8 @@ class Network:
         contains at least 'from': node_id and 'to': node_id entries,
         :param silent: whether to mute stdout logging messages
         :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
-        and not recommended.
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
         :return:
         """
         # check for compulsory attribs
@@ -790,7 +793,8 @@ class Network:
         Removes several nodes and all adjacent edges
         :param nodes: list or set
         :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
-        and not recommended.
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
         :param silent: whether to mute stdout logging messages
         :return:
         """
@@ -820,7 +824,8 @@ class Network:
         Removes the multi edges pertaining to links given
         :param links: set or list
         :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
-        and not recommended.
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
         :param silent: whether to mute stdout logging messages
         :return:
         """

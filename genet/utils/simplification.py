@@ -87,8 +87,7 @@ def _extract_edge_data(n, path):
 
 
 def _extract_node_data(n, path):
-    node_data = {node: n.node(node) for node in path}
-    return node_data
+    return {node: n.node(node) for node in path}
 
 
 def _assemble_path_data(n, indexed_paths_to_simplify):
