@@ -87,6 +87,29 @@ class ChangeLog:
                      zip(old_id_bunch, new_id_bunch, old_attributes, new_attributes)]
         }), ignore_index=True)
 
+    def simplify_bunch(self, old_ids_list_bunch, new_id_bunch, indexed_paths_to_simplify, links_to_add):
+        """ Series of ordered lists of indecies and attributes to log simplification of links, data prior to
+        simplification and the nodes simplified
+        :param old_ids_list_bunch: same len as attributes_bunch
+        :param old_attributes: same len as attributes_bunch
+        :param new_id_bunch: same len as id_bunch
+        :param new_attributes: same len as id_bunch
+        :param path_diff: lists of nodes deleted in order e.g. is path_before = [A, B, C, D] and path_after = [A, D]
+        path_diff = [B, C], list of those for all links
+        :return:
+        """
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.log = self.log.append(pd.DataFrame({
+            'timestamp': [timestamp] * len(new_id_bunch),
+            'change_event': ['simplify'] * len(new_id_bunch),
+            'object_type': ['links'] * len(new_id_bunch),
+            'old_id': old_ids_list_bunch,
+            'new_id': new_id_bunch,
+            'old_attributes': [str(indexed_paths_to_simplify[_id]['link_data']) for _id in new_id_bunch],
+            'new_attributes': [str(links_to_add[_id]) for _id in new_id_bunch],
+            'diff': [str(indexed_paths_to_simplify[_id]['nodes_to_remove']) for _id in new_id_bunch]
+        }), ignore_index=True)
+
     def remove(self, object_type: str, object_id: Union[int, str], object_attributes: dict):
         self.log = self.log.append({
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
