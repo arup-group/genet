@@ -5,6 +5,7 @@ import logging
 import time
 import os
 import sys
+from shapely.geometry import LineString
 from requests.models import Response
 from concurrent.futures._base import Future
 from requests_futures.sessions import FuturesSession
@@ -370,6 +371,27 @@ def test_generating_requests_on_non_simplified_graphs():
         (1, 3): {'path_nodes': [1, 2, 3], 'path_polyline': '_ibE_seK????', 'origin': {'lat': 1, 'lon': 2},
                  'destination': {'lat': 1, 'lon': 2}},
         (5, 3): {'path_nodes': [5, 4, 3], 'path_polyline': '_ibE_seK????', 'origin': {'lat': 1, 'lon': 2},
+                 'destination': {'lat': 1, 'lon': 2}}})
+
+
+def test_generating_requests_on_simplified_graphs():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 3, attribs={'modes': ['car'], 'geometry': LineString([(1,2), (1,2), (1,2)])})
+    n.add_link('3', 5, 3, attribs={'modes': ['car'], 'geometry': LineString([(1,2), (1,2), (1,2)])})
+    n.add_link('4', 1, 10, attribs={'modes': ['car']})
+    n.graph.graph["simplified"] = True
+
+    for node in n.graph.nodes:
+        n.apply_attributes_to_node(node, {'lat': 1, 'lon': 2})
+
+    api_requests = google_directions.generate_requests(n)
+
+    assert_semantically_equal(api_requests, {
+        (1, 10): {'path_nodes': (1, 10), 'path_polyline': '_ibE_seK??', 'origin': {'lat': 1, 'lon': 2},
+                  'destination': {'lat': 1, 'lon': 2}},
+        (1, 3): {'path_nodes': (1, 3), 'path_polyline': '_ibE_seK????', 'origin': {'lat': 1, 'lon': 2},
+                 'destination': {'lat': 1, 'lon': 2}},
+        (5, 3): {'path_nodes': (5, 3), 'path_polyline': '_ibE_seK????', 'origin': {'lat': 1, 'lon': 2},
                  'destination': {'lat': 1, 'lon': 2}}})
 
 

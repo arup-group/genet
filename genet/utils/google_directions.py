@@ -2,7 +2,6 @@ import ast
 import itertools
 import logging
 import polyline
-import osmnx as ox
 import os
 import time
 import json
@@ -10,6 +9,8 @@ from requests_futures.sessions import FuturesSession
 import genet.utils.secrets_vault as secrets_vault
 import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
+import genet.utils.simplification as simplification
+import genet.utils.graph_operations as graph_operations
 session = FuturesSession(max_workers=2)
 
 
@@ -87,9 +88,22 @@ def generate_requests(n):
     :param n: genet.Network
     :return:
     """
+    if n.is_simplified():
+        return _generate_requests_for_simplified_network(n)
+    else:
+        return _generate_requests_for_non_simplified_network(n)
+
+
+def _generate_requests_for_non_simplified_network(n):
+    """
+    Generates two dictionaries, both of them have keys that describe a pair of nodes for which we need to request
+    directions from Google directions API. For non-simplified network n
+    :param n: genet.Network
+    :return:
+    """
     g = n.modal_subgraph(modes='car')
 
-    simple_paths = list(ox.simplification._get_paths_to_simplify(g))
+    simple_paths = simplification._get_edge_groups_to_simplify(g)
     node_diff = set(g.nodes) - set(itertools.chain.from_iterable(simple_paths))
     non_simplified_edges = set(g.out_edges(node_diff)) | set(g.in_edges(node_diff))
     all_paths = list(non_simplified_edges) + simple_paths
@@ -103,6 +117,37 @@ def generate_requests(n):
             'origin': n.node(request_nodes[0]),
             'destination': n.node(request_nodes[1])
         }
+    return api_requests
+
+
+def _generate_requests_for_simplified_network(n):
+    """
+    Generates two dictionaries, both of them have keys that describe a pair of nodes for which we need to request
+    directions from Google directions API. For non-simplified network n
+    :param n: genet.Network
+    :return:
+    """
+    all_paths = graph_operations.extract_links_on_edge_attributes(
+        network=n,
+        conditions={'modes': 'car'},
+        mixed_dtypes=True
+    )
+
+    api_requests = {}
+    for path in all_paths:
+        request_nodes = (n.link(path)['from'], n.link(path)['to'])
+        api_requests[request_nodes] = {
+            'path_nodes': request_nodes,
+            'origin': n.node(request_nodes[0]),
+            'destination': n.node(request_nodes[1])
+        }
+        try:
+            api_requests[request_nodes]['path_polyline'] = spatial.encode_shapely_linestring_to_polyline(
+                n.link(path)['geometry'])
+        except KeyError:
+            api_requests[request_nodes]['path_polyline'] = polyline.encode(
+                [(n.node(node)['lat'], n.node(node)['lon']) for node in request_nodes])
+
     return api_requests
 
 
