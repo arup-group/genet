@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v2.dtd">
+<network>
+    <nodes>
+        <node id="21667818" x="528504.1342843144" y="182155.7435136598" >
+		</node>
+        <node id="25508485" x="528489.467895946" y="182206.20303669578" >
+		</node>
+    </nodes>
+    <links capperiod="01:00:00" effectivecellsize="7.5" effectivelanewidth="3.75">
+		<link id="1" from="25508485" to="21667818" length="52.765151087870265" freespeed="4.166666666666667" capacity="600.0" permlanes="1.0" oneway="1" modes="car" >
+			<attributes>
+				<attribute name="geometry" class="java.lang.String">_ibE_seK_ibE_ibE_ibE_ibE</attribute>
+			</attributes>
+		</link>
+		<link id="2" from="25508485" to="21667818" length="52.765151087870265" freespeed="4.166666666666667" capacity="600.0" permlanes="1.0" oneway="1" modes="car" >
+			<attributes>
+				<attribute name="geometry" class="java.lang.String">_ibE_seK_ibE_ibE_ibE_ibE</attribute>
+			</attributes>
+		</link>
+    </links>
+</network>
