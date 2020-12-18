@@ -117,11 +117,12 @@ class Stop:
     """
 
     def __init__(self, id: Union[str, int], x: Union[str, int, float], y: Union[str, int, float], epsg: str,
-                 transformer: Transformer = None, **kwargs):
+                 transformer: Transformer = None, name: str = '', **kwargs):
         self.id = id
         self.x = float(x)
         self.y = float(y)
         self.epsg = epsg
+        self.name = name
 
         if ('lat' in kwargs) and ('lon' in kwargs):
             self.lat, self.lon = kwargs['lat'], kwargs['lon']
@@ -193,7 +194,7 @@ class Stop:
         :return:
         """
         for k, v in attribs.items():
-            if k not in self.__dict__:
+            if k not in self.__dict__ or not self.__dict__[k]:
                 setattr(self, k, v)
                 self.additional_attributes.append(k)
 
@@ -367,6 +368,11 @@ class Route(ScheduleElement):
                 df = trip_df
             else:
                 df = df.append(trip_df)
+        df['route'] = self.id
+        df['route_name'] = self.route_short_name.replace("\\", "_").replace("/", "_")
+        df['mode'] = self.mode
+        df['from_stop_name'] = df['from_stop'].apply(lambda x: self.stop(x).name.replace("\\", "_").replace("/", "_"))
+        df['to_stop_name'] = df['to_stop'].apply(lambda x: self.stop(x).name.replace("\\", "_").replace("/", "_"))
         df = df.reset_index(drop=True)
         return df
 
@@ -490,13 +496,12 @@ class Service(ScheduleElement):
         self.id = id
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
-        if name:
-            self.name = str(name)
-        if routes:
-            if routes[0].route_short_name:
-                self.name = str(routes[0].route_short_name)
-        else:
-            self.name = ''
+        self.name = str(name)
+        if not name and routes:
+            for route in routes:
+                if route.route_short_name:
+                    self.name = str(route.route_short_name)
+                    break
         # create a dictionary and index if not unique ids
         self._routes = {}
         for route in routes:
@@ -572,6 +577,19 @@ class Service(ScheduleElement):
                 output_dir=output_dir,
                 e_c='#EC7063'
             )
+
+    def generate_trips_dataframe(self, gtfs_day='19700101'):
+        df = None
+        for route_id, route in self.routes():
+            _df = route.generate_trips_dataframe(gtfs_day=gtfs_day)
+            if df is None:
+                df = _df
+            else:
+                df = df.append(_df)
+        df['service'] = self.id
+        df['service_name'] = self.name.replace("\\", "_").replace("/", "_")
+        df = df.reset_index(drop=True)
+        return df
 
     def route(self, route_id):
         """
@@ -772,6 +790,17 @@ class Schedule(ScheduleElement):
             output_dir=output_dir,
             e_c='#EC7063'
         )
+
+    def generate_trips_dataframe(self, gtfs_day='19700101'):
+        df = None
+        for service_id, service in self.services.items():
+            _df = service.generate_trips_dataframe(gtfs_day=gtfs_day)
+            if df is None:
+                df = _df
+            else:
+                df = df.append(_df)
+        df = df.reset_index(drop=True)
+        return df
 
     def service_ids(self):
         return list(self.services.keys())

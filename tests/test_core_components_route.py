@@ -87,16 +87,16 @@ def test_build_graph_builds_correct_graph():
     assert_semantically_equal(dict(g.nodes(data=True)),
                               {'1': {'routes': [''], 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
                                      'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
-                                     'additional_attributes': []},
+                                     'name': '', 'additional_attributes': []},
                                '2': {'routes': [''], 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
                                      'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
-                                     'additional_attributes': []},
+                                     'name': '', 'additional_attributes': []},
                                '3': {'routes': [''], 'id': '3', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700',
                                      'lat': 49.76683608549253, 'lon': -7.557121424907424, 's2_id': 5205973754090203369,
-                                     'additional_attributes': []},
+                                     'name': '', 'additional_attributes': []},
                                '4': {'routes': [''], 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700',
                                      'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
-                                     'additional_attributes': []}})
+                                     'name': '', 'additional_attributes': []}})
     assert_semantically_equal(list(g.edges(data=True)),
                               [('1', '2', {'routes': [''], 'modes': ['bus']}),
                                ('2', '3', {'routes': [''], 'modes': ['bus']}),
@@ -319,6 +319,11 @@ def test_building_trips_dataframe(route):
                                              4: Timestamp('1970-01-01 20:07:00'), 5: Timestamp('1970-01-01 20:13:00')},
                             'from_stop': {0: '1', 1: '2', 2: '3', 3: '1', 4: '2', 5: '3'},
                             'to_stop': {0: '2', 1: '3', 2: '4', 3: '2', 4: '3', 5: '4'},
-                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'}})
+                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
+                            'route': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1'},
+                            'route_name':{0: 'name', 1: 'name', 2: 'name', 3: 'name', 4: 'name', 5: 'name'},
+                            'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus'},
+                            'from_stop_name': {0: '', 1: '', 2: '', 3: '', 4: '', 5: ''},
+                            'to_stop_name': {0: '', 1: '', 2: '', 3: '', 4: '', 5: ''}})
 
     assert_frame_equal(df, correct_df)

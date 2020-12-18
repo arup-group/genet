@@ -197,8 +197,8 @@ def test_schedule_subgraph(schedule):
                               {'1': {'services': ['service1'], 'routes': ['2', '1'], 'id': '1', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'lat': 51.52560003323918,
                                      'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
-                                     'additional_attributes': ['linkRefId'], 'linkRefId': '1'},
+                                     'additional_attributes': ['linkRefId'], 'linkRefId': '1', 'name': ''},
                                '0': {'services': ['service1'], 'routes': ['1'], 'id': '0', 'x': 529455.7452394223,
                                      'y': 182401.37630677427, 'epsg': 'epsg:27700', 'lat': 51.525696033239186,
                                      'lon': -0.13530998708775874, 's2_id': 5221390668020036699,
-                                     'additional_attributes': ['linkRefId'], 'linkRefId': '0'}})
+                                     'additional_attributes': ['linkRefId'], 'linkRefId': '0', 'name': ''}})
