@@ -22,11 +22,9 @@ OSM_TAGS:
 
 MODES:
   MODE_INDICATORS:
-    # These refer to tags stored in OSM, the mode assignment to tags is manual and definitely not exhaustive. The
-    # tags that are not understood by puma will be logged and can be reviewed before proceeding with building the network.
-    # if a tag is not listed here, it will not be read into the network. This is where you should define how dense
-    # you want your network to be. If any of these tags don't have values defined for them in
-    # src/outputs_handling/matsim_xml_values.py, it will default to DEFAULT_OSM_TAG_VALUE
+    # These refer to tags stored in OSM, the mode assignment to tags is manual and definitely not exhaustive.
+    # If a tag is not listed here, it will not be read into the network. This is where you should define how dense
+    # you want your network to be.
     highway:
       motorway:
         - car
@@ -112,9 +110,11 @@ MODES:
       - rail
 
   DEFAULT_OSM_TAG_VALUE:
+  # GeNet will first look at OSM tags to infer the matsim values the link should have. For the types and values head over to
+  # outputs_handler/matsim_xml_values.py.
     car: secondary
     bus: secondary
     rail: railway
-    subway,metro: railway
+    subway: railway
     bike: living_street
     walk: pedestrian
