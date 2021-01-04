@@ -113,7 +113,8 @@ class SpatialTree(nx.DiGraph):
 
     def add_links(self, n):
         """
-        Indexes each link and adds to the graph
+        Generates the spatial tree where all links in `n` are nodes and edges exists between nodes if the two links
+        share to and from (`n`) nodes; i.e. the two links are connected at a node
         :param n: genet.Network object
         :return:
         """
@@ -126,13 +127,14 @@ class SpatialTree(nx.DiGraph):
         edges = pd.merge(self.links[cols], self.links[cols], left_on='to', right_on='from', suffixes=('_to', '_from'))
         self.add_edges_from(list(zip(edges['id_to'], edges['id_from'])))
 
-    def find_closest_links(self, gdf_points, distance_radius, mode):
+    def closest_links(self, gdf_points, distance_radius, mode):
         """
-
+        Given a GeoDataFrame `gdf_points` with a`geometry` column with Points, finds closest links within
+        `distance_radius` from the spatial tree which accept `mode`
         :param gdf_points:
         :param distance_radius:
         :param mode:
-        :return:
+        :return: GeoDataFrame
         """
         # todo make work with metres
         gdf_points['geometry'] = gdf_points['geometry'].apply(lambda x: grow_point(x, distance_radius))
@@ -153,13 +155,13 @@ class SpatialTree(nx.DiGraph):
         # todo add weight
         links = self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, {mode}), axis=1)]['id']
         df_pt_edges['shortest_path'] = df_pt_edges.apply(
-            lambda x: nx.shortest_path(self.subgraph(links), source=x[u_col], target=x[v_col]), axis=1)
+            lambda x: nx.shortest_path(G=self.subgraph(links), source=x[u_col], target=x[v_col]), axis=1)
         return df_pt_edges
 
 
-    def path_length(self, n, source, target):
+    def path_length(self, G, source, target):
         try:
-            return nx.dijkstra_path_length(n, source, target)
+            return nx.dijkstra_path_length(G, source, target)
         except nx.NetworkXNoPath:
             pass
 
@@ -174,5 +176,5 @@ class SpatialTree(nx.DiGraph):
         # todo add weight
         links = self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, {mode}), axis=1)]['id']
         df_pt_edges['path_lengths'] = df_pt_edges.apply(
-            lambda x: self.path_length(self.subgraph(links), source=x[u_col], target=x[v_col]), axis=1)
+            lambda x: self.path_length(G=self.subgraph(links), source=x[u_col], target=x[v_col]), axis=1)
         return df_pt_edges

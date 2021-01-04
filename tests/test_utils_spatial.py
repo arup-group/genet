@@ -129,7 +129,7 @@ def test_SpatialTree_closest_links(network):
                                        Point(-0.15164747576623197, 51.520660715220636)]})
     stops.crs = {'init': 'epsg:4326'}
 
-    closest_links = spatial_tree.find_closest_links(stops, 30, mode='car')
+    closest_links = spatial_tree.closest_links(stops, 30, mode='car')
     assert_semantically_equal(closest_links,
                               {'stop_10m_to_link_1': ['link_1'],
                                'stop_20m_to_link_1': ['link_1'],
