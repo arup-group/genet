@@ -25,6 +25,15 @@ def encode_shapely_linestring_to_polyline(linestring):
     return polyline.encode(linestring.coords)
 
 
+def swap_x_y_in_linestring(linestring):
+    """
+    swaps x with y in a shapely linestring,e.g. from LineString([(1,2), (3,4)]) to LineString([(2,1), (4,3)])
+    :param linestring: shapely.geometry.LineString
+    :return: shapely.geometry.LineString
+    """
+    return LineString((p[1], p[0]) for p in linestring.coords)
+
+
 def decode_polyline_to_shapely_linestring(_polyline):
     """
     :param _polyline: google encoded polyline

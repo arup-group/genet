@@ -10,7 +10,8 @@ import genet.utils.secrets_vault as secrets_vault
 import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
 import genet.utils.simplification as simplification
-import genet.utils.graph_operations as graph_operations
+import genet.outputs_handler.geojson as geojson
+
 session = FuturesSession(max_workers=2)
 
 
@@ -60,7 +61,7 @@ def read_saved_api_results(file_path):
         try:
             json_dump[key] = ast.literal_eval(json_dump[key])
         except (ValueError, TypeError):
-            logging.warning(str(key)+' not processed')
+            logging.warning(str(key) + ' not processed')
             continue
         api_requests[(json_dump[key]['path_nodes'][0], json_dump[key]['path_nodes'][-1])] = json_dump[key]
     return api_requests
@@ -72,7 +73,7 @@ def make_request(origin_attributes, destination_attributes, key, traffic):
         'origin': '{},{}'.format(origin_attributes['lat'], origin_attributes['lon']),
         'destination': '{},{}'.format(destination_attributes['lat'], destination_attributes['lon']),
         'key': key
-        }
+    }
     if traffic:
         params['departure_time'] = 'now'
     return session.get(base_url, params=params)
@@ -126,29 +127,16 @@ def _generate_requests_for_simplified_network(n):
     :param n: genet.Network
     :return:
     """
-    links = graph_operations.extract_links_on_edge_attributes(
-        network=n,
-        conditions={'modes': 'car'},
-        mixed_dtypes=True
-    )
+    gdf_links = geojson.generate_geodataframes(n.modal_subgraph(modes='car'))[1]
+    gdf_links['path_polyline'] = gdf_links['geometry'].apply(lambda x: spatial.swap_x_y_in_linestring(x))
+    gdf_links['path_polyline'] = gdf_links['path_polyline'].apply(
+        lambda x: spatial.encode_shapely_linestring_to_polyline(x))
 
-    api_requests = {}
-    for path in links:
-        request_nodes = (n.link(path)['from'], n.link(path)['to'])
-        api_requests[request_nodes] = {
-            'path_nodes': request_nodes,
-            'origin': n.node(request_nodes[0]),
-            'destination': n.node(request_nodes[1])
-        }
-        try:
-            # TODO change projection
-            api_requests[request_nodes]['path_polyline'] = spatial.encode_shapely_linestring_to_polyline(
-                n.link(path)['geometry'])
-        except KeyError:
-            api_requests[request_nodes]['path_polyline'] = polyline.encode(
-                [(n.node(node)['lat'], n.node(node)['lon']) for node in request_nodes])
+    gdf_links['path_nodes'] = gdf_links.apply(lambda x: (x['from'], x['to']), axis=1)
+    gdf_links['origin'] = gdf_links['from'].apply(lambda x: n.node(x))
+    gdf_links['destination'] = gdf_links['to'].apply(lambda x: n.node(x))
 
-    return api_requests
+    return gdf_links.set_index(['from', 'to'])[['path_polyline', 'path_nodes', 'origin', 'destination']].T.to_dict()
 
 
 def send_requests(api_requests: dict, key: str = None, secret_name: str = None, region_name: str = None,

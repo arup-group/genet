@@ -1,6 +1,7 @@
 import s2sphere
 from genet.utils import spatial
 from tests.fixtures import *
+from shapely.geometry import LineString
 
 
 def test_decode_polyline_to_s2_points():
@@ -9,6 +10,10 @@ def test_decode_polyline_to_s2_points():
                         5221390693026247929, 5221390693047976565, 5221390685911708669, 5221390685910265239,
                         5221390683049158953, 5221390683157459293, 5221390683301132839, 5221390683277381201,
                         5221390683276573369, 5221390683274586647]
+
+
+def test_swaping_x_y_in_linestring():
+    assert spatial.swap_x_y_in_linestring(LineString([(1,2), (3,4), (5,6)])) == LineString([(2,1), (4,3), (6,5)])
 
 
 def test_compute_average_proximity_to_polyline():
