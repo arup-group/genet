@@ -47,25 +47,22 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir, traf
     return api_requests
 
 
-def read_saved_api_results(output_dir):
+def read_saved_api_results(file_path):
     """
-    Read parsed Google Directions API requests in output_dir
-    :param output_dir: output directory where the google directions api requests were saved as JSON
+    Read parsed Google Directions API requests in `file_path` JSON file
+    :param file_path: path to the JSON file where the google directions api requests were saved
     :return:
     """
     api_requests = {}
-    for file in os.listdir(output_dir):
-        if file.endswith(".json"):
-            response = os.path.join(output_dir, file)
-            with open(response, 'rb') as handle:
-                json_dump = json.load(handle)
-            for key in json_dump:
-                try:
-                    json_dump[key] = ast.literal_eval(json_dump[key])
-                except (ValueError, TypeError):
-                    logging.warning(str(key)+' not processed')
-                    continue
-                api_requests[(json_dump[key]['path_nodes'][0], json_dump[key]['path_nodes'][-1])] = json_dump[key]
+    with open(file_path, 'rb') as handle:
+        json_dump = json.load(handle)
+    for key in json_dump:
+        try:
+            json_dump[key] = ast.literal_eval(json_dump[key])
+        except (ValueError, TypeError):
+            logging.warning(str(key)+' not processed')
+            continue
+        api_requests[(json_dump[key]['path_nodes'][0], json_dump[key]['path_nodes'][-1])] = json_dump[key]
     return api_requests
 
 

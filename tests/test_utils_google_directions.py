@@ -16,7 +16,7 @@ from tests.fixtures import assert_semantically_equal, assert_logging_warning_cau
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 example_google_speed_data = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "example_google_speed_data"))
+    os.path.join(os.path.dirname(__file__), "test_data", "example_google_speed_data", "api_requests.json"))
 
 
 @pytest.fixture()
