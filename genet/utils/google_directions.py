@@ -83,21 +83,23 @@ def make_request(origin_attributes, destination_attributes, key, traffic):
 
 def generate_requests(n):
     """
-    Generates two dictionaries, both of them have keys that describe a pair of nodes for which we need to request
-    directions from Google directions API
+    Generates a dictionary describing pairs of nodes for which we need to request
+    directions from Google directions API.
     :param n: genet.Network
     :return:
     """
     if n.is_simplified():
+        logging.info('Generating Google Directions API requests for a simplified network.')
         return _generate_requests_for_simplified_network(n)
     else:
+        logging.info('Generating Google Directions API requests for a non-simplified network.')
         return _generate_requests_for_non_simplified_network(n)
 
 
 def _generate_requests_for_non_simplified_network(n):
     """
-    Generates two dictionaries, both of them have keys that describe a pair of nodes for which we need to request
-    directions from Google directions API. For non-simplified network n
+    Generates a dictionary describing pairs of nodes for which we need to request
+    directions from Google directions API. For a non-simplified network n
     :param n: genet.Network
     :return:
     """
@@ -122,19 +124,19 @@ def _generate_requests_for_non_simplified_network(n):
 
 def _generate_requests_for_simplified_network(n):
     """
-    Generates two dictionaries, both of them have keys that describe a pair of nodes for which we need to request
-    directions from Google directions API. For non-simplified network n
+    Generates a dictionary describing pairs of nodes for which we need to request
+    directions from Google directions API. For a simplified network n
     :param n: genet.Network
     :return:
     """
-    all_paths = graph_operations.extract_links_on_edge_attributes(
+    links = graph_operations.extract_links_on_edge_attributes(
         network=n,
         conditions={'modes': 'car'},
         mixed_dtypes=True
     )
 
     api_requests = {}
-    for path in all_paths:
+    for path in links:
         request_nodes = (n.link(path)['from'], n.link(path)['to'])
         api_requests[request_nodes] = {
             'path_nodes': request_nodes,
@@ -142,6 +144,7 @@ def _generate_requests_for_simplified_network(n):
             'destination': n.node(request_nodes[1])
         }
         try:
+            # TODO change projection
             api_requests[request_nodes]['path_polyline'] = spatial.encode_shapely_linestring_to_polyline(
                 n.link(path)['geometry'])
         except KeyError:
