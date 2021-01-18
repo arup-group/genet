@@ -31,7 +31,6 @@ jobs:
         pip install -e .
     - name: Lint with flake8
       run: |
-        pip install flake8
         flake8 . --max-line-length 120 --count  --show-source --statistics --exclude=scripts,tests
     - name: Unit tests
       run: |
