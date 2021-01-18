@@ -53,7 +53,7 @@ class Network:
         :param other:
         :return:
         """
-        if self.graph.graph['simplified'] != other.graph.graph['simplified']:
+        if self.is_simplified() != other.is_simplified():
             raise RuntimeError('You cannot add simplified and non-simplified networks together')
 
         # consolidate coordinate systems
@@ -158,11 +158,14 @@ class Network:
             self.transformer = None
 
     def simplify(self, no_processes=1):
-        if self.graph.graph["simplified"]:
+        if self.is_simplified():
             raise RuntimeError('This network has already been simplified. You cannot simplify the graph twice.')
         simplification.simplify_graph(self, no_processes)
         # mark graph as having been simplified
         self.graph.graph["simplified"] = True
+
+    def is_simplified(self):
+        return self.graph.graph["simplified"]
 
     def node_attribute_summary(self, data=False):
         """
