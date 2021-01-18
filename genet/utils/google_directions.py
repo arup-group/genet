@@ -60,8 +60,8 @@ def read_saved_api_results(file_path):
     for key in json_dump:
         try:
             json_dump[key] = ast.literal_eval(json_dump[key])
-        except (ValueError, TypeError):
-            logging.warning(str(key) + ' not processed')
+        except (ValueError, TypeError) as e:
+            logging.warning(f'{str(key)} not processed due to {e}')
             continue
         api_requests[(json_dump[key]['path_nodes'][0], json_dump[key]['path_nodes'][-1])] = json_dump[key]
     return api_requests
