@@ -2,7 +2,6 @@ import ast
 import itertools
 import logging
 import polyline
-import osmnx as ox
 import os
 import time
 import json
@@ -10,6 +9,9 @@ from requests_futures.sessions import FuturesSession
 import genet.utils.secrets_vault as secrets_vault
 import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
+import genet.utils.simplification as simplification
+import genet.outputs_handler.geojson as geojson
+
 session = FuturesSession(max_workers=2)
 
 
@@ -46,25 +48,22 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir, traf
     return api_requests
 
 
-def read_saved_api_results(output_dir):
+def read_saved_api_results(file_path):
     """
-    Read parsed Google Directions API requests in output_dir
-    :param output_dir: output directory where the google directions api requests were saved as JSON
+    Read parsed Google Directions API requests in `file_path` JSON file
+    :param file_path: path to the JSON file where the google directions api requests were saved
     :return:
     """
     api_requests = {}
-    for file in os.listdir(output_dir):
-        if file.endswith(".json"):
-            response = os.path.join(output_dir, file)
-            with open(response, 'rb') as handle:
-                json_dump = json.load(handle)
-            for key in json_dump:
-                try:
-                    json_dump[key] = ast.literal_eval(json_dump[key])
-                except (ValueError, TypeError):
-                    logging.warning(str(key)+' not processed')
-                    continue
-                api_requests[(json_dump[key]['path_nodes'][0], json_dump[key]['path_nodes'][-1])] = json_dump[key]
+    with open(file_path, 'rb') as handle:
+        json_dump = json.load(handle)
+    for key in json_dump:
+        try:
+            json_dump[key] = ast.literal_eval(json_dump[key])
+        except (ValueError, TypeError) as e:
+            logging.warning(f'{str(key)} not processed due to {e}')
+            continue
+        api_requests[(json_dump[key]['path_nodes'][0], json_dump[key]['path_nodes'][-1])] = json_dump[key]
     return api_requests
 
 
@@ -74,7 +73,7 @@ def make_request(origin_attributes, destination_attributes, key, traffic):
         'origin': '{},{}'.format(origin_attributes['lat'], origin_attributes['lon']),
         'destination': '{},{}'.format(destination_attributes['lat'], destination_attributes['lon']),
         'key': key
-        }
+    }
     if traffic:
         params['departure_time'] = 'now'
     return session.get(base_url, params=params)
@@ -82,14 +81,29 @@ def make_request(origin_attributes, destination_attributes, key, traffic):
 
 def generate_requests(n):
     """
-    Generates two dictionaries, both of them have keys that describe a pair of nodes for which we need to request
-    directions from Google directions API
+    Generates a dictionary describing pairs of nodes for which we need to request
+    directions from Google directions API.
+    :param n: genet.Network
+    :return:
+    """
+    if n.is_simplified():
+        logging.info('Generating Google Directions API requests for a simplified network.')
+        return _generate_requests_for_simplified_network(n)
+    else:
+        logging.info('Generating Google Directions API requests for a non-simplified network.')
+        return _generate_requests_for_non_simplified_network(n)
+
+
+def _generate_requests_for_non_simplified_network(n):
+    """
+    Generates a dictionary describing pairs of nodes for which we need to request
+    directions from Google directions API. For a non-simplified network n
     :param n: genet.Network
     :return:
     """
     g = n.modal_subgraph(modes='car')
 
-    simple_paths = list(ox.simplification._get_paths_to_simplify(g))
+    simple_paths = simplification._get_edge_groups_to_simplify(g)
     node_diff = set(g.nodes) - set(itertools.chain.from_iterable(simple_paths))
     non_simplified_edges = set(g.out_edges(node_diff)) | set(g.in_edges(node_diff))
     all_paths = list(non_simplified_edges) + simple_paths
@@ -104,6 +118,25 @@ def generate_requests(n):
             'destination': n.node(request_nodes[1])
         }
     return api_requests
+
+
+def _generate_requests_for_simplified_network(n):
+    """
+    Generates a dictionary describing pairs of nodes for which we need to request
+    directions from Google directions API. For a simplified network n
+    :param n: genet.Network
+    :return:
+    """
+    gdf_links = geojson.generate_geodataframes(n.modal_subgraph(modes='car'))[1]
+    gdf_links['path_polyline'] = gdf_links['geometry'].apply(lambda x: spatial.swap_x_y_in_linestring(x))
+    gdf_links['path_polyline'] = gdf_links['path_polyline'].apply(
+        lambda x: spatial.encode_shapely_linestring_to_polyline(x))
+
+    gdf_links['path_nodes'] = gdf_links.apply(lambda x: (x['from'], x['to']), axis=1)
+    gdf_links['origin'] = gdf_links['from'].apply(lambda x: n.node(x))
+    gdf_links['destination'] = gdf_links['to'].apply(lambda x: n.node(x))
+
+    return gdf_links.set_index(['from', 'to'])[['path_polyline', 'path_nodes', 'origin', 'destination']].T.to_dict()
 
 
 def send_requests(api_requests: dict, key: str = None, secret_name: str = None, region_name: str = None,
