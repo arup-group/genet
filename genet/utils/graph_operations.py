@@ -84,7 +84,7 @@ class Filter:
                     else:
                         # value is that value
                         satisfies = data_dict[key] == val
-                elif isinstance(val, list):
+                elif isinstance(val, (list, set)):
                     if isinstance(data_dict[key], (list, set)) and self.mixed_dtypes:
                         if set(data_dict[key]) & set(val):
                             satisfies = True
