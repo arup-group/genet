@@ -910,7 +910,7 @@ class Schedule(ScheduleElement):
                 r = Route(
                     route_short_name=route['route_short_name'],
                     mode=route['mode'],
-                    stops=[Stop(id=id, x=stops_db[id]['stop_lon'], y=stops_db[id]['stop_lat'], epsg='epsg:4326') for id
+                    stops=[Stop(id=id, x=stops_db[id]['stop_lat'], y=stops_db[id]['stop_lon'], epsg='epsg:4326') for id
                            in
                            route['stops']],
                     trips=route['trips'],
