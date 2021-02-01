@@ -910,7 +910,7 @@ class Schedule(ScheduleElement):
                 r = Route(
                     route_short_name=route['route_short_name'],
                     mode=route['mode'],
-                    stops=[Stop(id=id, x=stops_db[id]['stop_lon'], y=stops_db[id]['stop_lat'], epsg='epsg:4326') for id
+                    stops=[Stop(id=id, x=stops_db[id]['stop_lat'], y=stops_db[id]['stop_lon'], epsg='epsg:4326') for id
                            in
                            route['stops']],
                     trips=route['trips'],
@@ -920,10 +920,9 @@ class Schedule(ScheduleElement):
                 routes_list.append(r)
             services.append(Service(id=key, routes=routes_list))
 
-        # TODO add services rather than creating new object (in case there are already services present)
+        # add services rather than creating new object (in case there are already services present)
         to_add = self.__class__('epsg:4326', services)
         self.add(to_add)
-        self.reproject(self.epsg)
 
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)
