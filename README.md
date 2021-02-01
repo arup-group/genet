@@ -1,5 +1,7 @@
 # Network Scenario Generator (GeNet)
 
+[![DOI](https://zenodo.org/badge/265256468.svg)](https://zenodo.org/badge/latestdoi/265256468)
+
 This package provides tools to represent and work with a multi-modal transport network with public transport (PT)
 services. It is based on [MATSim's](https://www.matsim.org/) representation of such networks. The underlying 
 network available to PT services (roads, railways, but also ferry/flight connections) uses a `networkx.MultiDiGraph`
@@ -56,7 +58,10 @@ To run pre-baked scripts that use genet in a number of different scenarios you c
 
 Otherwise, you can install `genet` as a python package, in your base installation of python or a virtual environment.
 Run the pre-baked scripts, write your own scripts or use IPython shell or Jupyter Notebook to load up a network, 
-inspect or change it and save it out to file.
+inspect or change it and save it out to file. Check out the 
+[wiki pages](https://github.com/arup-group/genet/wiki/Functionality-and-Usage-Guide) and 
+[example jupyter notebooks](https://github.com/arup-group/genet/tree/master/notebooks) 
+for usage examples.
 
 #### Install dev prereqs (use equivalent linux or windows package management)
 
