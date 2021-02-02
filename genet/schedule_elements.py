@@ -26,15 +26,22 @@ class ScheduleElement:
     Base class for Route, Service and Schedule
     """
 
-    def __init__(self, stops):
-        self._graph = self._build_graph(stops)
-        self.reference_nodes = list(self._graph.nodes())
-        self.reference_edges = list(self._graph.edges())
+    def __init__(self, _graph):
+        self._graph = _graph
+        # TODO check/retrieve reference nodes and edges, epsg
+        self.reference_nodes = list(_graph.nodes())
+        self.reference_edges = list(_graph.edges())
+        # TODO check if in graph
         self.epsg = self.find_epsg()
         self._graph.graph['crs'] = {'init': self.epsg}
 
     def _update_graph(self, new_graph):
         self._graph = new_graph
+
+    def _surrender_to_graph(self):
+        d = self.__dict__
+        # del d['_graph']
+        return d
 
     def stop(self, stop_id):
         return Stop(**self._graph.nodes[stop_id])
@@ -59,9 +66,6 @@ class ScheduleElement:
         for _id, route in self.routes():
             mode_map[route.mode] |= set(route.reference_edges)
         return mode_map
-
-    def _build_graph(self, stops):
-        pass
 
     def graph(self):
         return nx.edge_subgraph(self._graph, self.reference_edges)
@@ -248,10 +252,19 @@ class Route(ScheduleElement):
     :param await_departure: optional, list of bools of length stops param, whether to await departure at each stop
     """
 
-    def __init__(self, route_short_name: str, mode: str, stops: List[Stop], trips: Dict[str, str],
-                 arrival_offsets: List[str], departure_offsets: List[str], route: list = None,
-                 route_long_name: str = '', id: str = '', await_departure: list = None):
-        self.ordered_stops = [stop.id for stop in stops]
+    def __init__(self, route_short_name: str, mode: str, trips: Dict[str, str], arrival_offsets: List[str],
+                 departure_offsets: List[str], route: list = None, route_long_name: str = '', id: str = '',
+                 await_departure: list = None, ordered_stops: List[str] = None, stops: List[Stop] = None,
+                 _graph: nx.DiGraph = None):
+        if ordered_stops is not None:
+            # TODO check all stops in _graph
+            self.ordered_stops = ordered_stops
+            stops = [self.stop(stop) for stop in ordered_stops]
+        elif stops is not None:
+            self.ordered_stops = [stop.id for stop in stops]
+        else:
+            # TODO raise Route initialisation error
+            pass
         self.route_short_name = route_short_name
         self.mode = mode
         self.trips = trips
@@ -267,7 +280,12 @@ class Route(ScheduleElement):
             self.await_departure = []
         else:
             self.await_departure = await_departure
-        super().__init__(stops)
+        if _graph is not None:
+            # TODO check graph type and schema
+            pass
+        else:
+            _graph = self._build_graph(stops=stops)
+        super().__init__(_graph)
 
     def __eq__(self, other):
         same_route_name = self.route_short_name == other.route_short_name
@@ -291,6 +309,8 @@ class Route(ScheduleElement):
         route_graph.add_nodes_from(route_nodes, routes=[self.id])
         stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
         route_graph.add_edges_from(stop_edges, routes=[self.id], modes=[self.mode])
+        route_graph.graph['routes'] = {self.id: self._surrender_to_graph()}
+        route_graph.graph['services'] = {}
         return route_graph
 
     def modes(self):
@@ -492,25 +512,30 @@ class Service(ScheduleElement):
     :param epsg: 'epsg:12345'
     """
 
-    def __init__(self, id: str, routes: List[Route], name: str = ''):
+    def __init__(self, id: str, routes: List[Route], name: str = '', _graph: nx.DiGraph = None):
         self.id = id
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
         self.name = str(name)
-        if not name and routes:
+        if not self.name and routes:
             for route in routes:
                 if route.route_short_name:
                     self.name = str(route.route_short_name)
                     break
-        # create a dictionary and index if not unique ids
-        self._routes = {}
-        for route in routes:
-            _id = route.id
-            if (not _id) or (_id in self._routes):
-                _id = self.id + f'_{len(self._routes)}'
-                route.reindex(_id)
-            self._routes[_id] = route
-        super().__init__(None)
+        if _graph is not None:
+            # TODO check graph type and schema
+            pass
+        else:
+            # create a dictionary and index if not unique ids
+            self._routes = {}
+            for route in routes:
+                _id = route.id
+                if (not _id) or (_id in self._routes):
+                    _id = self.id + f'_{len(self._routes)}'
+                    route.reindex(_id)
+                self._routes[_id] = route
+            _graph = self._build_graph()
+        super().__init__(_graph)
 
     def __eq__(self, other):
         return self.id == other.id
@@ -530,18 +555,23 @@ class Service(ScheduleElement):
     def __len__(self):
         return len(self._routes)
 
-    def _build_graph(self, stops=None):
+    def _build_graph(self):
         nodes = {}
         edges = {}
+        routes = {}
         for route in self._routes.values():
             g = route.graph()
             nodes = dict_support.merge_complex_dictionaries(dict(g.nodes(data=True)), nodes)
             edges = dict_support.combine_edge_data_lists(list(g.edges(data=True)), edges)
+            routes = dict_support.merge_complex_dictionaries(g.graph['routes'], routes)
 
         service_graph = nx.DiGraph(name='Service graph')
         service_graph.add_nodes_from(nodes, services=[self.id])
         service_graph.add_edges_from(edges, services=[self.id])
         nx.set_node_attributes(service_graph, nodes)
+        service_graph.graph['routes'] = routes
+        service_graph.graph['services'] = {self.id: self._surrender_to_graph()}
+
         # update route graphs by the larger graph
         self._update_graph(service_graph)
         return service_graph
@@ -668,18 +698,21 @@ class Schedule(ScheduleElement):
     :param services: list of Service class objects
     """
 
-    def __init__(self, epsg, services: List[Service] = None):
+    def __init__(self, epsg, services: List[Service] = None, _graph: nx.DiGraph = None):
         self.init_epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
-        if services is None:
-            self.services = {}
+        if _graph is not None:
+            # TODO check graph type and schema
+            pass
         else:
             assert epsg != '', 'You need to specify the coordinate system for the schedule'
             self.services = {}
-            for service in services:
-                self.services[service.id] = service
+            if services is not None:
+                for service in services:
+                    self.services[service.id] = service
+            _graph = self._build_graph()
         self.minimal_transfer_times = {}
-        super().__init__(None)
+        super().__init__(_graph)
 
     def __nonzero__(self):
         return self.services
@@ -702,19 +735,26 @@ class Schedule(ScheduleElement):
     def __len__(self):
         return len(self.services)
 
-    def _build_graph(self, stops=None):
+    def _build_graph(self):
         nodes = {}
         edges = {}
+        routes = {}
+        services = {}
         for service_id, service in self.services.items():
             g = service.graph()
             nodes = dict_support.merge_complex_dictionaries(dict(g.nodes(data=True)), nodes)
             edges = dict_support.combine_edge_data_lists(list(g.edges(data=True)), edges)
+            routes = dict_support.merge_complex_dictionaries(g.graph['routes'], routes)
+            services = dict_support.merge_complex_dictionaries(g.graph['services'], services)
             # TODO check for clashing stop ids overwriting data
 
         schedule_graph = nx.DiGraph(name='Schedule graph')
         schedule_graph.add_nodes_from(nodes)
         schedule_graph.add_edges_from(edges)
         nx.set_node_attributes(schedule_graph, nodes)
+        schedule_graph.graph['routes'] = routes
+        schedule_graph.graph['services'] = services
+
         # update service and route graphs by the larger graph
         self._update_graph(schedule_graph)
         return schedule_graph
