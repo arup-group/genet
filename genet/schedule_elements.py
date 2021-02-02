@@ -253,7 +253,7 @@ class Route(ScheduleElement):
                  route_long_name: str = '', id: str = '', await_departure: list = None):
         self.ordered_stops = [stop.id for stop in stops]
         self.route_short_name = route_short_name
-        self.mode = mode.lower()
+        self.mode = mode
         self.trips = trips
         self.arrival_offsets = arrival_offsets
         self.departure_offsets = departure_offsets
