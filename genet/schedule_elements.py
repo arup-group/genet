@@ -611,9 +611,6 @@ class Service(ScheduleElement):
         service_graph.graph['services'] = {self.id: self._surrender_to_graph()}
         return service_graph
 
-    def copy(self):
-        return self._get_service_from_graph(self.id)
-
     def reference_nodes(self):
         return {node for node, node_services in self._graph.nodes(data='services') if self.id in node_services}
 
@@ -812,9 +809,6 @@ class Schedule(ScheduleElement):
         schedule_graph.graph['routes'] = routes
         schedule_graph.graph['services'] = services
         return schedule_graph
-
-    def copy(self):
-        return self.__class__(self._graph)
 
     def reference_nodes(self):
         return set(self._graph.nodes())
