@@ -16,7 +16,8 @@ def generate_validation_report(schedule):
     if not is_valid_schedule:
         logging.warning('This schedule is not valid')
 
-    for service_id, service in schedule.services.items():
+    for service in schedule.services():
+        service_id = service.id
         is_valid_service, invalid_stages = service.is_valid_service(return_reason=True)
         report['service_level'][service_id] = {
             'is_valid_service': is_valid_service,
@@ -29,7 +30,7 @@ def generate_validation_report(schedule):
         report['route_level'][service_id] = {}
         if service.has_uniquely_indexed_routes():
             report['service_level'][service_id]['invalid_routes'] = [route.id for route in service.invalid_routes()]
-            for route in service._routes.values():
+            for route in service.routes():
                 is_valid_route, invalid_stages = route.is_valid_route(return_reason=True)
                 report['route_level'][service_id][route.id] = {
                     'is_valid_route': is_valid_route,
@@ -41,7 +42,7 @@ def generate_validation_report(schedule):
             report['service_level'][service_id]['invalid_routes'] = [i for i in service._routes.keys() if
                                                                      not service._routes[i].is_valid_route()]
             i = 0
-            for route in service._routes.values():
+            for route in service.routes():
                 is_valid_route, invalid_stages = route.is_valid_route(return_reason=True)
                 report['route_level'][service_id][i] = {
                     'is_valid_route': is_valid_route,

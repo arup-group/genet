@@ -253,7 +253,7 @@ def simplify_graph(n, no_processes=1):
         logging.info("Updated Stop Link Reference Ids")
 
         # update schedule routes
-        for service_id, route in n.schedule.routes():
+        for route in n.schedule.routes():
             new_route = []
             for link in route.route:
                 updated_route_link = link

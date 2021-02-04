@@ -7,6 +7,7 @@ from genet.schedule_elements import Service
 from genet.utils import plot
 from tests.fixtures import *
 from tests.test_core_components_route import self_looping_route, route
+from tests.test_core_schedule_elements import schedule_graph
 
 
 @pytest.fixture()
@@ -50,6 +51,62 @@ def strongly_connected_service():
                     trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2', '3', '4', '5'],
                     departure_offsets=['1', '2', '3', '4', '5'])
     return Service(id='service', routes=[route_1, route_2])
+
+
+def test_initiating_service(service):
+    s = service
+    assert_semantically_equal(dict(s._graph.nodes(data=True)), {
+        '5': {'services': ['service'], 'routes': ['2'], 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+              'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
+              'additional_attributes': ['linkRefId'], 'linkRefId': '5'},
+        '6': {'services': ['service'], 'routes': ['2'], 'id': '6', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+              'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
+              'additional_attributes': ['linkRefId'], 'linkRefId': '6'},
+        '7': {'services': ['service'], 'routes': ['2'], 'id': '7', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700', 'name': '',
+              'lat': 49.76683608549253, 'lon': -7.557121424907424, 's2_id': 5205973754090203369,
+              'additional_attributes': ['linkRefId'], 'linkRefId': '7'},
+        '8': {'services': ['service'], 'routes': ['2'], 'id': '8', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700', 'name': '',
+              'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
+              'additional_attributes': ['linkRefId'], 'linkRefId': '8'},
+        '1': {'services': ['service'], 'routes': ['1'], 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+              'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
+              'additional_attributes': ['linkRefId'], 'linkRefId': '1'},
+        '2': {'services': ['service'], 'routes': ['1'], 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+              'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
+              'additional_attributes': ['linkRefId'], 'linkRefId': '2'},
+        '4': {'services': ['service'], 'routes': ['1'], 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700', 'name': '',
+              'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
+              'additional_attributes': ['linkRefId'], 'linkRefId': '4'},
+        '3': {'services': ['service'], 'routes': ['1'], 'id': '3', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700', 'name': '',
+              'lat': 49.76683608549253, 'lon': -7.557121424907424, 's2_id': 5205973754090203369,
+              'additional_attributes': ['linkRefId'], 'linkRefId': '3'}})
+    assert_semantically_equal(list(s._graph.edges(data=True)),
+                              [('5', '6', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('6', '7', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('7', '8', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
+                               ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])
+    assert_semantically_equal(s._graph.graph,
+                              {'name': 'Service graph',
+                               'routes': {
+                                   '2': {'route_short_name': 'name_2', 'mode': 'bus',
+                                         'trips': {'1': '11:00:00', '2': '13:00:00'},
+                                         'arrival_offsets': ['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                                         'departure_offsets': ['00:00:00', '00:05:00', '00:09:00', '00:15:00'],
+                                         'route_long_name': '', 'id': '2',
+                                         'route': ['5', '6', '7', '8'], 'await_departure': [],
+                                         'ordered_stops': ['5', '6', '7', '8']},
+                                   '1': {'route_short_name': 'name', 'mode': 'bus',
+                                         'trips': {'1': '13:00:00', '2': '13:30:00'},
+                                         'arrival_offsets': ['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                                         'departure_offsets': ['00:00:00', '00:05:00', '00:09:00', '00:15:00'],
+                                         'route_long_name': '', 'id': '1',
+                                         'route': ['1', '2', '3', '4'], 'await_departure': [],
+                                         'ordered_stops': ['1', '2', '3', '4']}},
+                               'services': {
+                                   'service': {'id': 'service', 'name': 'name', '_routes': ['1', '2']}},
+                               'crs': {'init': 'epsg:27700'}})
 
 
 def test__repr__shows_route_length(service):
@@ -237,7 +294,10 @@ def test_has_valid_routes(self_looping_route, route):
 
 
 def test_has_valid_routes_with_only_valid_routes(route):
-    s = Service(id='1', routes=[route, route])
+    r1 = route
+    r2 = Route(**{k: v for k, v in route.__dict__.items() if k != 'epsg'})
+    r2.reindex('2')
+    s = Service(id='1', routes=[r1, r2])
     assert s.has_valid_routes()
 
 
@@ -264,8 +324,8 @@ def test_is_valid_with_looping_route(self_looping_route, route):
 
 
 def test_is_valid_with_non_network_route(service):
-    service._routes['1'].route = []
-    service._routes['2'].route = []
+    service._graph.graph['routes']['1']['route'] = []
+    service._graph.graph['routes']['2']['route'] = []
     assert not service.is_valid_service()
 
 
@@ -310,3 +370,9 @@ def test_building_trips_dataframe(service):
                                              6: 'name', 7: 'name', 8: 'name', 9: 'name', 10: 'name', 11: 'name'}})
 
     assert_frame_equal(df, correct_df)
+
+
+def test_building_service_from_graph(schedule_graph):
+    s = Service(_graph=schedule_graph, **schedule_graph.graph['services']['service1'])
+    assert s.reference_nodes() == {'1', '2', '0'}
+    assert s.reference_edges() == {('1', '2'), ('0', '1')}

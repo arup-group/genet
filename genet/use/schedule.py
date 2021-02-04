@@ -111,7 +111,7 @@ def aggregate_trips_per_day_per_route_by_end_stop_pairs(schedule, trips_per_day_
     df = None
     for mode in schedule.modes():
         end_points = set()
-        for route_id, route in schedule.routes():
+        for route in schedule.routes():
             if route.mode == mode:
                 end_points |= {stop.id for stop in route.stops() if
                                (route.graph().out_degree(stop.id) == 0) or (route.graph().in_degree(stop.id) == 0)}

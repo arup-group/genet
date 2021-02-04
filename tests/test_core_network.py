@@ -36,6 +36,7 @@ simplified_schedule = os.path.abspath(
 network_link_attrib_text_missing = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_link_attrib_text_missing.xml"))
 
+
 @pytest.fixture()
 def network1():
     n1 = Network('epsg:27700')
@@ -191,19 +192,19 @@ def test_reproject_updates_graph_crs(network1):
 def test_reprojecting_links_with_geometries():
     n = Network('epsg:27700')
     n.add_nodes({'A': {'x': -82514.72274, 'y': 220772.02798},
-                 'B':{'x': -82769.25894, 'y': 220773.0637}})
+                 'B': {'x': -82769.25894, 'y': 220773.0637}})
     n.add_links({'1': {'from': 'A', 'to': 'B',
                        'geometry': LineString([(-82514.72274, 220772.02798),
-                                              (-82546.23894, 220772.88254),
-                                              (-82571.87107, 220772.53339),
-                                              (-82594.92709, 220770.68385),
-                                              (-82625.33255, 220770.45579),
-                                              (-82631.26842, 220770.40158),
-                                              (-82669.7309, 220770.04349),
-                                              (-82727.94946, 220770.79793),
-                                              (-82757.38528, 220771.75412),
-                                              (-82761.82425, 220771.95614),
-                                              (-82769.25894, 220773.0637)])}})
+                                               (-82546.23894, 220772.88254),
+                                               (-82571.87107, 220772.53339),
+                                               (-82594.92709, 220770.68385),
+                                               (-82625.33255, 220770.45579),
+                                               (-82631.26842, 220770.40158),
+                                               (-82669.7309, 220770.04349),
+                                               (-82727.94946, 220770.79793),
+                                               (-82757.38528, 220771.75412),
+                                               (-82761.82425, 220771.95614),
+                                               (-82769.25894, 220773.0637)])}})
     n.reproject('epsg:2157')
 
     geometry_coords = list(n.link('1')['geometry'].coords)
@@ -1494,8 +1495,14 @@ def test_schedule_routes(network_object_from_test_data):
 
 def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
     n = network_object_from_test_data
-    n.schedule['10314']._routes['1'] = Route(arrival_offsets=[], departure_offsets=[], mode='bus', trips={},
-                                             route_short_name='', stops=[])
+    n.schedule._graph.graph['routes']['1'] = {
+        'route_short_name': '', 'mode': 'bus',
+        'trips': {},
+        'arrival_offsets': [], 'departure_offsets': [],
+        'route_long_name': '', 'id': '1', 'route': [],
+        'await_departure': [], 'ordered_stops': []}
+    n.schedule._graph.graph['services']['10314']['_routes'].append('1')
+
     assert set(n.schedule.service_ids()) == {'10314'}
     correct_routes = [['25508485', '21667818']]
     routes = n.schedule_routes_nodes()
@@ -2021,7 +2028,7 @@ def test_invalid_network_routes_with_invalid_route(route):
     route.route = ['3', '4']
     route.id = 'route'
     n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route])])
-    assert n.invalid_network_routes() == [('service', 'route')]
+    assert n.invalid_network_routes() == ['route']
 
 
 def test_invalid_network_routes_with_empty_route(route):
@@ -2095,7 +2102,7 @@ def test_generate_validation_report_with_non_uniquely_indexed_routes(correct_sch
     n.add_link('1', 1, 2, attribs={'length': 2, "modes": ['car', 'bus']})
     n.add_link('2', 2, 3, attribs={'length': 2, "modes": ['car', 'bus']})
 
-    for serv_id, route in correct_schedule.routes():
+    for route in correct_schedule.routes():
         route.id = '1'
     n.schedule = correct_schedule
 

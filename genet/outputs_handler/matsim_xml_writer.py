@@ -145,12 +145,12 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
 
             # transitLine
             v_id = 0  # generating some ids for vehicles
-            for service_id, service in schedule.services.items():
-                transit_line_attribs = {'id': service_id, 'name': str(service.name)}
+            for service in schedule.services():
+                transit_line_attribs = {'id': service.id, 'name': str(service.name)}
 
                 with xf.element("transitLine", transit_line_attribs):
-                    for id, route in service._routes.items():
-                        transit_route_attribs = {'id': id}
+                    for route in service.routes():
+                        transit_route_attribs = {'id': route.id}
 
                         with xf.element("transitRoute", transit_route_attribs):
                             rec = etree.Element("transportMode")
