@@ -282,6 +282,74 @@ def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
     return data
 
 
+def build_attribute_dataframe(iterator, keys: Union[list, str], index_name: str = None):
+    """
+    Builds a pandas.DataFrame from data in iterator.
+    :param iterator: iterator or list of tuples (id, dictionary data with keys of interest)
+    :param keys: keys to extract data from. Can be a string, list or dictionary/list of dictionaries if accessing
+    nested dictionaries, for example on using dictionaries see `get_attribute_data_under_key` docstring.
+    :param index_name:
+    :return:
+    """
+    df = None
+    if isinstance(keys, str):
+        keys = [keys]
+    for key in keys:
+        if isinstance(key, dict):
+            # consolidate nestedness to get a name for the column
+            name = str(key)
+            name = name.replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
+        else:
+            name = key
+
+        col_series = pd.Series(get_attribute_data_under_key(iterator, key))
+        col_series.name = name
+
+        if df is not None:
+            df = df.merge(pd.DataFrame(col_series), left_index=True, right_index=True, how='outer')
+        else:
+            df = pd.DataFrame(col_series)
+    if index_name:
+        df.index = df.index.set_names([index_name])
+    return df
+
+
+def apply_to_attributes(iterator, to_apply, location):
+    if isinstance(to_apply, dict):
+        return apply_mapping_to_attributes(iterator, to_apply, location)
+    else:
+        return apply_function_to_attributes(iterator, to_apply, location)
+
+
+def apply_mapping_to_attributes(iterator, mapping, location):
+    new_attributes = {}
+    # assumes mapping at the same location
+    for item_id, item_attribs in iterator:
+        try:
+            new_attributes[item_id] = {location: mapping[item_attribs[location]]}
+        except KeyError:
+            # Not all items are required to work with the mapping. Fail silently and only apply
+            # to relevant items
+            pass
+    if (not new_attributes) and mapping:
+        logging.warning(f'Mapping attributes resulted in 0 changes. Ensure your location variable: {location} exists'
+                        f'as keys in the input dictionaries. Only dictionaries with location={location} keys will be'
+                        'mapped.')
+    return new_attributes
+
+
+def apply_function_to_attributes(iterator, function, location):
+    new_attributes = {}
+    for item_id, item_attribs in iterator:
+        try:
+            new_attributes[item_id] = {location: function(item_attribs)}
+        except KeyError:
+            # Not all items are required to work with the function. Fail silently and only apply
+            # to relevant items
+            pass
+    return new_attributes
+
+
 def consolidate_node_indices(left, right):
     """
     Changes the node indexing in right to match left spatially and resolves clashing node ids if they don't match
