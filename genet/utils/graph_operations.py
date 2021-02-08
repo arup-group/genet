@@ -294,6 +294,8 @@ def build_attribute_dataframe(iterator, keys: Union[list, str], index_name: str 
     df = None
     if isinstance(keys, str):
         keys = [keys]
+    if len(keys) > 1:
+        iterator = list(iterator)
     for key in keys:
         if isinstance(key, dict):
             # consolidate nestedness to get a name for the column

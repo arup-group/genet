@@ -194,25 +194,7 @@ class Network:
         :param index_name: optional, gives the index_name to dataframes index
         :return: pandas.DataFrame
         """
-        df = None
-        for key in keys:
-            if isinstance(key, dict):
-                # consolidate nestedness to get a name for the column
-                name = str(key)
-                name = name.replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
-            else:
-                name = key
-
-            col_series = self.node_attribute_data_under_key(key)
-            col_series.name = name
-
-            if df is not None:
-                df = df.merge(pd.DataFrame(col_series), left_index=True, right_index=True, how='outer')
-            else:
-                df = pd.DataFrame(col_series)
-        if index_name:
-            df.index = df.index.set_names([index_name])
-        return df
+        return graph_operations.build_attribute_dataframe(self.nodes(), keys=keys, index_name=index_name)
 
     def link_attribute_summary(self, data=False):
         """
@@ -241,25 +223,7 @@ class Network:
         :param index_name: optional, gives the index_name to dataframes index
         :return: pandas.DataFrame
         """
-        df = None
-        for key in keys:
-            if isinstance(key, dict):
-                # consolidate nestedness to get a name for the column
-                name = str(key)
-                name = name.replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
-            else:
-                name = key
-
-            col_series = self.link_attribute_data_under_key(key)
-            col_series.name = name
-
-            if df is not None:
-                df = df.merge(pd.DataFrame(col_series), left_index=True, right_index=True, how='outer')
-            else:
-                df = pd.DataFrame(col_series)
-        if index_name:
-            df.index = df.index.set_names([index_name])
-        return df
+        return graph_operations.build_attribute_dataframe(self.links(), keys=keys, index_name=index_name)
 
     def add_node(self, node: Union[str, int], attribs: dict = None, silent: bool = False):
         """
@@ -929,8 +893,7 @@ class Network:
             if _route.route:
                 route_nodes = graph_operations.convert_list_of_link_ids_to_network_nodes(self, _route.route)
                 if len(route_nodes) != 1:
-                    logging.warning(f'The route: {_route.id} within service {service_id}, is disconnected. Consists '
-                                    f'of {len(route_nodes)} chunks.')
+                    logging.warning(f'The route: {_route.id} is disconnected. Consists of {len(route_nodes)} chunks.')
                     routes.extend(route_nodes)
                 else:
                     routes.append(route_nodes[0])

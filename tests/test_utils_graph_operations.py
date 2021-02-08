@@ -515,6 +515,18 @@ def test_building_attribute_dataframe_with_multiple_keys_and_index_name():
     assert_frame_equal(df, correct_df)
 
 
+def iterate(l):
+    for _ in l:
+        yield _
+
+
+def test_building_attribute_dataframe_with_multiple_keys_and_iterator():
+    data = [('1', {'key': 1, 'another_key': 2}), ('2', {'key': 3, 'another_key': 11})]
+    df = graph_operations.build_attribute_dataframe(iterate(data), keys=['key', 'another_key'])
+    assert_frame_equal(df,
+                       DataFrame({'key': {'1': 1, '2': 3}, 'another_key': {'1': 2, '2': 11}}))
+
+
 def do_nothing(x):
     return x
 
