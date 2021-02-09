@@ -242,26 +242,27 @@ def simplify_graph(n, no_processes=1):
     if n.schedule:
         logging.info("Updating the Schedule")
         # update stop's link reference ids
-        new_stops_attribs = {}
-        for node, link_ref_id in n.schedule._graph.nodes(data='linkRefId'):
-            try:
-                new_stops_attribs[node] = {'linkRefId': n.link_simplification_map[link_ref_id]}
-            except KeyError:
-                # Not all linkref ids would have changed
-                pass
-        nx.set_node_attributes(n.schedule._graph, new_stops_attribs)
+        n.schedule.apply_function_to_stops(n.link_simplification_map, 'linkRefId')
         logging.info("Updated Stop Link Reference Ids")
 
         # update schedule routes
-        for route in n.schedule.routes():
-            new_route = []
-            for link in route.route:
-                updated_route_link = link
-                if link in n.link_simplification_map:
-                    updated_route_link = n.link_simplification_map[link]
-                if not new_route:
-                    new_route = [updated_route_link]
-                elif new_route[-1] != updated_route_link:
-                    new_route.append(updated_route_link)
-            route.route = new_route
+        df_routes = n.schedule.route_attribute_data(keys=['route'])
+        df_routes['route'] = df_routes['route'].apply(lambda x: update_link_ids(x, n.link_simplification_map))
+        n.schedule.apply_attributes_to_routes(df_routes.T.to_dict())
         logging.info("Updated Network Routes")
+        logging.info("Finished simplifying network")
+
+
+def update_link_ids(old_route, link_mapping):
+    new_route = []
+    for link in old_route:
+        updated_route_link = link
+        try:
+            updated_route_link = link_mapping[link]
+        except KeyError:
+            pass
+        if not new_route:
+            new_route = [updated_route_link]
+        elif new_route[-1] != updated_route_link:
+            new_route.append(updated_route_link)
+    return new_route
