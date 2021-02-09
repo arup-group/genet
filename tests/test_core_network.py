@@ -1502,7 +1502,8 @@ def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
         'arrival_offsets': [], 'departure_offsets': [],
         'route_long_name': '', 'id': '1', 'route': [],
         'await_departure': [], 'ordered_stops': []}
-    n.schedule._graph.graph['services']['10314']['_routes'].append('1')
+    n.schedule._graph.graph['service_to_route_map']['10314'].append('1')
+    n.schedule._graph.graph['route_to_service_map']['1'] = '10314'
 
     assert set(n.schedule.service_ids()) == {'10314'}
     correct_routes = [['25508485', '21667818']]

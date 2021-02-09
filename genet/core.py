@@ -169,7 +169,7 @@ class Network:
 
     def node_attribute_summary(self, data=False):
         """
-        Is expensive. Parses through data stored on nodes and gives a summary tree of the data stored on the nodes.
+        Parses through data stored on nodes and gives a summary tree of the data stored on the nodes.
         If data is True, shows also up to 5 unique values stored under such keys.
         :param data: bool, False by default
         :return:
@@ -179,7 +179,7 @@ class Network:
 
     def node_attribute_data_under_key(self, key):
         """
-        Generates a pandas.Series object index by node ids, with data stored on the nodes under `key`
+        Generates a pandas.Series object indexed by node ids, with data stored on the nodes under `key`
         :param key: either a string e.g. 'x', or if accessing nested information, a dictionary
             e.g. {'attributes': {'osm:way:name': 'text'}}
         :return: pandas.Series
@@ -188,7 +188,7 @@ class Network:
 
     def node_attribute_data_under_keys(self, keys: list, index_name=None):
         """
-        Generates a pandas.DataFrame object index by link ids, with data stored on the nodes under `key`
+        Generates a pandas.DataFrame object indexed by link ids, with data stored on the nodes under `key`
         :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
             e.g. {'attributes': {'osm:way:name': 'text'}}
         :param index_name: optional, gives the index_name to dataframes index
@@ -198,7 +198,7 @@ class Network:
 
     def link_attribute_summary(self, data=False):
         """
-        Is expensive. Parses through data stored on links and gives a summary tree of the data stored on the links.
+        Parses through data stored on links and gives a summary tree of the data stored on the links.
         If data is True, shows also up to 5 unique values stored under such keys.
         :param data: bool, False by default
         :return:
@@ -208,7 +208,7 @@ class Network:
 
     def link_attribute_data_under_key(self, key: Union[str, dict]):
         """
-        Generates a pandas.Series object index by link ids, with data stored on the links under `key`
+        Generates a pandas.Series object indexed by link ids, with data stored on the links under `key`
         :param key: either a string e.g. 'modes', or if accessing nested information, a dictionary
             e.g. {'attributes': {'osm:way:name': 'text'}}
         :return: pandas.Series
@@ -217,7 +217,7 @@ class Network:
 
     def link_attribute_data_under_keys(self, keys: list, index_name=None):
         """
-        Generates a pandas.DataFrame object index by link ids, with data stored on the links under `key`
+        Generates a pandas.DataFrame object indexed by link ids, with data stored on the links under `key`
         :param keys: list of either a string e.g. 'modes', or if accessing nested information, a dictionary
             e.g. {'attributes': {'osm:way:name': 'text'}}
         :param index_name: optional, gives the index_name to dataframes index

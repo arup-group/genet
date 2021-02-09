@@ -13,9 +13,23 @@ class RouteInitialisationError(Exception):
     pass
 
 
+class RouteIndexError(Exception):
+    """
+    Raised in case of Route indexing inconsistency
+    """
+    pass
+
+
 class ServiceInitialisationError(Exception):
     """
     Raised when a genet.Service cannot be instantiated
+    """
+    pass
+
+
+class ServiceIndexError(Exception):
+    """
+    Raised in case of Service indexing inconsistency
     """
     pass
 
@@ -32,3 +46,11 @@ class UndefinedCoordinateSystemError(Exception):
     Raised when an object requires a coordinate system
     """
     pass
+
+
+class StopIndexError(Exception):
+    """
+    Raised in case of Stop indexing inconsistency
+    """
+    pass
+

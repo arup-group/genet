@@ -117,8 +117,32 @@ def test_initiating_schedule(schedule):
                                                 'route_long_name': '', 'id': '1', 'route': [],
                                                 'await_departure': [],
                                                 'ordered_stops': ['1', '2', '3', '4']}},
-                               'services': {'service': {'id': 'service', 'name': 'name', '_routes': ['1', '2']}},
+                               'services': {'service': {'id': 'service', 'name': 'name'}},
+                               'route_to_service_map': {'1': 'service', '2': 'service'},
+                               'service_to_route_map': {'service': ['1', '2']},
                                'crs': {'init': 'epsg:27700'}})
+
+
+def test_initiating_schedule_with_non_uniquely_indexed_objects():
+    route_1 = Route(route_short_name='name',
+                    mode='bus', id='',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    trips={'1': '13:00:00', '2': '13:30:00'},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    route_2 = Route(route_short_name='name_2',
+                    mode='bus', id='',
+                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
+                    trips={'1': '11:00:00', '2': '13:00:00'},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    service1 = Service(id='service', routes=[route_1, route_2])
+    service2 = Service(id='service', routes=[route_1, route_2])
+    s = Schedule(epsg='epsg:27700', services=[service1, service2])
+    assert s.number_of_routes() == 4
+    assert len(s) == 2
 
 
 def test__getitem__returns_a_service(test_service):
@@ -278,6 +302,107 @@ def test_number_of_routes_counts_routes(test_service, different_test_service):
     assert schedule.number_of_routes() == 3
 
 
+def test_service_attribute_data_under_key(schedule):
+    df = schedule.service_attribute_data(keys='name').sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'name': {'service': 'name'}}
+    ))
+
+
+def test_service_attribute_data_under_keys(schedule):
+    df = schedule.service_attribute_data(keys=['name', 'id']).sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'name': {'service': 'name'}, 'id': {'service': 'service'}}
+    ))
+
+
+def test_route_attribute_data_under_key(schedule):
+    df = schedule.route_attribute_data(keys='route_short_name').sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'route_short_name': {'1': 'name', '2': 'name_2'}}
+    ))
+
+
+def test_route_attribute_data_under_keys(schedule):
+    df = schedule.route_attribute_data(keys=['route_short_name', 'mode']).sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'route_short_name': {'1': 'name', '2': 'name_2'}, 'mode': {'1': 'bus', '2': 'bus'}}
+    ))
+
+
+def test_stop_attribute_data_under_key(schedule):
+    df = schedule.stop_attribute_data(keys='x').sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'x': {'1': 4.0, '2': 1.0, '3': 3.0, '4': 7.0, '5': 4.0, '6': 1.0, '7': 3.0, '8': 7.0}}))
+
+
+def test_stop_attribute_data_under_keys(schedule):
+    df = schedule.stop_attribute_data(keys=['x', 'y']).sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'x': {'1': 4.0, '2': 1.0, '3': 3.0, '4': 7.0, '5': 4.0, '6': 1.0, '7': 3.0, '8': 7.0},
+         'y': {'1': 2.0, '2': 2.0, '3': 3.0, '4': 5.0, '5': 2.0, '6': 2.0, '7': 3.0, '8': 5.0}}))
+
+
+def test_applying_attributes_to_service(schedule):
+    assert schedule._graph.graph['services']['service']['name'] == 'name'
+    assert schedule['service'].name == 'name'
+
+    schedule.apply_attributes_to_services({'service': {'name': 'new_name'}})
+
+    assert schedule._graph.graph['services']['service']['name'] == 'new_name'
+    assert schedule['service'].name == 'new_name'
+
+
+def test_applying_attributes_changing_id_to_service_throws_error(schedule):
+    assert 'service' in schedule._graph.graph['services']
+    assert schedule._graph.graph['services']['service']['id'] == 'service'
+    assert schedule['service'].id == 'service'
+
+    with pytest.raises(NotImplementedError) as e:
+        schedule.apply_attributes_to_services({'service': {'id': 'new_id'}})
+    assert 'Changing id can only be done via the `reindex` method' in str(e.value)
+
+
+def test_applying_attributes_to_route(schedule):
+    assert schedule._graph.graph['routes']['1']['route_short_name'] == 'name'
+    assert schedule.route('1').route_short_name == 'name'
+
+    schedule.apply_attributes_to_routes({'1': {'route_short_name': 'new_name'}})
+
+    assert schedule._graph.graph['routes']['1']['route_short_name'] == 'new_name'
+    assert schedule.route('1').route_short_name == 'new_name'
+
+
+def test_applying_attributes_changing_id_to_route_throws_error(schedule):
+    assert '1' in schedule._graph.graph['routes']
+    assert schedule._graph.graph['routes']['1']['id'] == '1'
+    assert schedule.route('1').id == '1'
+
+    with pytest.raises(NotImplementedError) as e:
+        schedule.apply_attributes_to_routes({'1': {'id': 'new_id'}})
+    assert 'Changing id can only be done via the `reindex` method' in str(e.value)
+
+
+def test_applying_attributes_to_stop(schedule):
+    assert schedule._graph.nodes['5']['name'] == ''
+    assert schedule.stop('5').name == ''
+
+    schedule.apply_attributes_to_stops({'5': {'name': 'new_name'}})
+
+    assert schedule._graph.nodes['5']['name'] == 'new_name'
+    assert schedule.stop('5').name == 'new_name'
+
+
+def test_applying_attributes_changing_id_to_stop_throws_error(schedule):
+    assert '5' in schedule._graph.nodes
+    assert schedule._graph.nodes['5']['id'] == '5'
+    assert schedule.stop('5').id == '5'
+
+    with pytest.raises(NotImplementedError) as e:
+        schedule.apply_attributes_to_routes({'5': {'id': 'new_id'}})
+    assert 'Changing id can only be done via the `reindex` method' in str(e.value)
+
+
 def test_iter_stops_returns_stops_objects(test_service, different_test_service):
     schedule = Schedule(services=[test_service, different_test_service], epsg='epsg:4326')
     assert set([stop.id for stop in schedule.stops()]) == {'0', '1', '2', '3', '4'}
@@ -376,7 +501,9 @@ def test_has_self_loops_with_non_looping_routes(schedule):
 def test_validity_of_services(self_looping_route, route):
     s = Schedule('epsg:27700', [Service(id='1', routes=[self_looping_route]),
                                 Service(id='2', routes=[route])])
-    assert s.validity_of_services() == [False, True]
+    assert not s['1'].is_valid_service()
+    assert s['2'].is_valid_service()
+    assert set(s.validity_of_services()) == {False, True}
 
 
 def test_has_valid_services(schedule):
@@ -389,7 +516,7 @@ def test_has_valid_services_with_only_valid_services(service):
 
 
 def test_invalid_services_shows_invalid_services(service):
-    for route_id in service._routes:
+    for route_id in service.route_ids():
         service._graph.graph['routes'][route_id]['route'] = ['1']
     s = Schedule('epsg:27700', [service])
     assert s.invalid_services() == [service]

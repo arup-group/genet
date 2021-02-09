@@ -105,7 +105,9 @@ def test_initiating_service(service):
                                          'route': ['1', '2', '3', '4'], 'await_departure': [],
                                          'ordered_stops': ['1', '2', '3', '4']}},
                                'services': {
-                                   'service': {'id': 'service', 'name': 'name', '_routes': ['1', '2']}},
+                                   'service': {'id': 'service', 'name': 'name'}},
+                               'route_to_service_map': {'1': 'service', '2': 'service'},
+                               'service_to_route_map': {'service': ['1', '2']},
                                'crs': {'init': 'epsg:27700'}})
 
 
@@ -294,10 +296,7 @@ def test_has_valid_routes(self_looping_route, route):
 
 
 def test_has_valid_routes_with_only_valid_routes(route):
-    r1 = route
-    r2 = Route(**{k: v for k, v in route.__dict__.items() if k != 'epsg'})
-    r2.reindex('2')
-    s = Service(id='1', routes=[r1, r2])
+    s = Service(id='1', routes=[route, route])
     assert s.has_valid_routes()
 
 

@@ -1,6 +1,7 @@
 import pytest
 from networkx import Graph, DiGraph, set_node_attributes
 from genet.schedule_elements import Schedule, Service, Route, Stop
+from genet.exceptions import ServiceIndexError, RouteIndexError
 from tests.fixtures import assert_semantically_equal
 
 
@@ -85,8 +86,10 @@ def schedule_graph():
                       'arrival_offsets': ['00:00:00', '00:03:00'],
                       'departure_offsets': ['00:00:00', '00:05:00'], 'route_long_name': '', 'id': '2',
                       'route': ['1', '2'], 'await_departure': []}},
-        services={'service2': {'id': 'service2', 'name': 'route3', '_routes': ['3', '4']},
-                  'service1': {'id': 'service1', 'name': 'route1', '_routes': ['1', '2']}},
+        services={'service2': {'id': 'service2', 'name': 'route3'},
+                  'service1': {'id': 'service1', 'name': 'route1'}},
+        route_to_service_map={'1': 'service1', '2':'service1', '3':'service2', '4':'service2'},
+        service_to_route_map={'service1': ['1', '2'], 'service2': ['3', '4']},
         crs={'init': 'epsg:27700'}
     )
     nodes = {'4': {'services': ['service2'], 'routes': ['3', '4'], 'id': '4', 'x': 529350.7866124967,
@@ -129,12 +132,25 @@ def test_all_elements_in_schedule_share_the_same_graph(schedule):
 
 def test_reindexing_route(schedule):
     r = schedule.route('1')
+    assert set(schedule['service1'].route_ids()) == {'1', '2'}
     r.reindex('new_index_for_route_1')
     assert_all_elements_share_graph(schedule)
     assert r.id == 'new_index_for_route_1'
     for node in r.reference_nodes():
         assert 'new_index_for_route_1' in schedule._graph.nodes[node]['routes']
         assert not '1' in schedule._graph.nodes[node]['routes']
+    assert schedule.route('new_index_for_route_1').id == 'new_index_for_route_1'
+    assert set(schedule['service1'].route_ids()) == {'new_index_for_route_1', '2'}
+    with pytest.raises(RouteIndexError) as e:
+        schedule.route('1')
+    assert 'not found' in str(e.value)
+
+
+def test_reindexing_route_with_nonunique_index_throws_error(schedule):
+    r = schedule.route('1')
+    with pytest.raises(RouteIndexError) as e:
+        r.reindex('2')
+    assert 'already exists' in str(e.value)
 
 
 def test_reindexing_service(schedule):
@@ -145,6 +161,17 @@ def test_reindexing_service(schedule):
     for node in s.reference_nodes():
         assert 'new_index_for_service1' in schedule._graph.nodes[node]['services']
         assert not 'service1' in schedule._graph.nodes[node]['services']
+    assert schedule['new_index_for_service1'].id == 'new_index_for_service1'
+    with pytest.raises(ServiceIndexError) as e:
+        schedule['service1']
+    assert 'not found' in str(e.value)
+
+
+def test_reindexing_service_with_nonunique_index_throws_error(schedule):
+    s = schedule['service1']
+    with pytest.raises(ServiceIndexError) as e:
+        s.reindex('service2')
+    assert 'already exists' in str(e.value)
 
 
 def test_adding_schedules_retains_shared_graph(schedule):
