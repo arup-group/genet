@@ -345,6 +345,21 @@ def test_stop_attribute_data_under_keys(schedule):
          'y': {'1': 2.0, '2': 2.0, '3': 3.0, '4': 5.0, '5': 2.0, '6': 2.0, '7': 3.0, '8': 5.0}}))
 
 
+def test_extracting_services_on_condition(schedule):
+    ids = schedule.extract_service_ids_on_attributes(conditions={'name': 'name'})
+    assert ids == ['service']
+
+
+def test_extracting_routes_on_condition(schedule):
+    ids = schedule.extract_route_ids_on_attributes(conditions=[{'mode': 'bus'}, {'route_short_name': 'name_2'}])
+    assert ids == ['2']
+
+
+def test_extracting_stops_on_condition(schedule):
+    ids = schedule.extract_stop_ids_on_attributes(conditions=[{'x': (0,4)}, {'y': (0,2)}], how=all)
+    assert set(ids) == {'5', '6', '1', '2'}
+
+
 def test_applying_attributes_to_service(schedule):
     assert schedule._graph.graph['services']['service']['name'] == 'name'
     assert schedule['service'].name == 'name'
@@ -403,6 +418,30 @@ def test_applying_attributes_changing_id_to_stop_throws_error(schedule):
     with pytest.raises(NotImplementedError) as e:
         schedule.apply_attributes_to_routes({'5': {'id': 'new_id'}})
     assert 'Changing id can only be done via the `reindex` method' in str(e.value)
+
+
+def change_name(attrib):
+    return 'new_name'
+
+
+def test_applying_function_to_services(schedule):
+    schedule.apply_function_to_services(function=change_name, location='name')
+    assert schedule._graph.graph['services']['service']['name'] == 'new_name'
+    assert schedule['service'].name == 'new_name'
+
+
+def test_applying_function_to_routes(schedule):
+    schedule.apply_function_to_routes(function=change_name, location='route_short_name')
+    for route in schedule.routes():
+        assert schedule._graph.graph['routes'][route.id]['route_short_name'] == 'new_name'
+        assert route.route_short_name == 'new_name'
+
+
+def test_applying_function_to_stops(schedule):
+    schedule.apply_function_to_stops(function=change_name, location='name')
+    for stop in schedule.stops():
+        assert stop.name == 'new_name'
+        assert schedule._graph.nodes[stop.id]['name'] == 'new_name'
 
 
 def test_iter_stops_returns_stops_objects(test_service, different_test_service):

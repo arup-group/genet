@@ -1114,6 +1114,138 @@ class Schedule(ScheduleElement):
         return graph_operations.build_attribute_dataframe(
             iterator=self._graph.nodes(data=True), keys=keys, index_name=index_name)
 
+    def extract_service_ids_on_attributes(self, conditions: Union[list, dict], how=any, mixed_dtypes=True):
+        """
+        Extracts IDs of Services stored in the Schedule based on values of their attributes.
+        Fails silently, assumes not all Services have those attributes. In the case were the attributes stored are
+        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
+        :param conditions: {'attribute_key': 'target_value'} or nested
+        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+
+            - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+              lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+            - function that returns a boolean given the value e.g.
+
+            def below_exclusive_upper_bound(value):
+                return value < 100
+
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+        :param how : {all, any}, default any
+
+        The level of rigour used to match conditions
+
+            * all: means all conditions need to be met
+            * any: means at least one condition needs to be met
+
+        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
+        values e.g. as in simplified networks.
+        :return: list of ids in the schedule satisfying conditions
+        """
+        return graph_operations.extract_on_attributes(
+            self._graph.graph['services'].items(), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
+
+    def extract_route_ids_on_attributes(self, conditions: Union[list, dict], how=any, mixed_dtypes=True):
+        """
+        Extracts IDs of Routes stored in the Schedule based on values of their attributes.
+        Fails silently, assumes not all Routes have those attributes. In the case were the attributes stored are
+        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
+        :param conditions: {'attribute_key': 'target_value'} or nested
+        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+
+            - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+              lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+            - function that returns a boolean given the value e.g.
+
+            def below_exclusive_upper_bound(value):
+                return value < 100
+
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+        :param how : {all, any}, default any
+
+        The level of rigour used to match conditions
+
+            * all: means all conditions need to be met
+            * any: means at least one condition needs to be met
+
+        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
+        values e.g. as in simplified networks.
+        :return: list of ids in the schedule satisfying conditions
+        """
+        return graph_operations.extract_on_attributes(
+            self._graph.graph['routes'].items(), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
+
+    def extract_stop_ids_on_attributes(self, conditions: Union[list, dict], how=any, mixed_dtypes=True):
+        """
+        Extracts IDs of Stops stored in the Schedule based on values of their attributes.
+        Fails silently, assumes not all Routes have those attributes. In the case were the attributes stored are
+        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
+        :param conditions: {'attribute_key': 'target_value'} or nested
+        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+
+            - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+              lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+            - function that returns a boolean given the value e.g.
+
+            def below_exclusive_upper_bound(value):
+                return value < 100
+
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+        :param how : {all, any}, default any
+
+        The level of rigour used to match conditions
+
+            * all: means all conditions need to be met
+            * any: means at least one condition needs to be met
+
+        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
+        values e.g. as in simplified networks.
+        :return: list of ids in the schedule satisfying conditions
+        """
+        return graph_operations.extract_on_attributes(
+            self._graph.nodes(data=True), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
+
     def _verify_no_id_change(self, new_attributes):
         id_changes = [id for id, change_dict in new_attributes.items() if
                       ('id' in change_dict) and (change_dict['id'] != id)]

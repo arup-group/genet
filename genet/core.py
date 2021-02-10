@@ -227,7 +227,7 @@ class Network:
 
     def extract_nodes_on_node_attributes(self, conditions: Union[list, dict], how=any, mixed_dtypes=True):
         """
-        Extracts graph nodes based on values of attributes saved on the nodes. Fails silently,
+        Extracts graph node IDs based on values of attributes saved on the nodes. Fails silently,
         assumes not all nodes have all of the attributes. In the case were the attributes stored are
         a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
         an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
@@ -271,8 +271,8 @@ class Network:
 
     def extract_links_on_edge_attributes(self, conditions: Union[list, dict], how=any, mixed_dtypes=True):
         """
-        Extracts graph links based on values of attributes saved on the edges. Fails silently,
-        assumes not all edges have those attributes. In the case were the attributes stored are
+        Extracts graph link IDs based on values of attributes saved on the edges. Fails silently,
+        assumes not all links have those attributes. In the case were the attributes stored are
         a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
         an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
         deemed successful by default. To disable this behaviour set mixed_dtypes to False.
