@@ -360,6 +360,21 @@ def test_extracting_stops_on_condition(schedule):
     assert set(ids) == {'5', '6', '1', '2'}
 
 
+def test_getting_services_on_modal_condition(schedule):
+    service_ids = schedule.services_on_modal_condition(modes='bus')
+    assert service_ids == ['service']
+
+
+def test_getting_routes_on_modal_condition(schedule):
+    route_ids = schedule.routes_on_modal_condition(modes='bus')
+    assert set(route_ids) == {'1', '2'}
+
+
+def test_getting_stops_on_modal_condition(schedule):
+    stop_ids = schedule.stops_on_modal_condition(modes='bus')
+    assert set(stop_ids) == {'5', '6', '7', '8', '3', '1', '4', '2'}
+
+
 def test_applying_attributes_to_service(schedule):
     assert schedule._graph.graph['services']['service']['name'] == 'name'
     assert schedule['service'].name == 'name'

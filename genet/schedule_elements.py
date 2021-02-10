@@ -1246,6 +1246,43 @@ class Schedule(ScheduleElement):
         return graph_operations.extract_on_attributes(
             self._graph.nodes(data=True), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
 
+    def services_on_modal_condition(self, modes: Union[str, list]):
+        """
+        Finds Service IDs which hold Routes with modes or singular mode given in `modes`.
+        Note that a Service can have Routes with different modes.
+        :param modes: string mode e.g. 'bus' or a list of such modes e.g. ['bus', 'rail']
+        :return: list of Service IDs
+        """
+        route_ids = self.routes_on_modal_condition(modes=modes)
+        return list({self._graph.graph['route_to_service_map'][r_id] for r_id in route_ids})
+
+    def routes_on_modal_condition(self, modes: Union[str, list]):
+        """
+        Finds Route IDs with modes or singular mode given in `modes`
+        :param modes: string mode e.g. 'bus' or a list of such modes e.g. ['bus', 'rail']
+        :return: list of Route IDs
+        """
+        conditions = {'mode': modes}
+        return self.extract_route_ids_on_attributes(conditions=conditions)
+
+    def stops_on_modal_condition(self, modes: Union[str, list]):
+        """
+        Finds Stop IDs used by Routes with modes or singular mode given in `modes`
+        :param modes: string mode e.g. 'bus' or a list of such modes e.g. ['bus', 'rail']
+        :return: list of Stop IDs
+        """
+        route_ids = self.routes_on_modal_condition(modes=modes)
+        return self.extract_stop_ids_on_attributes(conditions={'routes': route_ids})
+
+    def services_on_spatial_condition(self):
+        pass
+
+    def routes_on_spatial_condition(self):
+        pass
+
+    def stops_on_spatial_condition(self):
+        pass
+
     def _verify_no_id_change(self, new_attributes):
         id_changes = [id for id, change_dict in new_attributes.items() if
                       ('id' in change_dict) and (change_dict['id'] != id)]
