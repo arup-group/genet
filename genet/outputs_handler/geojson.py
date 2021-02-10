@@ -162,8 +162,7 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
     highway_tags = n.link_attribute_data_under_key({'attributes': {'osm:way:highway': 'text'}})
     highway_tags = set(chain.from_iterable(highway_tags.apply(lambda x: setify(x))))
     for tag in highway_tags:
-        tag_links = graph_operations.extract_links_on_edge_attributes(
-            network=n,
+        tag_links = n.extract_links_on_edge_attributes(
             conditions={'attributes': {'osm:way:highway': {'text': tag}}},
             mixed_dtypes=True)
         save_geodataframe(

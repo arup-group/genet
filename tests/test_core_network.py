@@ -496,7 +496,7 @@ def test_reading_back_simplified_network():
 
     number_of_simplified_links = 659
 
-    links_with_geometry = graph_operations.extract_links_on_edge_attributes(n, conditions={'geometry': lambda x: True})
+    links_with_geometry = n.extract_links_on_edge_attributes(conditions={'geometry': lambda x: True})
 
     assert len(links_with_geometry) == number_of_simplified_links
 

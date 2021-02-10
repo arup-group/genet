@@ -28,8 +28,7 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
 
     with tqdm(total=len(target_osm_ids)) as pbar:
         for target_id in target_osm_ids:
-            links = graph_operations.extract_links_on_edge_attributes(
-                    network,
+            links = network.extract_links_on_edge_attributes(
                     conditions={'attributes': {attribute_name: {'text': target_id}}},
                 )
 

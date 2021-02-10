@@ -225,6 +225,94 @@ class Network:
         """
         return graph_operations.build_attribute_dataframe(self.links(), keys=keys, index_name=index_name)
 
+    def extract_nodes_on_node_attributes(self, conditions: Union[list, dict], how=any, mixed_dtypes=True):
+        """
+        Extracts graph nodes based on values of attributes saved on the nodes. Fails silently,
+        assumes not all nodes have all of the attributes. In the case were the attributes stored are
+        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
+        :param conditions: {'attribute_key': 'target_value'} or nested
+        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+
+            - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+              lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+            - function that returns a boolean given the value e.g.
+
+            def below_exclusive_upper_bound(value):
+                return value < 100
+
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+        :param how : {all, any}, default any
+
+        The level of rigour used to match conditions
+
+            * all: means all conditions need to be met
+            * any: means at least one condition needs to be met
+
+        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
+        values e.g. as in simplified networks.
+        :return: list of node ids in the network satisfying conditions
+        """
+        return graph_operations.extract_on_attributes(
+            self.nodes(), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
+
+    def extract_links_on_edge_attributes(self, conditions: Union[list, dict], how=any, mixed_dtypes=True):
+        """
+        Extracts graph links based on values of attributes saved on the edges. Fails silently,
+        assumes not all edges have those attributes. In the case were the attributes stored are
+        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
+        :param conditions: {'attribute_key': 'target_value'} or nested
+        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+
+            - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+              lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+            - function that returns a boolean given the value e.g.
+
+            def below_exclusive_upper_bound(value):
+                return value < 100
+
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+        :param how : {all, any}, default any
+
+        The level of rigour used to match conditions
+
+            * all: means all conditions need to be met
+            * any: means at least one condition needs to be met
+
+        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
+        values e.g. as in simplified networks.
+        :return: list of link ids in the network satisfying conditions
+        """
+        return graph_operations.extract_on_attributes(
+            self.links(), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
+
     def add_node(self, node: Union[str, int], attribs: dict = None, silent: bool = False):
         """
         Adds a node.
@@ -453,9 +541,9 @@ class Network:
         if self.node_id_exists(new_node_id):
             new_node_id = self.generate_index_for_node()
         # extract link ids which will be affected byt the node relabel and change the from anf to attributes
-        from_links = graph_operations.extract_links_on_edge_attributes(self, conditions={'from': node_id})
+        from_links = self.extract_links_on_edge_attributes(conditions={'from': node_id})
         self.apply_attributes_to_links({link: {'from': new_node_id} for link in from_links})
-        to_links = graph_operations.extract_links_on_edge_attributes(self, conditions={'to': node_id})
+        to_links = self.extract_links_on_edge_attributes(conditions={'to': node_id})
         self.apply_attributes_to_links({link: {'to': new_node_id} for link in to_links})
         # update link_id_mapping
         for k in from_links:
@@ -493,7 +581,7 @@ class Network:
         :param mixed_dtypes as described in graph_operations.extract_links_on_edge_attributes
         :return:
         """
-        links = graph_operations.extract_links_on_edge_attributes(self, conditions, mixed_dtypes=mixed_dtypes)
+        links = self.extract_links_on_edge_attributes(conditions, mixed_dtypes=mixed_dtypes)
         edges_for_sub = [
             (self.link_id_mapping[link]['from'],
              self.link_id_mapping[link]['to'],
@@ -1101,8 +1189,7 @@ class Network:
         def links_over_threshold_length(value):
             return value >= link_length_threshold
 
-        report['graph']['links_over_1km_length'] = graph_operations.extract_links_on_edge_attributes(
-            self,
+        report['graph']['links_over_1km_length'] = self.extract_links_on_edge_attributes(
             conditions={'length': links_over_threshold_length}
         )
 

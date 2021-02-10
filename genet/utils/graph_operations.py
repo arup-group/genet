@@ -113,14 +113,14 @@ class Filter:
         return satisfies
 
 
-def extract_links_on_edge_attributes(network, conditions: Union[list, dict], how=any, mixed_dtypes=True):
+def extract_on_attributes(iterator, conditions: Union[list, dict], how=any, mixed_dtypes=True):
     """
-    Extracts graph links based on values of attributes saved on the edges. Fails silently,
-    assumes not all edges have those attributes. In the case were the attributes stored are
+    Extracts ids in iterator based on values of attributes attached to the items. Fails silently,
+    assumes not all items have those attributes. In the case were the attributes stored are
     a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
     an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
     deemed successful by default. To disable this behaviour set mixed_dtypes to False.
-    :param network: genet.core.Network object
+    :param iterator: generator, list or set of two-tuples: (id of the item, attributes of the item)
     :param conditions: {'attribute_key': 'target_value'} or nested
     {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
 
@@ -153,56 +153,10 @@ def extract_links_on_edge_attributes(network, conditions: Union[list, dict], how
 
     :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
     values e.g. as in simplified networks.
-    :return: list of link ids of the input network
+    :return: list of ids in input iterator satisfying conditions
     """
     filter = Filter(conditions, how, mixed_dtypes)
-    return [link_id for link_id, link_attribs in network.links() if filter.satisfies_conditions(link_attribs)]
-
-
-def extract_nodes_on_node_attributes(network, conditions: Union[list, dict], how=any, mixed_dtypes=True):
-    """
-    Extracts graph nodes based on values of attributes saved on the nodes. Fails silently,
-    assumes not all nodes have all of the attributes. In the case were the attributes stored are
-    a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
-    an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
-    deemed successful by default. To disable this behaviour set mixed_dtypes to False.
-    :param network: genet.core.Network object
-    :param conditions: {'attribute_key': 'target_value'} or nested
-    {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
-
-            - single value, string, int, float, where the edge_data[key] == value
-                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
-
-            - list or set of single values as above, where edge_data[key] in [value1, value2]
-                (if mixed_dtypes==True and in case of set/list edge_data[key],
-                set(edge_data[key]) & set([value1, value2]) is non-empty)
-
-            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
-              lower_bound <= edge_data[key] <= upper_bound
-                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
-                edge_data[key] satisfies lower_bound <= item <= upper_bound)
-
-            - function that returns a boolean given the value e.g.
-
-            def below_exclusive_upper_bound(value):
-                return value < 100
-
-                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
-                edge_data[key] returns True after applying function)
-
-    :param how : {all, any}, default any
-
-    The level of rigour used to match conditions
-
-        * all: means all conditions need to be met
-        * any: means at least one condition needs to be met
-
-    :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
-    values e.g. as in simplified networks.
-    :return: list of node ids of the input network
-    """
-    filter = Filter(conditions, how, mixed_dtypes)
-    return [node_id for node_id, node_attribs in network.nodes() if filter.satisfies_conditions(node_attribs)]
+    return [_id for _id, attribs in iterator if filter.satisfies_conditions(attribs)]
 
 
 def get_attribute_schema(iterator, data=False):
