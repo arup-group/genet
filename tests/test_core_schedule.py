@@ -246,7 +246,7 @@ def test_adding_merges_separable_schedules(route):
             trips={'1': '1', '2': '2'},
             arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
             departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'],
-            route=['1', '2', '3', '4'], id='1')
+            route=['1', '2', '3', '4'], id='2')
     ])])
 
     tba_graph_nodes = schedule_to_be_added.reference_nodes()
@@ -254,8 +254,10 @@ def test_adding_merges_separable_schedules(route):
 
     schedule.add(schedule_to_be_added)
 
-    assert Service(id='1', routes=[route]) in list(schedule.services())
-    assert Service(id='2', routes=[route]) in list(schedule.services())
+    assert '1' in list(schedule.service_ids())
+    assert '2' in list(schedule.service_ids())
+    assert '1' in list(schedule.route_ids())
+    assert '2' in list(schedule.route_ids())
     assert schedule.epsg == 'epsg:4326'
     assert schedule.epsg == schedule_to_be_added.epsg
     assert set(schedule._graph.nodes()) == set(before_graph_nodes) | set(tba_graph_nodes)
@@ -607,9 +609,11 @@ def test_building_trips_dataframe(schedule):
                                         5: 'service', 6: 'service', 7: 'service', 8: 'service', 9: 'service',
                                         10: 'service', 11: 'service'},
                             'service_name': {0: 'name', 1: 'name', 2: 'name', 3: 'name', 4: 'name', 5: 'name',
-                                             6: 'name', 7: 'name', 8: 'name', 9: 'name', 10: 'name', 11: 'name'}})
+                                             6: 'name', 7: 'name', 8: 'name', 9: 'name', 10: 'name',
+                                             11: 'name'}}).sort_values(
+        by=['route', 'trip', 'departure_time']).reset_index(drop=True)
 
-    assert_frame_equal(df, correct_df)
+    assert_frame_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1))
 
 
 def test_building_schedule_from_graph(schedule_graph):

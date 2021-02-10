@@ -1,6 +1,7 @@
 from typing import Union, Dict, List
 from pyproj import Transformer
 import networkx as nx
+import numpy as np
 import logging
 from datetime import datetime
 from pandas import DataFrame
@@ -447,8 +448,8 @@ class Route(ScheduleElement):
                 [use_schedule.get_offset(self.departure_offsets[i]) for i in range(len(self.ordered_stops) - 1)],
             'arrival_time':
                 [use_schedule.get_offset(self.arrival_offsets[i]) for i in range(1, len(self.ordered_stops))],
-            'from_stop': [self.ordered_stops[i] for i in range(len(self.ordered_stops) - 1)],
-            'to_stop': [self.ordered_stops[i] for i in range(1, len(self.ordered_stops))]
+            'from_stop': self.ordered_stops[:-1],
+            'to_stop': self.ordered_stops[1:]
         })
         for trip_id, trip_dep_time in self.trips.items():
             trip_df = _df.copy()
@@ -985,14 +986,44 @@ class Schedule(ScheduleElement):
         )
 
     def generate_trips_dataframe(self, gtfs_day='19700101'):
-        df = None
-        for service in self.services():
-            _df = service.generate_trips_dataframe(gtfs_day=gtfs_day)
-            if df is None:
-                df = _df
-            else:
-                df = df.append(_df)
-        df = df.reset_index(drop=True)
+        df = self.route_attribute_data(
+            keys=['route_short_name', 'mode', 'trips', 'arrival_offsets', 'departure_offsets', 'ordered_stops', 'id'])
+        df = df.rename(columns={'id': 'route', 'route_short_name': 'route_name'})
+        df['route_name'] = df['route_name'].apply(lambda x: x.replace("\\", "_").replace("/", "_"))
+        df['service'] = df['route'].apply(lambda x: self._graph.graph['route_to_service_map'][x])
+        df['service_name'] = df['service'].apply(lambda x: self._graph.graph['services'][x]['name'].replace("\\", "_").replace("/", "_"))
+        df['ordered_stops'] = df['ordered_stops'].apply(lambda x: list(zip(x[:-1], x[1:])))
+        df['departure_offsets'] = df['departure_offsets'].apply(lambda x: list(map(use_schedule.get_offset, x[:-1])))
+        df['arrival_offsets'] = df['arrival_offsets'].apply(lambda x: list(map(use_schedule.get_offset, x[1:])))
+
+        # expand the frame stop to stop and extract offsets for arrival and departure from these stops
+        stop_cols = np.concatenate(df['ordered_stops'].values)
+        dep_offset_cols = np.concatenate(df['departure_offsets'].values)
+        arr_offset_cols = np.concatenate(df['arrival_offsets'].values)
+        df = DataFrame({
+            col: np.repeat(df[col].values, df['ordered_stops'].str.len())
+            for col in set(df.columns) - {'ordered_stops', 'arrival_offsets', 'departure_offsets'}}
+        ).assign(from_stop=stop_cols[:, 0],
+                 to_stop=stop_cols[:, 1],
+                 departure_time=dep_offset_cols,
+                 arrival_time=arr_offset_cols)
+
+        df['from_stop_name'] = df['from_stop'].apply(lambda x: self._graph.nodes[x]['name'].replace("\\", "_").replace("/", "_"))
+        df['to_stop_name'] = df['to_stop'].apply(lambda x: self._graph.nodes[x]['name'].replace("\\", "_").replace("/", "_"))
+
+        # expand the frame on all the trips each route makes
+        trips = np.concatenate(
+            df['trips'].apply(
+                lambda x: [(k, use_schedule.sanitise_time(time, gtfs_day)) for k, time in x.items()]).values)
+        df = DataFrame({
+            col: np.repeat(df[col].values, df['trips'].str.len())
+            for col in set(df.columns) - {'trips'}}
+        ).assign(trip=trips[:, 0],
+                 trip_dep_time=trips[:, 1]).sort_values(by=['route', 'trip', 'departure_time']).reset_index(drop=True)
+
+        df['departure_time'] = df['trip_dep_time'] + df['departure_time']
+        df['arrival_time'] = df['trip_dep_time'] + df['arrival_time']
+        df = df.drop('trip_dep_time', axis=1)
         return df
 
     def service_ids(self):
