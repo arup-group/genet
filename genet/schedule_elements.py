@@ -780,12 +780,6 @@ class Service(ScheduleElement):
     def invalid_routes(self):
         return [route for route in self.routes() if not route.is_valid_route()]
 
-    def has_uniquely_indexed_routes(self):
-        indices = set([route.id for route in self.routes()])
-        if len(indices) != len(self):
-            return False
-        return True
-
     def has_id(self):
         return self.id
 
@@ -796,10 +790,6 @@ class Service(ScheduleElement):
         if not self.has_valid_routes():
             valid = False
             invalid_stages.append('not_has_valid_routes')
-
-        if not bool(self.has_uniquely_indexed_routes()):
-            valid = False
-            invalid_stages.append('not_has_uniquely_indexed_routes')
 
         if return_reason:
             return valid, invalid_stages
@@ -844,7 +834,7 @@ class Schedule(ScheduleElement):
                             new_idx = f'{idx}_{i}'
                             i += 1
                         service.reindex(new_idx)
-                        logging.warning(f'Service has been re-indexed from {idx} tp {new_idx} due to an ID clash')
+                        logging.warning(f'Service has been re-indexed from {idx} to {new_idx} due to an ID clash')
                         idx = new_idx
                     clashing_route_ids = route_ids & used_route_indices
                     for r_id in clashing_route_ids:

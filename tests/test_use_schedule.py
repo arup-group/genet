@@ -110,7 +110,7 @@ def test_generating_edge_vph_geodataframe(schedule):
                                    11: LineString([(-7.5570681956375, 49.766856648946295),
                                                    (-7.557121424907424, 49.76683608549253)])}})
 
-    assert_geodataframe_equal(df, correct_df, check_less_precise=True)
+    assert_geodataframe_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1), check_less_precise=True)
 
 
 def test_generating_edge_vph_geodataframe_for_service(schedule):
@@ -163,7 +163,7 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
                                    11: LineString([(-7.5570681956375, 49.766856648946295),
                                                    (-7.557121424907424, 49.76683608549253)])}})
 
-    assert_geodataframe_equal(df, correct_df, check_less_precise=True)
+    assert_geodataframe_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1), check_less_precise=True)
 
 
 def test_generating_edge_vph_geodataframe_for_route(schedule):
@@ -193,7 +193,7 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
                                             5: LineString([(-7.5570681956375, 49.766856648946295),
                                                            (-7.557121424907424, 49.76683608549253)])}})
 
-    assert_geodataframe_equal(df, correct_df, check_less_precise=True)
+    assert_geodataframe_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1), check_less_precise=True)
 
 
 def test_generating_trips_per_day_per_service(schedule):

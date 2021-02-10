@@ -305,10 +305,6 @@ def test_invalid_routes_shows_invalid_routes(self_looping_route, route):
     assert s.invalid_routes() == [self_looping_route]
 
 
-def test_unique_indexing_of_with_uniquely_indexed_service(service):
-    assert service.has_uniquely_indexed_routes()
-
-
 def test_has_id(service):
     assert service.has_id()
 
