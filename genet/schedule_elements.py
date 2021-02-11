@@ -174,7 +174,7 @@ class Stop:
         if 's2_id' in kwargs:
             self.s2_id = kwargs['s2_id']
         else:
-            self.s2_id = spatial.grab_index_s2(lat=self.lat, lng=self.lon)
+            self.s2_id = spatial.generate_index_s2(lat=self.lat, lng=self.lon)
 
         self.additional_attributes = []
         if kwargs:

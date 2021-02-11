@@ -15,7 +15,7 @@ def decode_polyline_to_s2_points(_polyline):
     :return:
     """
     decoded = polyline.decode(_polyline)
-    return [grab_index_s2(lat, lon) for lat, lon in decoded]
+    return [generate_index_s2(lat, lon) for lat, lon in decoded]
 
 
 def encode_shapely_linestring_to_polyline(linestring):
@@ -81,14 +81,28 @@ def s2_hex_to_cell_union(hex_area):
     return s2.CellUnion(cell_ids=cell_ids)
 
 
-def grab_index_s2(lat, lng):
+def generate_index_s2(lat, lng):
     """
-    Returns s2.CellID from lat and lon
+    Returns s2.CellId from lat and lon
     :param lat
     :param lng
     :return:
     """
     return s2.CellId.from_lat_lng(s2.LatLng.from_degrees(lat, lng)).id()
+
+
+def generate_s2_geometry(points):
+    """
+    Generate ordered list of s2.CellIds
+    :param points: list of (lat,lng) tuples, list of shapely.geometry.Points or LineString
+    :return:
+    """
+    if isinstance(points, LineString):
+        points = list(points.coords)
+    try:
+        return [generate_index_s2(pt.x, pt.y) for pt in points]
+    except AttributeError:
+        return [generate_index_s2(pt[0], pt[1]) for pt in points]
 
 
 def distance_between_s2cellids(s2cellid1, s2cellid2):

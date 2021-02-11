@@ -149,7 +149,7 @@ def parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, route_db, servi
             route_val = route_db[route_id]
             stop_times = stop_times_db[trip_id]
             stops = [stop_time['stop_id'] for stop_time in stop_times]
-            s2_stops = [spatial.grab_index_s2(
+            s2_stops = [spatial.generate_index_s2(
                 lat=float(stops_db[stop]['stop_lat']), lng=float(stops_db[stop]['stop_lon'])) for stop in stops]
 
             if len(stops) > 1:

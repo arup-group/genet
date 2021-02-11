@@ -6,7 +6,7 @@ import pandas as pd
 import networkx as nx
 import pytest
 import lxml
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Polygon
 from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
     full_fat_default_config_path, correct_schedule
@@ -14,8 +14,7 @@ from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_d
 from genet.inputs_handler import matsim_reader
 from genet.core import Network
 from genet.schedule_elements import Route, Service, Schedule
-from genet.utils import graph_operations
-from genet.utils import plot
+from genet.utils import plot, spatial, graph_operations
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -898,8 +897,136 @@ def test_network_modal_subgraph_using_specific_modal_subgraph_method_several_mod
     n.add_link('2', 2, 3, attribs={'modes': ['bike']})
     n.add_link('3', 2, 3, attribs={'modes': ['walk']})
 
-    car_graph = n.modal_subgraph(modes=['car', 'bike'])
-    assert list(car_graph.edges) == [(1, 2, 0), (2, 3, 0), (2, 3, 1)]
+    car_bike_graph = n.modal_subgraph(modes=['car', 'bike'])
+    assert list(car_bike_graph.edges) == [(1, 2, 0), (2, 3, 0), (2, 3, 1)]
+
+
+def test_links_on_modal_condition():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike']})
+    n.add_link('1', 2, 3, attribs={'modes': ['car']})
+    n.add_link('2', 2, 3, attribs={'modes': ['bike']})
+    n.add_link('3', 2, 3, attribs={'modes': ['walk']})
+
+    car_links = n.links_on_modal_condition(modes=['car'])
+    assert set(car_links) == {'0', '1'}
+
+
+def test_nodes_on_modal_condition():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike']})
+    n.add_link('1', 2, 3, attribs={'modes': ['car']})
+    n.add_link('2', 2, 3, attribs={'modes': ['bike']})
+    n.add_link('3', 2, 3, attribs={'modes': ['walk']})
+
+    car_nodes = n.nodes_on_modal_condition(modes=['car'])
+    assert set(car_nodes) == {1, 2, 3}
+
+
+test_geojson = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "test_geojson.geojson"))
+
+
+def test_nodes_on_spatial_condition_with_geojson(network_object_from_test_data):
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    nodes = network_object_from_test_data.nodes_on_spatial_condition(test_geojson)
+    assert set(nodes) == {'21667818', '25508485'}
+
+
+def test_nodes_on_spatial_condition_with_shapely_geom(network_object_from_test_data):
+    region = Polygon([(-0.1487016677856445, 51.52556684350165), (-0.14063358306884766, 51.5255134425896),
+                      (-0.13865947723388672, 51.5228700191647), (-0.14093399047851562, 51.52006622056997),
+                      (-0.1492595672607422, 51.51974577545329), (-0.1508045196533203, 51.52276321095246),
+                      (-0.1487016677856445, 51.52556684350165)])
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    nodes = network_object_from_test_data.nodes_on_spatial_condition(region)
+    assert set(nodes) == {'21667818', '25508485'}
+
+
+def test_nodes_on_spatial_condition_with_s2_region(network_object_from_test_data):
+    region = '48761ad04d,48761ad054,48761ad05c,48761ad061,48761ad085,48761ad08c,48761ad094,48761ad09c,48761ad0b,48761ad0d,48761ad0f,48761ad14,48761ad182c,48761ad19c,48761ad1a4,48761ad1ac,48761ad1b4,48761ad1bac,48761ad3d7f,48761ad3dc,48761ad3e4,48761ad3ef,48761ad3f4,48761ad3fc,48761ad41,48761ad43,48761ad5d,48761ad5e4,48761ad5ec,48761ad5fc,48761ad7,48761ad803,48761ad81c,48761ad824,48761ad82c,48761ad9d,48761ad9e4,48761ad9e84,48761ad9fc,48761ada04,48761ada0c,48761b2804,48761b2814,48761b281c,48761b283,48761b2844,48761b284c,48761b2995,48761b29b4,48761b29bc,48761b29d,48761b29f,48761b2a04'
+    network_object_from_test_data.add_node(
+        '1', {'id': '1', 'x': 508400, 'y': 162050, 's2_id': spatial.generate_index_s2(51.3472033, 0.4449167)})
+    nodes = network_object_from_test_data.nodes_on_spatial_condition(region)
+    assert set(nodes) == {'21667818', '25508485'}
+
+
+def test_links_on_spatial_condition_with_geojson(network_object_from_test_data):
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    network_object_from_test_data.add_link('2', u='21667818', v='1')
+    links = network_object_from_test_data.links_on_spatial_condition(test_geojson)
+    assert set(links) == {'1', '2'}
+
+
+def test_links_on_spatial_condition_with_shapely_geom(network_object_from_test_data):
+    region = Polygon([(-0.1487016677856445, 51.52556684350165), (-0.14063358306884766, 51.5255134425896),
+                      (-0.13865947723388672, 51.5228700191647), (-0.14093399047851562, 51.52006622056997),
+                      (-0.1492595672607422, 51.51974577545329), (-0.1508045196533203, 51.52276321095246),
+                      (-0.1487016677856445, 51.52556684350165)])
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    network_object_from_test_data.add_link('2', u='21667818', v='1')
+    links = network_object_from_test_data.links_on_spatial_condition(region)
+    assert set(links) == {'1', '2'}
+
+
+def test_links_on_spatial_condition_with_s2_region(network_object_from_test_data):
+    region = '48761ad04d,48761ad054,48761ad05c,48761ad061,48761ad085,48761ad08c,48761ad094,48761ad09c,48761ad0b,48761ad0d,48761ad0f,48761ad14,48761ad182c,48761ad19c,48761ad1a4,48761ad1ac,48761ad1b4,48761ad1bac,48761ad3d7f,48761ad3dc,48761ad3e4,48761ad3ef,48761ad3f4,48761ad3fc,48761ad41,48761ad43,48761ad5d,48761ad5e4,48761ad5ec,48761ad5fc,48761ad7,48761ad803,48761ad81c,48761ad824,48761ad82c,48761ad9d,48761ad9e4,48761ad9e84,48761ad9fc,48761ada04,48761ada0c,48761b2804,48761b2814,48761b281c,48761b283,48761b2844,48761b284c,48761b2995,48761b29b4,48761b29bc,48761b29d,48761b29f,48761b2a04'
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    network_object_from_test_data.add_link('2', u='21667818', v='1')
+    links = network_object_from_test_data.links_on_spatial_condition(region)
+    assert set(links) == {'1', '2'}
+
+
+def test_links_on_spatial_condition_with_intersection_and_complex_geometry_that_falls_outside_region(network_object_from_test_data):
+    region = Polygon([(-0.1487016677856445, 51.52556684350165), (-0.14063358306884766, 51.5255134425896),
+                      (-0.13865947723388672, 51.5228700191647), (-0.14093399047851562, 51.52006622056997),
+                      (-0.1492595672607422, 51.51974577545329), (-0.1508045196533203, 51.52276321095246),
+                      (-0.1487016677856445, 51.52556684350165)])
+    network_object_from_test_data.add_link(
+        '2', u='21667818', v='25508485',
+        attribs={'geometry': LineString([(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
+    links = network_object_from_test_data.links_on_spatial_condition(region, how='intersect')
+    assert set(links) == {'1', '2'}
+
+
+def test_links_on_spatial_condition_with_containement(network_object_from_test_data):
+    region = Polygon([(-0.1487016677856445, 51.52556684350165), (-0.14063358306884766, 51.5255134425896),
+                      (-0.13865947723388672, 51.5228700191647), (-0.14093399047851562, 51.52006622056997),
+                      (-0.1492595672607422, 51.51974577545329), (-0.1508045196533203, 51.52276321095246),
+                      (-0.1487016677856445, 51.52556684350165)])
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    network_object_from_test_data.add_link('2', u='21667818', v='1')
+    links = network_object_from_test_data.links_on_spatial_condition(region, how='contain')
+    assert set(links) == {'1'}
+
+
+def test_links_on_spatial_condition_with_containement_and_complex_geometry_that_falls_outside_region(network_object_from_test_data):
+    region = Polygon([(-0.1487016677856445, 51.52556684350165), (-0.14063358306884766, 51.5255134425896),
+                      (-0.13865947723388672, 51.5228700191647), (-0.14093399047851562, 51.52006622056997),
+                      (-0.1492595672607422, 51.51974577545329), (-0.1508045196533203, 51.52276321095246),
+                      (-0.1487016677856445, 51.52556684350165)])
+    network_object_from_test_data.add_link(
+        '2', u='21667818', v='25508485',
+        attribs={'geometry': LineString([(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
+    links = network_object_from_test_data.links_on_spatial_condition(region, how='contain')
+    assert set(links) == {'1'}
+
+
+def test_links_on_spatial_condition_with_containement_and_s2_region(network_object_from_test_data):
+    region = '48761ad04d,48761ad054,48761ad05c,48761ad061,48761ad085,48761ad08c,48761ad094,48761ad09c,48761ad0b,48761ad0d,48761ad0f,48761ad14,48761ad182c,48761ad19c,48761ad1a4,48761ad1ac,48761ad1b4,48761ad1bac,48761ad3d7f,48761ad3dc,48761ad3e4,48761ad3ef,48761ad3f4,48761ad3fc,48761ad41,48761ad43,48761ad5d,48761ad5e4,48761ad5ec,48761ad5fc,48761ad7,48761ad803,48761ad81c,48761ad824,48761ad82c,48761ad9d,48761ad9e4,48761ad9e84,48761ad9fc,48761ada04,48761ada0c,48761b2804,48761b2814,48761b281c,48761b283,48761b2844,48761b284c,48761b2995,48761b29b4,48761b29bc,48761b29d,48761b29f,48761b2a04'
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    network_object_from_test_data.add_link('2', u='21667818', v='1')
+    links = network_object_from_test_data.links_on_spatial_condition(region, how='contain')
+    assert set(links) == {'1'}
+
+
+def test_links_on_spatial_condition_with_containement_and_complex_geometry_that_falls_outside_s2_region(network_object_from_test_data):
+    region = '48761ad04d,48761ad054,48761ad05c,48761ad061,48761ad085,48761ad08c,48761ad094,48761ad09c,48761ad0b,48761ad0d,48761ad0f,48761ad14,48761ad182c,48761ad19c,48761ad1a4,48761ad1ac,48761ad1b4,48761ad1bac,48761ad3d7f,48761ad3dc,48761ad3e4,48761ad3ef,48761ad3f4,48761ad3fc,48761ad41,48761ad43,48761ad5d,48761ad5e4,48761ad5ec,48761ad5fc,48761ad7,48761ad803,48761ad81c,48761ad824,48761ad82c,48761ad9d,48761ad9e4,48761ad9e84,48761ad9fc,48761ada04,48761ada0c,48761b2804,48761b2814,48761b281c,48761b283,48761b2844,48761b284c,48761b2995,48761b29b4,48761b29bc,48761b29d,48761b29f,48761b2a04'
+    network_object_from_test_data.add_link(
+        '2', u='21667818', v='25508485',
+        attribs={'geometry': LineString([(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
+    links = network_object_from_test_data.links_on_spatial_condition(region, how='contain')
+    assert set(links) == {'1'}
 
 
 def test_find_shortest_path_when_graph_has_no_extra_edge_choices():
@@ -2068,7 +2195,8 @@ def test_generate_validation_report_with_pt2matsim_network(network_object_from_t
                                                                                          'not_has_correctly_ordered_route']}}}},
         'routing': {'services_have_routes_in_the_graph': False,
                     'service_routes_with_invalid_network_route': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
-                    'route_to_crow_fly_ratio': {'10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': 'Division by zero'}}}}
+                    'route_to_crow_fly_ratio': {
+                        '10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': 'Division by zero'}}}}
     assert_semantically_equal(report, correct_report)
 
 

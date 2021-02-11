@@ -1,7 +1,7 @@
 import s2sphere
 from genet.utils import spatial
 from tests.fixtures import *
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import LineString, Polygon, Point
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 test_geojson = os.path.abspath(
@@ -60,10 +60,20 @@ def test_s2_hex_to_cell_union():
 
 def test_grabs_point_indexes_from_s2(mocker):
     mocker.patch.object(s2sphere.CellId, 'from_lat_lng', return_value=s2sphere.CellId(id_=123456789))
-    point_index = spatial.grab_index_s2(53.483959, -2.244644)
+    point_index = spatial.generate_index_s2(53.483959, -2.244644)
 
     assert point_index == 123456789
     s2sphere.CellId.from_lat_lng.assert_called_once_with(s2sphere.LatLng.from_degrees(53.483959, -2.244644))
+
+
+def test_generating_s2_geometry_with_tuples():
+    s2_geoms = spatial.generate_s2_geometry([(53.483959, -2.244644), (53.53959, -2.34644)])
+    assert s2_geoms == [5222963659595391499, 5222961020721801439]
+
+
+def test_generating_s2_geometry_with_shapely_points():
+    s2_geoms = spatial.generate_s2_geometry([Point(53.483959, -2.244644), Point(53.53959, -2.34644)])
+    assert s2_geoms == [5222963659595391499, 5222961020721801439]
 
 
 def test_delegates_distance_between_points_query_to_s2(mocker):

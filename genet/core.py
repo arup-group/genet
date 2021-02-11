@@ -7,6 +7,7 @@ import os
 from copy import deepcopy
 from typing import Union, List, Dict
 from pyproj import Transformer
+from s2sphere import CellId
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.osm_reader as osm_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
@@ -313,6 +314,98 @@ class Network:
         return graph_operations.extract_on_attributes(
             self.links(), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
 
+    def links_on_modal_condition(self, modes: Union[str, list]):
+        """
+        Finds link IDs with modes or singular mode given in `modes`
+        :param modes: string mode e.g. 'car' or a list of such modes e.g. ['car', 'walk']
+        :return: list of link IDs
+        """
+        return self.extract_links_on_edge_attributes(conditions={'modes': modes}, mixed_dtypes=True)
+
+    def nodes_on_modal_condition(self, modes: Union[str, list]):
+        """
+        Finds node IDs with modes or singular mode given in `modes`
+        :param modes: string mode e.g. 'car' or a list of such modes e.g. ['car', 'walk']
+        :return: list of link IDs
+        """
+        links = self.links_on_modal_condition(modes)
+        nodes = {self.link(link)['from'] for link in links} | {self.link(link)['to'] for link in links}
+        return list(nodes)
+
+    def modal_subgraph(self, modes: Union[str, list]):
+        return self.subgraph_on_link_conditions(conditions={'modes': modes}, mixed_dtypes=True)
+
+    def nodes_on_spatial_condition(self, region_input):
+        """
+        Returns node IDs which intersect region_input
+        :param region_input:
+            - path to a geojson file, can have multiple features
+            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
+             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
+             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
+            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :return: node IDs
+        """
+        if not isinstance(region_input, str):
+            # assumed to be a shapely.geometry input
+            gdf = geojson.generate_geodataframes(self.graph)[0]
+            return self._find_ids_on_shapely_geometry(gdf, how='intersect', shapely_input=region_input)
+        elif persistence.is_geojson(region_input):
+            gdf = geojson.generate_geodataframes(self.graph)[0]
+            return self._find_ids_on_geojson(gdf, how='intersect', geojson_input=region_input)
+        else:
+            # is assumed to be hex
+            return self._find_node_ids_on_s2_geometry(region_input)
+
+    def links_on_spatial_condition(self, region_input, how='intersect'):
+        """
+        Returns link IDs which intersect region_input
+        :param region_input:
+            - path to a geojson file, can have multiple features
+            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
+             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
+             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
+            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :return: link IDs
+        """
+        gdf = geojson.generate_geodataframes(self.graph)[1]
+        if not isinstance(region_input, str):
+            # assumed to be a shapely.geometry input
+            return self._find_ids_on_shapely_geometry(gdf, how, region_input)
+        elif persistence.is_geojson(region_input):
+            return self._find_ids_on_geojson(gdf, how, region_input)
+        else:
+            # is assumed to be hex
+            return self._find_link_ids_on_s2_geometry(gdf, how, region_input)
+
+    def _find_ids_on_geojson(self, gdf, how, geojson_input):
+        shapely_input = spatial.read_geojson_to_shapely(geojson_input)
+        return self._find_ids_on_shapely_geometry(gdf=gdf, how=how, shapely_input=shapely_input)
+
+    def _find_ids_on_shapely_geometry(self, gdf, how, shapely_input):
+        if how == 'intersect':
+            return list(gdf[gdf.intersects(shapely_input)]['id'])
+        if how == 'contain':
+            return list(gdf[gdf.within(shapely_input)]['id'])
+
+    def _find_node_ids_on_s2_geometry(self, s2_input):
+        cell_union = spatial.s2_hex_to_cell_union(s2_input)
+        return [_id for _id, s2_id in self.graph.nodes(data='s2_id') if cell_union.intersects(CellId(s2_id))]
+
+    def _find_link_ids_on_s2_geometry(self, gdf, how, s2_input):
+        gdf['geometry'] = gdf['geometry'].apply(lambda x: spatial.swap_x_y_in_linestring(x))
+        gdf['s2_geometry'] = gdf['geometry'].apply(lambda x: spatial.generate_s2_geometry(x))
+        gdf = gdf.set_index('id')
+        links = gdf['s2_geometry'].T.to_dict()
+
+        cell_union = spatial.s2_hex_to_cell_union(s2_input)
+        if how == 'intersect':
+            return [_id for _id, s2_geom in links.items() if any([cell_union.intersects(CellId(s2_id)) for s2_id in s2_geom])]
+        elif how == 'contain':
+            return [_id for _id, s2_geom in links.items() if all([cell_union.intersects(CellId(s2_id)) for s2_id in s2_geom])]
+        else:
+            raise NotImplementedError('Only `intersect` and `contain` options for `how` param.')
+
     def add_node(self, node: Union[str, int], attribs: dict = None, silent: bool = False):
         """
         Adds a node.
@@ -601,9 +694,6 @@ class Network:
             except KeyError:
                 pass
         return modes
-
-    def modal_subgraph(self, modes: Union[str, list]):
-        return self.subgraph_on_link_conditions(conditions={'modes': modes}, mixed_dtypes=True)
 
     def find_shortest_path(self, from_node, to_node, modes: Union[str, list] = None, subgraph: nx.MultiDiGraph = None,
                            return_nodes=False):
