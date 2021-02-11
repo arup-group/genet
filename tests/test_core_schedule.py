@@ -407,7 +407,7 @@ def test_getting_routes_intersecting_spatial_region(schedule):
 
 def test_getting_routes_contained_spatial_region(schedule):
     p = Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])
-    routes = schedule.routes_on_spatial_condition(p, how='contain')
+    routes = schedule.routes_on_spatial_condition(p, how='within')
     assert set(routes) == {'1', '2'}
 
 
@@ -419,7 +419,7 @@ def test_getting_services_intersecting_spatial_region(schedule):
 
 def test_getting_services_contained_spatial_region(schedule):
     p = Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])
-    routes = schedule.services_on_spatial_condition(p, how='contain')
+    routes = schedule.services_on_spatial_condition(p, how='within')
     assert set(routes) == {'service'}
 
 
@@ -543,6 +543,14 @@ def test_adding_service_with_clashing_id_throws_error(schedule, service):
     assert 'already exists' in str(e.value)
 
 
+def test_removing_service(schedule):
+    schedule.remove_service('service')
+    assert not set(schedule.route_ids())
+    assert not set(schedule.service_ids())
+    assert not schedule._graph.graph['route_to_service_map']
+    assert not schedule._graph.graph['service_to_route_map']
+
+
 def test_adding_route(schedule, route):
     route.reindex('new_id')
     schedule.add_route('service', route)
@@ -572,7 +580,24 @@ def test_adding_route_to_non_existing_service_throws_error(schedule, route):
     assert 'does not exist' in str(e.value)
 
 
+def test_removing_route(schedule):
+    schedule.remove_route('2')
+    assert set(schedule.route_ids()) == {'1'}
+    assert set(schedule.service_ids()) == {'service'}
+    assert_semantically_equal(schedule._graph.graph['route_to_service_map'],
+                              {'1': 'service'})
+    assert_semantically_equal(schedule._graph.graph['service_to_route_map'],
+                              {'service': ['1']})
 
+def test_removing_stop(schedule):
+    schedule.remove_stop('5')
+    assert {stop.id for stop in schedule.stops()} == {'1', '3', '4', '7', '8', '6', '2'}
+
+
+def test_removing_unused_stops(schedule):
+    schedule.remove_route('1')
+    schedule.remove_unsused_stops()
+    assert {stop.id for stop in schedule.stops()} == {'6', '8', '5', '7'}
 
 
 def test_iter_stops_returns_stops_objects(test_service, different_test_service):

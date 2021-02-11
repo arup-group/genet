@@ -77,8 +77,8 @@ class Network:
         self.schedule.add(other.schedule)
 
         # merge change_log DataFrames
-        self.change_log.log = self.change_log.log.append(other.change_log.log)
-        self.change_log.log = self.change_log.log.sort_values(by='timestamp').reset_index(drop=True)
+        self.change_log = self.change_log.append(other.change_log)
+        self.change_log = self.change_log.sort_values(by='timestamp').reset_index(drop=True)
 
     def print(self):
         print(self.info())
@@ -385,7 +385,7 @@ class Network:
     def _find_ids_on_shapely_geometry(self, gdf, how, shapely_input):
         if how == 'intersect':
             return list(gdf[gdf.intersects(shapely_input)]['id'])
-        if how == 'contain':
+        if how == 'within':
             return list(gdf[gdf.within(shapely_input)]['id'])
         else:
             raise NotImplementedError('Only `intersect` and `contain` options for `how` param.')
@@ -402,11 +402,13 @@ class Network:
 
         cell_union = spatial.s2_hex_to_cell_union(s2_input)
         if how == 'intersect':
-            return [_id for _id, s2_geom in links.items() if any([cell_union.intersects(CellId(s2_id)) for s2_id in s2_geom])]
-        elif how == 'contain':
-            return [_id for _id, s2_geom in links.items() if all([cell_union.intersects(CellId(s2_id)) for s2_id in s2_geom])]
+            return [_id for _id, s2_geom in links.items() if
+                    any([cell_union.intersects(CellId(s2_id)) for s2_id in s2_geom])]
+        elif how == 'within':
+            return [_id for _id, s2_geom in links.items() if
+                    all([cell_union.intersects(CellId(s2_id)) for s2_id in s2_geom])]
         else:
-            raise NotImplementedError('Only `intersect` and `contain` options for `how` param.')
+            raise NotImplementedError('Only `intersect` and `within` options for `how` param.')
 
     def add_node(self, node: Union[str, int], attribs: dict = None, silent: bool = False):
         """
@@ -458,8 +460,9 @@ class Network:
 
         self.graph.add_nodes_from([(node_id, attribs) for node_id, attribs in nodes_and_attribs_to_add.items()])
         if not ignore_change_log:
-            self.change_log.add_bunch(object_type='node', id_bunch=list(nodes_and_attribs_to_add.keys()),
-                                      attributes_bunch=list(nodes_and_attribs_to_add.values()))
+            self.change_log = self.change_log.add_bunch(object_type='node',
+                                                        id_bunch=list(nodes_and_attribs_to_add.keys()),
+                                                        attributes_bunch=list(nodes_and_attribs_to_add.values()))
         if not silent:
             logging.info(f'Added {len(nodes_and_attribs)} nodes')
         return reindexing_dict, nodes_and_attribs_to_add
@@ -625,7 +628,7 @@ class Network:
             [(attribs['from'], attribs['to'], add_to_link_id_mapping[link]['multi_edge_idx'], attribs) for link, attribs
              in links_and_attributes.items()])
         if not ignore_change_log:
-            self.change_log.add_bunch(object_type='link', id_bunch=list(links_and_attributes.keys()),
+            self.change_log = self.change_log.add_bunch(object_type='link', id_bunch=list(links_and_attributes.keys()),
                                       attributes_bunch=list(links_and_attributes.values()))
         if not silent:
             logging.info(f'Added {len(links_and_attributes)} links')
@@ -764,7 +767,7 @@ class Network:
         old_attribs = [deepcopy(self.node(node)) for node in nodes]
         new_attribs = [{**self.node(node), **new_attributes[node]} for node in nodes]
 
-        self.change_log.modify_bunch('node', nodes, old_attribs, nodes, new_attribs)
+        self.change_log = self.change_log.modify_bunch('node', nodes, old_attribs, nodes, new_attribs)
 
         nx.set_node_attributes(self.graph, dict(zip(nodes, new_attribs)))
         logging.info(f'Changed Node attributes for {len(nodes)} nodes')
@@ -846,7 +849,7 @@ class Network:
                     edge_tuples.append((u, v, multi_idx))
 
         edge_ids = list(map(str, edge_tuples))
-        self.change_log.modify_bunch(
+        self.change_log = self.change_log.modify_bunch(
             object_type='edge',
             old_id_bunch=edge_ids,
             old_attributes=old_attribs,
@@ -901,7 +904,7 @@ class Network:
         new_attribs = [dict_support.set_nested_value(self.link(link), new_attributes[link]) for link in links]
         edge_tuples = [self.edge_tuple_from_link_id(link) for link in links]
 
-        self.change_log.modify_bunch('link', links, old_attribs, links, new_attribs)
+        self.change_log = self.change_log.modify_bunch('link', links, old_attribs, links, new_attribs)
         nx.set_edge_attributes(
             self.graph,
             dict(zip(edge_tuples, new_attribs)))
@@ -952,8 +955,8 @@ class Network:
         :return:
         """
         if not ignore_change_log:
-            self.change_log.remove_bunch(object_type='node', id_bunch=nodes,
-                                         attributes_bunch=[self.node(node_id) for node_id in nodes])
+            self.change_log = self.change_log.remove_bunch(
+                object_type='node', id_bunch=nodes, attributes_bunch=[self.node(node_id) for node_id in nodes])
         self.graph.remove_nodes_from(nodes)
         if not silent:
             logging.info(f'Removed {len(nodes)} nodes.')
@@ -983,8 +986,8 @@ class Network:
         :return:
         """
         if not ignore_change_log:
-            self.change_log.remove_bunch(object_type='link', id_bunch=links,
-                                         attributes_bunch=[self.link(link_id) for link_id in links])
+            self.change_log = self.change_log.remove_bunch(
+                object_type='link', id_bunch=links, attributes_bunch=[self.link(link_id) for link_id in links])
         self.graph.remove_edges_from([self.edge_tuple_from_link_id(link_id) for link_id in links])
         for link_id in links:
             del self.link_id_mapping[link_id]

@@ -226,7 +226,7 @@ def simplify_graph(n, no_processes=1):
         del indexed_paths_to_simplify[old_id]
     new_ids = list(indexed_paths_to_simplify.keys())
     old_ids = [set(indexed_paths_to_simplify[_id]['ids']) for _id in new_ids]
-    n.change_log.simplify_bunch(old_ids, new_ids, indexed_paths_to_simplify, links_to_add)
+    n.change_log = n.change_log.simplify_bunch(old_ids, new_ids, indexed_paths_to_simplify, links_to_add)
     del links_to_add
 
     # generate map between old and new ids

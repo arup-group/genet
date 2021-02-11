@@ -1069,6 +1069,12 @@ class Schedule(ScheduleElement):
     def number_of_routes(self):
         return len(self._graph.graph['routes'])
 
+    def has_stop(self, stop_id):
+        """
+        Returns True if a stop with ID `stop_id` exists in the Schedule, False otherwise
+        """
+        return self._graph.has_node(stop_id)
+
     def service_attribute_summary(self, data=False):
         """
         Parses through data stored for Services in the Schedule and gives a summary tree.
@@ -1307,12 +1313,12 @@ class Schedule(ScheduleElement):
             stops_intersecting = self.stops_on_spatial_condition(region_input)
             return list({item for sublist in [self._graph.nodes[x]['services'] for x in stops_intersecting] for item in
                          sublist})
-        elif how == 'contain':
-            routes_contained = set(self.routes_on_spatial_condition(region_input, how='contain'))
+        elif how == 'within':
+            routes_contained = set(self.routes_on_spatial_condition(region_input, how='within'))
             return [service_id for service_id, route_ids in self._graph.graph['service_to_route_map'].items() if
                     set(route_ids).issubset(routes_contained)]
         else:
-            raise NotImplementedError('Only `intersect` and `contain` options for `how` param.')
+            raise NotImplementedError('Only `intersect` and `within` options for `how` param.')
 
     def routes_on_spatial_condition(self, region_input, how='intersect'):
         """
@@ -1334,11 +1340,11 @@ class Schedule(ScheduleElement):
         if how == 'intersect':
             return list(
                 {item for sublist in [self._graph.nodes[x]['routes'] for x in stops_intersecting] for item in sublist})
-        elif how == 'contain':
+        elif how == 'within':
             return self.extract_route_ids_on_attributes(
                 conditions={'ordered_stops': lambda x: set(x).issubset(stops_intersecting)}, mixed_dtypes=False)
         else:
-            raise NotImplementedError('Only `intersect` and `contain` options for `how` param.')
+            raise NotImplementedError('Only `intersect` and `within` options for `how` param.')
 
     def stops_on_spatial_condition(self, region_input):
         """
@@ -1392,7 +1398,7 @@ class Schedule(ScheduleElement):
         old_attribs = [deepcopy(self._graph.graph['services'][service]) for service in services]
         new_attribs = [{**self._graph.graph['services'][service], **new_attributes[service]} for service in services]
 
-        self.change_log.modify_bunch('service', services, old_attribs, services, new_attribs)
+        self.change_log = self.change_log.modify_bunch('service', services, old_attribs, services, new_attribs)
 
         for service, new_service_attribs in zip(services, new_attribs):
             self._graph.graph['services'][service] = new_service_attribs
@@ -1411,7 +1417,7 @@ class Schedule(ScheduleElement):
         old_attribs = [deepcopy(self._graph.graph['routes'][route]) for route in routes]
         new_attribs = [{**self._graph.graph['routes'][route], **new_attributes[route]} for route in routes]
 
-        self.change_log.modify_bunch('route', routes, old_attribs, routes, new_attribs)
+        self.change_log = self.change_log.modify_bunch('route', routes, old_attribs, routes, new_attribs)
 
         for route, new_route_attribs in zip(routes, new_attribs):
             self._graph.graph['routes'][route] = new_route_attribs
@@ -1430,7 +1436,7 @@ class Schedule(ScheduleElement):
         old_attribs = [deepcopy(self._graph.nodes[stop]) for stop in stops]
         new_attribs = [{**self._graph.nodes[stop], **new_attributes[stop]} for stop in stops]
 
-        self.change_log.modify_bunch('stop', stops, old_attribs, stops, new_attribs)
+        self.change_log = self.change_log.modify_bunch('stop', stops, old_attribs, stops, new_attribs)
 
         nx.set_node_attributes(self._graph, dict(zip(stops, new_attribs)))
         logging.info(f'Changed Stop attributes for {len(stops)} nodes')
@@ -1514,8 +1520,32 @@ class Schedule(ScheduleElement):
         logging.info(f'Added Service with index `{service.id}`, data={service_data} and Routes: {route_ids}')
         return service
 
-    def remove_service(self, service: Service):
-        pass
+    def remove_service(self, service_id):
+        """
+        Removes Service under index `service_id`
+        :param service_id:
+        :return:
+        """
+        if not self.has_service(service_id):
+            raise ServiceIndexError(f'Service with ID `{service_id}` does not exist in the Schedule. '
+                                    "Cannot remove a Service that isn't present.")
+        service = self[service_id]
+        service_data = self._graph.graph['services'][service_id]
+        route_ids = set(self._graph.graph['service_to_route_map'][service_id])
+        for stop in service.reference_nodes():
+            self._graph.nodes[stop]['routes'] = list(set(self._graph.nodes[stop]['routes']) - route_ids)
+            self._graph.nodes[stop]['services'] = list(set(self._graph.nodes[stop]['services']) - {service_id})
+        for u, v in service.reference_edges():
+            self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) - route_ids)
+            self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) - {service_id})
+
+        del self._graph.graph['services'][service_id]
+        del self._graph.graph['service_to_route_map'][service_id]
+        for r_id in route_ids:
+            del self._graph.graph['route_to_service_map'][r_id]
+            del self._graph.graph['routes'][r_id]
+        self.change_log.remove(object_type='service', object_id=service_id, object_attributes=service_data)
+        logging.info(f'Removed Service with index `{service_id}`, data={service_data} and Routes: {route_ids}')
 
     def add_route(self, service_id, route: Route):
         """
@@ -1529,8 +1559,8 @@ class Schedule(ScheduleElement):
                                     'You must add a Route to an existing Service, or add a new Service')
         if self.has_route(route.id):
             service = self[service_id]
-            logging.warning(f'Route with ID `{route.id}` within this Service `{service_id}` already exists in the '
-                            f'Schedule. This Route will be reindexed to `{service_id}_{len(service)+1}`')
+            logging.warning(f'Route with ID `{route.id}` within already exists in the Schedule. '
+                            f'This Route will be reindexed to `{service_id}_{len(service)+1}`')
             route.reindex(f'{service_id}_{len(service)+1}')
 
         g = route.graph()
@@ -1549,16 +1579,61 @@ class Schedule(ScheduleElement):
         self._graph.graph['routes'] = graph_routes
 
         route_data = self._graph.graph['routes'][route.id]
-        self.change_log.add(object_type='service', object_id=route.id, object_attributes=route_data)
+        self.change_log.add(object_type='route', object_id=route.id, object_attributes=route_data)
         logging.info(f'Added Route with index `{route.id}`, data={route_data} to Service `{service_id}` within the '
                      f'Schedule')
         return route
 
-    def remove_route(self, route: Route):
-        pass
+    def remove_route(self, route_id):
+        """
+        Removes Route under index `route_id`
+        :param route_id:
+        :return:
+        """
+        if not self.has_route(route_id):
+            raise RouteIndexError(f'Route with ID `{route_id}` does not exist in the Schedule. '
+                                    "Cannot remove a Route that isn't present.")
+        route = self.route(route_id)
+        route_data = self._graph.graph['routes'][route_id]
+        for stop in route.reference_nodes():
+            self._graph.nodes[stop]['routes'] = list(set(self._graph.nodes[stop]['routes']) - {route_id})
+        for u, v in route.reference_edges():
+            self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) - {route_id})
 
-    def remove_stop(self, stop: Stop):
-        pass
+        service_id = self._graph.graph['route_to_service_map'][route_id]
+        self._graph.graph['service_to_route_map'][service_id].remove(route_id)
+        del self._graph.graph['route_to_service_map'][route_id]
+        del self._graph.graph['routes'][route_id]
+        self.change_log.remove(object_type='route', object_id=route_id, object_attributes=route_data)
+        logging.info(f'Removed Route with index `{route_id}`, data={route_data}. '
+                     f'It was linked to Service `{service_id}`.')
+
+    def remove_stop(self, stop_id):
+        """
+        Removes Stop under index `stop_id`
+        :param stop_id:
+        :return:
+        """
+        if not self.has_stop(stop_id):
+            raise StopIndexError(f'Stop with ID `{stop_id}` does not exist in the Schedule. '
+                                    "Cannot remove a Stop that isn't present.")
+
+        stop_data = self._graph.nodes[stop_id]
+        routes_affected = stop_data.pop('routes')
+        services_affected = stop_data.pop('services')
+        self._graph.remove_node(stop_id)
+        self.change_log.remove(object_type='stop', object_id=stop_id, object_attributes=stop_data)
+        logging.info(f'Removed Stop with index `{stop_id}`, data={stop_data}. '
+                     f'Routes affected: {routes_affected}. Services affected: {services_affected}.')
+
+    def remove_unsused_stops(self):
+        stops_to_remove = []
+        for stop, data in self._graph.nodes(data='routes'):
+            if not data:
+                stops_to_remove.append(stop)
+        for stop in stops_to_remove:
+            self.remove_stop(stop)
+        logging.info(f'Removed Stops with indecies `{stops_to_remove}` which were not used by any Routes.')
 
     def is_strongly_connected(self):
         if nx.number_strongly_connected_components(self.graph()) == 1:
