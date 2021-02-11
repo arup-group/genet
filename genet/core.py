@@ -387,6 +387,8 @@ class Network:
             return list(gdf[gdf.intersects(shapely_input)]['id'])
         if how == 'contain':
             return list(gdf[gdf.within(shapely_input)]['id'])
+        else:
+            raise NotImplementedError('Only `intersect` and `contain` options for `how` param.')
 
     def _find_node_ids_on_s2_geometry(self, s2_input):
         cell_union = spatial.s2_hex_to_cell_union(s2_input)
