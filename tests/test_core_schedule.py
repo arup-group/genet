@@ -11,6 +11,7 @@ from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.schedule_elements import Schedule, Service, Route, Stop
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation
+from genet.exceptions import ServiceIndexError, RouteIndexError, StopIndexError
 from tests.test_core_schedule_elements import schedule_graph
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -504,6 +505,74 @@ def test_applying_function_to_stops(schedule):
     for stop in schedule.stops():
         assert stop.name == 'new_name'
         assert schedule._graph.nodes[stop.id]['name'] == 'new_name'
+
+
+def test_adding_service(schedule, service):
+    service.reindex('different_service')
+    service.route('1').reindex('different_service_1')
+    service.route('2').reindex('different_service_2')
+    schedule.add_service(service)
+
+    assert set(schedule.route_ids()) == {'1', '2', 'different_service_1', 'different_service_2'}
+    assert set(schedule.service_ids()) == {'service', 'different_service'}
+    assert_semantically_equal(schedule._graph.graph['route_to_service_map'],
+                              {'1': 'service', '2': 'service',
+                               'different_service_1': 'different_service', 'different_service_2': 'different_service'})
+    assert_semantically_equal(schedule._graph.graph['service_to_route_map'],
+                              {'service': ['1', '2'],
+                               'different_service': ['different_service_1', 'different_service_2']})
+
+
+def test_adding_service_with_clashing_route_ids(schedule, service):
+    service.reindex('different_service')
+    schedule.add_service(service)
+
+    assert set(schedule.route_ids()) == {'1', '2', 'different_service_1', 'different_service_2'}
+    assert set(schedule.service_ids()) == {'service', 'different_service'}
+    assert_semantically_equal(schedule._graph.graph['route_to_service_map'],
+                              {'1': 'service', '2': 'service',
+                               'different_service_1': 'different_service', 'different_service_2': 'different_service'})
+    assert_semantically_equal(schedule._graph.graph['service_to_route_map'],
+                              {'service': ['1', '2'],
+                               'different_service': ['different_service_1', 'different_service_2']})
+
+
+def test_adding_service_with_clashing_id_throws_error(schedule, service):
+    with pytest.raises(ServiceIndexError) as e:
+        schedule.add_service(service)
+    assert 'already exists' in str(e.value)
+
+
+def test_adding_route(schedule, route):
+    route.reindex('new_id')
+    schedule.add_route('service', route)
+
+    assert set(schedule.route_ids()) == {'1', '2', 'new_id'}
+    assert set(schedule.service_ids()) == {'service'}
+    assert_semantically_equal(schedule._graph.graph['route_to_service_map'],
+                              {'1': 'service', '2': 'service', 'new_id': 'service'})
+    assert_semantically_equal(schedule._graph.graph['service_to_route_map'],
+                              {'service': ['1', '2', 'new_id']})
+
+
+def test_adding_route_with_clashing_id(schedule, route):
+    schedule.add_route('service', route)
+
+    assert set(schedule.route_ids()) == {'1', '2', 'service_3'}
+    assert set(schedule.service_ids()) == {'service'}
+    assert_semantically_equal(schedule._graph.graph['route_to_service_map'],
+                              {'1': 'service', '2': 'service', 'service_3': 'service'})
+    assert_semantically_equal(schedule._graph.graph['service_to_route_map'],
+                              {'service': ['1', '2', 'service_3']})
+
+
+def test_adding_route_to_non_existing_service_throws_error(schedule, route):
+    with pytest.raises(ServiceIndexError) as e:
+        schedule.add_route('service_that_doesnt_exist', route)
+    assert 'does not exist' in str(e.value)
+
+
+
 
 
 def test_iter_stops_returns_stops_objects(test_service, different_test_service):

@@ -1021,12 +1021,21 @@ class Schedule(ScheduleElement):
         return df
 
     def service_ids(self):
+        """
+        Returns list of service ids in the Schedule
+        """
         return list(self._graph.graph['services'].keys())
 
     def has_service(self, service_id):
+        """
+        Returns True if a service with ID `service_id` exists in the Schedule, False otherwise
+        """
         return service_id in self.service_ids()
 
     def services(self):
+        """
+        Iterator for Service objects in the Services of the Schedule
+        """
         for service_id in self.service_ids():
             yield self._get_service_from_graph(service_id)
 
@@ -1040,10 +1049,15 @@ class Schedule(ScheduleElement):
 
     def route_ids(self):
         """
-        Iterator for route ids in the Schedule
+        Returns list of route ids in the Schedule
         """
-        for route_id in self._graph.graph['routes'].keys():
-            yield route_id
+        return list(self._graph.graph['routes'].keys())
+
+    def has_route(self, route_id):
+        """
+        Returns True if a route with ID `route_id` exists in the Schedule, False otherwise
+        """
+        return route_id in self._graph.graph['routes'].keys()
 
     def routes(self):
         """
@@ -1459,6 +1473,92 @@ class Schedule(ScheduleElement):
         """
         new_attributes = graph_operations.apply_to_attributes(self._graph.nodes(data=True), function, location)
         self.apply_attributes_to_stops(new_attributes)
+
+    def add_service(self, service: Service):
+        """
+        Adds a service to Schedule.
+        :param service: genet.Service object, must have index unique w.r.t. Services already in the Schedule
+        :return:
+        """
+        if self.has_service(service.id):
+            raise ServiceIndexError(f'Service with ID `{service.id}` already exists in the Schedule.')
+        for route in service.routes():
+            if self.has_route(route.id):
+                logging.warning(f'Route with ID `{route.id}` within this Service `{service.id}` already exists in the '
+                                f'Schedule. This Route will be reindexed to `{service.id}_{route.id}`')
+                route.reindex(f'{service.id}_{route.id}')
+
+        g = service.graph()
+        nodes = dict_support.merge_complex_dictionaries(
+            dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
+        edges = dict_support.combine_edge_data_lists(
+            list(g.edges(data=True)), list(self._graph.edges(data=True)))
+        graph_routes = dict_support.merge_complex_dictionaries(
+            g.graph['routes'], self._graph.graph['routes'])
+        graph_services = dict_support.merge_complex_dictionaries(
+            g.graph['services'], self._graph.graph['services'])
+        self._graph.graph['route_to_service_map'] = {**self._graph.graph['route_to_service_map'],
+                                                        **g.graph['route_to_service_map']}
+        self._graph.graph['service_to_route_map'] = {**self._graph.graph['service_to_route_map'],
+                                                        **g.graph['service_to_route_map']}
+
+        self._graph.add_nodes_from(nodes)
+        self._graph.add_edges_from(edges)
+        nx.set_node_attributes(self._graph, nodes)
+        self._graph.graph['routes'] = graph_routes
+        self._graph.graph['services'] = graph_services
+
+        service_data = self._graph.graph['services'][service.id]
+        route_ids = list(service.route_ids())
+        self.change_log.add(object_type='service', object_id=service.id, object_attributes=service_data)
+        logging.info(f'Added Service with index `{service.id}`, data={service_data} and Routes: {route_ids}')
+        return service
+
+    def remove_service(self, service: Service):
+        pass
+
+    def add_route(self, service_id, route: Route):
+        """
+        Adds route to a service already in the Schedule.
+        :param service_id:
+        :param route:
+        :return:
+        """
+        if not self.has_service(service_id):
+            raise ServiceIndexError(f'Service with ID `{service_id}` does not exist in the Schedule. '
+                                    'You must add a Route to an existing Service, or add a new Service')
+        if self.has_route(route.id):
+            service = self[service_id]
+            logging.warning(f'Route with ID `{route.id}` within this Service `{service_id}` already exists in the '
+                            f'Schedule. This Route will be reindexed to `{service_id}_{len(service)+1}`')
+            route.reindex(f'{service_id}_{len(service)+1}')
+
+        g = route.graph()
+        nodes = dict_support.merge_complex_dictionaries(
+            dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
+        edges = dict_support.combine_edge_data_lists(
+            list(g.edges(data=True)), list(self._graph.edges(data=True)))
+        graph_routes = dict_support.merge_complex_dictionaries(
+            g.graph['routes'], self._graph.graph['routes'])
+        self._graph.graph['route_to_service_map'][route.id] = service_id
+        self._graph.graph['service_to_route_map'][service_id].append(route.id)
+
+        self._graph.add_nodes_from(nodes)
+        self._graph.add_edges_from(edges)
+        nx.set_node_attributes(self._graph, nodes)
+        self._graph.graph['routes'] = graph_routes
+
+        route_data = self._graph.graph['routes'][route.id]
+        self.change_log.add(object_type='service', object_id=route.id, object_attributes=route_data)
+        logging.info(f'Added Route with index `{route.id}`, data={route_data} to Service `{service_id}` within the '
+                     f'Schedule')
+        return route
+
+    def remove_route(self, route: Route):
+        pass
+
+    def remove_stop(self, stop: Stop):
+        pass
 
     def is_strongly_connected(self):
         if nx.number_strongly_connected_components(self.graph()) == 1:
