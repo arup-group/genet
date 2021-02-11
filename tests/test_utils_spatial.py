@@ -1,19 +1,23 @@
 import s2sphere
 from genet.utils import spatial
 from tests.fixtures import *
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Polygon
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+test_geojson = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "test_geojson.geojson"))
 
 
 def test_decode_polyline_to_s2_points():
     s2_list = spatial.decode_polyline_to_s2_points('ahmyHzvYGJyBbCGHq@r@EDIJGBu@~@SToAzAEFEDIJ')
     assert s2_list == [5221390692712666847, 5221390692823346465, 5221390693003336431, 5221390693005239025,
-                        5221390693026247929, 5221390693047976565, 5221390685911708669, 5221390685910265239,
-                        5221390683049158953, 5221390683157459293, 5221390683301132839, 5221390683277381201,
-                        5221390683276573369, 5221390683274586647]
+                       5221390693026247929, 5221390693047976565, 5221390685911708669, 5221390685910265239,
+                       5221390683049158953, 5221390683157459293, 5221390683301132839, 5221390683277381201,
+                       5221390683276573369, 5221390683274586647]
 
 
 def test_swaping_x_y_in_linestring():
-    assert spatial.swap_x_y_in_linestring(LineString([(1,2), (3,4), (5,6)])) == LineString([(2,1), (4,3), (6,5)])
+    assert spatial.swap_x_y_in_linestring(LineString([(1, 2), (3, 4), (5, 6)])) == LineString([(2, 1), (4, 3), (6, 5)])
 
 
 def test_compute_average_proximity_to_polyline():
@@ -28,6 +32,30 @@ def test_compute_average_proximity_to_polyline_when_they_are_the_same_line():
     poly_2 = 'ahmyHzvYkCvCuCdDcBrB'
     dist = spatial.compute_average_proximity_to_polyline(poly_1, poly_2)
     assert dist == 0
+
+
+def test_reading_geojson_to_shapely():
+    p = spatial.read_geojson_to_shapely(test_geojson)
+    assert len(p) == 1
+    assert isinstance(p[0], Polygon)
+    assert list(p[0].exterior.coords) == [(-0.1487016677856445, 51.52556684350165),
+                                          (-0.14063358306884766, 51.5255134425896),
+                                          (-0.13865947723388672, 51.5228700191647),
+                                          (-0.14093399047851562, 51.52006622056997),
+                                          (-0.1492595672607422, 51.51974577545329),
+                                          (-0.1508045196533203, 51.52276321095246),
+                                          (-0.1487016677856445, 51.52556684350165)]
+
+
+def test_s2_hex_to_cell_union():
+    hex_area = '48761ad71,48761ad723,48761ad724c,48761ad73c,48761ad744,48761ad75d3,48761ad75d5,48761ad765,48761ad767,48761ad76c,48761ad774,48761ad779,48761ad77b,48761ad783,48761ad784c,48761ad7854,48761ad794,48761ad79c,48761ad7a4,48761ad7ac,48761ad7b1,48761ad7bc'
+    cell_union = spatial.s2_hex_to_cell_union(hex_area)
+    assert {cell.id() for cell in cell_union.cell_ids()} == {
+     5221390329319522304, 5221390329709592576, 5221390328971395072, 5221390329290162176, 5221390329843810304,
+     5221390330266386432, 5221390330268483584, 5221390330397458432, 5221390330431012864, 5221390330514898944,
+     5221390330649116672, 5221390330733002752, 5221390330766557184, 5221390330900774912, 5221390330930135040,
+     5221390330938523648, 5221390331185987584, 5221390331320205312, 5221390331454423040, 5221390331588640768,
+     5221390331672526848, 5221390331857076224}
 
 
 def test_grabs_point_indexes_from_s2(mocker):

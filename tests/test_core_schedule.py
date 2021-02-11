@@ -1,6 +1,7 @@
 import os
 import sys
 import pytest
+from shapely.geometry import Polygon, GeometryCollection
 from pandas import DataFrame, Timestamp
 from pandas.testing import assert_frame_equal
 from tests.fixtures import *
@@ -8,7 +9,7 @@ from tests.test_core_components_route import self_looping_route, route
 from tests.test_core_components_service import service
 from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.schedule_elements import Schedule, Service, Route, Stop
-from genet.utils import plot
+from genet.utils import plot, spatial
 from genet.validate import schedule_validation
 from tests.test_core_schedule_elements import schedule_graph
 
@@ -351,7 +352,8 @@ def test_extracting_services_on_condition(schedule):
 
 
 def test_extracting_routes_on_condition(schedule):
-    ids = schedule.extract_route_ids_on_attributes(conditions=[{'mode': 'bus'}, {'route_short_name': 'name_2'}])
+    ids = schedule.extract_route_ids_on_attributes(conditions=[{'mode': 'bus'}, {'route_short_name': 'name_2'}],
+                                                   how=all)
     assert ids == ['2']
 
 
@@ -373,6 +375,51 @@ def test_getting_routes_on_modal_condition(schedule):
 def test_getting_stops_on_modal_condition(schedule):
     stop_ids = schedule.stops_on_modal_condition(modes='bus')
     assert set(stop_ids) == {'5', '6', '7', '8', '3', '1', '4', '2'}
+
+test_geojson = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "test_geojson.geojson"))
+
+def test_getting_stops_on_spatial_condition_with_geojson(schedule, mocker):
+    mocker.patch.object(spatial, 'read_geojson_to_shapely',
+                        return_value=GeometryCollection([Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])]))
+    stops = schedule.stops_on_spatial_condition(test_geojson)
+    assert set(stops) == {'5', '6', '7', '8', '2', '4', '3', '1'}
+
+
+def test_getting_stops_on_spatial_condition_with_shapely_polygon(schedule):
+    p = Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])
+    stops = schedule.stops_on_spatial_condition(p)
+    assert set(stops) == {'5', '6', '7', '8', '2', '4', '3', '1'}
+
+
+def test_getting_stops_on_spatial_condition_with_s2_hex_region(schedule):
+    s2_region = '4837,4839,483f5,4844,4849'
+    stops = schedule.stops_on_spatial_condition(s2_region)
+    assert set(stops) == {'5', '6', '7', '8', '2', '4', '3', '1'}
+
+
+def test_getting_routes_intersecting_spatial_region(schedule):
+    p = Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])
+    routes = schedule.routes_on_spatial_condition(p)
+    assert set(routes) == {'1', '2'}
+
+
+def test_getting_routes_contained_spatial_region(schedule):
+    p = Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])
+    routes = schedule.routes_on_spatial_condition(p, how='contain')
+    assert set(routes) == {'1', '2'}
+
+
+def test_getting_services_intersecting_spatial_region(schedule):
+    p = Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])
+    routes = schedule.services_on_spatial_condition(p)
+    assert set(routes) == {'service'}
+
+
+def test_getting_services_contained_spatial_region(schedule):
+    p = Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])
+    routes = schedule.services_on_spatial_condition(p, how='contain')
+    assert set(routes) == {'service'}
 
 
 def test_applying_attributes_to_service(schedule):

@@ -3,7 +3,8 @@ import s2sphere as s2
 import networkx as nx
 import numpy as np
 import statistics
-from shapely.geometry import LineString
+import json
+from shapely.geometry import LineString, shape, GeometryCollection
 APPROX_EARTH_RADIUS = 6371008.8
 S2_LEVELS_FOR_SPATIAL_INDEXING = [0, 6, 8, 12, 18, 24, 30]
 
@@ -63,6 +64,21 @@ def compute_average_proximity_to_polyline(poly_1, poly_2):
                 d = dist
         closest_distances.append(d)
     return statistics.mean(closest_distances)
+
+
+def read_geojson_to_shapely(geojson_file):
+    # https://gist.github.com/pramukta/6d1a2de485d7dc4c5480bf5fbb7b93d2#file-shapely_geojson_recipe-py
+    with open(geojson_file) as f:
+        features = json.load(f)["features"]
+    return GeometryCollection([shape(feature["geometry"]).buffer(0) for feature in features])
+
+
+def s2_hex_to_cell_union(hex_area):
+    hex_area = hex_area.split(',')
+    cell_ids = []
+    for token in hex_area:
+        cell_ids.append(s2.CellId.from_token(token))
+    return s2.CellUnion(cell_ids=cell_ids)
 
 
 def grab_index_s2(lat, lng):

@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 from pandas import DataFrame
 from copy import deepcopy
+from s2sphere import CellId
 import genet.utils.plot as plot
 import genet.utils.spatial as spatial
 import genet.utils.dict_support as dict_support
@@ -981,7 +982,8 @@ class Schedule(ScheduleElement):
         df = df.rename(columns={'id': 'route', 'route_short_name': 'route_name'})
         df['route_name'] = df['route_name'].apply(lambda x: x.replace("\\", "_").replace("/", "_"))
         df['service'] = df['route'].apply(lambda x: self._graph.graph['route_to_service_map'][x])
-        df['service_name'] = df['service'].apply(lambda x: self._graph.graph['services'][x]['name'].replace("\\", "_").replace("/", "_"))
+        df['service_name'] = df['service'].apply(
+            lambda x: self._graph.graph['services'][x]['name'].replace("\\", "_").replace("/", "_"))
         df['ordered_stops'] = df['ordered_stops'].apply(lambda x: list(zip(x[:-1], x[1:])))
         df['departure_offsets'] = df['departure_offsets'].apply(lambda x: list(map(use_schedule.get_offset, x[:-1])))
         df['arrival_offsets'] = df['arrival_offsets'].apply(lambda x: list(map(use_schedule.get_offset, x[1:])))
@@ -998,8 +1000,10 @@ class Schedule(ScheduleElement):
                  departure_time=dep_offset_cols,
                  arrival_time=arr_offset_cols)
 
-        df['from_stop_name'] = df['from_stop'].apply(lambda x: self._graph.nodes[x]['name'].replace("\\", "_").replace("/", "_"))
-        df['to_stop_name'] = df['to_stop'].apply(lambda x: self._graph.nodes[x]['name'].replace("\\", "_").replace("/", "_"))
+        df['from_stop_name'] = df['from_stop'].apply(
+            lambda x: self._graph.nodes[x]['name'].replace("\\", "_").replace("/", "_"))
+        df['to_stop_name'] = df['to_stop'].apply(
+            lambda x: self._graph.nodes[x]['name'].replace("\\", "_").replace("/", "_"))
 
         # expand the frame on all the trips each route makes
         trips = np.concatenate(
@@ -1274,14 +1278,86 @@ class Schedule(ScheduleElement):
         route_ids = self.routes_on_modal_condition(modes=modes)
         return self.extract_stop_ids_on_attributes(conditions={'routes': route_ids})
 
-    def services_on_spatial_condition(self):
-        pass
+    def services_on_spatial_condition(self, region_input, how='intersect'):
+        """
+        Returns Service IDs which intersect region_input, by default, or are contained within region_input if
+        how='contain'
+        :param region_input:
+        :param how:
+            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
+            region_input
+            - 'contain' will return IDs of the Services whose all of the Stops are contained within the region_input
+        :return: Service IDs
+        """
+        if how == 'intersect':
+            stops_intersecting = self.stops_on_spatial_condition(region_input)
+            return list({item for sublist in [self._graph.nodes[x]['services'] for x in stops_intersecting] for item in
+                         sublist})
+        elif how == 'contain':
+            routes_contained = set(self.routes_on_spatial_condition(region_input, how='contain'))
+            return [service_id for service_id, route_ids in self._graph.graph['service_to_route_map'].items() if
+                    set(route_ids).issubset(routes_contained)]
+        else:
+            raise NotImplementedError('Only `intersect` and `contain` options for `how` param.')
 
-    def routes_on_spatial_condition(self):
-        pass
+    def routes_on_spatial_condition(self, region_input, how='intersect'):
+        """
+        Returns Route IDs which intersect region_input, by default, or are contained within region_input if
+        how='contain'
+        :param region_input:
+            - path to a geojson file, can have multiple features
+            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
+             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
+             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
+            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :param how:
+            - 'intersect' default, will return IDs of the Routes whose at least one Stop intersects the
+            region_input
+            - 'contain' will return IDs of the Routes whose all of the Stops are contained within the region_input
+        :return: Route IDs
+        """
+        stops_intersecting = set(self.stops_on_spatial_condition(region_input))
+        if how == 'intersect':
+            return list(
+                {item for sublist in [self._graph.nodes[x]['routes'] for x in stops_intersecting] for item in sublist})
+        elif how == 'contain':
+            return self.extract_route_ids_on_attributes(
+                conditions={'ordered_stops': lambda x: set(x).issubset(stops_intersecting)}, mixed_dtypes=False)
+        else:
+            raise NotImplementedError('Only `intersect` and `contain` options for `how` param.')
 
-    def stops_on_spatial_condition(self):
-        pass
+    def stops_on_spatial_condition(self, region_input):
+        """
+        Returns Stop IDs which intersect region_input
+        :param region_input:
+            - path to a geojson file, can have multiple features
+            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
+             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
+             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
+            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :return: Stop IDs
+        """
+        if isinstance(region_input, str):
+            if persistence.is_geojson(region_input):
+                return self._find_stops_on_geojson(region_input)
+            else:
+                # is assumed to be hex
+                return self._find_stops_on_s2_geometry(region_input)
+        else:
+            # assumed to be a shapely.geometry input
+            return self._find_stops_on_shapely_geometry(region_input)
+
+    def _find_stops_on_geojson(self, geojson_input):
+        shapely_input = spatial.read_geojson_to_shapely(geojson_input)
+        return self._find_stops_on_shapely_geometry(shapely_input)
+
+    def _find_stops_on_shapely_geometry(self, shapely_input):
+        stops_gdf = gngeojson.generate_geodataframes(self._graph)[0]
+        return list(stops_gdf[stops_gdf.intersects(shapely_input)].index)
+
+    def _find_stops_on_s2_geometry(self, s2_input):
+        cell_union = spatial.s2_hex_to_cell_union(s2_input)
+        return [_id for _id, s2_id in self._graph.nodes(data='s2_id') if cell_union.intersects(CellId(s2_id))]
 
     def _verify_no_id_change(self, new_attributes):
         id_changes = [id for id, change_dict in new_attributes.items() if

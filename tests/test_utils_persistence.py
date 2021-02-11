@@ -33,6 +33,15 @@ def test_swallows_exceptions_making_new_directories(mocker):
     os.makedirs.assert_called_once()
 
 
+def test_is_geojson_identifies_geojson():
+    zip_dir = os.path.join('path', 'to', 'dir', 'file.geojson')
+    assert persistence.is_geojson(zip_dir)
+
+
+def test_is_geojson_identifies_regular_string_isnt_geojson():
+    assert not persistence.is_geojson('hello,darkness,my,old,friend')
+
+
 def test_is_zip_identifies_zip():
     zip_dir = os.path.join('path', 'to', 'dir', 'file.zip')
     assert persistence.is_zip(zip_dir)

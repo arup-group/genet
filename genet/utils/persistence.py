@@ -11,6 +11,10 @@ def ensure_dir(direc):
             logging.warning(e)
 
 
+def is_geojson(path):
+    return path.lower().endswith(".geojson")
+
+
 def is_zip(path):
     return path.lower().endswith(".zip")
 
