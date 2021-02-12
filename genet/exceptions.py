@@ -53,4 +53,3 @@ class StopIndexError(Exception):
     Raised in case of Stop indexing inconsistency
     """
     pass
-

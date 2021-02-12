@@ -24,7 +24,7 @@ class ChangeLog(pd.DataFrame):
 
     def _next_index(self):
         idx = self.index.max() + 1
-        if  str(idx) == 'nan':
+        if str(idx) == 'nan':
             idx = 0
         return idx
 

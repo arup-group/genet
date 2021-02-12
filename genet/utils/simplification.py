@@ -1,5 +1,4 @@
 import genet.utils.parallel as parallel
-import networkx as nx
 from math import ceil
 from shapely.geometry import LineString, Point
 import logging

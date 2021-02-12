@@ -627,8 +627,9 @@ class Network:
             [(attribs['from'], attribs['to'], add_to_link_id_mapping[link]['multi_edge_idx'], attribs) for link, attribs
              in links_and_attributes.items()])
         if not ignore_change_log:
-            self.change_log = self.change_log.add_bunch(object_type='link', id_bunch=list(links_and_attributes.keys()),
-                                      attributes_bunch=list(links_and_attributes.values()))
+            self.change_log = self.change_log.add_bunch(
+                object_type='link', id_bunch=list(links_and_attributes.keys()),
+                attributes_bunch=list(links_and_attributes.values()))
         if not silent:
             logging.info(f'Added {len(links_and_attributes)} links')
         return reindexing_dict, links_and_attributes

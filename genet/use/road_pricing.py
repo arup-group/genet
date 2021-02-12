@@ -5,7 +5,6 @@ import pandas as pd
 from lxml import etree as et
 from lxml.etree import Element, SubElement, Comment
 from tqdm import tqdm
-from genet.utils import graph_operations
 
 
 def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpath):

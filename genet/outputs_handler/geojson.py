@@ -6,7 +6,6 @@ from itertools import chain
 import genet.use.schedule as use_schedule
 import genet.utils.persistence as persistence
 import genet.outputs_handler.sanitiser as sanitiser
-import genet.utils.graph_operations as graph_operations
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
 
 

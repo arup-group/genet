@@ -23,7 +23,7 @@ import genet.use.schedule as use_schedule
 import genet.validate.schedule_validation as schedule_validation
 import genet.outputs_handler.geojson as gngeojson
 from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisationError, ServiceInitialisationError, \
-    ScheduleInitialisationError, UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError
+    UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError
 
 # number of decimal places to consider when comparing lat lons
 SPATIAL_TOLERANCE = 8
@@ -372,7 +372,7 @@ class Route(ScheduleElement):
         return [self.mode]
 
     def _index_unique(self, idx):
-        return not idx in self._graph.graph['routes']
+        return idx not in self._graph.graph['routes']
 
     def reindex(self, new_id):
         """
@@ -489,7 +489,7 @@ class Route(ScheduleElement):
         same_departure_offsets = self.departure_offsets == other.departure_offsets
 
         statement = same_route_name and same_mode and same_stops and same_trips and same_arrival_offsets \
-                    and same_departure_offsets
+            and same_departure_offsets
         return statement
 
     def isin_exact(self, routes: list):
@@ -686,7 +686,7 @@ class Service(ScheduleElement):
         return {(u, v) for u, v, edge_services in self._graph.edges(data='services') if self.id in edge_services}
 
     def _index_unique(self, idx):
-        return not idx in self._graph.graph['services']
+        return idx not in self._graph.graph['services']
 
     def reindex(self, new_id):
         """
@@ -1423,7 +1423,8 @@ class Schedule(ScheduleElement):
         old_attribs = [deepcopy(self._graph.graph['services'][service]) for service in services]
         new_attribs = [{**self._graph.graph['services'][service], **new_attributes[service]} for service in services]
 
-        self._graph.graph['change_log'] = self.change_log().modify_bunch('service', services, old_attribs, services, new_attribs)
+        self._graph.graph['change_log'] = self.change_log().modify_bunch('service', services, old_attribs, services,
+                                                                         new_attribs)
 
         for service, new_service_attribs in zip(services, new_attribs):
             self._graph.graph['services'][service] = new_service_attribs
@@ -1442,7 +1443,8 @@ class Schedule(ScheduleElement):
         old_attribs = [deepcopy(self._graph.graph['routes'][route]) for route in routes]
         new_attribs = [{**self._graph.graph['routes'][route], **new_attributes[route]} for route in routes]
 
-        self._graph.graph['change_log'] = self.change_log().modify_bunch('route', routes, old_attribs, routes, new_attribs)
+        self._graph.graph['change_log'] = self.change_log().modify_bunch('route', routes, old_attribs, routes,
+                                                                         new_attribs)
 
         for route, new_route_attribs in zip(routes, new_attribs):
             self._graph.graph['routes'][route] = new_route_attribs
@@ -1529,9 +1531,9 @@ class Schedule(ScheduleElement):
         graph_services = dict_support.merge_complex_dictionaries(
             g.graph['services'], self._graph.graph['services'])
         self._graph.graph['route_to_service_map'] = {**self._graph.graph['route_to_service_map'],
-                                                        **g.graph['route_to_service_map']}
+                                                     **g.graph['route_to_service_map']}
         self._graph.graph['service_to_route_map'] = {**self._graph.graph['service_to_route_map'],
-                                                        **g.graph['service_to_route_map']}
+                                                     **g.graph['service_to_route_map']}
 
         self._graph.add_nodes_from(nodes)
         self._graph.add_edges_from(edges)
@@ -1569,7 +1571,8 @@ class Schedule(ScheduleElement):
         for r_id in route_ids:
             del self._graph.graph['route_to_service_map'][r_id]
             del self._graph.graph['routes'][r_id]
-        self._graph.graph['change_log'].remove(object_type='service', object_id=service_id, object_attributes=service_data)
+        self._graph.graph['change_log'].remove(object_type='service', object_id=service_id,
+                                               object_attributes=service_data)
         logging.info(f'Removed Service with index `{service_id}`, data={service_data} and Routes: {route_ids}')
 
     def add_route(self, service_id, route: Route):
@@ -1617,7 +1620,7 @@ class Schedule(ScheduleElement):
         """
         if not self.has_route(route_id):
             raise RouteIndexError(f'Route with ID `{route_id}` does not exist in the Schedule. '
-                                    "Cannot remove a Route that isn't present.")
+                                  "Cannot remove a Route that isn't present.")
         route = self.route(route_id)
         route_data = self._graph.graph['routes'][route_id]
         for stop in route.reference_nodes():
@@ -1641,7 +1644,7 @@ class Schedule(ScheduleElement):
         """
         if not self.has_stop(stop_id):
             raise StopIndexError(f'Stop with ID `{stop_id}` does not exist in the Schedule. '
-                                    "Cannot remove a Stop that isn't present.")
+                                 "Cannot remove a Stop that isn't present.")
 
         stop_data = self._graph.nodes[stop_id]
         routes_affected = stop_data.pop('routes')
@@ -1764,7 +1767,7 @@ def verify_graph_schema(graph):
 
     required_route_attributes = {'arrival_offsets', 'ordered_stops', 'route_short_name', 'mode', 'departure_offsets',
                                  'trips'}
-    if not 'routes' in graph.graph:
+    if 'routes' not in graph.graph:
         raise ScheduleElementGraphSchemaError('Graph is missing `routes` attribute')
     else:
         for route_id, route_dict in graph.graph['routes'].items():
@@ -1774,7 +1777,7 @@ def verify_graph_schema(graph):
                                                       f'{missing_attribs}')
 
     required_service_attributes = {'id'}
-    if not 'services' in graph.graph:
+    if 'services' not in graph.graph:
         raise ScheduleElementGraphSchemaError('Graph is missing `services` attribute')
     else:
         for service_id, service_dict in graph.graph['services'].items():
