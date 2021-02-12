@@ -99,6 +99,8 @@ def test_initiating_schedule(schedule):
                                ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
                                ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
                                ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])
+    log = s._graph.graph.pop('change_log')
+    assert log.empty
     assert_semantically_equal(s._graph.graph,
                               {'name': 'Schedule graph',
                                'routes': {'2': {'route_short_name': 'name_2', 'mode': 'bus',

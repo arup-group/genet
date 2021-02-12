@@ -1390,7 +1390,7 @@ class Network:
         matsim_xml_writer.write_matsim_network(output_dir, self)
         if self.schedule:
             self.schedule.write_to_matsim(output_dir)
-        self.change_log.export(os.path.join(output_dir, 'change_log.csv'))
+        self.change_log.export(os.path.join(output_dir, 'network_change_log.csv'))
 
     def save_network_to_geojson(self, output_dir):
         geojson.save_network_to_geojson(self, output_dir)

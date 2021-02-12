@@ -87,6 +87,8 @@ def test_initiating_service(service):
                                ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
                                ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
                                ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])
+    log = s._graph.graph.pop('change_log')
+    assert log.empty
     assert_semantically_equal(s._graph.graph,
                               {'name': 'Service graph',
                                'routes': {

@@ -3,6 +3,7 @@ from pyproj import Transformer
 import networkx as nx
 import numpy as np
 import logging
+import os
 from datetime import datetime
 from pandas import DataFrame
 from copy import deepcopy
@@ -65,6 +66,9 @@ class ScheduleElement:
 
     def _service_ids_in_graph(self, service_ids: List[str]):
         return set(service_ids).issubset(set(self._graph.graph['services'].keys()))
+
+    def change_log(self):
+        return self._graph.graph['change_log']
 
     def reference_nodes(self):
         pass
@@ -355,6 +359,7 @@ class Route(ScheduleElement):
         route_graph.add_edges_from(stop_edges, routes=[self.id], modes=[self.mode])
         route_graph.graph['routes'] = {self.id: self._surrender_to_graph()}
         route_graph.graph['services'] = {}
+        route_graph.graph['change_log'] = change_log.ChangeLog()
         return route_graph
 
     def reference_nodes(self):
@@ -397,6 +402,11 @@ class Route(ScheduleElement):
                 self._graph.graph['route_to_service_map'][new_id] = corresponding_service_id
                 del self._graph.graph['route_to_service_map'][self.id]
 
+            self._graph.graph['change_log'].modify(
+                object_type='route', old_id=self.id, new_id=new_id,
+                old_attributes={'id': self.id}, new_attributes={'id': new_id}
+            )
+            logging.info(f'Reindexed Route from {self.id} to {new_id}')
             self.id = new_id
 
     def print(self):
@@ -635,13 +645,17 @@ class Service(ScheduleElement):
         nodes = {}
         edges = {}
         graph_routes = {}
+        service_graph = nx.DiGraph(name='Service graph')
+        service_graph.graph['change_log'] = change_log.ChangeLog()
         for route in routes:
             g = route.graph()
             nodes = dict_support.merge_complex_dictionaries(dict(g.nodes(data=True)), nodes)
             edges = dict_support.combine_edge_data_lists(list(g.edges(data=True)), edges)
             graph_routes = dict_support.merge_complex_dictionaries(g.graph['routes'], graph_routes)
+            service_graph.graph['change_log'] = service_graph.graph['change_log'].merge_logs(
+                g.graph['change_log']
+            )
 
-        service_graph = nx.DiGraph(name='Service graph')
         service_graph.add_nodes_from(nodes, services=[_id])
         service_graph.add_edges_from(edges, services=[_id])
         nx.set_node_attributes(service_graph, nodes)
@@ -700,6 +714,11 @@ class Service(ScheduleElement):
             self._graph.graph['service_to_route_map'][new_id] = self._graph.graph['service_to_route_map'][self.id]
             del self._graph.graph['service_to_route_map'][self.id]
 
+            self._graph.graph['change_log'].modify(
+                object_type='service', old_id=self.id, new_id=new_id,
+                old_attributes={'id': self.id}, new_attributes={'id': new_id}
+            )
+            logging.info(f'Reindexed Service from {self.id} to {new_id}')
             self.id = new_id
 
     def print(self):
@@ -849,7 +868,6 @@ class Schedule(ScheduleElement):
         self.init_epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
         self.minimal_transfer_times = {}
-        self.change_log = change_log.ChangeLog()
         super().__init__()
 
     def __nonzero__(self):
@@ -881,6 +899,7 @@ class Schedule(ScheduleElement):
         schedule_graph = nx.DiGraph(name='Schedule graph')
         schedule_graph.graph['route_to_service_map'] = {}
         schedule_graph.graph['service_to_route_map'] = {}
+        schedule_graph.graph['change_log'] = change_log.ChangeLog()
 
         for service in services:
             g = service.graph()
@@ -892,6 +911,9 @@ class Schedule(ScheduleElement):
                                                             **g.graph['route_to_service_map']}
             schedule_graph.graph['service_to_route_map'] = {**schedule_graph.graph['service_to_route_map'],
                                                             **g.graph['service_to_route_map']}
+            schedule_graph.graph['change_log'] = schedule_graph.graph['change_log'].merge_logs(
+                g.graph['change_log']
+            )
             # TODO check for clashing stop ids overwriting data
 
         schedule_graph.add_nodes_from(nodes)
@@ -935,6 +957,9 @@ class Schedule(ScheduleElement):
         self.minimal_transfer_times = {**other.minimal_transfer_times, **self.minimal_transfer_times}
         # todo assuming separate schedules, with non conflicting ids, nodes and edges
         self._graph.update(other._graph)
+
+        # merge change_log DataFrames
+        self._graph.graph['change_log'] = self.change_log().merge_logs(other.change_log())
 
     def is_separable_from(self, other):
         unique_service_ids = set(other.service_ids()) & set(self.service_ids()) == set()
@@ -1398,7 +1423,7 @@ class Schedule(ScheduleElement):
         old_attribs = [deepcopy(self._graph.graph['services'][service]) for service in services]
         new_attribs = [{**self._graph.graph['services'][service], **new_attributes[service]} for service in services]
 
-        self.change_log = self.change_log.modify_bunch('service', services, old_attribs, services, new_attribs)
+        self._graph.graph['change_log'] = self.change_log().modify_bunch('service', services, old_attribs, services, new_attribs)
 
         for service, new_service_attribs in zip(services, new_attribs):
             self._graph.graph['services'][service] = new_service_attribs
@@ -1417,7 +1442,7 @@ class Schedule(ScheduleElement):
         old_attribs = [deepcopy(self._graph.graph['routes'][route]) for route in routes]
         new_attribs = [{**self._graph.graph['routes'][route], **new_attributes[route]} for route in routes]
 
-        self.change_log = self.change_log.modify_bunch('route', routes, old_attribs, routes, new_attribs)
+        self._graph.graph['change_log'] = self.change_log().modify_bunch('route', routes, old_attribs, routes, new_attribs)
 
         for route, new_route_attribs in zip(routes, new_attribs):
             self._graph.graph['routes'][route] = new_route_attribs
@@ -1436,10 +1461,10 @@ class Schedule(ScheduleElement):
         old_attribs = [deepcopy(self._graph.nodes[stop]) for stop in stops]
         new_attribs = [{**self._graph.nodes[stop], **new_attributes[stop]} for stop in stops]
 
-        self.change_log = self.change_log.modify_bunch('stop', stops, old_attribs, stops, new_attribs)
+        self._graph.graph['change_log'] = self.change_log().modify_bunch('stop', stops, old_attribs, stops, new_attribs)
 
         nx.set_node_attributes(self._graph, dict(zip(stops, new_attribs)))
-        logging.info(f'Changed Stop attributes for {len(stops)} nodes')
+        logging.info(f'Changed Stop attributes for {len(stops)} stops')
 
     def apply_function_to_services(self, function, location: str):
         """
@@ -1516,7 +1541,7 @@ class Schedule(ScheduleElement):
 
         service_data = self._graph.graph['services'][service.id]
         route_ids = list(service.route_ids())
-        self.change_log.add(object_type='service', object_id=service.id, object_attributes=service_data)
+        self._graph.graph['change_log'].add(object_type='service', object_id=service.id, object_attributes=service_data)
         logging.info(f'Added Service with index `{service.id}`, data={service_data} and Routes: {route_ids}')
         return service
 
@@ -1544,7 +1569,7 @@ class Schedule(ScheduleElement):
         for r_id in route_ids:
             del self._graph.graph['route_to_service_map'][r_id]
             del self._graph.graph['routes'][r_id]
-        self.change_log.remove(object_type='service', object_id=service_id, object_attributes=service_data)
+        self._graph.graph['change_log'].remove(object_type='service', object_id=service_id, object_attributes=service_data)
         logging.info(f'Removed Service with index `{service_id}`, data={service_data} and Routes: {route_ids}')
 
     def add_route(self, service_id, route: Route):
@@ -1579,7 +1604,7 @@ class Schedule(ScheduleElement):
         self._graph.graph['routes'] = graph_routes
 
         route_data = self._graph.graph['routes'][route.id]
-        self.change_log.add(object_type='route', object_id=route.id, object_attributes=route_data)
+        self._graph.graph['change_log'].add(object_type='route', object_id=route.id, object_attributes=route_data)
         logging.info(f'Added Route with index `{route.id}`, data={route_data} to Service `{service_id}` within the '
                      f'Schedule')
         return route
@@ -1604,7 +1629,7 @@ class Schedule(ScheduleElement):
         self._graph.graph['service_to_route_map'][service_id].remove(route_id)
         del self._graph.graph['route_to_service_map'][route_id]
         del self._graph.graph['routes'][route_id]
-        self.change_log.remove(object_type='route', object_id=route_id, object_attributes=route_data)
+        self._graph.graph['change_log'].remove(object_type='route', object_id=route_id, object_attributes=route_data)
         logging.info(f'Removed Route with index `{route_id}`, data={route_data}. '
                      f'It was linked to Service `{service_id}`.')
 
@@ -1622,7 +1647,7 @@ class Schedule(ScheduleElement):
         routes_affected = stop_data.pop('routes')
         services_affected = stop_data.pop('services')
         self._graph.remove_node(stop_id)
-        self.change_log.remove(object_type='stop', object_id=stop_id, object_attributes=stop_data)
+        self._graph.graph['change_log'].remove(object_type='stop', object_id=stop_id, object_attributes=stop_data)
         logging.info(f'Removed Stop with index `{stop_id}`, data={stop_data}. '
                      f'Routes affected: {routes_affected}. Services affected: {services_affected}.')
 
@@ -1721,6 +1746,7 @@ class Schedule(ScheduleElement):
         persistence.ensure_dir(output_dir)
         vehicles = matsim_xml_writer.write_matsim_schedule(output_dir, self)
         matsim_xml_writer.write_vehicles(output_dir, vehicles)
+        self.change_log().export(os.path.join(output_dir, 'schedule_change_log.csv'))
 
 
 def verify_graph_schema(graph):
