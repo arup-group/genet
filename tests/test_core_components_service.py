@@ -296,7 +296,19 @@ def test_has_valid_routes(self_looping_route, route):
 
 
 def test_has_valid_routes_with_only_valid_routes(route):
-    s = Service(id='1', routes=[route, route])
+    a = Stop(id='1', x=4, y=2, epsg='epsg:27700', linkRefId='1')
+    b = Stop(id='2', x=1, y=2, epsg='epsg:27700', linkRefId='2')
+    c = Stop(id='3', x=3, y=3, epsg='epsg:27700', linkRefId='3')
+    d = Stop(id='4', x=7, y=5, epsg='epsg:27700', linkRefId='4')
+    r = Route(
+        route_short_name='name_2',
+        mode='bus',
+        stops=[a, b, c, d],
+        trips={'1': '10:00:00', '2': '20:00:00'},
+        arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+        departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'],
+        route=['1', '2', '3', '4'], id='2')
+    s = Service(id='1', routes=[route, r])
     assert s.has_valid_routes()
 
 
