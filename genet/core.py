@@ -672,14 +672,15 @@ class Network:
         if not silent:
             logging.info(f'Changed Link index from {link_id} to {new_link_id}')
 
-    def subgraph_on_link_conditions(self, conditions, mixed_dtypes=True):
+    def subgraph_on_link_conditions(self, conditions, how=any, mixed_dtypes=True):
         """
         Gives a subgraph of network.graph based on matching conditions defined in conditions
         :param conditions as described in graph_operations.extract_links_on_edge_attributes
+        :param how as described in graph_operations.extract_links_on_edge_attributes
         :param mixed_dtypes as described in graph_operations.extract_links_on_edge_attributes
         :return:
         """
-        links = self.extract_links_on_edge_attributes(conditions, mixed_dtypes=mixed_dtypes)
+        links = self.extract_links_on_edge_attributes(conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
         edges_for_sub = [
             (self.link_id_mapping[link]['from'],
              self.link_id_mapping[link]['to'],

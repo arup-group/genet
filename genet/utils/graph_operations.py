@@ -84,7 +84,7 @@ class Filter:
                     else:
                         # value is that value
                         satisfies = data_dict[key] == val
-                elif isinstance(val, list):
+                elif isinstance(val, (list, set)):
                     if isinstance(data_dict[key], (list, set)) and self.mixed_dtypes:
                         if set(data_dict[key]) & set(val):
                             satisfies = True
@@ -175,7 +175,7 @@ def get_attribute_schema(iterator, data=False):
                 append_to_tree(v, twin)
             elif not twin:
                 if data:
-                    if isinstance(v, list):
+                    if isinstance(v, (list, set)):
                         values = set(v)
                     else:
                         values = {v}
@@ -184,7 +184,7 @@ def get_attribute_schema(iterator, data=False):
                     Node(k, parent=parent)
             elif data:
                 node = get_identical_twin_if_exists(parent, k)
-                if isinstance(v, list):
+                if isinstance(v, (list, set)):
                     values = set(v)
                 else:
                     values = {v}
