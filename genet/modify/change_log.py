@@ -24,7 +24,7 @@ class ChangeLog(pd.DataFrame):
 
     def _next_index(self):
         idx = self.index.max() + 1
-        if not isinstance(idx, int):
+        if  str(idx) == 'nan':
             idx = 0
         return idx
 
@@ -165,5 +165,8 @@ class ChangeLog(pd.DataFrame):
                 diff.append(('change', 'id', (old_id, new_id)))
         return diff
 
+    def merge_logs(self, other):
+        return self.__class__(self.append(other).sort_values(by='timestamp').reset_index(drop=True))
+
     def export(self, path):
-        self.log.to_csv(path)
+        self.to_csv(path)

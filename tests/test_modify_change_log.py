@@ -53,7 +53,7 @@ def test_change_log_records_modifying_objects():
     })
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(log.log[cols_to_compare], target[cols_to_compare], check_dtype=False)
+    assert_frame_equal(log[cols_to_compare], target[cols_to_compare], check_dtype=False)
 
 
 def test_change_log_records_modifying_objects_in_bunch():
@@ -70,7 +70,7 @@ def test_change_log_records_modifying_objects_in_bunch():
                   1: [('change', 'attrib', ('helloooo', 'HELLOOOO')), ('change', 'id', ('1235', '2'))]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(log.log[cols_to_compare], target[cols_to_compare], check_dtype=False)
+    assert_frame_equal(log[cols_to_compare], target[cols_to_compare], check_dtype=False)
 
 
 def test_change_log_records_removing_objects():
@@ -88,7 +88,7 @@ def test_change_log_records_removing_objects():
     })
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(log.log[cols_to_compare], target[cols_to_compare], check_dtype=False)
+    assert_frame_equal(log[cols_to_compare], target[cols_to_compare], check_dtype=False)
 
 
 def test_change_log_records_removing_objects_in_bunch():
@@ -103,4 +103,4 @@ def test_change_log_records_removing_objects_in_bunch():
                   1: [('remove', '', [('attrib', 'helloooo')]), ('remove', 'id', '1235')]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(log.log[cols_to_compare], target[cols_to_compare], check_dtype=False)
+    assert_frame_equal(log[cols_to_compare], target[cols_to_compare], check_dtype=False)

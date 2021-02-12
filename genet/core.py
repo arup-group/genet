@@ -77,8 +77,7 @@ class Network:
         self.schedule.add(other.schedule)
 
         # merge change_log DataFrames
-        self.change_log = self.change_log.append(other.change_log)
-        self.change_log = self.change_log.sort_values(by='timestamp').reset_index(drop=True)
+        self.change_log = self.change_log.merge_logs(other.change_log)
 
     def print(self):
         print(self.info())
