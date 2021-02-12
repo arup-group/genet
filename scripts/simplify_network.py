@@ -8,7 +8,8 @@ from genet.utils.persistence import ensure_dir
 
 
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Reproject a MATSim network')
+    arg_parser = argparse.ArgumentParser(description='Simplify a MATSim network by removing '
+                                                     'intermediate links from paths')
 
     arg_parser.add_argument('-n',
                             '--network',
@@ -35,7 +36,7 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('-od',
                             '--output_dir',
-                            help='Output directory for the reprojected network',
+                            help='Output directory for the simplified network',
                             required=True)
 
     args = vars(arg_parser.parse_args())
