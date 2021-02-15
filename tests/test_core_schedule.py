@@ -12,7 +12,6 @@ from genet.schedule_elements import Schedule, Service, Route, Stop
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation
 from genet.exceptions import ServiceIndexError, RouteIndexError, StopIndexError
-from tests.test_core_schedule_elements import schedule_graph
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_schedule_file = os.path.abspath(
@@ -811,10 +810,3 @@ def test_building_trips_dataframe(schedule):
         by=['route', 'trip', 'departure_time']).reset_index(drop=True)
 
     assert_frame_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1))
-
-
-def test_building_schedule_from_graph(schedule_graph):
-    s = Schedule(_graph=schedule_graph)
-    assert s.reference_nodes() == {'4', '5', '3', '1', '2', '0'}
-    assert s.reference_edges() == {('4', '5'), ('3', '4'), ('1', '2'), ('0', '1')}
-    pass

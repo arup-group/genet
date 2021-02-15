@@ -377,3 +377,37 @@ def test_reading_gtfs_into_non_empty_schedule_gives_consistently_projected_stops
                                'BSN': {'services': ['1001'], 'routes': ['1001_0'], 'id': 'BSN', 'x': 529138.2570252238,
                                        'y': 181939.72009660664, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.5216199,
                                        'lon': -0.140053, 's2_id': 5221390684150342605, 'additional_attributes': []}})
+
+
+def test_building_route_from_graph(schedule_graph):
+    r = Route(_graph=schedule_graph, **schedule_graph.graph['routes']['1'])
+    assert r.reference_nodes() == {'1', '0'}
+    assert r.reference_edges() == {('0', '1')}
+
+
+def test_building_service_from_graph(schedule_graph):
+    s = Service(_graph=schedule_graph, **schedule_graph.graph['services']['service1'])
+    assert s.reference_nodes() == {'1', '2', '0'}
+    assert s.reference_edges() == {('1', '2'), ('0', '1')}
+
+
+def test_building_schedule_from_graph(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    assert s.reference_nodes() == {'4', '5', '3', '1', '2', '0'}
+    assert s.reference_edges() == {('4', '5'), ('3', '4'), ('1', '2'), ('0', '1')}
+
+
+def test_instantiating_route_with_new_attributes(schedule):
+    schedule.apply_attributes_to_routes({
+        '1': {'new_attribute': 'value'}
+    })
+    r = schedule.route('1')
+    assert r.new_attribute == 'value'
+
+
+def test_instantiating_service_with_new_attributes(schedule):
+    schedule.apply_attributes_to_services({
+        'service1': {'new_attribute': 'value'}
+    })
+    s = schedule['service1']
+    assert s.new_attribute == 'value'

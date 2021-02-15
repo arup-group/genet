@@ -7,7 +7,6 @@ from genet.schedule_elements import Service
 from genet.utils import plot
 from tests.fixtures import *
 from tests.test_core_components_route import self_looping_route, route
-from tests.test_core_schedule_elements import schedule_graph
 
 
 @pytest.fixture()
@@ -379,9 +378,3 @@ def test_building_trips_dataframe(service):
                                              6: 'name', 7: 'name', 8: 'name', 9: 'name', 10: 'name', 11: 'name'}})
 
     assert_frame_equal(df, correct_df)
-
-
-def test_building_service_from_graph(schedule_graph):
-    s = Service(_graph=schedule_graph, **schedule_graph.graph['services']['service1'])
-    assert s.reference_nodes() == {'1', '2', '0'}
-    assert s.reference_edges() == {('1', '2'), ('0', '1')}

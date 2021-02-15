@@ -4,7 +4,6 @@ from pandas.testing import assert_frame_equal
 from genet.schedule_elements import Route, Stop
 from genet.utils import plot
 from tests.fixtures import stop_epsg_27700, assert_semantically_equal
-from tests.test_core_schedule_elements import schedule_graph
 
 
 @pytest.fixture()
@@ -356,9 +355,3 @@ def test_building_trips_dataframe(route):
                             'to_stop_name': {0: '', 1: '', 2: '', 3: '', 4: '', 5: ''}})
 
     assert_frame_equal(df, correct_df)
-
-
-def test_building_route_from_graph(schedule_graph):
-    r = Route(_graph=schedule_graph, **schedule_graph.graph['routes']['1'])
-    assert r.reference_nodes() == {'1', '0'}
-    assert r.reference_edges() == {('0', '1')}

@@ -156,6 +156,7 @@ class Stop:
     reading through a lot of stops in the same projection, all stops are mapped back to 'epsg:4326' and indexed with
     s2sphere
     :param name: human readable name for the stop
+    :param kwargs: additional attributes
     """
 
     def __init__(self, id: Union[str, int], x: Union[str, int, float], y: Union[str, int, float], epsg: str,
@@ -292,12 +293,13 @@ class Route(ScheduleElement):
     :param route: optional, network link_ids traversed by the vehicles in this Route instance
     :param id: optional, unique identifier for the route if available, if not given, will be generated
     :param await_departure: optional, list of bools of length stops param, whether to await departure at each stop
+    :param kwargs: additional attributes
     """
 
     def __init__(self, route_short_name: str, mode: str, trips: Dict[str, str], arrival_offsets: List[str],
                  departure_offsets: List[str], route: list = None, route_long_name: str = '', id: str = '',
                  await_departure: list = None, ordered_stops: List[str] = None, stops: List[Stop] = None,
-                 _graph: nx.DiGraph = None):
+                 _graph: nx.DiGraph = None, **kwargs):
         self.route_short_name = route_short_name
         self.mode = mode
         self.trips = trips
@@ -313,6 +315,8 @@ class Route(ScheduleElement):
             self.await_departure = []
         else:
             self.await_departure = await_departure
+        if kwargs:
+            self.add_additional_attributes(kwargs)
 
         if ordered_stops is not None:
             if _graph is not None:
@@ -361,6 +365,16 @@ class Route(ScheduleElement):
         route_graph.graph['services'] = {}
         route_graph.graph['change_log'] = change_log.ChangeLog()
         return route_graph
+
+    def add_additional_attributes(self, attribs: dict):
+        """
+        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
+        :param attribs: the additional attributes {attribute_name: attribute_value}
+        :return:
+        """
+        for k, v in attribs.items():
+            if k not in self.__dict__:
+                setattr(self, k, v)
 
     def reference_nodes(self):
         return {node for node, node_routes in self._graph.nodes(data='routes') if self.id in node_routes}
@@ -598,9 +612,10 @@ class Service(ScheduleElement):
     :param routes: list of Route objects, if the Routes are not uniquely indexed, they will be re-indexed
     :param name: string, name for the service, if not provided, will inherit the first non-trivial name from routes
     :param _graph: Schedule graph, used for re-instantiating the object, passed together with `_routes`
+    :param kwargs: additional attributes
     """
 
-    def __init__(self, id: str, routes: List[Route] = None, name: str = '', _graph: nx.DiGraph = None):
+    def __init__(self, id: str, routes: List[Route] = None, name: str = '', _graph: nx.DiGraph = None, **kwargs):
         self.id = id
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
@@ -610,6 +625,9 @@ class Service(ScheduleElement):
                 if route.route_short_name:
                     self.name = str(route.route_short_name)
                     break
+        if kwargs:
+            self.add_additional_attributes(kwargs)
+
         if _graph is not None:
             # check graph type and schema
             verify_graph_schema(_graph)
@@ -664,6 +682,16 @@ class Service(ScheduleElement):
         service_graph.graph['route_to_service_map'] = {route.id: _id for route in routes}
         service_graph.graph['service_to_route_map'] = {_id: [route.id for route in routes]}
         return service_graph
+
+    def add_additional_attributes(self, attribs: dict):
+        """
+        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
+        :param attribs: the additional attributes {attribute_name: attribute_value}
+        :return:
+        """
+        for k, v in attribs.items():
+            if k not in self.__dict__:
+                setattr(self, k, v)
 
     def _ensure_unique_routes(self, routes: List[Route]):
         unique_routes = []
