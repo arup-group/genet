@@ -102,7 +102,7 @@ class ScheduleElement:
         return mode_map
 
     def graph(self):
-        return nx.edge_subgraph(self._graph, self.reference_edges())
+        return nx.DiGraph(nx.edge_subgraph(self._graph, self.reference_edges()))
 
     def subgraph(self, edges):
         return nx.DiGraph(nx.edge_subgraph(self.graph(), edges))
@@ -134,8 +134,15 @@ class ScheduleElement:
             self.epsg = new_epsg
 
     def find_epsg(self):
-        for n in self.reference_nodes():
-            return self.stop(n).epsg
+        if 'crs' in self._graph.graph:
+            return self._graph.graph['crs']['init']
+        else:
+            epsg = list({d for k, d in dict(self._graph.nodes(data='epsg', default='')).items()} - {''})
+            if epsg:
+                if len(epsg) == 1:
+                    return epsg[0]
+                else:
+                    return epsg
         return None
 
 
@@ -285,10 +292,8 @@ class Route(ScheduleElement):
 
     Optional Parameters (note, not providing some of the parameters may result in the object failing validation)
     ----------
-    :param stops: ordered list of Stop class objects
-    :param ordered_stops: ordered list of stop ids, refer to node ids in _graph, which should also be passed if using
-        `ordered_stops` parameter instead of `stops`
-    :param _graph: Schedule graph, used for re-instantiating the object, passed together with `ordered_stops`
+    :param stops: ordered list of Stop class objects or Stop IDs already present in a Schedule, if generating a Route
+        to add
     :param route_long_name: optional, verbose name for the route if exists
     :param route: optional, network link_ids traversed by the vehicles in this Route instance
     :param id: optional, unique identifier for the route if available, if not given, will be generated
@@ -298,8 +303,7 @@ class Route(ScheduleElement):
 
     def __init__(self, route_short_name: str, mode: str, trips: Dict[str, str], arrival_offsets: List[str],
                  departure_offsets: List[str], route: list = None, route_long_name: str = '', id: str = '',
-                 await_departure: list = None, ordered_stops: List[str] = None, stops: List[Stop] = None,
-                 _graph: nx.DiGraph = None, **kwargs):
+                 await_departure: list = None, stops: List[Union[Stop, str]] = None, **kwargs):
         self.route_short_name = route_short_name
         self.mode = mode
         self.trips = trips
@@ -307,6 +311,8 @@ class Route(ScheduleElement):
         self.departure_offsets = departure_offsets
         self.route_long_name = route_long_name
         self.id = id
+        ordered_stops = None
+        _graph = None
         if route is None:
             self.route = []
         else:
@@ -316,6 +322,10 @@ class Route(ScheduleElement):
         else:
             self.await_departure = await_departure
         if kwargs:
+            if 'ordered_stops' in kwargs:
+                ordered_stops = kwargs.pop('ordered_stops')
+            if '_graph' in kwargs:
+                _graph = kwargs.pop('_graph')
             self.add_additional_attributes(kwargs)
 
         if ordered_stops is not None:
@@ -332,7 +342,10 @@ class Route(ScheduleElement):
                                                'object passed')
             self.ordered_stops = ordered_stops
         elif stops is not None:
-            self.ordered_stops = [stop.id for stop in stops]
+            try:
+                self.ordered_stops = [stop.id for stop in stops]
+            except AttributeError:
+                self.ordered_stops = stops
             self._graph = self._build_graph(stops=stops)
         else:
             raise RouteInitialisationError('You need to either pass `ordered_stops` with a valid `_graph` or '
@@ -357,9 +370,13 @@ class Route(ScheduleElement):
 
     def _build_graph(self, stops: List[Stop]):
         route_graph = nx.DiGraph(name='Route graph')
-        route_nodes = [(stop.id, stop.__dict__) for stop in stops]
+        try:
+            route_nodes = [(stop.id, stop.__dict__) for stop in stops]
+            stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
+        except AttributeError:
+            route_nodes = [(stop, {}) for stop in stops]
+            stop_edges = [(from_stop, to_stop) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
         route_graph.add_nodes_from(route_nodes, routes=[self.id])
-        stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
         route_graph.add_edges_from(stop_edges, routes=[self.id], modes=[self.mode])
         route_graph.graph['routes'] = {self.id: self._surrender_to_graph()}
         route_graph.graph['services'] = {}
@@ -503,7 +520,7 @@ class Route(ScheduleElement):
         same_departure_offsets = self.departure_offsets == other.departure_offsets
 
         statement = same_route_name and same_mode and same_stops and same_trips and same_arrival_offsets \
-            and same_departure_offsets
+                    and same_departure_offsets
         return statement
 
     def isin_exact(self, routes: list):
@@ -611,21 +628,23 @@ class Service(ScheduleElement):
     ----------
     :param routes: list of Route objects, if the Routes are not uniquely indexed, they will be re-indexed
     :param name: string, name for the service, if not provided, will inherit the first non-trivial name from routes
-    :param _graph: Schedule graph, used for re-instantiating the object, passed together with `_routes`
     :param kwargs: additional attributes
     """
 
-    def __init__(self, id: str, routes: List[Route] = None, name: str = '', _graph: nx.DiGraph = None, **kwargs):
+    def __init__(self, id: str, routes: List[Route] = None, name: str = '', **kwargs):
         self.id = id
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
         self.name = str(name)
+        _graph = None
         if not self.name and routes:
             for route in routes:
                 if route.route_short_name:
                     self.name = str(route.route_short_name)
                     break
         if kwargs:
+            if '_graph' in kwargs:
+                _graph = kwargs.pop('_graph')
             self.add_additional_attributes(kwargs)
 
         if _graph is not None:
@@ -1573,6 +1592,7 @@ class Schedule(ScheduleElement):
         route_ids = list(service.route_ids())
         self._graph.graph['change_log'].add(object_type='service', object_id=service.id, object_attributes=service_data)
         logging.info(f'Added Service with index `{service.id}`, data={service_data} and Routes: {route_ids}')
+        service._graph = self._graph
         return service
 
     def remove_service(self, service_id):
@@ -1620,6 +1640,8 @@ class Schedule(ScheduleElement):
             route.reindex(f'{service_id}_{len(service)+1}')
 
         g = route.graph()
+        nx.set_edge_attributes(g, {edge: {'services': [service_id]} for edge in set(g.edges())})
+        nx.set_node_attributes(g, {node: {'services': [service_id]} for node in set(g.nodes())})
         nodes = dict_support.merge_complex_dictionaries(
             dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
         edges = dict_support.combine_edge_data_lists(
@@ -1638,6 +1660,7 @@ class Schedule(ScheduleElement):
         self._graph.graph['change_log'].add(object_type='route', object_id=route.id, object_attributes=route_data)
         logging.info(f'Added Route with index `{route.id}`, data={route_data} to Service `{service_id}` within the '
                      f'Schedule')
+        route._graph = self._graph
         return route
 
     def remove_route(self, route_id):
@@ -1651,12 +1674,19 @@ class Schedule(ScheduleElement):
                                   "Cannot remove a Route that isn't present.")
         route = self.route(route_id)
         route_data = self._graph.graph['routes'][route_id]
+        service_id = self._graph.graph['route_to_service_map'][route_id]
+
         for stop in route.reference_nodes():
             self._graph.nodes[stop]['routes'] = list(set(self._graph.nodes[stop]['routes']) - {route_id})
+            if (not self._graph.nodes[stop]['routes']) or (
+                    set(self._graph.nodes[stop]['routes']) & set(self._graph.graph['service_to_route_map'])):
+                self._graph.nodes[stop]['services'] = list(set(self._graph.nodes[stop]['services']) - {service_id})
         for u, v in route.reference_edges():
             self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) - {route_id})
+            if (not self._graph[u][v]['routes']) or (
+                    set(self._graph[u][v]['routes']) & set(self._graph.graph['service_to_route_map'])):
+                self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) - {service_id})
 
-        service_id = self._graph.graph['route_to_service_map'][route_id]
         self._graph.graph['service_to_route_map'][service_id].remove(route_id)
         del self._graph.graph['route_to_service_map'][route_id]
         del self._graph.graph['routes'][route_id]

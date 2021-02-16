@@ -11,7 +11,7 @@ from genet.inputs_handler import matsim_reader, gtfs_reader
 from genet.schedule_elements import Schedule, Service, Route, Stop
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation
-from genet.exceptions import ServiceIndexError, RouteIndexError, StopIndexError
+from genet.exceptions import ServiceIndexError, RouteIndexError, StopIndexError, UndefinedCoordinateSystemError
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_schedule_file = os.path.abspath(
@@ -360,7 +360,7 @@ def test_extracting_routes_on_condition(schedule):
 
 
 def test_extracting_stops_on_condition(schedule):
-    ids = schedule.extract_stop_ids_on_attributes(conditions=[{'x': (0,4)}, {'y': (0,2)}], how=all)
+    ids = schedule.extract_stop_ids_on_attributes(conditions=[{'x': (0, 4)}, {'y': (0, 2)}], how=all)
     assert set(ids) == {'5', '6', '1', '2'}
 
 
@@ -378,18 +378,21 @@ def test_getting_stops_on_modal_condition(schedule):
     stop_ids = schedule.stops_on_modal_condition(modes='bus')
     assert set(stop_ids) == {'5', '6', '7', '8', '3', '1', '4', '2'}
 
+
 test_geojson = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "test_geojson.geojson"))
 
+
 def test_getting_stops_on_spatial_condition_with_geojson(schedule, mocker):
     mocker.patch.object(spatial, 'read_geojson_to_shapely',
-                        return_value=GeometryCollection([Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])]))
+                        return_value=GeometryCollection(
+                            [Polygon([(-7.6, 49.7), (-7.4, 49.7), (-7.4, 49.8), (-7.6, 49.8), (-7.6, 49.7)])]))
     stops = schedule.stops_on_spatial_condition(test_geojson)
     assert set(stops) == {'5', '6', '7', '8', '2', '4', '3', '1'}
 
 
 def test_getting_stops_on_spatial_condition_with_shapely_polygon(schedule):
-    p = Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])
+    p = Polygon([(-7.6, 49.7), (-7.4, 49.7), (-7.4, 49.8), (-7.6, 49.8), (-7.6, 49.7)])
     stops = schedule.stops_on_spatial_condition(p)
     assert set(stops) == {'5', '6', '7', '8', '2', '4', '3', '1'}
 
@@ -401,25 +404,25 @@ def test_getting_stops_on_spatial_condition_with_s2_hex_region(schedule):
 
 
 def test_getting_routes_intersecting_spatial_region(schedule):
-    p = Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])
+    p = Polygon([(-7.6, 49.7), (-7.4, 49.7), (-7.4, 49.8), (-7.6, 49.8), (-7.6, 49.7)])
     routes = schedule.routes_on_spatial_condition(p)
     assert set(routes) == {'1', '2'}
 
 
 def test_getting_routes_contained_spatial_region(schedule):
-    p = Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])
+    p = Polygon([(-7.6, 49.7), (-7.4, 49.7), (-7.4, 49.8), (-7.6, 49.8), (-7.6, 49.7)])
     routes = schedule.routes_on_spatial_condition(p, how='within')
     assert set(routes) == {'1', '2'}
 
 
 def test_getting_services_intersecting_spatial_region(schedule):
-    p = Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])
+    p = Polygon([(-7.6, 49.7), (-7.4, 49.7), (-7.4, 49.8), (-7.6, 49.8), (-7.6, 49.7)])
     routes = schedule.services_on_spatial_condition(p)
     assert set(routes) == {'service'}
 
 
 def test_getting_services_contained_spatial_region(schedule):
-    p = Polygon([(-7.6,49.7), (-7.4,49.7), (-7.4,49.8), (-7.6,49.8), (-7.6,49.7)])
+    p = Polygon([(-7.6, 49.7), (-7.4, 49.7), (-7.4, 49.8), (-7.6, 49.8), (-7.6, 49.7)])
     routes = schedule.services_on_spatial_condition(p, how='within')
     assert set(routes) == {'service'}
 
@@ -581,6 +584,58 @@ def test_adding_route_to_non_existing_service_throws_error(schedule, route):
     assert 'does not exist' in str(e.value)
 
 
+def test_creating_a_route_to_add_using_id_references_to_existing_stops_inherits_schedule_stops_data(schedule):
+    expected_stops_data = {
+        '5': {'services': ['service'], 'routes': ['2', '3'], 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+              'name': '',
+              'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
+              'additional_attributes': []},
+        '1': {'services': ['service'], 'routes': ['1', '3'], 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+              'name': '',
+              'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
+              'additional_attributes': []},
+        '2': {'services': ['service'], 'routes': ['1', '3'], 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
+              'name': '',
+              'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
+              'additional_attributes': []}}
+
+    r = Route(
+        id='3',
+        route_short_name='name',
+        mode='bus',
+        trips={},
+        arrival_offsets=[],
+        departure_offsets=[],
+        stops=['1', '2', '5']
+    )
+    assert r.ordered_stops == ['1', '2', '5']
+    assert_semantically_equal(dict(r._graph.nodes(data=True)),
+                              {'1': {'routes': ['3']}, '2': {'routes': ['3']}, '5': {'routes': ['3']}})
+    assert_semantically_equal(list(r._graph.edges(data=True)),
+                              [('1', '2', {'routes': ['3'], 'modes': ['bus']}),
+                               ('2', '5', {'routes': ['3'], 'modes': ['bus']})])
+
+    schedule.add_route('service', r)
+
+    assert_semantically_equal(dict(r.graph().nodes(data=True)), expected_stops_data)
+    assert_semantically_equal(r.graph()['1']['2'], {'routes': ['1', '3'], 'modes': ['bus'], 'services': ['service']})
+    assert_semantically_equal(r.graph()['2']['5'], {'routes': ['3'], 'modes': ['bus'], 'services': ['service']})
+
+
+def test_extracting_epsg_from_an_intermediate_route_throws_error():
+    # intermediate meaning not belonging to a schedule yet but referring to stops in a schedule
+    r = Route(
+        route_short_name='name',
+        mode='bus',
+        trips={},
+        arrival_offsets=[],
+        departure_offsets=[],
+        stops=['S1', 'S2', 'S3']
+    )
+
+    assert r.epsg is None
+
+
 def test_removing_route(schedule):
     schedule.remove_route('2')
     assert set(schedule.route_ids()) == {'1'}
@@ -589,6 +644,47 @@ def test_removing_route(schedule):
                               {'1': 'service'})
     assert_semantically_equal(schedule._graph.graph['service_to_route_map'],
                               {'service': ['1']})
+
+
+def test_removing_route_updates_services_on_nodes_and_edges(schedule):
+    schedule.remove_route('2')
+    assert_semantically_equal(dict(schedule.graph().nodes(data=True)),
+                              {'5': {'services': [], 'routes': [], 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+                                     'name': '', 'lat': 49.76682779861249, 'lon': -7.557106577683727,
+                                     's2_id': 5205973754090531959, 'additional_attributes': []},
+                               '6': {'services': [], 'routes': [], 'id': '6', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
+                                     'name': '', 'lat': 49.766825803756994, 'lon': -7.557148039524952,
+                                     's2_id': 5205973754090365183, 'additional_attributes': []},
+                               '7': {'services': [], 'routes': [], 'id': '7', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700',
+                                     'name': '', 'lat': 49.76683608549253, 'lon': -7.557121424907424,
+                                     's2_id': 5205973754090203369, 'additional_attributes': []},
+                               '8': {'services': [], 'routes': [], 'id': '8', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700',
+                                     'name': '', 'lat': 49.766856648946295, 'lon': -7.5570681956375,
+                                     's2_id': 5205973754097123809, 'additional_attributes': []},
+                               '3': {'services': ['service'], 'routes': ['1'], 'id': '3', 'x': 3.0, 'y': 3.0,
+                                     'epsg': 'epsg:27700', 'name': '', 'lat': 49.76683608549253,
+                                     'lon': -7.557121424907424, 's2_id': 5205973754090203369,
+                                     'additional_attributes': []},
+                               '1': {'services': ['service'], 'routes': ['1'], 'id': '1', 'x': 4.0, 'y': 2.0,
+                                     'epsg': 'epsg:27700', 'name': '', 'lat': 49.76682779861249,
+                                     'lon': -7.557106577683727, 's2_id': 5205973754090531959,
+                                     'additional_attributes': []},
+                               '2': {'services': ['service'], 'routes': ['1'], 'id': '2', 'x': 1.0, 'y': 2.0,
+                                     'epsg': 'epsg:27700', 'name': '', 'lat': 49.766825803756994,
+                                     'lon': -7.557148039524952, 's2_id': 5205973754090365183,
+                                     'additional_attributes': []},
+                               '4': {'services': ['service'], 'routes': ['1'], 'id': '4', 'x': 7.0, 'y': 5.0,
+                                     'epsg': 'epsg:27700', 'name': '', 'lat': 49.766856648946295,
+                                     'lon': -7.5570681956375, 's2_id': 5205973754097123809,
+                                     'additional_attributes': []}})
+    assert_semantically_equal(list(schedule.graph().edges(data=True)),
+                              [('5', '6', {'services': [], 'routes': [], 'modes': ['bus']}),
+                               ('6', '7', {'services': [], 'routes': [], 'modes': ['bus']}),
+                               ('7', '8', {'services': [], 'routes': [], 'modes': ['bus']}),
+                               ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
+                               ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])
+
 
 def test_removing_stop(schedule):
     schedule.remove_stop('5')
