@@ -8,7 +8,7 @@ import pickle
 def test_initiate_stop_with_kwargs():
     a = Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700', linkRefId='1')
     assert a.has_linkRefId()
-    assert a.additional_attributes == ['linkRefId']
+    assert a.additional_attributes == {'linkRefId'}
 
 
 def test_reproject_stops_without_transformer():

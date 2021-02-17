@@ -67,7 +67,7 @@ def test_generating_schedule_graph_geodataframe(network):
                      'lat': {'0': 51.525696033239186, '1': 51.52560003323918},
                      'lon': {'0': -0.13530998708775874, '1': -0.13682698708848137},
                      's2_id': {'0': 5221390668020036699, '1': 5221390668558830581},
-                     'additional_attributes': {'0': ['linkRefId'], '1': ['linkRefId']},
+                     'additional_attributes': {'0': {'linkRefId'}, '1': {'linkRefId'}},
                      'linkRefId': {'0': '1', '1': '2'},
                      'name': {'0': '', '1': ''}
                      }

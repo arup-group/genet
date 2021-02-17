@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 from pandas import DataFrame
 from copy import deepcopy
+import dictdiffer
 from s2sphere import CellId
 import genet.utils.plot as plot
 import genet.utils.spatial as spatial
@@ -23,7 +24,7 @@ import genet.use.schedule as use_schedule
 import genet.validate.schedule_validation as schedule_validation
 import genet.outputs_handler.geojson as gngeojson
 from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisationError, ServiceInitialisationError, \
-    UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError
+    UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData
 
 # number of decimal places to consider when comparing lat lons
 SPATIAL_TOLERANCE = 8
@@ -77,7 +78,8 @@ class ScheduleElement:
         pass
 
     def stop(self, stop_id):
-        return Stop(**self._graph.nodes[stop_id])
+        stop_data = {k: v for k, v in dict(self._graph.nodes[stop_id]).items() if k not in {'routes', 'services'}}
+        return Stop(**stop_data)
 
     def stops(self):
         """
@@ -188,7 +190,7 @@ class Stop:
         else:
             self.s2_id = spatial.generate_index_s2(lat=self.lat, lng=self.lon)
 
-        self.additional_attributes = []
+        self.additional_attributes = set()
         if kwargs:
             self.add_additional_attributes(kwargs)
 
@@ -244,9 +246,9 @@ class Stop:
         :return:
         """
         for k, v in attribs.items():
-            if k not in self.__dict__ or not self.__dict__[k]:
+            if k not in self.__dict__ or (not self.__dict__[k] and k != "additional_attributes"):
                 setattr(self, k, v)
-                self.additional_attributes.append(k)
+                self.additional_attributes.add(k)
 
     def iter_through_additional_attributes(self):
         for attr_key in self.additional_attributes:
@@ -1554,10 +1556,34 @@ class Schedule(ScheduleElement):
         new_attributes = graph_operations.apply_to_attributes(self._graph.nodes(data=True), function, location)
         self.apply_attributes_to_stops(new_attributes)
 
-    def add_service(self, service: Service):
+    def _compare_stops_data(self, g):
+        stop_data_in_g = {k: {_k: _v for _k, _v in v.items() if _k not in {'routes', 'services'}} for k, v in
+                          dict(g.nodes(data=True)).items()}
+        stops_without_data = []
+        stops_with_conflicting_data = []
+
+        for stop, data in stop_data_in_g.items():
+            if stop in self._graph.nodes():
+                schedule_stop_data = {_k: _v for _k, _v in dict(self._graph.nodes[stop]).items() if _k not in {'routes', 'services'}}
+                if (not data) and (not schedule_stop_data):
+                    stops_without_data.append(stop)
+                if data:
+                    diff = list(dictdiffer.diff(data, schedule_stop_data))
+                    # look for 'change' diffs as that has potential to overwrite/loose data
+                    if [event for event in diff if event[0] == 'change']:
+                        stops_with_conflicting_data.append(stop)
+            elif not data:
+                stops_without_data.append(stop)
+        return stops_without_data, stops_with_conflicting_data
+
+    def add_service(self, service: Service, force=False):
         """
         Adds a service to Schedule.
         :param service: genet.Service object, must have index unique w.r.t. Services already in the Schedule
+        :param force: force the add, even if the stops in the Service have data conflicting with the stops of the same
+            IDs that are already in the Schedule. This will force the Service to be added, the stops data of currently
+            in the Schedule will persist. If you want to change the data for stops use `apply_attributes_to_stops` or
+            `apply_function_to_stops`.
         :return:
         """
         if self.has_service(service.id):
@@ -1569,6 +1595,19 @@ class Schedule(ScheduleElement):
                 route.reindex(f'{service.id}_{route.id}')
 
         g = service.graph()
+        stops_without_data, stops_with_conflicting_data = self._compare_stops_data(g)
+        if stops_without_data:
+            logging.warning(f'The following stops are missing data: {stops_without_data}')
+        if stops_with_conflicting_data:
+            if force:
+                logging.warning(f'The following stops will inherit the data currently stored under those Stop IDs in '
+                                f'the Schedule: {stops_with_conflicting_data}.')
+            else:
+                raise ConflictingStopData("The following stops would inherit data currently stored under those "
+                                          f"Stop IDs in the Schedule: {stops_with_conflicting_data}. Use `force=True` "
+                                          "to continue with this operation in this manner. If you want to change the "
+                                          "data for stops use `apply_attributes_to_stops` or "
+                                          "`apply_function_to_stops`.")
         nodes = dict_support.merge_complex_dictionaries(
             dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
         edges = dict_support.combine_edge_data_lists(
@@ -1623,11 +1662,15 @@ class Schedule(ScheduleElement):
                                                object_attributes=service_data)
         logging.info(f'Removed Service with index `{service_id}`, data={service_data} and Routes: {route_ids}')
 
-    def add_route(self, service_id, route: Route):
+    def add_route(self, service_id, route: Route, force=False):
         """
         Adds route to a service already in the Schedule.
-        :param service_id:
-        :param route:
+        :param service_id: service id in the Schedule to add the route to
+        :param route: Route object to add
+        :param force: force the add, even if the stops in the Route have data conflicting with the stops of the same
+            IDs that are already in the Schedule. This will force the Route to be added, the stops data of currently
+            in the Schedule will persist. If you want to change the data for stops use `apply_attributes_to_stops` or
+            `apply_function_to_stops`.
         :return:
         """
         if not self.has_service(service_id):
@@ -1640,6 +1683,19 @@ class Schedule(ScheduleElement):
             route.reindex(f'{service_id}_{len(service)+1}')
 
         g = route.graph()
+        stops_without_data, stops_with_conflicting_data = self._compare_stops_data(g)
+        if stops_without_data:
+            logging.warning(f'The following stops are missing data: {stops_without_data}')
+        if stops_with_conflicting_data:
+            if force:
+                logging.warning(f'The following stops will inherit the data currently stored under those Stop IDs in '
+                                f'the Schedule: {stops_with_conflicting_data}.')
+            else:
+                raise ConflictingStopData("The following stops would inherit data currently stored under those "
+                                          f"Stop IDs in the Schedule: {stops_with_conflicting_data}. Use `force=True` "
+                                          "to continue with this operation in this manner. If you want to change the "
+                                          "data for stops use `apply_attributes_to_stops` or "
+                                          "`apply_function_to_stops`.")
         nx.set_edge_attributes(g, {edge: {'services': [service_id]} for edge in set(g.edges())})
         nx.set_node_attributes(g, {node: {'services': [service_id]} for node in set(g.nodes())})
         nodes = dict_support.merge_complex_dictionaries(

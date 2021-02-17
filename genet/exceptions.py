@@ -41,6 +41,13 @@ class ScheduleInitialisationError(Exception):
     pass
 
 
+class ConflictingStopData(Exception):
+    """
+    Raised when two elements share Stop IDs but their data does not match
+    """
+    pass
+
+
 class UndefinedCoordinateSystemError(Exception):
     """
     Raised when an object requires a coordinate system
