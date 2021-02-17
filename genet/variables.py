@@ -1,8 +1,8 @@
 
 
-# NECESSARY NETWORK LINK ATTRIBUTES for use when saving genet.Network to matsim's network.xml
-NECESSARY_NETWORK_LINK_ATTRIBUTES = ['id', 'from', 'to', 'length', 'freespeed', 'capacity', 'permlanes', 'oneway',
-                                     'modes']
+# NETWORK LINK ATTRIBUTES for use when saving genet.Network to matsim's network.xml
+NECESSARY_NETWORK_LINK_ATTRIBUTES = ['id', 'from', 'to', 'length', 'freespeed', 'capacity', 'permlanes', 'modes']
+OPTIONAL_NETWORK_LINK_ATTRIBUTES = ['oneway']
 
 # NECESSARY STOP FACILITY ATTRIBUTES matsim's expected attributes for transit stops, used when saving schedule.xml
 NECESSARY_STOP_FACILITY_ATTRIBUTES = ['id', 'x', 'y']
