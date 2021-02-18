@@ -7,6 +7,7 @@ from tests.fixtures import network_object_from_test_data, full_fat_default_confi
 from tests import xml_diff
 from genet.outputs_handler import matsim_xml_writer
 from genet.core import Network
+from genet.variables import VEHICLE_TYPES
 import xml.etree.cElementTree as ET
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -336,14 +337,14 @@ def test_write_matsim_schedule_produces_semantically_equal_xml_to_input_matsim_x
 
 def test_generates_valid_matsim_vehicles_xml_file(tmpdir, vehicles_xsd):
     vehicle_dict = {
-        'veh_1': 'bus',
-        'veh_2': 'bus',
-        'veh_3': 'bus',
-        'veh_4': 'tram',
-        'veh_5': 'rail',
-        'veh_6': 'subway'
+        'veh_1': {'type': 'bus'},
+        'veh_2': {'type': 'bus'},
+        'veh_3': {'type': 'bus'},
+        'veh_4': {'type': 'tram'},
+        'veh_5': {'type': 'rail'},
+        'veh_6': {'type': 'subway'}
     }
-    matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict)
+    matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict, VEHICLE_TYPES)
 
     generated_file_path = os.path.join(tmpdir, 'vehicles.xml')
     xml_obj = lxml.etree.parse(generated_file_path)
@@ -352,20 +353,20 @@ def test_generates_valid_matsim_vehicles_xml_file(tmpdir, vehicles_xsd):
 
 def test_generates_matsim_vehicles_xml_file_containing_expected_vehicle_types(tmpdir):
     vehicle_dict = {
-        'veh_1': 'bus',
-        'veh_2': 'bus',
-        'veh_3': 'bus',
-        'veh_4': 'tram',
-        'veh_5': 'rail',
-        'veh_6': 'subway'
+        'veh_1': {'type': 'bus'},
+        'veh_2': {'type': 'bus'},
+        'veh_3': {'type': 'bus'},
+        'veh_4': {'type': 'tram'},
+        'veh_5': {'type': 'rail'},
+        'veh_6': {'type': 'subway'}
     }
-    matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict)
+    matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict, VEHICLE_TYPES)
 
     generated_file_path = os.path.join(tmpdir, 'vehicles.xml')
     xml_obj = lxml.etree.parse(generated_file_path)
 
     vehicle_types = xml_obj.findall('{http://www.matsim.org/files/dtd}vehicleType')
-    expected_vehicle_types = set(vehicle_dict.values())
+    expected_vehicle_types = {v['type'] for k,v in vehicle_dict.items()}
     actual_vehicle_types = set()
     for vehicle_type in vehicle_types:
         actual_vehicle_types.add(vehicle_type.get('id'))
@@ -374,14 +375,14 @@ def test_generates_matsim_vehicles_xml_file_containing_expected_vehicle_types(tm
 
 def test_generates_matsim_vehicles_xml_file_containing_expected_vehicles(tmpdir):
     vehicle_dict = {
-        'veh_1': 'bus',
-        'veh_2': 'bus',
-        'veh_3': 'bus',
-        'veh_4': 'tram',
-        'veh_5': 'rail',
-        'veh_6': 'subway'
+        'veh_1': {'type': 'bus'},
+        'veh_2': {'type': 'bus'},
+        'veh_3': {'type': 'bus'},
+        'veh_4': {'type': 'tram'},
+        'veh_5': {'type': 'rail'},
+        'veh_6': {'type': 'subway'}
     }
-    matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict)
+    matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict, VEHICLE_TYPES)
 
     generated_file_path = os.path.join(tmpdir, 'vehicles.xml')
     xml_obj = lxml.etree.parse(generated_file_path)
@@ -389,24 +390,24 @@ def test_generates_matsim_vehicles_xml_file_containing_expected_vehicles(tmpdir)
     vehicles = xml_obj.findall('{http://www.matsim.org/files/dtd}vehicle')
     assert len(vehicles) == len(vehicle_dict)
     for vehicle in vehicles:
-        assert vehicle_dict[vehicle.get('id')] == vehicle.get('type')
+        assert vehicle_dict[vehicle.get('id')]['type'] == vehicle.get('type')
 
 
 def test_throws_exception_when_generating_vehicles_xml_from_unrecognised_vehicle_types(tmpdir):
     vehicle_dict = {
-        'veh_1': 'bus',
-        'veh_4': 'tram',
-        'veh_5': 'rocket ship'
+        'veh_1': {'type': 'bus'},
+        'veh_4': {'type': 'tram'},
+        'veh_5': {'type': 'rocket ship'},
     }
     with pytest.raises(NotImplementedError) as e:
-        matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict)
+        matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict, VEHICLE_TYPES)
     assert 'No Vehicle Type info available for mode rocket ship' in str(e.value)
 
 
-def test_write_matsim_vehicles_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
+def test_write_matsim_vehicles_produces_semantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
                                                                                    tmpdir):
     network = network_object_from_test_data
-    vehicles = matsim_xml_writer.write_matsim_schedule(tmpdir, network.schedule)
-    matsim_xml_writer.write_vehicles(tmpdir, vehicles)
+    matsim_xml_writer.write_matsim_schedule(tmpdir, network.schedule)
+    matsim_xml_writer.write_vehicles(tmpdir, network.schedule.vehicles, network.schedule.vehicle_types)
 
     xml_diff.assert_semantically_equal(os.path.join(tmpdir, 'vehicles.xml'), pt2matsim_vehicles_file)

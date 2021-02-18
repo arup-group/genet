@@ -186,12 +186,12 @@ def test_accessing_route(schedule):
 
 
 def test__repr__shows_number_of_services(mocker):
-    mocker.patch.object(Schedule, '__len__')
+    mocker.patch.object(Schedule, '__len__', return_value=0)
     schedule = Schedule('epsg:27700')
     s = schedule.__repr__()
     assert 'instance at' in s
     assert 'services' in s
-    Schedule.__len__.assert_called_once()
+    Schedule.__len__.assert_called()
 
 
 def test__str__shows_info():
@@ -214,11 +214,11 @@ def test_print_shows_info(mocker):
 
 
 def test_info_shows_number_of_services_and_routes(mocker):
-    mocker.patch.object(Schedule, '__len__')
+    mocker.patch.object(Schedule, '__len__', return_value=0)
     mocker.patch.object(Schedule, 'number_of_routes')
     schedule = Schedule('epsg:27700')
     schedule.print()
-    Schedule.__len__.assert_called_once()
+    Schedule.__len__.assert_called()
     Schedule.number_of_routes.assert_called_once()
 
 
@@ -899,8 +899,8 @@ def test_iter_stops_returns_stops_objects(test_service, different_test_service):
     assert all([isinstance(stop, Stop) for stop in schedule.stops()])
 
 
-def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker):
-    mocker.patch.object(matsim_reader, 'read_schedule', return_value=([Service(id='1', routes=[])], {}))
+def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker, route):
+    mocker.patch.object(matsim_reader, 'read_schedule', return_value=([Service(id='1', routes=[route])], {}))
 
     schedule = Schedule('epsg:27700')
     schedule.read_matsim_schedule(pt2matsim_schedule_file)

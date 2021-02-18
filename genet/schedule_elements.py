@@ -885,6 +885,7 @@ class Schedule(ScheduleElement):
     """
 
     def __init__(self, epsg: str = '', services: List[Service] = None, _graph: nx.DiGraph = None):
+        self.vehicle_types = variables.VEHICLE_TYPES
         if _graph is not None:
             # check graph type and schema
             verify_graph_schema(_graph)
@@ -925,12 +926,11 @@ class Schedule(ScheduleElement):
         self.init_epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
         self.minimal_transfer_times = {}
-        self.vehicle_types = variables.VEHICLE_TYPES
         self.vehicles = self.generate_vehicles()
         super().__init__()
 
     def __nonzero__(self):
-        return self.services
+        return self.services()
 
     def __getitem__(self, service_id):
         return self._get_service_from_graph(service_id)
@@ -983,9 +983,19 @@ class Schedule(ScheduleElement):
         return schedule_graph
 
     def generate_vehicles(self):
-        # todo generate vehicles using Services and Routes upon init
-        # todo check against vehicle modes in vehicle types
-        pass
+        if self:
+            # generate vehicles using Services and Routes upon init
+            df = self.route_attribute_data(keys=[{'trips':'vehicle_id'}, 'mode'])
+            # expand the frame on all the trip vehicles
+            col = 'trips::vehicle_id'
+            df = DataFrame({'type': np.repeat(df['mode'].values, df[col].str.len())}).assign(
+                vehicle_id=np.concatenate(df[col].values))
+            df = df.set_index('vehicle_id')
+            # todo check against vehicle modes in vehicle types
+            # todo check mode consistency for shared vehicles
+            return df.T.to_dict()
+        else:
+            return {}
 
     def reference_nodes(self):
         return set(self._graph.nodes())
@@ -1024,6 +1034,11 @@ class Schedule(ScheduleElement):
 
         # merge change_log DataFrames
         self._graph.graph['change_log'] = self.change_log().merge_logs(other.change_log())
+
+        # todo add checks and warnings for overlaps in IDs and vehicle definitions
+        # merge vehicles
+        self.vehicles = {**self.vehicles, **other.vehicles}
+        self.vehicle_types = {**self.vehicle_types, **other.vehicle_types}
 
     def is_separable_from(self, other):
         unique_service_ids = set(other.service_ids()) & set(self.service_ids()) == set()
@@ -1885,8 +1900,8 @@ class Schedule(ScheduleElement):
 
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)
-        vehicles = matsim_xml_writer.write_matsim_schedule(output_dir, self)
-        matsim_xml_writer.write_vehicles(output_dir, vehicles)
+        matsim_xml_writer.write_matsim_schedule(output_dir, self)
+        matsim_xml_writer.write_vehicles(output_dir, self.vehicles, self.vehicle_types)
         self.change_log().export(os.path.join(output_dir, 'schedule_change_log.csv'))
 
 

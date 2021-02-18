@@ -2120,7 +2120,8 @@ def test_has_schedule_with_valid_network_routes_with_some_valid_routes(route):
     n.add_link('1', 1, 2)
     n.add_link('2', 2, 3)
     route.route = ['1', '2']
-    route_2 = Route(route_short_name='', mode='', stops=[], trips={},
+    route_2 = Route(route_short_name='', mode='', stops=[],
+                    trips={'trip_id': ['1'], 'trip_departure_time': ['13:00:00'], 'vehicle_id': ['veh_1_bus']},
                     arrival_offsets=[], departure_offsets=[], route=['10000'])
     n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route, route_2])])
     assert not n.has_schedule_with_valid_network_routes()
