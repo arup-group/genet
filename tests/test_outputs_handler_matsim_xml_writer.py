@@ -336,12 +336,12 @@ def test_write_matsim_schedule_produces_semantically_equal_xml_to_input_matsim_x
 
 def test_generates_valid_matsim_vehicles_xml_file(tmpdir, vehicles_xsd):
     vehicle_dict = {
-        'veh_1': 'Bus',
-        'veh_2': 'Bus',
-        'veh_3': 'Bus',
-        'veh_4': 'Tram',
-        'veh_5': 'Rail',
-        'veh_6': 'Subway'
+        'veh_1': 'bus',
+        'veh_2': 'bus',
+        'veh_3': 'bus',
+        'veh_4': 'tram',
+        'veh_5': 'rail',
+        'veh_6': 'subway'
     }
     matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict)
 
@@ -352,12 +352,12 @@ def test_generates_valid_matsim_vehicles_xml_file(tmpdir, vehicles_xsd):
 
 def test_generates_matsim_vehicles_xml_file_containing_expected_vehicle_types(tmpdir):
     vehicle_dict = {
-        'veh_1': 'Bus',
-        'veh_2': 'Bus',
-        'veh_3': 'Bus',
-        'veh_4': 'Tram',
-        'veh_5': 'Rail',
-        'veh_6': 'Subway'
+        'veh_1': 'bus',
+        'veh_2': 'bus',
+        'veh_3': 'bus',
+        'veh_4': 'tram',
+        'veh_5': 'rail',
+        'veh_6': 'subway'
     }
     matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict)
 
@@ -374,12 +374,12 @@ def test_generates_matsim_vehicles_xml_file_containing_expected_vehicle_types(tm
 
 def test_generates_matsim_vehicles_xml_file_containing_expected_vehicles(tmpdir):
     vehicle_dict = {
-        'veh_1': 'Bus',
-        'veh_2': 'Bus',
-        'veh_3': 'Bus',
-        'veh_4': 'Tram',
-        'veh_5': 'Rail',
-        'veh_6': 'Subway'
+        'veh_1': 'bus',
+        'veh_2': 'bus',
+        'veh_3': 'bus',
+        'veh_4': 'tram',
+        'veh_5': 'rail',
+        'veh_6': 'subway'
     }
     matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict)
 
@@ -394,14 +394,13 @@ def test_generates_matsim_vehicles_xml_file_containing_expected_vehicles(tmpdir)
 
 def test_throws_exception_when_generating_vehicles_xml_from_unrecognised_vehicle_types(tmpdir):
     vehicle_dict = {
-        'veh_1': 'Bus',
-        'veh_4': 'Tram',
-        'veh_5': 'Rocket ship'
+        'veh_1': 'bus',
+        'veh_4': 'tram',
+        'veh_5': 'rocket ship'
     }
     with pytest.raises(NotImplementedError) as e:
         matsim_xml_writer.write_vehicles(tmpdir, vehicle_dict)
-    assert 'No Vehicle Type info available for mode Rocket ship, you will need to add it to matsim_xml_values.py' \
-           in str(e.value)
+    assert 'No Vehicle Type info available for mode rocket ship' in str(e.value)
 
 
 def test_write_matsim_vehicles_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,

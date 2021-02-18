@@ -317,7 +317,8 @@ def test_reading_gtfs_into_schedule(correct_schedule_dict_from_test_gtfs, correc
     del d_1001_0['_graph']
     assert_semantically_equal(d_1001_0,
                               {'ordered_stops': ['BSE', 'BSN'], 'route_short_name': 'BTR', 'mode': 'bus',
-                               'trips': {'BT1': '03:21:00'}, 'arrival_offsets': ['0:00:00', '0:02:00'],
+                               'trips': {'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_0_bus']},
+                               'arrival_offsets': ['0:00:00', '0:02:00'],
                                'departure_offsets': ['0:00:00', '0:02:00'], 'route_long_name': '', 'id': '1001_0',
                                'route': [], 'await_departure': [], 'epsg': 'epsg:27700'})
 
@@ -325,7 +326,8 @@ def test_reading_gtfs_into_schedule(correct_schedule_dict_from_test_gtfs, correc
     del d_1002_0['_graph']
     assert_semantically_equal(d_1002_0,
                               {'ordered_stops': ['RSN', 'RSE'], 'route_short_name': 'RTR', 'mode': 'rail',
-                               'trips': {'RT1': '03:21:00'}, 'arrival_offsets': ['0:00:00', '0:02:00'],
+                               'trips': {'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_1_rail']},
+                               'arrival_offsets': ['0:00:00', '0:02:00'],
                                'departure_offsets': ['0:00:00', '0:02:00'], 'route_long_name': '', 'id': '1002_0',
                                'route': [], 'await_departure': [], 'epsg': 'epsg:27700'})
 

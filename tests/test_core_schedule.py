@@ -26,14 +26,18 @@ def schedule():
                     mode='bus', id='1',
                     stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
                            Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '13:00:00', '2': '13:30:00'},
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['13:00:00', '13:30:00'],
+                           'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     route_2 = Route(route_short_name='name_2',
                     mode='bus', id='2',
                     stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
                            Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '11:00:00', '2': '13:00:00'},
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['11:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     service = Service(id='service', routes=[route_1, route_2])
@@ -49,7 +53,9 @@ def strongly_connected_schedule():
                            Stop(id='3', x=3, y=3, epsg='epsg:27700', name='Stop_3'),
                            Stop(id='4', x=7, y=5, epsg='epsg:27700', name='Stop_4'),
                            Stop(id='1', x=4, y=2, epsg='epsg:27700', name='Stop_1')],
-                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+                    trips={'trip_id': ['1', '2'], 'trip_departure_time': ['1', '2'],
+                           'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
+                    arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
                     id='1')
     route_2 = Route(route_short_name='name_2',
                     mode='bus',
@@ -58,7 +64,9 @@ def strongly_connected_schedule():
                            Stop(id='7', x=3, y=3, epsg='epsg:27700', name='Stop_7'),
                            Stop(id='8', x=7, y=5, epsg='epsg:27700', name='Stop_8'),
                            Stop(id='5', x=4, y=2, epsg='epsg:27700', name='Stop_5')],
-                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2', '3', '4', '5'],
+                    trips={'trip_id': ['1', '2'], 'trip_departure_time': ['1', '2'],
+                           'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
+                    arrival_offsets=['1', '2', '3', '4', '5'],
                     departure_offsets=['1', '2', '3', '4', '5'],
                     id='2')
     service = Service(id='service', routes=[route_1, route_2])
@@ -104,7 +112,9 @@ def test_initiating_schedule(schedule):
     assert_semantically_equal(s._graph.graph,
                               {'name': 'Schedule graph',
                                'routes': {'2': {'route_short_name': 'name_2', 'mode': 'bus',
-                                                'trips': {'1': '11:00:00', '2': '13:00:00'},
+                                                'trips': {'trip_id': ['1', '2'],
+                                                          'trip_departure_time': ['11:00:00', '13:00:00'],
+                                                          'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
                                                 'arrival_offsets': ['00:00:00', '00:03:00',
                                                                     '00:07:00', '00:13:00'],
                                                 'departure_offsets': ['00:00:00', '00:05:00',
@@ -113,7 +123,9 @@ def test_initiating_schedule(schedule):
                                                 'await_departure': [],
                                                 'ordered_stops': ['5', '6', '7', '8']},
                                           '1': {'route_short_name': 'name', 'mode': 'bus',
-                                                'trips': {'1': '13:00:00', '2': '13:30:00'},
+                                                'trips': {'trip_id': ['1', '2'],
+                                                          'trip_departure_time': ['13:00:00', '13:30:00'],
+                                                          'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                                                 'arrival_offsets': ['00:00:00', '00:03:00',
                                                                     '00:07:00', '00:13:00'],
                                                 'departure_offsets': ['00:00:00', '00:05:00',
@@ -132,14 +144,18 @@ def test_initiating_schedule_with_non_uniquely_indexed_objects():
                     mode='bus', id='',
                     stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
                            Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '13:00:00', '2': '13:30:00'},
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['13:00:00', '13:30:00'],
+                           'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     route_2 = Route(route_short_name='name_2',
                     mode='bus', id='',
                     stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
                            Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '11:00:00', '2': '13:00:00'},
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['11:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_2_bus', 'veh_3_bus']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     service1 = Service(id='service', routes=[route_1, route_2])
@@ -162,7 +178,9 @@ def test_accessing_route(schedule):
                                                Stop(id='2', x=1, y=2, epsg='epsg:27700'),
                                                Stop(id='3', x=3, y=3, epsg='epsg:27700'),
                                                Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                                        trips={'1': '1', '2': '2'},
+                                        trips={'trip_id': ['1', '2'],
+                                               'trip_departure_time': ['1', '2'],
+                                               'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                                         arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                                         departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
 
@@ -221,7 +239,9 @@ def test_reproject_changes_projection_for_all_stops_in_route():
                 stops=[Stop(id='26997928P', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700'),
                        Stop(id='26997928P.link:1', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700')],
                 route=['1'],
-                trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+                trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+                       'trip_departure_time': ['04:40:00'],
+                       'vehicle_id': ['veh_1_bus']},
                 arrival_offsets=['00:00:00', '00:02:00'],
                 departure_offsets=['00:00:00', '00:02:00']
             )
@@ -247,7 +267,9 @@ def test_adding_merges_separable_schedules(route):
             route_short_name='name',
             mode='bus',
             stops=[a, b, c, d],
-            trips={'1': '1', '2': '2'},
+            trips={'trip_id': ['1', '2'],
+                   'trip_departure_time': ['1', '2'],
+                   'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
             arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
             departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'],
             route=['1', '2', '3', '4'], id='2')
@@ -897,12 +919,13 @@ def test_read_matsim_schedule_returns_expected_schedule():
             stops=[Stop(id='26997928P', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700'),
                    Stop(id='26997928P.link:1', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700')],
             route=['1'],
-            trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+            trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+                   'trip_departure_time': ['04:40:00'],
+                   'vehicle_id': ['veh_1_bus']},
             arrival_offsets=['00:00:00', '00:02:00'],
             departure_offsets=['00:00:00', '00:02:00']
         )
     ])
-
     for val in schedule.services():
         assert val == correct_services
     assert_semantically_equal(schedule.stop_to_service_ids_map(),
@@ -924,7 +947,7 @@ def test_read_gtfs_returns_expected_schedule(correct_stops_to_service_mapping_fr
             mode='bus',
             stops=[Stop(id='BSE', x=-0.1413621, y=51.5226864, epsg='epsg:4326'),
                    Stop(id='BSN', x=-0.140053, y=51.5216199, epsg='epsg:4326')],
-            trips={'BT1': '03:21:00'},
+            trips={'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_0_bus']},
             arrival_offsets=['0:00:00', '0:02:00'],
             departure_offsets=['0:00:00', '0:02:00']
         )])
@@ -935,7 +958,7 @@ def test_read_gtfs_returns_expected_schedule(correct_stops_to_service_mapping_fr
             mode='rail',
             stops=[Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326'),
                    Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
-            trips={'RT1': '03:21:00'},
+            trips={'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_1_rail']},
             arrival_offsets=['0:00:00', '0:02:00'],
             departure_offsets=['0:00:00', '0:02:00']
         )])
@@ -1060,6 +1083,9 @@ def test_building_trips_dataframe(schedule):
                                         10: '7', 11: '8'},
                             'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2', 6: '1', 7: '1', 8: '1', 9: '2',
                                      10: '2', 11: '2'},
+                            'vehicle_id': {0: 'veh_1_bus', 1: 'veh_1_bus', 2: 'veh_1_bus', 3: 'veh_2_bus',
+                                           4: 'veh_2_bus', 5: 'veh_2_bus', 6: 'veh_3_bus', 7: 'veh_3_bus',
+                                           8: 'veh_3_bus', 9: 'veh_4_bus', 10: 'veh_4_bus', 11: 'veh_4_bus'},
                             'route': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '2', 7: '2', 8: '2', 9: '2',
                                       10: '2', 11: '2'},
                             'route_name': {0: 'name', 1: 'name', 2: 'name', 3: 'name', 4: 'name', 5: 'name',

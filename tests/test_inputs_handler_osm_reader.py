@@ -194,7 +194,7 @@ def test_generate_graph_edges():
     generated_edges = osm_reader.generate_graph_edges(
         edges,
         reindexing_dict={},
-        config_path=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "configs", "default_config.yml")),
+        config_path=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "genet", "configs", "OSM", "default_config.yml")),
         nodes_and_attributes={
             '0': {'id': '0', 'x': 622502.8306679451, 'y': -5526117.781903352, 'lat': 0.008554364250688652,
                   'lon': -0.0006545205888310243, 's2_id': 1152921492875543713},
@@ -263,7 +263,7 @@ def test_generate_graph_edges_with_node_reindexing():
     generated_edges = osm_reader.generate_graph_edges(
         edges,
         reindexing_dict={'0': '10', '1': '11'},
-        config_path=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "configs", "default_config.yml")),
+        config_path=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "genet", "configs", "OSM", "default_config.yml")),
         nodes_and_attributes={
             '10': {'id': '0', 'x': 622502.8306679451, 'y': -5526117.781903352, 'lat': 0.008554364250688652,
                   'lon': -0.0006545205888310243, 's2_id': 1152921492875543713},

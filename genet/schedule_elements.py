@@ -9,6 +9,7 @@ from pandas import DataFrame
 from copy import deepcopy
 import dictdiffer
 from s2sphere import CellId
+import genet.variables as variables
 import genet.utils.plot as plot
 import genet.utils.spatial as spatial
 import genet.utils.dict_support as dict_support
@@ -288,7 +289,11 @@ class Route(ScheduleElement):
     ----------
     :param route_short_name: route's short name
     :param mode: mode
-    :param trips: dictionary {'trip_id' : 'HH:MM:SS' - departure time from first stop}
+    :param trips: dictionary with keys: 'trip_id', 'trip_departure_time', 'vehicle_id'. Each value is a list
+        e.g. : {'trip_id': ['trip_1', 'trip_2'],  - IDs of trips, unique within the Route
+                'trip_departure_time': ['HH:MM:SS', 'HH:MM:SS'],  - departure time from first stop for each trip_id
+                'vehicle_id': [veh_1, veh_2]} - vehicle IDs for each trip_id, don't need to be unique
+                    (i.e. vehicles can be shared between trips, but it's up to you to make this physically possible)
     :param arrival_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
     :param departure_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
 
@@ -303,7 +308,7 @@ class Route(ScheduleElement):
     :param kwargs: additional attributes
     """
 
-    def __init__(self, route_short_name: str, mode: str, trips: Dict[str, str], arrival_offsets: List[str],
+    def __init__(self, route_short_name: str, mode: str, trips: Dict[str, List[str]], arrival_offsets: List[str],
                  departure_offsets: List[str], route: list = None, route_long_name: str = '', id: str = '',
                  await_departure: list = None, stops: List[Union[Stop, str]] = None, **kwargs):
         self.route_short_name = route_short_name
@@ -365,7 +370,7 @@ class Route(ScheduleElement):
             self.__class__.__name__,
             id(self),
             len(self.ordered_stops),
-            len(self.trips))
+            len(self.trips['trip_id']))
 
     def __str__(self):
         return self.info()
@@ -447,7 +452,8 @@ class Route(ScheduleElement):
 
     def info(self):
         return '{} ID: {}\nName: {}\nNumber of stops: {}\nNumber of trips: {}'.format(
-            self.__class__.__name__, self.id, self.route_short_name, len(self.ordered_stops), len(self.trips))
+            self.__class__.__name__, self.id, self.route_short_name, len(self.ordered_stops),
+            len(self.trips['trip_id']))
 
     def plot(self, show=True, save=False, output_dir=''):
         if self.ordered_stops:
@@ -495,9 +501,11 @@ class Route(ScheduleElement):
             'from_stop': self.ordered_stops[:-1],
             'to_stop': self.ordered_stops[1:]
         })
-        for trip_id, trip_dep_time in self.trips.items():
+        for trip_id, trip_dep_time, veh_id in zip(self.trips['trip_id'], self.trips['trip_departure_time'],
+                                                  self.trips['vehicle_id']):
             trip_df = _df.copy()
             trip_df['trip'] = trip_id
+            trip_df['vehicle_id'] = veh_id
             trip_dep_time = use_schedule.sanitise_time(trip_dep_time, gtfs_day=gtfs_day)
             trip_df['departure_time'] = trip_dep_time + trip_df['departure_time']
             trip_df['arrival_time'] = trip_dep_time + trip_df['arrival_time']
@@ -917,6 +925,8 @@ class Schedule(ScheduleElement):
         self.init_epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
         self.minimal_transfer_times = {}
+        self.vehicle_types = variables.VEHICLE_TYPES
+        self.vehicles = self.generate_vehicles()
         super().__init__()
 
     def __nonzero__(self):
@@ -971,6 +981,11 @@ class Schedule(ScheduleElement):
         schedule_graph.graph['routes'] = graph_routes
         schedule_graph.graph['services'] = graph_services
         return schedule_graph
+
+    def generate_vehicles(self):
+        # todo generate vehicles using Services and Routes upon init
+        # todo check against vehicle modes in vehicle types
+        pass
 
     def reference_nodes(self):
         return set(self._graph.nodes())
@@ -1082,12 +1097,15 @@ class Schedule(ScheduleElement):
         # expand the frame on all the trips each route makes
         trips = np.concatenate(
             df['trips'].apply(
-                lambda x: [(k, use_schedule.sanitise_time(time, gtfs_day)) for k, time in x.items()]).values)
+                lambda x: [(trip_id, use_schedule.sanitise_time(trip_dep_time, gtfs_day), veh_id) for
+                           trip_id, trip_dep_time, veh_id in
+                           zip(x['trip_id'], x['trip_departure_time'], x['vehicle_id'])]).values)
         df = DataFrame({
-            col: np.repeat(df[col].values, df['trips'].str.len())
+            col: np.repeat(df[col].values, df['trips'].str['trip_id'].str.len())
             for col in set(df.columns) - {'trips'}}
         ).assign(trip=trips[:, 0],
-                 trip_dep_time=trips[:, 1]).sort_values(by=['route', 'trip', 'departure_time']).reset_index(drop=True)
+                 trip_dep_time=trips[:, 1],
+                 vehicle_id=trips[:, 2]).sort_values(by=['route', 'trip', 'departure_time']).reset_index(drop=True)
 
         df['departure_time'] = df['trip_dep_time'] + df['departure_time']
         df['arrival_time'] = df['trip_dep_time'] + df['arrival_time']
@@ -1824,11 +1842,17 @@ class Schedule(ScheduleElement):
         logging.info('Finished generating standard outputs. Zipping folder.')
         persistence.zip_folder(output_dir)
 
-    def read_matsim_schedule(self, path):
-        services, minimal_transfer_times = matsim_reader.read_schedule(path, self.epsg)
+    def read_matsim_schedule(self, path_to_schedule, path_to_vehicles=''):
+        services, minimal_transfer_times = matsim_reader.read_schedule(path_to_schedule, self.epsg)
         matsim_schedule = self.__class__(services=services, epsg=self.epsg)
         matsim_schedule.minimal_transfer_times = minimal_transfer_times
+        if path_to_vehicles:
+            matsim_schedule.read_matsim_vehicles(path_to_vehicles)
         self.add(matsim_schedule)
+
+    def read_matsim_vehicles(self, path_to_vehicles):
+        # todo change to add not over write this
+        self.vehicles, self.vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
 
     def read_gtfs_schedule(self, path, day):
         """

@@ -7,7 +7,7 @@ from genet.outputs_handler import matsim_xml_values
 from genet.outputs_handler import sanitiser
 from genet.validate.network_validation import validate_link_data
 from genet.utils.spatial import change_proj, encode_shapely_linestring_to_polyline
-from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES, ADDITIONAL_STOP_FACILITY_ATTRIBUTES
+from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES, ADDITIONAL_STOP_FACILITY_ATTRIBUTES, VEHICLE_TYPES
 
 
 def delete_redundant_link_attributes_for_xml(d):
@@ -103,9 +103,6 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
     transformer = Transformer.from_proj(Proj('epsg:4326'), Proj(epsg))
     logging.info('Writing {}'.format(fname))
 
-    # Also makes vehicles
-    vehicles = {}
-
     with open(fname, "wb") as f, etree.xmlfile(f, encoding='utf-8') as xf:
         xf.write_declaration(doctype='<!DOCTYPE transitSchedule '
                                      'SYSTEM "http://www.matsim.org/files/dtd/transitSchedule_v2.dtd">')
@@ -144,7 +141,6 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                         xf.write(etree.Element("relation", minimal_transfer_times_attribs))
 
             # transitLine
-            v_id = 0  # generating some ids for vehicles
             for service in schedule.services():
                 transit_line_attribs = {'id': service.id, 'name': str(service.name)}
 
@@ -191,17 +187,15 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                                     xf.write(etree.Element("link", route_attribs))
 
                             with xf.element("departures"):
-                                for trip_id, trip_dep in route.trips.items():
-                                    vehicle_id = 'veh_{}_{}'.format(v_id, route.mode)
+                                for trip_id, trip_dep_time, veh_id in zip(route.trips['trip_id'],
+                                                                          route.trips['trip_departure_time'],
+                                                                          route.trips['vehicle_id']):
                                     trip_attribs = {
                                         'id': trip_id,
-                                        'departureTime': trip_dep,
-                                        'vehicleRefId': vehicle_id
+                                        'departureTime': trip_dep_time,
+                                        'vehicleRefId': veh_id
                                     }
-                                    vehicles[vehicle_id] = matsim_xml_values.MODE_DICT[route.mode]
-                                    v_id += 1
                                     xf.write(etree.Element("departure", trip_attribs))
-    return vehicles
 
 
 def write_vehicles(output_dir, vehicles):
@@ -218,9 +212,9 @@ def write_vehicles(output_dir, vehicles):
         with xf.element("vehicleDefinitions", vehicleDefinitions_attribs):
             unique_veh_types = list(set(vehicles.values()))
             for vehicle_type in unique_veh_types:
-                if vehicle_type in matsim_xml_values.VEHICLE_TYPES:
+                if vehicle_type in VEHICLE_TYPES:
                     vehicle_type_attribs = {'id': vehicle_type}
-                    veh_type_vals = matsim_xml_values.VEHICLE_TYPES[vehicle_type]
+                    veh_type_vals = VEHICLE_TYPES[vehicle_type]
                     with xf.element("vehicleType", vehicle_type_attribs):
                         with xf.element("capacity"):
                             xf.write(etree.Element("seats", veh_type_vals['capacity']['seats']))
@@ -233,7 +227,8 @@ def write_vehicles(output_dir, vehicles):
                         xf.write(etree.Element("passengerCarEquivalents", veh_type_vals['passengerCarEquivalents']))
                 else:
                     raise NotImplementedError('No Vehicle Type info available for mode {}, you will need to add it to '
-                                              'matsim_xml_values.py'.format(vehicle_type))
+                                              'configs/vehicles/vehicle_definitions.yml, or the schedule'.format(
+                        vehicle_type))
 
             for veh_id, mode in vehicles.items():
                 xf.write(etree.Element("vehicle", {'id': veh_id, 'type': mode}))

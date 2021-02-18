@@ -219,9 +219,15 @@ def read_schedule(schedule_path, epsg):
 
             route = [r_val['link']['refId'] for r_val in transitRoute_val['links']]
 
-            trips = {}
+            trips = {
+                'trip_id': [],
+                'trip_departure_time': [],
+                'vehicle_id': []
+            }
             for dep in transitRoute_val['departure_list']:
-                trips[dep['departure']['id']] = dep['departure']['departureTime']
+                trips['trip_id'].append(dep['departure']['id'])
+                trips['trip_departure_time'].append(dep['departure']['departureTime'])
+                trips['vehicle_id'].append(dep['departure']['vehicleRefId'])
 
             r = Route(
                 route_short_name=transitLine['transitLine']['name'],
@@ -302,3 +308,8 @@ def read_schedule(schedule_path, epsg):
     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
 
     return services, minimalTransferTimes
+
+
+def read_vehicles(vehicles_path):
+    vehicles = {}
+    return vehicles
