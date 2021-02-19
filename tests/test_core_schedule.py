@@ -1143,6 +1143,22 @@ def test_generating_route_trips_dataframe(schedule):
     ).sort_index(axis=1))
 
 
+def test_overlapping_vehicles(schedule):
+    overlapping_vehs = schedule.overlapping_vehicle_ids(vehicles={'veh_2_bus': {'type': 'bus'}})
+    assert set(overlapping_vehs) == {'veh_2_bus'}
+
+
+def test_overlapping_vehicle_types(schedule):
+    overlapping_vehs = schedule.overlapping_vehicle_types(vehicle_types={'rail': {
+                                'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
+                                'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                                'accessTime': {'secondsPerPerson': '0.25'},
+                                'egressTime': {'secondsPerPerson': '0.25'},
+                                'doorOperation': {'mode': 'serial'},
+                                'passengerCarEquivalents': {'pce': '5.2'}}})
+    assert set(overlapping_vehs) == {'rail'}
+
+
 def test_updating_vehicles_with_no_overlap(schedule):
     schedule.update_vehicles(vehicles={'v_1': {'type': 'deathstar'}},
                              vehicle_types={'deathstar': {

@@ -1052,17 +1052,15 @@ class Schedule(ScheduleElement):
         df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
         return df
 
-    def apply_route_trips_dataframe(self):
+    def apply_route_trips_dataframe(self, df):
         # todo convert route trips dataframe to apply dictionary shape and give to apply to routes method
         pass
 
     def overlapping_vehicle_ids(self, vehicles):
-        #todo
-        return []
+        return set(self.vehicles.keys()) & set(vehicles.keys())
 
     def overlapping_vehicle_types(self, vehicle_types):
-        #todo
-        return []
+        return set(self.vehicle_types.keys()) & set(vehicle_types.keys())
 
     def update_vehicles(self, vehicles, vehicle_types, overwrite=True):
         """
