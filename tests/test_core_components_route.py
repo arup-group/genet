@@ -33,7 +33,7 @@ def strongly_connected_route():
                Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700'),
                Stop(id='1', x=4, y=2, epsg='epsg:27700')],
         trips = {'trip_id': ['1', '2'],
-                 'trip_departure_time': ['1', '2'],
+                 'trip_departure_time': ['10:00:00', '20:00:00'],
                  'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
         arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00', '00:17:00'],
         departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00', '00:18:00'])
@@ -47,7 +47,7 @@ def self_looping_route():
         stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='1', x=4, y=2, epsg='epsg:27700'),
                Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
         trips = {'trip_id': ['1', '2'],
-                 'trip_departure_time': ['1', '2'],
+                 'trip_departure_time': ['10:00:00', '20:00:00'],
                  'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
         arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
         departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])

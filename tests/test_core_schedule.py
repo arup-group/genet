@@ -53,7 +53,7 @@ def strongly_connected_schedule():
                            Stop(id='3', x=3, y=3, epsg='epsg:27700', name='Stop_3'),
                            Stop(id='4', x=7, y=5, epsg='epsg:27700', name='Stop_4'),
                            Stop(id='1', x=4, y=2, epsg='epsg:27700', name='Stop_1')],
-                    trips={'trip_id': ['1', '2'], 'trip_departure_time': ['1', '2'],
+                    trips={'trip_id': ['1', '2'], 'trip_departure_time': ['11:00:00', '13:00:00'],
                            'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                     arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
                     id='1')
@@ -64,7 +64,7 @@ def strongly_connected_schedule():
                            Stop(id='7', x=3, y=3, epsg='epsg:27700', name='Stop_7'),
                            Stop(id='8', x=7, y=5, epsg='epsg:27700', name='Stop_8'),
                            Stop(id='5', x=4, y=2, epsg='epsg:27700', name='Stop_5')],
-                    trips={'trip_id': ['1', '2'], 'trip_departure_time': ['1', '2'],
+                    trips={'trip_id': ['1', '2'], 'trip_departure_time': ['11:00:00', '13:00:00'],
                            'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
                     arrival_offsets=['1', '2', '3', '4', '5'],
                     departure_offsets=['1', '2', '3', '4', '5'],
@@ -268,7 +268,7 @@ def test_adding_merges_separable_schedules(route):
             mode='bus',
             stops=[a, b, c, d],
             trips={'trip_id': ['1', '2'],
-                   'trip_departure_time': ['1', '2'],
+                   'trip_departure_time': ['04:40:00', '05:40:00'],
                    'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
             arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
             departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'],
@@ -572,15 +572,18 @@ def test_adding_service_with_clashing_id_throws_error(schedule, service):
 
 def test_adding_service_with_clashing_stops_data_does_not_overwrite_existing_stops(schedule):
     expected_stops_data = {
-        '5': {'services': ['service', 'some_id'], 'routes': ['2', '3'], 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '5': {'services': ['service', 'some_id'], 'routes': ['2', '3'], 'id': '5', 'x': 4.0, 'y': 2.0,
+              'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '1': {'services': ['service', 'some_id'], 'routes': ['1', '3'], 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '1': {'services': ['service', 'some_id'], 'routes': ['1', '3'], 'id': '1', 'x': 4.0, 'y': 2.0,
+              'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '2': {'services': ['service', 'some_id'], 'routes': ['1', '3'], 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '2': {'services': ['service', 'some_id'], 'routes': ['1', '3'], 'id': '2', 'x': 1.0, 'y': 2.0,
+              'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
               'additional_attributes': set()}}
@@ -602,7 +605,8 @@ def test_adding_service_with_clashing_stops_data_does_not_overwrite_existing_sto
     schedule.add_service(s, force=True)
 
     assert_semantically_equal(dict(s.graph().nodes(data=True)), expected_stops_data)
-    assert_semantically_equal(s.graph()['1']['2'], {'routes': ['1', '3'], 'modes': ['bus'], 'services': ['some_id', 'service']})
+    assert_semantically_equal(s.graph()['1']['2'],
+                              {'routes': ['1', '3'], 'modes': ['bus'], 'services': ['some_id', 'service']})
     assert_semantically_equal(s.graph()['2']['5'], {'routes': ['3'], 'modes': ['bus'], 'services': ['some_id']})
 
 
@@ -1110,8 +1114,8 @@ def test_building_trips_dataframe(schedule):
 
 def test_generating_vehicles(schedule):
     vehicles = schedule.generate_vehicles()
-    assert_semantically_equal(vehicles, {'veh_3_rail': {'type': 'rail'}, 'veh_2_rail': {'type': 'rail'},
-                                         'veh_1_bus': {'type': 'bus'}, 'veh_0_bus': {'type': 'bus'}})
+    assert_semantically_equal(vehicles, {'veh_3_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'},
+                                         'veh_1_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'}})
 
 
 def test_generating_vehicles_with_shared_vehicles_and_consistent_modes(mocker, schedule):
@@ -1134,12 +1138,11 @@ def test_generating_vehicles_with_shared_vehicles_and_inconsistent_modes(mocker,
 def test_generating_route_trips_dataframe(schedule):
     df = schedule.route_trips_to_dataframe(gtfs_day='19700102')
     assert_frame_equal(df.sort_index(axis=1), DataFrame(
-        {'route_id': {0: '4', 1: '3', 2: '2', 3: '1'},
-         'service_id': {0: 'service2', 1: 'service2', 2: 'service1', 3: 'service1'},
-         'trip_id': {0: 'route4_05:40:00', 1: 'route3_04:40:00', 2: 'route2_05:40:00', 3: 'route1_04:40:00'},
-         'trip_departure_time': {0: Timestamp('1970-01-02 05:40:00'), 1: Timestamp('1970-01-02 04:40:00'),
-                                 2: Timestamp('1970-01-02 05:40:00'), 3: Timestamp('1970-01-02 04:40:00')},
-         'vehicle_id': {0: 'veh_3_rail', 1: 'veh_2_rail', 2: 'veh_1_bus', 3: 'veh_0_bus'}}
+        {'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service'},
+         'route_id': {0: '2', 1: '2', 2: '1', 3: '1'}, 'trip_id': {0: '1', 1: '2', 2: '1', 3: '2'},
+         'trip_departure_time': {0: Timestamp('1970-01-02 11:00:00'), 1: Timestamp('1970-01-02 13:00:00'),
+                                 2: Timestamp('1970-01-02 13:00:00'), 3: Timestamp('1970-01-02 13:30:00')},
+         'vehicle_id': {0: 'veh_3_bus', 1: 'veh_4_bus', 2: 'veh_1_bus', 3: 'veh_2_bus'}}
     ).sort_index(axis=1))
 
 
@@ -1150,12 +1153,12 @@ def test_overlapping_vehicles(schedule):
 
 def test_overlapping_vehicle_types(schedule):
     overlapping_vehs = schedule.overlapping_vehicle_types(vehicle_types={'rail': {
-                                'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
-                                'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
-                                'accessTime': {'secondsPerPerson': '0.25'},
-                                'egressTime': {'secondsPerPerson': '0.25'},
-                                'doorOperation': {'mode': 'serial'},
-                                'passengerCarEquivalents': {'pce': '5.2'}}})
+        'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
+        'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+        'accessTime': {'secondsPerPerson': '0.25'},
+        'egressTime': {'secondsPerPerson': '0.25'},
+        'doorOperation': {'mode': 'serial'},
+        'passengerCarEquivalents': {'pce': '5.2'}}})
     assert set(overlapping_vehs) == {'rail'}
 
 
@@ -1171,10 +1174,10 @@ def test_updating_vehicles_with_no_overlap(schedule):
                                  'doorOperation': {'mode': 'serial'},
                                  'passengerCarEquivalents': {'pce': '1000'}}})
     assert_semantically_equal(schedule.vehicles, {'v_1': {'type': 'deathstar'},
-                                                  'veh_3_rail': {'type': 'rail'},
-                                                  'veh_2_rail': {'type': 'rail'},
-                                                  'veh_1_bus': {'type': 'bus'},
-                                                  'veh_0_bus': {'type': 'bus'}})
+                                                  'veh_4_bus': {'type': 'bus'},
+                                                  'veh_3_bus': {'type': 'bus'},
+                                                  'veh_2_bus': {'type': 'bus'},
+                                                  'veh_1_bus': {'type': 'bus'}})
     assert_semantically_equal(schedule.vehicle_types, {
         'deathstar': {
             'capacity': {'seats': {'persons': '5'},
@@ -1220,18 +1223,18 @@ def test_updating_vehicles_with_no_overlap(schedule):
 
 
 def test_updating_vehicles_with_clashes_and_overwrite_on(schedule):
-    schedule.update_vehicles(vehicles={'veh_2_rail': {'type': 'tram'}},
+    schedule.update_vehicles(vehicles={'veh_2_bus': {'type': 'tram'}},
                              vehicle_types={'tram': {
-                                'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
-                                'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
-                                'accessTime': {'secondsPerPerson': '0.25'},
-                                'egressTime': {'secondsPerPerson': '0.25'},
-                                'doorOperation': {'mode': 'serial'},
-                                'passengerCarEquivalents': {'pce': '5.2'}}})
-    assert_semantically_equal(schedule.vehicles, {'veh_3_rail': {'type': 'rail'},
-                                                  'veh_2_rail': {'type': 'tram'},
-                                                  'veh_1_bus': {'type': 'bus'},
-                                                  'veh_0_bus': {'type': 'bus'}})
+                                 'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
+                                 'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                                 'accessTime': {'secondsPerPerson': '0.25'},
+                                 'egressTime': {'secondsPerPerson': '0.25'},
+                                 'doorOperation': {'mode': 'serial'},
+                                 'passengerCarEquivalents': {'pce': '5.2'}}})
+    assert_semantically_equal(schedule.vehicles, {'veh_4_bus': {'type': 'bus'},
+                                                  'veh_3_bus': {'type': 'bus'},
+                                                  'veh_2_bus': {'type': 'tram'},
+                                                  'veh_1_bus': {'type': 'bus'}})
     assert_semantically_equal(schedule.vehicle_types['tram'],
                               {
                                   'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
@@ -1243,19 +1246,19 @@ def test_updating_vehicles_with_clashes_and_overwrite_on(schedule):
 
 
 def test_updating_vehicles_with_clashes_and_overwrite_off(schedule):
-    schedule.update_vehicles(vehicles={'veh_2_rail': {'type': 'tram'}},
+    schedule.update_vehicles(vehicles={'veh_2_bus': {'type': 'tram'}},
                              vehicle_types={'tram': {
-                                'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
-                                'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
-                                'accessTime': {'secondsPerPerson': '0.25'},
-                                'egressTime': {'secondsPerPerson': '0.25'},
-                                'doorOperation': {'mode': 'serial'},
-                                'passengerCarEquivalents': {'pce': '5.2'}}},
+                                 'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
+                                 'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                                 'accessTime': {'secondsPerPerson': '0.25'},
+                                 'egressTime': {'secondsPerPerson': '0.25'},
+                                 'doorOperation': {'mode': 'serial'},
+                                 'passengerCarEquivalents': {'pce': '5.2'}}},
                              overwrite=False)
-    assert_semantically_equal(schedule.vehicles, {'veh_3_rail': {'type': 'rail'},
-                                                  'veh_2_rail': {'type': 'rail'},
-                                                  'veh_1_bus': {'type': 'bus'},
-                                                  'veh_0_bus': {'type': 'bus'}})
+    assert_semantically_equal(schedule.vehicles, {'veh_4_bus': {'type': 'bus'},
+                                                  'veh_3_bus': {'type': 'bus'},
+                                                  'veh_2_bus': {'type': 'bus'},
+                                                  'veh_1_bus': {'type': 'bus'}})
     assert_semantically_equal(schedule.vehicle_types['tram'],
                               {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
                                'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
@@ -1274,8 +1277,8 @@ def test_validate_vehicle_definitions_warns_of_missing_vehicle_types(schedule, c
     assert caplog.records[0].levelname == 'WARNING'
     assert 'bus' in caplog.records[0].message
     assert caplog.records[1].levelname == 'WARNING'
-    assert 'veh_1_bus' in caplog.records[1].message
-    assert 'veh_0_bus' in caplog.records[1].message
+    for veh in {'veh_4_bus', 'veh_3_bus', 'veh_2_bus', 'veh_1_bus'}:
+        assert veh in caplog.records[1].message
     assert "{'type': 'bus'}" in caplog.records[1].message
 
 
