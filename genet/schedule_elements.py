@@ -4,12 +4,13 @@ import networkx as nx
 import numpy as np
 import logging
 import os
+import yaml
+import pkgutil
 from datetime import datetime
 from pandas import DataFrame
 from copy import deepcopy
 import dictdiffer
 from s2sphere import CellId
-import genet.variables as variables
 import genet.utils.plot as plot
 import genet.utils.spatial as spatial
 import genet.utils.dict_support as dict_support
@@ -530,7 +531,7 @@ class Route(ScheduleElement):
         same_departure_offsets = self.departure_offsets == other.departure_offsets
 
         statement = same_route_name and same_mode and same_stops and same_trips and same_arrival_offsets \
-            and same_departure_offsets
+                    and same_departure_offsets
         return statement
 
     def isin_exact(self, routes: list):
@@ -882,10 +883,31 @@ class Schedule(ScheduleElement):
     :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     :param services: list of Service class objects
     :param _graph: Schedule graph, used for re-instantiating the object, passed without `services`
+    :param vehicles: dictionary of vehicle IDs from Route objects, mapping them to vehicle types in vehicle_types.
+        Looks like this: {veh_id : {'type': 'bus'}}
+        Defaults to None and generates itself from the vehicles IDs in Routes, maps to the mode of the Route.
+        Checks if those modes are defined in the vehicle_types.
+    :param vehicle_types: yml file based on `genet/configs/vehicles/vehicle_definitions.yml` or dictionary of vehicle
+        types and their specification. Indexed by the vehicle type that vehicles in the `vehicles` attribute are
+         referring to.
+            {'bus' : {
+                'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}},
+                'length': {'meter': '18.0'},
+                'width': {'meter': '2.5'},
+                'accessTime': {'secondsPerPerson': '0.5'},
+                'egressTime': {'secondsPerPerson': '0.5'},
+                'doorOperation': {'mode': 'serial'},
+                'passengerCarEquivalents': {'pce': '2.8'}}}
+        Defaults to reading `genet/configs/vehicles/vehicle_definitions.yml`
     """
 
-    def __init__(self, epsg: str = '', services: List[Service] = None, _graph: nx.DiGraph = None):
-        self.vehicle_types = variables.VEHICLE_TYPES
+    def __init__(self, epsg: str = '', services: List[Service] = None, _graph: nx.DiGraph = None,
+                 vehicles=None, vehicle_types: Union[str, dict] = 'configs/vehicles/vehicle_definitions.yml'):
+        if persistence.is_yml(vehicle_types):
+            self.vehicle_types = read_vehicle_types(vehicle_types)
+        else:
+            self.vehicle_types = vehicle_types
+
         if _graph is not None:
             # check graph type and schema
             verify_graph_schema(_graph)
@@ -926,7 +948,11 @@ class Schedule(ScheduleElement):
         self.init_epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
         self.minimal_transfer_times = {}
-        self.vehicles = self.generate_vehicles()
+        if vehicles is None:
+            self.vehicles = self.generate_vehicles()
+        else:
+            self.vehicles = vehicles
+        self._validate_vehicle_definitions()
         super().__init__()
 
     def __nonzero__(self):
@@ -985,17 +1011,25 @@ class Schedule(ScheduleElement):
     def generate_vehicles(self):
         if self:
             # generate vehicles using Services and Routes upon init
-            df = self.route_attribute_data(keys=[{'trips':'vehicle_id'}, 'mode'])
+            df = self.route_attribute_data(keys=[{'trips': 'vehicle_id'}, 'mode'])
             # expand the frame on all the trip vehicles
             col = 'trips::vehicle_id'
             df = DataFrame({'type': np.repeat(df['mode'].values, df[col].str.len())}).assign(
                 vehicle_id=np.concatenate(df[col].values))
             df = df.set_index('vehicle_id')
-            # todo check against vehicle modes in vehicle types
-            # todo check mode consistency for shared vehicles
             return df.T.to_dict()
         else:
             return {}
+
+    def _merge_vehicles(self, vehicles, vehicle_types):
+        # todo add checks and warnings for overlaps in IDs and vehicle definitions
+        self.vehicles = {**self.vehicles, **vehicles}
+        self.vehicle_types = {**self.vehicle_types, **vehicle_types}
+
+    def _validate_vehicle_definitions(self):
+        # todo check against vehicle modes in vehicle types
+        # todo check mode consistency for shared vehicles
+        pass
 
     def reference_nodes(self):
         return set(self._graph.nodes())
@@ -1035,10 +1069,8 @@ class Schedule(ScheduleElement):
         # merge change_log DataFrames
         self._graph.graph['change_log'] = self.change_log().merge_logs(other.change_log())
 
-        # todo add checks and warnings for overlaps in IDs and vehicle definitions
         # merge vehicles
-        self.vehicles = {**self.vehicles, **other.vehicles}
-        self.vehicle_types = {**self.vehicle_types, **other.vehicle_types}
+        self._merge_vehicles(other.vehicles, other.vehicle_types)
 
     def is_separable_from(self, other):
         unique_service_ids = set(other.service_ids()) & set(self.service_ids()) == set()
@@ -1859,15 +1891,18 @@ class Schedule(ScheduleElement):
 
     def read_matsim_schedule(self, path_to_schedule, path_to_vehicles=''):
         services, minimal_transfer_times = matsim_reader.read_schedule(path_to_schedule, self.epsg)
-        matsim_schedule = self.__class__(services=services, epsg=self.epsg)
-        matsim_schedule.minimal_transfer_times = minimal_transfer_times
         if path_to_vehicles:
-            matsim_schedule.read_matsim_vehicles(path_to_vehicles)
+            vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
+            matsim_schedule = self.__class__(
+                services=services, epsg=self.epsg, vehicles=vehicles, vehicle_types=vehicle_types)
+        else:
+            matsim_schedule = self.__class__(services=services, epsg=self.epsg)
+        matsim_schedule.minimal_transfer_times = minimal_transfer_times
         self.add(matsim_schedule)
 
     def read_matsim_vehicles(self, path_to_vehicles):
-        # todo change to add not over write this
-        self.vehicles, self.vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
+        vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
+        self._merge_vehicles(vehicles, vehicle_types)
 
     def read_gtfs_schedule(self, path, day):
         """
@@ -1938,3 +1973,7 @@ def verify_graph_schema(graph):
                 missing_attribs = required_service_attributes - set(service_dict.keys())
                 raise ScheduleElementGraphSchemaError(f'Service {service_id} is missing the following attributes: '
                                                       f'{missing_attribs}')
+
+
+def read_vehicle_types(yml_path):
+    return yaml.load(pkgutil.get_data(__name__, yml_path),  Loader=yaml.FullLoader)['VEHICLE_TYPES']

@@ -1,6 +1,6 @@
 import pytest
 from networkx import Graph, DiGraph, set_node_attributes
-from genet.schedule_elements import Schedule, Service, Route, Stop
+from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.exceptions import ServiceIndexError, RouteIndexError
 from genet.inputs_handler import gtfs_reader
 from tests.fixtures import assert_semantically_equal, correct_schedule_dict_from_test_gtfs, \
@@ -73,7 +73,8 @@ def schedule_graph():
     graph = DiGraph(
         name='Schedule Graph',
         routes={'4': {'ordered_stops': ['4', '5'], 'route_short_name': 'route4', 'mode': 'rail',
-                      'trips': {'trip_id': ['route4_05:40:00'], 'trip_departure_time': ['05:40:00'], 'vehicle_id': ['veh_0_bus']},
+                      'trips': {'trip_id': ['route4_05:40:00'], 'trip_departure_time': ['05:40:00'],
+                                'vehicle_id': ['veh_0_bus']},
                       'arrival_offsets': ['00:00:00', '00:03:00'],
                       'departure_offsets': ['00:00:00', '00:05:00'], 'route_long_name': '', 'id': '4',
                       'route': ['4', '5'], 'await_departure': []},
@@ -97,7 +98,7 @@ def schedule_graph():
                       'route': ['1', '2'], 'await_departure': []}},
         services={'service2': {'id': 'service2', 'name': 'route3'},
                   'service1': {'id': 'service1', 'name': 'route1'}},
-        route_to_service_map={'1': 'service1', '2':'service1', '3':'service2', '4':'service2'},
+        route_to_service_map={'1': 'service1', '2': 'service1', '3': 'service2', '4': 'service2'},
         service_to_route_map={'service1': ['1', '2'], 'service2': ['3', '4']},
         crs={'init': 'epsg:27700'}
     )
@@ -137,6 +138,46 @@ def schedule_graph():
 
 def test_all_elements_in_schedule_share_the_same_graph(schedule):
     assert_all_elements_share_graph(schedule)
+
+
+
+
+
+def test_reading_vehicle_types_from_default_config():
+    vehicle_types = read_vehicle_types('configs/vehicles/vehicle_definitions.yml')
+    assert_semantically_equal(vehicle_types, {
+        'bus': {'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}}, 'length': {'meter': '18.0'},
+                'width': {'meter': '2.5'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                'passengerCarEquivalents': {'pce': '2.8'}},
+        'rail': {'capacity': {'seats': {'persons': '1000'}, 'standingRoom': {'persons': '0'}},
+                 'length': {'meter': '200.0'}, 'width': {'meter': '2.8'}, 'accessTime': {'secondsPerPerson': '0.25'},
+                 'egressTime': {'secondsPerPerson': '0.25'}, 'doorOperation': {'mode': 'serial'},
+                 'passengerCarEquivalents': {'pce': '27.1'}},
+        'subway': {'capacity': {'seats': {'persons': '1000'}, 'standingRoom': {'persons': '0'}},
+                   'length': {'meter': '30.0'}, 'width': {'meter': '2.45'}, 'accessTime': {'secondsPerPerson': '0.1'},
+                   'egressTime': {'secondsPerPerson': '0.1'}, 'doorOperation': {'mode': 'serial'},
+                   'passengerCarEquivalents': {'pce': '4.4'}},
+        'ferry': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                  'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                  'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                  'passengerCarEquivalents': {'pce': '7.1'}},
+        'tram': {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
+                 'length': {'meter': '36.0'}, 'width': {'meter': '2.4'}, 'accessTime': {'secondsPerPerson': '0.25'},
+                 'egressTime': {'secondsPerPerson': '0.25'}, 'doorOperation': {'mode': 'serial'},
+                 'passengerCarEquivalents': {'pce': '5.2'}},
+        'funicular': {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
+                      'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                      'accessTime': {'secondsPerPerson': '0.25'}, 'egressTime': {'secondsPerPerson': '0.25'},
+                      'doorOperation': {'mode': 'serial'}, 'passengerCarEquivalents': {'pce': '5.2'}},
+        'gondola': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                    'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                    'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                    'passengerCarEquivalents': {'pce': '7.1'}},
+        'cablecar': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                     'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                     'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                     'passengerCarEquivalents': {'pce': '7.1'}}})
 
 
 def test_reindexing_route(schedule):
@@ -326,7 +367,8 @@ def test_reading_gtfs_into_schedule(correct_schedule_dict_from_test_gtfs, correc
     del d_1001_0['_graph']
     assert_semantically_equal(d_1001_0,
                               {'ordered_stops': ['BSE', 'BSN'], 'route_short_name': 'BTR', 'mode': 'bus',
-                               'trips': {'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_0_bus']},
+                               'trips': {'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'],
+                                         'vehicle_id': ['veh_0_bus']},
                                'arrival_offsets': ['0:00:00', '0:02:00'],
                                'departure_offsets': ['0:00:00', '0:02:00'], 'route_long_name': '', 'id': '1001_0',
                                'route': [], 'await_departure': [], 'epsg': 'epsg:27700'})
@@ -335,7 +377,8 @@ def test_reading_gtfs_into_schedule(correct_schedule_dict_from_test_gtfs, correc
     del d_1002_0['_graph']
     assert_semantically_equal(d_1002_0,
                               {'ordered_stops': ['RSN', 'RSE'], 'route_short_name': 'RTR', 'mode': 'rail',
-                               'trips': {'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_1_rail']},
+                               'trips': {'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'],
+                                         'vehicle_id': ['veh_1_rail']},
                                'arrival_offsets': ['0:00:00', '0:02:00'],
                                'departure_offsets': ['0:00:00', '0:02:00'], 'route_long_name': '', 'id': '1002_0',
                                'route': [], 'await_departure': [], 'epsg': 'epsg:27700'})

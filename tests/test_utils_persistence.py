@@ -33,6 +33,19 @@ def test_swallows_exceptions_making_new_directories(mocker):
     os.makedirs.assert_called_once()
 
 
+def test_is_yml_identifies_yml():
+    zip_dir = os.path.join('path', 'to', 'dir', 'file.yml')
+    assert persistence.is_yml(zip_dir)
+
+
+def test_is_yml_identifies_regular_string_isnt_yml():
+    assert not persistence.is_yml('hello,darkness,my,old,friend')
+
+
+def test_is_yml_identifies_a_dictionary_isnt_yml():
+    assert not persistence.is_yml({'hello': "i'm not a yml file"})
+
+
 def test_is_geojson_identifies_geojson():
     zip_dir = os.path.join('path', 'to', 'dir', 'file.geojson')
     assert persistence.is_geojson(zip_dir)

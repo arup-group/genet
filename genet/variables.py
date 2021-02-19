@@ -1,8 +1,3 @@
-import yaml
-import os
-import pkgutil
-
-
 # NECESSARY NETWORK LINK ATTRIBUTES for use when saving genet.Network to matsim's network.xml
 NECESSARY_NETWORK_LINK_ATTRIBUTES = ['id', 'from', 'to', 'length', 'freespeed', 'capacity', 'permlanes', 'oneway',
                                      'modes']
@@ -52,6 +47,3 @@ for key, value in EXTENDED_TYPE_DICT.items():
 # e.g. {1: "subway", 400: "subway", 401: "subway", 402: "subway", ...]}
 EXTENDED_TYPE_MAP = dict(zip(new_keys, new_values))
 del new_keys, new_values
-
-VEHICLE_TYPES = yaml.load(
-    pkgutil.get_data(__name__, "configs/vehicles/vehicle_definitions.yml"),  Loader=yaml.FullLoader)['VEHICLE_TYPES']
