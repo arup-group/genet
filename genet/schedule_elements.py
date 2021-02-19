@@ -26,7 +26,8 @@ import genet.use.schedule as use_schedule
 import genet.validate.schedule_validation as schedule_validation
 import genet.outputs_handler.geojson as gngeojson
 from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisationError, ServiceInitialisationError, \
-    UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData
+    UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData, \
+    InconsistentVehicleModeError
 
 # number of decimal places to consider when comparing lat lons
 SPATIAL_TOLERANCE = 8
@@ -952,7 +953,7 @@ class Schedule(ScheduleElement):
             self.vehicles = self.generate_vehicles()
         else:
             self.vehicles = vehicles
-        self._validate_vehicle_definitions()
+        self.validate_vehicle_definitions()
         super().__init__()
 
     def __nonzero__(self):
@@ -1009,6 +1010,13 @@ class Schedule(ScheduleElement):
         return schedule_graph
 
     def generate_vehicles(self):
+        """
+        Generate vehicles for the Schedule. Returns dictionary of vehicle IDs from Route objects, mapping them to
+        vehicle types in vehicle_types. Looks like this:
+            {veh_id : {'type': 'bus'}}
+        Generates itself from the vehicles IDs which exist in Routes, maps to the mode of the Route.
+        :return:
+        """
         if self:
             # generate vehicles using Services and Routes upon init
             df = self.route_attribute_data(keys=[{'trips': 'vehicle_id'}, 'mode'])
@@ -1016,6 +1024,13 @@ class Schedule(ScheduleElement):
             col = 'trips::vehicle_id'
             df = DataFrame({'type': np.repeat(df['mode'].values, df[col].str.len())}).assign(
                 vehicle_id=np.concatenate(df[col].values))
+            # check mode consistency
+            vehicles_to_modes = df.groupby('vehicle_id').apply(lambda x: list(x['type'].unique()))
+            if (vehicles_to_modes.str.len() > 1).any():
+                # there are vehicles which are shared across routes with different modes
+                raise InconsistentVehicleModeError('Modal inconsistencies found while generating vehicles for Schedule.'
+                                                   ' Vehicles and modes in question: '
+                                                   f'{vehicles_to_modes[(vehicles_to_modes.str.len() > 1)].to_dict()}')
             df = df.set_index('vehicle_id')
             return df.T.to_dict()
         else:
@@ -1026,9 +1041,12 @@ class Schedule(ScheduleElement):
         self.vehicles = {**self.vehicles, **vehicles}
         self.vehicle_types = {**self.vehicle_types, **vehicle_types}
 
-    def _validate_vehicle_definitions(self):
+    def validate_vehicle_definitions(self):
+        """
+        Checks if those modes mapped to vehicle IDs in vehicles attrinute of Schedule are defined in the vehicle_types.
+        :return:
+        """
         # todo check against vehicle modes in vehicle types
-        # todo check mode consistency for shared vehicles
         pass
 
     def reference_nodes(self):

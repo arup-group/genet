@@ -1,7 +1,8 @@
 import pytest
+from pandas import DataFrame
 from networkx import Graph, DiGraph, set_node_attributes
 from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
-from genet.exceptions import ServiceIndexError, RouteIndexError
+from genet.exceptions import ServiceIndexError, RouteIndexError, InconsistentVehicleModeError
 from genet.inputs_handler import gtfs_reader
 from tests.fixtures import assert_semantically_equal, correct_schedule_dict_from_test_gtfs, \
     correct_stopdb_from_test_gtfs
@@ -140,7 +141,27 @@ def test_all_elements_in_schedule_share_the_same_graph(schedule):
     assert_all_elements_share_graph(schedule)
 
 
+def test_generating_vehicles(schedule):
+    vehicles = schedule.generate_vehicles()
+    assert_semantically_equal(vehicles, {'veh_3_rail': {'type': 'rail'}, 'veh_2_rail': {'type': 'rail'},
+                                         'veh_1_bus': {'type': 'bus'}, 'veh_0_bus': {'type': 'bus'}})
 
+
+def test_generating_vehicles_with_shared_vehicles_and_consistent_modes(mocker, schedule):
+    mocker.patch.object(schedule, 'route_attribute_data',
+                        return_value=DataFrame({'trips::vehicle_id': [['v_1', 'v_2'], ['v_1', 'v_2'], ['v_3']],
+                                                'mode': ['bus', 'bus', 'rail']}))
+    vehicles = schedule.generate_vehicles()
+    assert_semantically_equal(vehicles, {'v_1': {'type': 'bus'}, 'v_2': {'type': 'bus'}, 'v_3': {'type': 'rail'}})
+
+
+def test_generating_vehicles_with_shared_vehicles_and_inconsistent_modes(mocker, schedule):
+    mocker.patch.object(schedule, 'route_attribute_data',
+                        return_value=DataFrame({'trips::vehicle_id': [['v_1', 'v_2'], ['v_1', 'v_3'], ['v_3']],
+                                                'mode': ['bus', 'rail', 'rail']}))
+    with pytest.raises(InconsistentVehicleModeError) as e:
+        schedule.generate_vehicles()
+    assert "{'v_1': ['bus', 'rail']}" in str(e.value)
 
 
 def test_reading_vehicle_types_from_default_config():
