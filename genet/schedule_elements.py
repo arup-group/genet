@@ -1043,11 +1043,20 @@ class Schedule(ScheduleElement):
 
     def validate_vehicle_definitions(self):
         """
-        Checks if those modes mapped to vehicle IDs in vehicles attrinute of Schedule are defined in the vehicle_types.
-        :return:
+        Checks if modes mapped to vehicle IDs in vehicles attribute of Schedule are defined in the vehicle_types.
+        :return: returns True if the vehicle types in the `vehicles` attribute exist in the `vehicle_types` attribute.
+            But useful even just for the logging messages.
         """
-        # todo check against vehicle modes in vehicle types
-        pass
+        df_vehicles = graph_operations.build_attribute_dataframe(iterator=self.vehicles.items(), keys=['type'])
+        if set(df_vehicles['type']).issubset(set(self.vehicle_types.keys())):
+            return True
+        else:
+            missing_vehicle_types = set(df_vehicles['type']) - set(self.vehicle_types.keys())
+            logging.warning('The following vehicle types are missing from the `vehicle_types` attribute: '
+                            f'{missing_vehicle_types}')
+            logging.warning('Vehicles affected by missing vehicle types: '
+                            f"{df_vehicles[df_vehicles['type'].isin(missing_vehicle_types)].T.to_dict()}")
+        return False
 
     def reference_nodes(self):
         return set(self._graph.nodes())

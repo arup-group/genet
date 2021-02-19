@@ -164,6 +164,21 @@ def test_generating_vehicles_with_shared_vehicles_and_inconsistent_modes(mocker,
     assert "{'v_1': ['bus', 'rail']}" in str(e.value)
 
 
+def test_validating_vehicle_definitions(schedule):
+    assert schedule.validate_vehicle_definitions()
+
+
+def test_validate_vehicle_definitions_warns_of_missing_vehicle_types(schedule, caplog):
+    del schedule.vehicle_types['bus']
+    schedule.validate_vehicle_definitions()
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'bus' in caplog.records[0].message
+    assert caplog.records[1].levelname == 'WARNING'
+    assert 'veh_1_bus' in caplog.records[1].message
+    assert 'veh_0_bus' in caplog.records[1].message
+    assert "{'type': 'bus'}" in caplog.records[1].message
+
+
 def test_reading_vehicle_types_from_default_config():
     vehicle_types = read_vehicle_types('configs/vehicles/vehicle_definitions.yml')
     assert_semantically_equal(vehicle_types, {
