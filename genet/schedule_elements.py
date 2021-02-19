@@ -1019,11 +1019,10 @@ class Schedule(ScheduleElement):
         """
         if self:
             # generate vehicles using Services and Routes upon init
-            df = self.route_attribute_data(keys=[{'trips': 'vehicle_id'}, 'mode'])
-            # expand the frame on all the trip vehicles
-            col = 'trips::vehicle_id'
-            df = DataFrame({'type': np.repeat(df['mode'].values, df[col].str.len())}).assign(
-                vehicle_id=np.concatenate(df[col].values))
+            df = self.route_trips_to_dataframe()[['route_id', 'vehicle_id']]
+            df['type'] = df.apply(
+                lambda x: self._graph.graph['routes'][x['route_id']]['mode'], axis=1)
+            df = df.drop(columns='route_id')
             # check mode consistency
             vehicles_to_modes = df.groupby('vehicle_id').apply(lambda x: list(x['type'].unique()))
             if (vehicles_to_modes.str.len() > 1).any():
@@ -1036,10 +1035,61 @@ class Schedule(ScheduleElement):
         else:
             return {}
 
-    def _merge_vehicles(self, vehicles, vehicle_types):
+    def route_trips_to_dataframe(self, gtfs_day='19700101'):
+        df = self.route_attribute_data(
+            keys=[{'trips': 'trip_id'}, {'trips': 'trip_departure_time'}, {'trips': 'vehicle_id'}],
+            index_name='route_id')
+        df = df.reset_index()
+        df['service_id'] = df['route_id'].apply(lambda x: self._graph.graph['route_to_service_map'][x])
+        df = df.rename(columns={'trips::trip_id': 'trip_id', 'trips::trip_departure_time': 'trip_departure_time',
+                                'trips::vehicle_id': 'vehicle_id'})
+        df = DataFrame({
+            col: np.repeat(df[col].values, df['trip_id'].str.len())
+            for col in set(df.columns) - {'trip_id', 'trip_departure_time', 'vehicle_id'}}
+        ).assign(trip_id=np.concatenate(df['trip_id'].values),
+                 trip_departure_time=np.concatenate(df['trip_departure_time'].values),
+                 vehicle_id=np.concatenate(df['vehicle_id'].values))
+        df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
+        return df
+
+    def apply_route_trips_dataframe(self):
+        # todo convert route trips dataframe to apply dictionary shape and give to apply to routes method
+        pass
+
+    def overlapping_vehicle_ids(self, vehicles):
+        #todo
+        return []
+
+    def overlapping_vehicle_types(self, vehicle_types):
+        #todo
+        return []
+
+    def update_vehicles(self, vehicles, vehicle_types, overwrite=True):
+        """
+        Updates vehicles and vehicle types
+        :param vehicles: vehicles to add
+        :param vehicle_types: vehicle types to add
+        :param overwrite: defaults to True
+            If True: overwrites overlapping vehicle types data currently in the Schedule, adds vehicles as they are,
+                overwriting in case of clash
+            If False:
+        :return:
+        """
         # todo add checks and warnings for overlaps in IDs and vehicle definitions
-        self.vehicles = {**self.vehicles, **vehicles}
-        self.vehicle_types = {**self.vehicle_types, **vehicle_types}
+        # check for vehicle ID overlap
+        clashing_vehicles = self.overlapping_vehicle_ids(vehicles=vehicles)
+        # check for vehicle type overlap
+        clashing_vehicle_types = self.overlapping_vehicle_types(vehicle_types=vehicle_types)
+
+        if overwrite:
+            self.vehicles = {**self.vehicles, **vehicles}
+            self.vehicle_types = {**self.vehicle_types, **vehicle_types}
+        else:
+            self.vehicles = {**vehicles, **self.vehicles}
+            self.vehicle_types = {**vehicle_types, **self.vehicle_types}
+
+        self.validate_vehicle_definitions()
+        return clashing_vehicles, clashing_vehicle_types
 
     def validate_vehicle_definitions(self):
         """
@@ -1097,7 +1147,7 @@ class Schedule(ScheduleElement):
         self._graph.graph['change_log'] = self.change_log().merge_logs(other.change_log())
 
         # merge vehicles
-        self._merge_vehicles(other.vehicles, other.vehicle_types)
+        self.update_vehicles(other.vehicles, other.vehicle_types)
 
     def is_separable_from(self, other):
         unique_service_ids = set(other.service_ids()) & set(self.service_ids()) == set()
@@ -1929,7 +1979,7 @@ class Schedule(ScheduleElement):
 
     def read_matsim_vehicles(self, path_to_vehicles):
         vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
-        self._merge_vehicles(vehicles, vehicle_types)
+        self.update_vehicles(vehicles, vehicle_types)
 
     def read_gtfs_schedule(self, path, day):
         """

@@ -1,5 +1,6 @@
 import pytest
-from pandas import DataFrame
+from pandas import DataFrame, Timestamp
+from pandas.testing import assert_frame_equal
 from networkx import Graph, DiGraph, set_node_attributes
 from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.exceptions import ServiceIndexError, RouteIndexError, InconsistentVehicleModeError
@@ -148,20 +149,137 @@ def test_generating_vehicles(schedule):
 
 
 def test_generating_vehicles_with_shared_vehicles_and_consistent_modes(mocker, schedule):
-    mocker.patch.object(schedule, 'route_attribute_data',
-                        return_value=DataFrame({'trips::vehicle_id': [['v_1', 'v_2'], ['v_1', 'v_2'], ['v_3']],
-                                                'mode': ['bus', 'bus', 'rail']}))
+    mocker.patch.object(DataFrame, 'drop',
+                        return_value=DataFrame({'vehicle_id': ['v_1', 'v_2', 'v_1', 'v_2', 'v_3'],
+                                                'type': ['bus', 'bus', 'bus', 'bus', 'rail']}))
     vehicles = schedule.generate_vehicles()
     assert_semantically_equal(vehicles, {'v_1': {'type': 'bus'}, 'v_2': {'type': 'bus'}, 'v_3': {'type': 'rail'}})
 
 
 def test_generating_vehicles_with_shared_vehicles_and_inconsistent_modes(mocker, schedule):
-    mocker.patch.object(schedule, 'route_attribute_data',
-                        return_value=DataFrame({'trips::vehicle_id': [['v_1', 'v_2'], ['v_1', 'v_3'], ['v_3']],
-                                                'mode': ['bus', 'rail', 'rail']}))
+    mocker.patch.object(DataFrame, 'drop',
+                        return_value=DataFrame({'vehicle_id': ['v_1', 'v_2', 'v_1', 'v_3', 'v_3'],
+                                                'type': ['bus', 'bus', 'rail', 'rail', 'rail']}))
     with pytest.raises(InconsistentVehicleModeError) as e:
         schedule.generate_vehicles()
     assert "{'v_1': ['bus', 'rail']}" in str(e.value)
+
+
+def test_generating_route_trips_dataframe(schedule):
+    df = schedule.route_trips_to_dataframe(gtfs_day='19700102')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'route_id': {0: '4', 1: '3', 2: '2', 3: '1'},
+         'service_id': {0: 'service2', 1: 'service2', 2: 'service1', 3: 'service1'},
+         'trip_id': {0: 'route4_05:40:00', 1: 'route3_04:40:00', 2: 'route2_05:40:00', 3: 'route1_04:40:00'},
+         'trip_departure_time': {0: Timestamp('1970-01-02 05:40:00'), 1: Timestamp('1970-01-02 04:40:00'),
+                                 2: Timestamp('1970-01-02 05:40:00'), 3: Timestamp('1970-01-02 04:40:00')},
+         'vehicle_id': {0: 'veh_3_rail', 1: 'veh_2_rail', 2: 'veh_1_bus', 3: 'veh_0_bus'}}
+    ).sort_index(axis=1))
+
+
+def test_updating_vehicles_with_no_overlap(schedule):
+    schedule.update_vehicles(vehicles={'v_1': {'type': 'deathstar'}},
+                             vehicle_types={'deathstar': {
+                                 'capacity': {'seats': {'persons': '5'},
+                                              'standingRoom': {'persons': '1000'}},
+                                 'length': {'meter': '20000.0'},
+                                 'width': {'meter': '20000'},
+                                 'accessTime': {'secondsPerPerson': '0.25'},
+                                 'egressTime': {'secondsPerPerson': '0.25'},
+                                 'doorOperation': {'mode': 'serial'},
+                                 'passengerCarEquivalents': {'pce': '1000'}}})
+    assert_semantically_equal(schedule.vehicles, {'v_1': {'type': 'deathstar'},
+                                                  'veh_3_rail': {'type': 'rail'},
+                                                  'veh_2_rail': {'type': 'rail'},
+                                                  'veh_1_bus': {'type': 'bus'},
+                                                  'veh_0_bus': {'type': 'bus'}})
+    assert_semantically_equal(schedule.vehicle_types, {
+        'deathstar': {
+            'capacity': {'seats': {'persons': '5'},
+                         'standingRoom': {'persons': '1000'}},
+            'length': {'meter': '20000.0'},
+            'width': {'meter': '20000'},
+            'accessTime': {'secondsPerPerson': '0.25'},
+            'egressTime': {'secondsPerPerson': '0.25'},
+            'doorOperation': {'mode': 'serial'},
+            'passengerCarEquivalents': {'pce': '1000'}},
+        'bus': {'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}}, 'length': {'meter': '18.0'},
+                'width': {'meter': '2.5'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                'passengerCarEquivalents': {'pce': '2.8'}},
+        'rail': {'capacity': {'seats': {'persons': '1000'}, 'standingRoom': {'persons': '0'}},
+                 'length': {'meter': '200.0'}, 'width': {'meter': '2.8'}, 'accessTime': {'secondsPerPerson': '0.25'},
+                 'egressTime': {'secondsPerPerson': '0.25'}, 'doorOperation': {'mode': 'serial'},
+                 'passengerCarEquivalents': {'pce': '27.1'}},
+        'subway': {'capacity': {'seats': {'persons': '1000'}, 'standingRoom': {'persons': '0'}},
+                   'length': {'meter': '30.0'}, 'width': {'meter': '2.45'}, 'accessTime': {'secondsPerPerson': '0.1'},
+                   'egressTime': {'secondsPerPerson': '0.1'}, 'doorOperation': {'mode': 'serial'},
+                   'passengerCarEquivalents': {'pce': '4.4'}},
+        'ferry': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                  'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                  'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                  'passengerCarEquivalents': {'pce': '7.1'}},
+        'tram': {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
+                 'length': {'meter': '36.0'}, 'width': {'meter': '2.4'}, 'accessTime': {'secondsPerPerson': '0.25'},
+                 'egressTime': {'secondsPerPerson': '0.25'}, 'doorOperation': {'mode': 'serial'},
+                 'passengerCarEquivalents': {'pce': '5.2'}},
+        'funicular': {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
+                      'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                      'accessTime': {'secondsPerPerson': '0.25'}, 'egressTime': {'secondsPerPerson': '0.25'},
+                      'doorOperation': {'mode': 'serial'}, 'passengerCarEquivalents': {'pce': '5.2'}},
+        'gondola': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                    'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                    'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                    'passengerCarEquivalents': {'pce': '7.1'}},
+        'cablecar': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                     'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                     'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                     'passengerCarEquivalents': {'pce': '7.1'}}})
+
+
+def test_updating_vehicles_with_clashes_and_overwrite_on(schedule):
+    schedule.update_vehicles(vehicles={'veh_2_rail': {'type': 'tram'}},
+                             vehicle_types={'tram': {
+                                'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
+                                'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                                'accessTime': {'secondsPerPerson': '0.25'},
+                                'egressTime': {'secondsPerPerson': '0.25'},
+                                'doorOperation': {'mode': 'serial'},
+                                'passengerCarEquivalents': {'pce': '5.2'}}})
+    assert_semantically_equal(schedule.vehicles, {'veh_3_rail': {'type': 'rail'},
+                                                  'veh_2_rail': {'type': 'tram'},
+                                                  'veh_1_bus': {'type': 'bus'},
+                                                  'veh_0_bus': {'type': 'bus'}})
+    assert_semantically_equal(schedule.vehicle_types['tram'],
+                              {
+                                  'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
+                                  'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                                  'accessTime': {'secondsPerPerson': '0.25'},
+                                  'egressTime': {'secondsPerPerson': '0.25'},
+                                  'doorOperation': {'mode': 'serial'},
+                                  'passengerCarEquivalents': {'pce': '5.2'}})
+
+
+def test_updating_vehicles_with_clashes_and_overwrite_off(schedule):
+    schedule.update_vehicles(vehicles={'veh_2_rail': {'type': 'tram'}},
+                             vehicle_types={'tram': {
+                                'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
+                                'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                                'accessTime': {'secondsPerPerson': '0.25'},
+                                'egressTime': {'secondsPerPerson': '0.25'},
+                                'doorOperation': {'mode': 'serial'},
+                                'passengerCarEquivalents': {'pce': '5.2'}}},
+                             overwrite=False)
+    assert_semantically_equal(schedule.vehicles, {'veh_3_rail': {'type': 'rail'},
+                                                  'veh_2_rail': {'type': 'rail'},
+                                                  'veh_1_bus': {'type': 'bus'},
+                                                  'veh_0_bus': {'type': 'bus'}})
+    assert_semantically_equal(schedule.vehicle_types['tram'],
+                              {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
+                               'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                               'accessTime': {'secondsPerPerson': '0.25'},
+                               'egressTime': {'secondsPerPerson': '0.25'}, 'doorOperation': {'mode': 'serial'},
+                               'passengerCarEquivalents': {'pce': '5.2'}})
 
 
 def test_validating_vehicle_definitions(schedule):
