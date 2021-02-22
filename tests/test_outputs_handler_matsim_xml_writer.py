@@ -7,7 +7,6 @@ from tests.fixtures import network_object_from_test_data, full_fat_default_confi
 from tests import xml_diff
 from genet.outputs_handler import matsim_xml_writer
 from genet.core import Network
-from genet.variables import VEHICLE_TYPES
 import xml.etree.cElementTree as ET
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

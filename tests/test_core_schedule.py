@@ -1225,7 +1225,7 @@ def test_updating_vehicles_with_no_overlap(schedule):
 def test_updating_vehicles_with_clashes_and_overwrite_on(schedule):
     schedule.update_vehicles(vehicles={'veh_2_bus': {'type': 'tram'}},
                              vehicle_types={'tram': {
-                                 'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
+                                 'capacity': {'seats': {'persons': '5000'}, 'standingRoom': {'persons': '5000'}},
                                  'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
                                  'accessTime': {'secondsPerPerson': '0.25'},
                                  'egressTime': {'secondsPerPerson': '0.25'},
@@ -1237,7 +1237,7 @@ def test_updating_vehicles_with_clashes_and_overwrite_on(schedule):
                                                   'veh_1_bus': {'type': 'bus'}})
     assert_semantically_equal(schedule.vehicle_types['tram'],
                               {
-                                  'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
+                                  'capacity': {'seats': {'persons': '5000'}, 'standingRoom': {'persons': '5000'}},
                                   'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
                                   'accessTime': {'secondsPerPerson': '0.25'},
                                   'egressTime': {'secondsPerPerson': '0.25'},
@@ -1248,7 +1248,7 @@ def test_updating_vehicles_with_clashes_and_overwrite_on(schedule):
 def test_updating_vehicles_with_clashes_and_overwrite_off(schedule):
     schedule.update_vehicles(vehicles={'veh_2_bus': {'type': 'tram'}},
                              vehicle_types={'tram': {
-                                 'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
+                                 'capacity': {'seats': {'persons': '5000'}, 'standingRoom': {'persons': '5000'}},
                                  'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
                                  'accessTime': {'secondsPerPerson': '0.25'},
                                  'egressTime': {'secondsPerPerson': '0.25'},

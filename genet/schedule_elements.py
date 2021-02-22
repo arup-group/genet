@@ -1073,7 +1073,6 @@ class Schedule(ScheduleElement):
             If False: adds vehicles and vehicle types that do not clash with those already stored in the Schedule
         :return:
         """
-        # todo add checks and warnings for overlaps in IDs and vehicle definitions
         # check for vehicle ID overlap
         clashing_vehicles = self.overlapping_vehicle_ids(vehicles=vehicles)
         if clashing_vehicles:
