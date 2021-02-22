@@ -226,9 +226,8 @@ def write_vehicles(output_dir, vehicles, vehicle_types):
                         xf.write(etree.Element("doorOperation", veh_type_vals['doorOperation']))
                         xf.write(etree.Element("passengerCarEquivalents", veh_type_vals['passengerCarEquivalents']))
                 else:
-                    raise NotImplementedError('No Vehicle Type info available for mode {}, you will need to add it to '
-                                              'configs/vehicles/vehicle_definitions.yml, or the schedule'.format(
-                        vehicle_type))
-
+                    raise NotImplementedError(f'No Vehicle Type info available for mode {vehicle_type}, '
+                                              f'you will need to add it to configs/vehicles/vehicle_definitions.yml, '
+                                              f'or the schedule')
             for veh_id, data in vehicles.items():
                 xf.write(etree.Element("vehicle", {'id': veh_id, 'type': data['type']}))

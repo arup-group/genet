@@ -532,7 +532,7 @@ class Route(ScheduleElement):
         same_departure_offsets = self.departure_offsets == other.departure_offsets
 
         statement = same_route_name and same_mode and same_stops and same_trips and same_arrival_offsets \
-                    and same_departure_offsets
+            and same_departure_offsets
         return statement
 
     def isin_exact(self, routes: list):
