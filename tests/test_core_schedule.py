@@ -1184,11 +1184,11 @@ def test_generating_route_trips_dataframe(schedule):
 
 def test_applying_route_trips_dataframe(schedule):
     df_to_change = DataFrame(
-        {'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service'},
-         'route_id': {0: '2', 1: '2', 2: '1', 3: '1'}, 'trip_id': {0: '2-1', 1: '2-2', 2: '1-1', 3: '1-2'},
+        {'service_id': {0: 'service', 1: 'service', 2: 'service'},
+         'route_id': {0: '2', 1: '2', 2: '1'}, 'trip_id': {0: '2-1', 1: '2-2', 2: '1-1'},
          'trip_departure_time': {0: Timestamp('1970-01-01 10:00:00'), 1: Timestamp('1970-01-01 16:00:00'),
-                                 2: Timestamp('1970-01-01 13:23:00'), 3: Timestamp('1970-01-01 19:30:01')},
-         'vehicle_id': {0: 'veh_3_bus', 1: 'veh_1_bus', 2: 'veh_1_bus', 3: 'veh_3_bus'}}
+                                 2: Timestamp('1970-01-01 13:23:00')},
+         'vehicle_id': {0: 'veh_3_bus', 1: 'veh_1_bus', 2: 'veh_1_bus'}}
     )
     schedule.set_route_trips_dataframe(df_to_change.copy())
 
