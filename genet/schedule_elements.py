@@ -1076,8 +1076,22 @@ class Schedule(ScheduleElement):
         # todo add checks and warnings for overlaps in IDs and vehicle definitions
         # check for vehicle ID overlap
         clashing_vehicles = self.overlapping_vehicle_ids(vehicles=vehicles)
+        if clashing_vehicles:
+            logging.warning(f'The following vehicles clash: {clashing_vehicles}')
+            if overwrite:
+                logging.warning('Overwrite is on. Vehicles listed above will be overwritten.')
+            else:
+                logging.warning('Overwrite is off. Clashing vehicles will remain as they are. '
+                                'All others will be added.')
         # check for vehicle type overlap
         clashing_vehicle_types = self.overlapping_vehicle_types(vehicle_types=vehicle_types)
+        if clashing_vehicle_types:
+            logging.warning(f'The following vehicle types clash: {clashing_vehicle_types}')
+            if overwrite:
+                logging.warning('Overwrite is on. Vehicle types listed above will be overwritten.')
+            else:
+                logging.warning('Overwrite is off. Clashing vehicle types will remain as they are. '
+                                'All others will be added.')
 
         if overwrite:
             self.vehicles = {**self.vehicles, **vehicles}
