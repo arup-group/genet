@@ -7,7 +7,7 @@ import os
 import yaml
 import pkgutil
 from datetime import datetime
-from pandas import DataFrame
+from pandas import DataFrame, Series
 from copy import deepcopy
 import dictdiffer
 from s2sphere import CellId
@@ -1052,9 +1052,17 @@ class Schedule(ScheduleElement):
         df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
         return df
 
-    def apply_route_trips_dataframe(self, df):
-        # todo convert route trips dataframe to apply dictionary shape and give to apply to routes method
-        pass
+    def set_route_trips_dataframe(self, df):
+        """
+
+        :param df:
+        :return:
+        """
+        # convert route trips dataframe to apply dictionary shape and give to apply to routes method
+        df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: x.strftime('%H:%M:%S'))
+        df = df.groupby('route_id').apply(
+            lambda x: Series({'trips': {k: x[k].to_list() for k in ['trip_id', 'trip_departure_time', 'vehicle_id']}}))
+        self.apply_attributes_to_routes(df.T.to_dict())
 
     def overlapping_vehicle_ids(self, vehicles):
         return set(self.vehicles.keys()) & set(vehicles.keys())
