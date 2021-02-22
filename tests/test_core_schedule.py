@@ -17,6 +17,8 @@ from genet.exceptions import ServiceIndexError, RouteIndexError, StopIndexError,
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
+pt2matsim_vehicles_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml"))
 gtfs_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs"))
 
 
@@ -925,7 +927,7 @@ def test_read_matsim_schedule_returns_expected_schedule():
             route=['1'],
             trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
                    'trip_departure_time': ['04:40:00'],
-                   'vehicle_id': ['veh_1_bus']},
+                   'vehicle_id': ['veh_0_bus']},
             arrival_offsets=['00:00:00', '00:02:00'],
             departure_offsets=['00:00:00', '00:02:00']
         )
@@ -937,6 +939,40 @@ def test_read_matsim_schedule_returns_expected_schedule():
     assert_semantically_equal(schedule.stop_to_route_ids_map(),
                               {'26997928P': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
                                '26997928P.link:1': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']})
+    assert_semantically_equal(schedule.route('VJbd8660f05fe6f744e58a66ae12bd66acbca88b98').trips,
+                              {'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+                               'trip_departure_time': ['04:40:00'], 'vehicle_id': ['veh_0_bus']})
+
+
+def test_reading_vehicles_with_a_schedule():
+    schedule = Schedule('epsg:27700')
+    schedule.read_matsim_schedule(pt2matsim_schedule_file, pt2matsim_vehicles_file)
+
+    assert_semantically_equal(schedule.vehicles, {'veh_0_bus': {'type': 'bus'}})
+    assert_semantically_equal(schedule.vehicle_types['bus'], {
+        'capacity': {'seats': {'persons': '71'}, 'standingRoom': {'persons': '1'}},
+        'length': {'meter': '18.0'},
+        'width': {'meter': '2.5'},
+        'accessTime': {'secondsPerPerson': '0.5'},
+        'egressTime': {'secondsPerPerson': '0.5'},
+        'doorOperation': {'mode': 'serial'},
+        'passengerCarEquivalents': {'pce': '2.8'}})
+
+
+def test_reading_vehicles_after_reading_schedule():
+    schedule = Schedule('epsg:27700')
+    schedule.read_matsim_schedule(pt2matsim_schedule_file)
+    schedule.read_matsim_vehicles(pt2matsim_vehicles_file)
+
+    assert_semantically_equal(schedule.vehicles, {'veh_0_bus': {'type': 'bus'}})
+    assert_semantically_equal(schedule.vehicle_types['bus'], {
+        'capacity': {'seats': {'persons': '71'}, 'standingRoom': {'persons': '1'}},
+        'length': {'meter': '18.0'},
+        'width': {'meter': '2.5'},
+        'accessTime': {'secondsPerPerson': '0.5'},
+        'egressTime': {'secondsPerPerson': '0.5'},
+        'doorOperation': {'mode': 'serial'},
+        'passengerCarEquivalents': {'pce': '2.8'}})
 
 
 def test_read_gtfs_returns_expected_schedule(correct_stops_to_service_mapping_from_test_gtfs,

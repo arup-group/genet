@@ -20,6 +20,8 @@ pt2matsim_network_with_singular_geometry_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_with_singular_geometry.xml"))
 pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
+pt2matsim_vehicles_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml"))
 
 
 def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
@@ -87,7 +89,8 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
                 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
                 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'},
                 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'},
-                'osm:relation:route': {'class': 'java.lang.String', 'name': 'osm:relation:route', 'text': {'bus', 'bicycle'}}
+                'osm:relation:route': {'class': 'java.lang.String', 'name': 'osm:relation:route',
+                                       'text': {'bus', 'bicycle'}}
             }
         }}}
 
@@ -143,7 +146,8 @@ def test_read_network_builds_graph_with_unique_links_given_matsim_network_with_c
                 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
                 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'},
                 'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'},
-                'osm:relation:route': {'class': 'java.lang.String', 'name': 'osm:relation:route', 'text': {'bus', 'bicycle'}}
+                'osm:relation:route': {'class': 'java.lang.String', 'name': 'osm:relation:route',
+                                       'text': {'bus', 'bicycle'}}
             }
         }}}
 
@@ -308,3 +312,17 @@ def test_read_schedule_reads_the_data_correctly(correct_services_from_test_pt2ma
 
     assert correct_services_from_test_pt2matsim_schedule == services
     assert_semantically_equal(minimalTransferTimes, correct_minimalTransferTimes)
+
+
+def test_reading_pt2matsim_vehicles():
+    vehicles, vehicle_types = matsim_reader.read_vehicles(pt2matsim_vehicles_file)
+
+    assert_semantically_equal(vehicles, {'veh_0_bus': {'type': 'bus'}})
+    assert_semantically_equal(vehicle_types, {
+        'bus': {'capacity': {'seats': {'persons': '71'}, 'standingRoom': {'persons': '1'}},
+                'length': {'meter': '18.0'},
+                'width': {'meter': '2.5'},
+                'accessTime': {'secondsPerPerson': '0.5'},
+                'egressTime': {'secondsPerPerson': '0.5'},
+                'doorOperation': {'mode': 'serial'},
+                'passengerCarEquivalents': {'pce': '2.8'}}})

@@ -1,3 +1,4 @@
+import re
 import logging
 import networkx as nx
 import xml.etree.cElementTree as ET
@@ -312,4 +313,23 @@ def read_schedule(schedule_path, epsg):
 
 def read_vehicles(vehicles_path):
     vehicles = {}
-    return vehicles
+    vehicle_types = {}
+    v = {'capacity': {}}
+    read_capacity = False
+    for event, elem in ET.iterparse(vehicles_path):
+        tag = re.sub('{http://www\.matsim\.org/files/dtd}', '', elem.tag)
+        if tag == 'vehicle':
+            _id = elem.attrib.pop('id')
+            vehicles[_id] = elem.attrib
+            read_capacity = False
+        elif tag == 'vehicleType':
+            vehicle_types[elem.attrib['id']] = v
+            v = {'capacity': {}}
+            read_capacity = False
+        elif tag == 'capacity':
+            read_capacity = True
+        elif read_capacity:
+            v[tag] = elem.attrib
+        else:
+            v['capacity'][tag] = elem.attrib
+    return vehicles, vehicle_types
