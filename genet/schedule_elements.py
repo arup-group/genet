@@ -1070,7 +1070,7 @@ class Schedule(ScheduleElement):
         :param overwrite: defaults to True
             If True: overwrites overlapping vehicle types data currently in the Schedule, adds vehicles as they are,
                 overwriting in case of clash
-            If False:
+            If False: adds vehicles and vehicle types that do not clash with those already stored in the Schedule
         :return:
         """
         # todo add checks and warnings for overlaps in IDs and vehicle definitions
@@ -1116,11 +1116,16 @@ class Schedule(ScheduleElement):
         if isinstance(self, Schedule):
             raise NotImplementedError('Schedule is not currently an indexed object')
 
-    def add(self, other):
+    def add(self, other, overwrite=True):
         """
         Adds another Schedule. They have to be separable! I.e. the keys in services cannot overlap with the ones
         already present (TODO: add merging complicated schedules, parallels to the merging gtfs work)
         :param other: the other Schedule object to add
+        :param overwrite: defaults to True
+            If True: overwrites overlapping vehicle types data currently in the Schedule, adds vehicles as they are,
+                overwriting in case of clash
+            If False: adds vehicles and vehicle types from other that do not clash with those already stored in the
+            Schedule
         :return:
         """
         if not self.is_separable_from(other):
@@ -1145,7 +1150,7 @@ class Schedule(ScheduleElement):
         self._graph.graph['change_log'] = self.change_log().merge_logs(other.change_log())
 
         # merge vehicles
-        self.update_vehicles(other.vehicles, other.vehicle_types)
+        self.update_vehicles(other.vehicles, other.vehicle_types, overwrite=overwrite)
 
     def is_separable_from(self, other):
         unique_service_ids = set(other.service_ids()) & set(self.service_ids()) == set()
