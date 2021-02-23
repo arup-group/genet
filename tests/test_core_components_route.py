@@ -74,7 +74,8 @@ def test_initiating_route(route):
     log = r._graph.graph.pop('change_log')
     assert log.empty
     assert_semantically_equal(r._graph.graph, {'name': 'Route graph', 'routes': {
-        '1': {'route_short_name': 'name', 'mode': 'bus', 'trips': {'1': '10:00:00', '2': '20:00:00'},
+        '1': {'route_short_name': 'name', 'mode': 'bus',
+              'trips': {'trip_id': ['1', '2'], 'trip_departure_time': ['10:00:00', '20:00:00'], 'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
               'arrival_offsets': ['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
               'departure_offsets': ['00:00:00', '00:05:00', '00:09:00', '00:15:00'], 'route_long_name': '', 'id': '1',
               'route': ['1', '2', '3', '4'], 'await_departure': [], 'ordered_stops': ['1', '2', '3', '4']}},
