@@ -100,6 +100,50 @@ def test_network_with_extra_attribs_produces_valid_matsim_network_xml_file(tmpdi
               'modes': {'car'}, 's2_from': 5205973754090365183, 's2_to': 5205973754090480551, 'length': 1.0}})
 
 
+def test_tolerates_networks_with_no_oneway_flag_on_links(tmpdir, network_dtd):
+    network = Network('epsg:27700')
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})
+    network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
+    network.add_link('0', '0', '1', attribs={
+        'id': '0',
+        'from': '0', 'to': '1',
+        'length': 1,
+        'freespeed': 1,
+        'capacity': 20,
+        'permlanes': 1,
+        'modes': ['car']
+    })
+    network.write_to_matsim(tmpdir)
+
+    generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+    xml_obj = lxml.etree.parse(generated_network_file_path)
+    assert network_dtd.validate(xml_obj), \
+        'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
+                                                                        network_dtd.error_log.filter_from_errors())
+
+    _network_from_file = Network(epsg='epsg:27700')
+    _network_from_file.read_matsim_network(generated_network_file_path)
+    assert_semantically_equal(dict(_network_from_file.nodes()), {
+        '0': {'id': '0', 'x': 1.0, 'y': 2.0, 'lon': -7.557148039524952, 'lat': 49.766825803756994,
+              's2_id': 5205973754090365183},
+        '1': {'id': '1', 'x': 2.0, 'y': 2.0, 'lon': -7.557134218911724, 'lat': 49.766826468710484,
+              's2_id': 5205973754090480551}})
+    assert_semantically_equal(dict(_network_from_file.links()), {
+        '0': {
+            'id': '0',
+            'from': '0',
+            'to': '1',
+            'freespeed': 1.0,
+            'capacity': 20.0,
+            'permlanes': 1.0,
+            'modes': {'car'},
+            's2_from': 5205973754090365183,
+            's2_to': 5205973754090480551,
+            'length': 1.0
+        }
+    })
+
+
 def test_network_with_attribs_doesnt_loose_any_attributes_after_saving(tmpdir):
     network = Network('epsg:27700')
     network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})

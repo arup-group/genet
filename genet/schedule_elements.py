@@ -910,7 +910,6 @@ class Schedule(ScheduleElement):
             self.vehicle_types = vehicle_types
         else:
             self.vehicle_types = read_vehicle_types(vehicle_types)
-
         if _graph is not None:
             # check graph type and schema
             verify_graph_schema(_graph)
