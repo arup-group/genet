@@ -952,7 +952,8 @@ class Schedule(ScheduleElement):
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
         self.minimal_transfer_times = {}
         if vehicles is None:
-            self.vehicles = self.generate_vehicles()
+            self.vehicles = {}
+            self.generate_vehicles()
         else:
             self.vehicles = vehicles
         self.validate_vehicle_definitions()
@@ -1033,9 +1034,7 @@ class Schedule(ScheduleElement):
                                                    ' Vehicles and modes in question: '
                                                    f'{vehicles_to_modes[(vehicles_to_modes.str.len() > 1)].to_dict()}')
             df = df.set_index('vehicle_id')
-            return df.T.to_dict()
-        else:
-            return {}
+            self.vehicles = {**df.T.to_dict(), **self.vehicles}
 
     def route_trips_to_dataframe(self, gtfs_day='19700101'):
         df = self.route_attribute_data(

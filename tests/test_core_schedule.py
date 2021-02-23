@@ -1149,17 +1149,43 @@ def test_building_trips_dataframe(schedule):
 
 
 def test_generating_vehicles(schedule):
-    vehicles = schedule.generate_vehicles()
-    assert_semantically_equal(vehicles, {'veh_3_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'},
+    schedule.generate_vehicles()
+    assert_semantically_equal(schedule.vehicles, {'veh_3_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'},
                                          'veh_1_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'}})
 
 
 def test_generating_vehicles_with_shared_vehicles_and_consistent_modes(mocker, schedule):
+    schedule.vehicles = {}
     mocker.patch.object(DataFrame, 'drop',
                         return_value=DataFrame({'vehicle_id': ['v_1', 'v_2', 'v_1', 'v_2', 'v_3'],
                                                 'type': ['bus', 'bus', 'bus', 'bus', 'rail']}))
-    vehicles = schedule.generate_vehicles()
-    assert_semantically_equal(vehicles, {'v_1': {'type': 'bus'}, 'v_2': {'type': 'bus'}, 'v_3': {'type': 'rail'}})
+    schedule.generate_vehicles()
+    assert_semantically_equal(schedule.vehicles, {'v_1': {'type': 'bus'}, 'v_2': {'type': 'bus'},
+                                                  'v_3': {'type': 'rail'}})
+
+
+def test_generating_additional_vehicles(schedule):
+    r = Route(
+        route_short_name='N55',
+        mode='bus',
+        trips={'trip_id': ['some_trip_1'],
+               'trip_departure_time': ['16:23:00'],
+               'vehicle_id': ['some_bus_2']},
+        arrival_offsets=['00:00:00', '00:06:00'],
+        departure_offsets=['00:00:00', '00:06:00'],
+        id='new',
+        stops=[schedule.stop('1'),
+               schedule.stop('3')]
+    )
+    schedule.add_route('service', r)
+    # change existing vehicle types to be different from mode to test whether they are regenerated with default
+    # mode type
+    schedule.vehicles = {'veh_3_bus': {'type': '_bus'}, 'veh_4_bus': {'type': '_bus'}, 'veh_1_bus': {'type': '_bus'},
+                         'veh_2_bus': {'type': '_bus'}}
+    schedule.generate_vehicles()
+    assert_semantically_equal(schedule.vehicles, {'veh_3_bus': {'type': '_bus'}, 'veh_4_bus': {'type': '_bus'},
+                                         'veh_1_bus': {'type': '_bus'}, 'veh_2_bus': {'type': '_bus'},
+                                         'some_bus_2': {'type': 'bus'}})
 
 
 def test_generating_vehicles_with_shared_vehicles_and_inconsistent_modes(mocker, schedule):
@@ -1194,7 +1220,8 @@ def test_applying_route_trips_dataframe(schedule):
 
     assert_frame_equal(
         df_to_change.sort_values(by=['route_id', 'trip_id']).sort_index(axis=1),
-        schedule.route_trips_to_dataframe(gtfs_day='19700101').sort_values(by=['route_id', 'trip_id']).sort_index(axis=1))
+        schedule.route_trips_to_dataframe(gtfs_day='19700101').sort_values(by=['route_id', 'trip_id']).sort_index(
+            axis=1))
 
 
 def test_overlapping_vehicles(schedule):
