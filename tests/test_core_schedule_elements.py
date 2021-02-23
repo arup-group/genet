@@ -1,7 +1,7 @@
 import pytest
 from networkx import Graph, DiGraph, set_node_attributes
-from genet.schedule_elements import Schedule, Service, Route, Stop
-from genet.exceptions import ServiceIndexError, RouteIndexError
+from genet.schedule_elements import Schedule, Service, Route, Stop, verify_graph_schema
+from genet.exceptions import ServiceIndexError, RouteIndexError, ScheduleElementGraphSchemaError
 from genet.inputs_handler import gtfs_reader
 from tests.fixtures import assert_semantically_equal, correct_schedule_dict_from_test_gtfs, \
     correct_stopdb_from_test_gtfs
@@ -411,3 +411,62 @@ def test_instantiating_service_with_new_attributes(schedule):
     })
     s = schedule['service1']
     assert s.new_attribute == 'value'
+
+
+def test_graph_schema_verification_throws_error_when_given_wrong_type_object():
+    g = {}
+
+    with pytest.raises(ScheduleElementGraphSchemaError) as e:
+        verify_graph_schema(g)
+    assert 'The graph for a schedule element needs to be a networkx.DiGraph' in str(e.value)
+
+
+def test_graph_schema_verification_throws_error_when_attributes_missing_from_stops():
+    g = DiGraph()
+    g.add_node('1', x=1, y=2)
+
+    with pytest.raises(ScheduleElementGraphSchemaError) as e:
+        verify_graph_schema(g)
+    assert 'missing the following attributes' in str(e.value)
+
+
+def test_graph_schema_verification_throws_error_when_routes_missing():
+    g = DiGraph()
+    g.add_node('1', x=1, y=2, id='1', epsg='epsg:27700')
+
+    with pytest.raises(ScheduleElementGraphSchemaError) as e:
+        verify_graph_schema(g)
+    assert 'Graph is missing `routes` attribute' in str(e.value)
+
+
+def test_graph_schema_verification_throws_error_when_missing_route_attributes():
+    g = DiGraph()
+    g.add_node('1', x=1, y=2, id='1', epsg='epsg:27700')
+    g.graph['routes'] = {'1': {}}
+
+    with pytest.raises(ScheduleElementGraphSchemaError) as e:
+        verify_graph_schema(g)
+    assert 'missing the following attributes:' in str(e.value)
+
+
+def test_graph_schema_verification_throws_error_when_services_missing():
+    g = DiGraph()
+    g.add_node('1', x=1, y=2, id='1', epsg='epsg:27700')
+    g.graph['routes'] = {'1': {'arrival_offsets':[], 'ordered_stops':[], 'route_short_name':'', 'mode':'',
+                               'departure_offsets':[], 'trips':{}}}
+
+    with pytest.raises(ScheduleElementGraphSchemaError) as e:
+        verify_graph_schema(g)
+    assert 'Graph is missing `services` attribute' in str(e.value)
+
+
+def test_graph_schema_verification_throws_error_when_missing_service_attributes():
+    g = DiGraph()
+    g.add_node('1', x=1, y=2, id='1', epsg='epsg:27700')
+    g.graph['routes'] = {'1': {'arrival_offsets':[], 'ordered_stops':[], 'route_short_name':'', 'mode':'',
+                               'departure_offsets':[], 'trips':{}}}
+    g.graph['services'] = {'1': {}}
+
+    with pytest.raises(ScheduleElementGraphSchemaError) as e:
+        verify_graph_schema(g)
+    assert 'missing the following attributes:' in str(e.value)
