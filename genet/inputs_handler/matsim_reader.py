@@ -317,7 +317,7 @@ def read_vehicles(vehicles_path):
     v = {'capacity': {}}
     read_capacity = False
     for event, elem in ET.iterparse(vehicles_path):
-        tag = re.sub('{http://www\.matsim\.org/files/dtd}', '', elem.tag)
+        tag = re.sub('{http://www\.matsim\.org/files/dtd}', '', elem.tag)  # noqa: W605
         if tag == 'vehicle':
             _id = elem.attrib.pop('id')
             vehicles[_id] = elem.attrib
