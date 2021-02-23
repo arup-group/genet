@@ -6,7 +6,7 @@ import pandas as pd
 import networkx as nx
 import pytest
 import lxml
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Polygon
 from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
     full_fat_default_config_path, correct_schedule
@@ -14,8 +14,7 @@ from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_d
 from genet.inputs_handler import matsim_reader
 from genet.core import Network
 from genet.schedule_elements import Route, Service, Schedule
-from genet.utils import graph_operations
-from genet.utils import plot
+from genet.utils import plot, spatial, graph_operations
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -35,6 +34,7 @@ simplified_schedule = os.path.abspath(
 
 network_link_attrib_text_missing = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_link_attrib_text_missing.xml"))
+
 
 @pytest.fixture()
 def network1():
@@ -168,11 +168,11 @@ def test_reproject_changes_x_y_values_for_all_nodes(network1):
     assert_semantically_equal(nodes, correct_nodes)
     for i in [3, 4]:
         assert_semantically_equal(ast.literal_eval(target_change_log.loc[i, 'old_attributes']),
-                                  ast.literal_eval(network1.change_log.log.loc[i, 'old_attributes']))
+                                  ast.literal_eval(network1.change_log.loc[i, 'old_attributes']))
         assert_semantically_equal(ast.literal_eval(target_change_log.loc[i, 'new_attributes']),
-                                  ast.literal_eval(network1.change_log.log.loc[i, 'new_attributes']))
+                                  ast.literal_eval(network1.change_log.loc[i, 'new_attributes']))
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'diff']
-    assert_frame_equal(network1.change_log.log[cols_to_compare].tail(2), target_change_log[cols_to_compare],
+    assert_frame_equal(network1.change_log[cols_to_compare].tail(2), target_change_log[cols_to_compare],
                        check_dtype=False)
 
 
@@ -191,19 +191,19 @@ def test_reproject_updates_graph_crs(network1):
 def test_reprojecting_links_with_geometries():
     n = Network('epsg:27700')
     n.add_nodes({'A': {'x': -82514.72274, 'y': 220772.02798},
-                 'B':{'x': -82769.25894, 'y': 220773.0637}})
+                 'B': {'x': -82769.25894, 'y': 220773.0637}})
     n.add_links({'1': {'from': 'A', 'to': 'B',
                        'geometry': LineString([(-82514.72274, 220772.02798),
-                                              (-82546.23894, 220772.88254),
-                                              (-82571.87107, 220772.53339),
-                                              (-82594.92709, 220770.68385),
-                                              (-82625.33255, 220770.45579),
-                                              (-82631.26842, 220770.40158),
-                                              (-82669.7309, 220770.04349),
-                                              (-82727.94946, 220770.79793),
-                                              (-82757.38528, 220771.75412),
-                                              (-82761.82425, 220771.95614),
-                                              (-82769.25894, 220773.0637)])}})
+                                               (-82546.23894, 220772.88254),
+                                               (-82571.87107, 220772.53339),
+                                               (-82594.92709, 220770.68385),
+                                               (-82625.33255, 220770.45579),
+                                               (-82631.26842, 220770.40158),
+                                               (-82669.7309, 220770.04349),
+                                               (-82727.94946, 220770.79793),
+                                               (-82757.38528, 220771.75412),
+                                               (-82761.82425, 220771.95614),
+                                               (-82769.25894, 220773.0637)])}})
     n.reproject('epsg:2157')
 
     geometry_coords = list(n.link('1')['geometry'].coords)
@@ -447,7 +447,7 @@ def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_
 
     n.simplify()
 
-    assert n.graph.graph["simplified"]
+    assert n.is_simplified()
 
     link_ids_post_simplify = set(dict(n.links()).keys())
 
@@ -461,6 +461,7 @@ def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_
     report = n.generate_validation_report()
 
     assert report['routing']['services_have_routes_in_the_graph']
+    assert report['schedule']['schedule_level']['is_valid_schedule']
 
 
 def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_dtd):
@@ -494,7 +495,7 @@ def test_reading_back_simplified_network():
 
     number_of_simplified_links = 659
 
-    links_with_geometry = graph_operations.extract_links_on_edge_attributes(n, conditions={'geometry': lambda x: True})
+    links_with_geometry = n.extract_links_on_edge_attributes(conditions={'geometry': lambda x: True})
 
     assert len(links_with_geometry) == number_of_simplified_links
 
@@ -896,8 +897,136 @@ def test_network_modal_subgraph_using_specific_modal_subgraph_method_several_mod
     n.add_link('2', 2, 3, attribs={'modes': ['bike']})
     n.add_link('3', 2, 3, attribs={'modes': ['walk']})
 
-    car_graph = n.modal_subgraph(modes=['car', 'bike'])
-    assert list(car_graph.edges) == [(1, 2, 0), (2, 3, 0), (2, 3, 1)]
+    car_bike_graph = n.modal_subgraph(modes=['car', 'bike'])
+    assert list(car_bike_graph.edges) == [(1, 2, 0), (2, 3, 0), (2, 3, 1)]
+
+
+def test_links_on_modal_condition():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike']})
+    n.add_link('1', 2, 3, attribs={'modes': ['car']})
+    n.add_link('2', 2, 3, attribs={'modes': ['bike']})
+    n.add_link('3', 2, 3, attribs={'modes': ['walk']})
+
+    car_links = n.links_on_modal_condition(modes=['car'])
+    assert set(car_links) == {'0', '1'}
+
+
+def test_nodes_on_modal_condition():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike']})
+    n.add_link('1', 2, 3, attribs={'modes': ['car']})
+    n.add_link('2', 2, 3, attribs={'modes': ['bike']})
+    n.add_link('3', 2, 3, attribs={'modes': ['walk']})
+
+    car_nodes = n.nodes_on_modal_condition(modes=['car'])
+    assert set(car_nodes) == {1, 2, 3}
+
+
+test_geojson = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "test_geojson.geojson"))
+
+
+def test_nodes_on_spatial_condition_with_geojson(network_object_from_test_data):
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    nodes = network_object_from_test_data.nodes_on_spatial_condition(test_geojson)
+    assert set(nodes) == {'21667818', '25508485'}
+
+
+def test_nodes_on_spatial_condition_with_shapely_geom(network_object_from_test_data):
+    region = Polygon([(-0.1487016677856445, 51.52556684350165), (-0.14063358306884766, 51.5255134425896),
+                      (-0.13865947723388672, 51.5228700191647), (-0.14093399047851562, 51.52006622056997),
+                      (-0.1492595672607422, 51.51974577545329), (-0.1508045196533203, 51.52276321095246),
+                      (-0.1487016677856445, 51.52556684350165)])
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    nodes = network_object_from_test_data.nodes_on_spatial_condition(region)
+    assert set(nodes) == {'21667818', '25508485'}
+
+
+def test_nodes_on_spatial_condition_with_s2_region(network_object_from_test_data):
+    region = '48761ad04d,48761ad054,48761ad05c,48761ad061,48761ad085,48761ad08c,48761ad094,48761ad09c,48761ad0b,48761ad0d,48761ad0f,48761ad14,48761ad182c,48761ad19c,48761ad1a4,48761ad1ac,48761ad1b4,48761ad1bac,48761ad3d7f,48761ad3dc,48761ad3e4,48761ad3ef,48761ad3f4,48761ad3fc,48761ad41,48761ad43,48761ad5d,48761ad5e4,48761ad5ec,48761ad5fc,48761ad7,48761ad803,48761ad81c,48761ad824,48761ad82c,48761ad9d,48761ad9e4,48761ad9e84,48761ad9fc,48761ada04,48761ada0c,48761b2804,48761b2814,48761b281c,48761b283,48761b2844,48761b284c,48761b2995,48761b29b4,48761b29bc,48761b29d,48761b29f,48761b2a04'
+    network_object_from_test_data.add_node(
+        '1', {'id': '1', 'x': 508400, 'y': 162050, 's2_id': spatial.generate_index_s2(51.3472033, 0.4449167)})
+    nodes = network_object_from_test_data.nodes_on_spatial_condition(region)
+    assert set(nodes) == {'21667818', '25508485'}
+
+
+def test_links_on_spatial_condition_with_geojson(network_object_from_test_data):
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    network_object_from_test_data.add_link('2', u='21667818', v='1')
+    links = network_object_from_test_data.links_on_spatial_condition(test_geojson)
+    assert set(links) == {'1', '2'}
+
+
+def test_links_on_spatial_condition_with_shapely_geom(network_object_from_test_data):
+    region = Polygon([(-0.1487016677856445, 51.52556684350165), (-0.14063358306884766, 51.5255134425896),
+                      (-0.13865947723388672, 51.5228700191647), (-0.14093399047851562, 51.52006622056997),
+                      (-0.1492595672607422, 51.51974577545329), (-0.1508045196533203, 51.52276321095246),
+                      (-0.1487016677856445, 51.52556684350165)])
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    network_object_from_test_data.add_link('2', u='21667818', v='1')
+    links = network_object_from_test_data.links_on_spatial_condition(region)
+    assert set(links) == {'1', '2'}
+
+
+def test_links_on_spatial_condition_with_s2_region(network_object_from_test_data):
+    region = '48761ad04d,48761ad054,48761ad05c,48761ad061,48761ad085,48761ad08c,48761ad094,48761ad09c,48761ad0b,48761ad0d,48761ad0f,48761ad14,48761ad182c,48761ad19c,48761ad1a4,48761ad1ac,48761ad1b4,48761ad1bac,48761ad3d7f,48761ad3dc,48761ad3e4,48761ad3ef,48761ad3f4,48761ad3fc,48761ad41,48761ad43,48761ad5d,48761ad5e4,48761ad5ec,48761ad5fc,48761ad7,48761ad803,48761ad81c,48761ad824,48761ad82c,48761ad9d,48761ad9e4,48761ad9e84,48761ad9fc,48761ada04,48761ada0c,48761b2804,48761b2814,48761b281c,48761b283,48761b2844,48761b284c,48761b2995,48761b29b4,48761b29bc,48761b29d,48761b29f,48761b2a04'
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    network_object_from_test_data.add_link('2', u='21667818', v='1')
+    links = network_object_from_test_data.links_on_spatial_condition(region)
+    assert set(links) == {'1', '2'}
+
+
+def test_links_on_spatial_condition_with_intersection_and_complex_geometry_that_falls_outside_region(network_object_from_test_data):
+    region = Polygon([(-0.1487016677856445, 51.52556684350165), (-0.14063358306884766, 51.5255134425896),
+                      (-0.13865947723388672, 51.5228700191647), (-0.14093399047851562, 51.52006622056997),
+                      (-0.1492595672607422, 51.51974577545329), (-0.1508045196533203, 51.52276321095246),
+                      (-0.1487016677856445, 51.52556684350165)])
+    network_object_from_test_data.add_link(
+        '2', u='21667818', v='25508485',
+        attribs={'geometry': LineString([(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
+    links = network_object_from_test_data.links_on_spatial_condition(region, how='intersect')
+    assert set(links) == {'1', '2'}
+
+
+def test_links_on_spatial_condition_with_containement(network_object_from_test_data):
+    region = Polygon([(-0.1487016677856445, 51.52556684350165), (-0.14063358306884766, 51.5255134425896),
+                      (-0.13865947723388672, 51.5228700191647), (-0.14093399047851562, 51.52006622056997),
+                      (-0.1492595672607422, 51.51974577545329), (-0.1508045196533203, 51.52276321095246),
+                      (-0.1487016677856445, 51.52556684350165)])
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    network_object_from_test_data.add_link('2', u='21667818', v='1')
+    links = network_object_from_test_data.links_on_spatial_condition(region, how='within')
+    assert set(links) == {'1'}
+
+
+def test_links_on_spatial_condition_with_containement_and_complex_geometry_that_falls_outside_region(network_object_from_test_data):
+    region = Polygon([(-0.1487016677856445, 51.52556684350165), (-0.14063358306884766, 51.5255134425896),
+                      (-0.13865947723388672, 51.5228700191647), (-0.14093399047851562, 51.52006622056997),
+                      (-0.1492595672607422, 51.51974577545329), (-0.1508045196533203, 51.52276321095246),
+                      (-0.1487016677856445, 51.52556684350165)])
+    network_object_from_test_data.add_link(
+        '2', u='21667818', v='25508485',
+        attribs={'geometry': LineString([(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
+    links = network_object_from_test_data.links_on_spatial_condition(region, how='within')
+    assert set(links) == {'1'}
+
+
+def test_links_on_spatial_condition_with_containement_and_s2_region(network_object_from_test_data):
+    region = '48761ad04d,48761ad054,48761ad05c,48761ad061,48761ad085,48761ad08c,48761ad094,48761ad09c,48761ad0b,48761ad0d,48761ad0f,48761ad14,48761ad182c,48761ad19c,48761ad1a4,48761ad1ac,48761ad1b4,48761ad1bac,48761ad3d7f,48761ad3dc,48761ad3e4,48761ad3ef,48761ad3f4,48761ad3fc,48761ad41,48761ad43,48761ad5d,48761ad5e4,48761ad5ec,48761ad5fc,48761ad7,48761ad803,48761ad81c,48761ad824,48761ad82c,48761ad9d,48761ad9e4,48761ad9e84,48761ad9fc,48761ada04,48761ada0c,48761b2804,48761b2814,48761b281c,48761b283,48761b2844,48761b284c,48761b2995,48761b29b4,48761b29bc,48761b29d,48761b29f,48761b2a04'
+    network_object_from_test_data.add_node('1', {'id': '1', 'x': 508400, 'y': 162050})
+    network_object_from_test_data.add_link('2', u='21667818', v='1')
+    links = network_object_from_test_data.links_on_spatial_condition(region, how='within')
+    assert set(links) == {'1'}
+
+
+def test_links_on_spatial_condition_with_containement_and_complex_geometry_that_falls_outside_s2_region(network_object_from_test_data):
+    region = '48761ad04d,48761ad054,48761ad05c,48761ad061,48761ad085,48761ad08c,48761ad094,48761ad09c,48761ad0b,48761ad0d,48761ad0f,48761ad14,48761ad182c,48761ad19c,48761ad1a4,48761ad1ac,48761ad1b4,48761ad1bac,48761ad3d7f,48761ad3dc,48761ad3e4,48761ad3ef,48761ad3f4,48761ad3fc,48761ad41,48761ad43,48761ad5d,48761ad5e4,48761ad5ec,48761ad5fc,48761ad7,48761ad803,48761ad81c,48761ad824,48761ad82c,48761ad9d,48761ad9e4,48761ad9e84,48761ad9fc,48761ada04,48761ada0c,48761b2804,48761b2814,48761b281c,48761b283,48761b2844,48761b284c,48761b2995,48761b29b4,48761b29bc,48761b29d,48761b29f,48761b2a04'
+    network_object_from_test_data.add_link(
+        '2', u='21667818', v='25508485',
+        attribs={'geometry': LineString([(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
+    links = network_object_from_test_data.links_on_spatial_condition(region, how='within')
+    assert set(links) == {'1'}
 
 
 def test_find_shortest_path_when_graph_has_no_extra_edge_choices():
@@ -1016,7 +1145,7 @@ def test_reindex_node(network1):
                   4: [('change', 'id', ('101982', '007')), ('change', 'id', ('101982', '007'))],
                   5: [('change', 'id', ('101982', '007'))]}})
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(network1.change_log.log[cols_to_compare].tail(3), correct_change_log_df[cols_to_compare],
+    assert_frame_equal(network1.change_log[cols_to_compare].tail(3), correct_change_log_df[cols_to_compare],
                        check_names=False,
                        check_dtype=False)
 
@@ -1069,7 +1198,7 @@ def test_reindex_link(network1):
          'diff': {3: [('change', 'id', ('0', '007')), ('change', 'id', ('0', '007'))],
                   4: [('change', 'id', ('0', '007'))]}})
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(network1.change_log.log[cols_to_compare].tail(2), correct_change_log_df[cols_to_compare],
+    assert_frame_equal(network1.change_log[cols_to_compare].tail(2), correct_change_log_df[cols_to_compare],
                        check_names=False, check_dtype=False)
 
 
@@ -1103,7 +1232,7 @@ def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_chan
          'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', 1)], 1: [('add', '', [('b', 1)])]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_names=False,
+    assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_names=False,
                        check_dtype=False)
 
 
@@ -1121,7 +1250,7 @@ def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_r
          'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', 1)], 1: [('change', 'a', (1, 4))]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+    assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
 
 
 def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_recorded_by_change_log():
@@ -1144,7 +1273,7 @@ def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_rec
          })
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+    assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
 
 
 def multiply_node_attribs(node_attribs):
@@ -1180,7 +1309,7 @@ def test_apply_attributes_to_edge_without_filter_conditions():
          'diff': {2: [('add', '', [('c', 1)])], 3: [('add', '', [('c', 1)])]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare].tail(2), correct_change_log_df[cols_to_compare],
+    assert_frame_equal(n.change_log[cols_to_compare].tail(2), correct_change_log_df[cols_to_compare],
                        check_dtype=False)
 
 
@@ -1202,7 +1331,7 @@ def test_apply_attributes_to_edge_with_filter_conditions():
          'diff': {2: [('add', '', [('c', 1)])]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
+    assert_frame_equal(n.change_log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
                        check_dtype=False)
 
 
@@ -1251,7 +1380,7 @@ def test_modify_link_adds_attributes_in_the_graph_and_change_is_recorded_by_chan
                   1: [('add', '', [('b', 1)])]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+    assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
 
 
 def test_modify_link_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log():
@@ -1270,7 +1399,7 @@ def test_modify_link_overwrites_existing_attributes_in_the_graph_and_change_is_r
                   1: [('change', 'a', (1, 4))]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+    assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
 
 
 def test_modify_link_adds_attributes_in_the_graph_with_multiple_edges():
@@ -1302,7 +1431,7 @@ def test_modify_links_adds_and_changes_attributes_in_the_graph_with_multiple_edg
          'diff': {2: [('change', 'a.b', (1, 100))], 3: [('add', '', [('a', {'b': 10})])]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare].tail(2), correct_change_log_df[cols_to_compare],
+    assert_frame_equal(n.change_log[cols_to_compare].tail(2), correct_change_log_df[cols_to_compare],
                        check_dtype=False)
 
 
@@ -1353,7 +1482,7 @@ def test_removing_single_node():
          'old_id': {4: 1}, 'new_id': {4: None}, 'old_attributes': {4: '{}'}, 'new_attributes': {4: None},
          'diff': {4: [('remove', 'id', 1)]}})
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare].tail(1), correct_change_log[cols_to_compare],
+    assert_frame_equal(n.change_log[cols_to_compare].tail(1), correct_change_log[cols_to_compare],
                        check_dtype=False)
 
 
@@ -1374,7 +1503,7 @@ def test_removing_multiple_nodes():
          'old_attributes': {4: '{}', 5: '{}'}, 'new_attributes': {4: None, 5: None},
          'diff': {4: [('remove', 'id', 1)], 5: [('remove', 'id', 2)]}})
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare].tail(2), correct_change_log[cols_to_compare],
+    assert_frame_equal(n.change_log[cols_to_compare].tail(2), correct_change_log[cols_to_compare],
                        check_dtype=False)
 
 
@@ -1397,7 +1526,7 @@ def test_removing_single_link():
          'new_attributes': {4: None},
          'diff': {4: [('remove', '', [('b', 4), ('from', 1), ('to', 2), ('id', '1')]), ('remove', 'id', '1')]}})
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare].tail(1), correct_change_log[cols_to_compare],
+    assert_frame_equal(n.change_log[cols_to_compare].tail(1), correct_change_log[cols_to_compare],
                        check_dtype=False)
 
 
@@ -1424,7 +1553,7 @@ def test_removing_multiple_links():
          'diff': {4: [('remove', '', [('a', 1), ('from', 1), ('to', 2), ('id', '0')]), ('remove', 'id', '0')],
                   5: [('remove', '', [('a', 1), ('from', 2), ('to', 3), ('id', '2')]), ('remove', 'id', '2')]}})
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log.log[cols_to_compare].tail(2), correct_change_log[cols_to_compare],
+    assert_frame_equal(n.change_log[cols_to_compare].tail(2), correct_change_log[cols_to_compare],
                        check_dtype=False)
 
 
@@ -1494,8 +1623,15 @@ def test_schedule_routes(network_object_from_test_data):
 
 def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
     n = network_object_from_test_data
-    n.schedule['10314']._routes['1'] = Route(arrival_offsets=[], departure_offsets=[], mode='bus', trips={},
-                                             route_short_name='', stops=[])
+    n.schedule._graph.graph['routes']['1'] = {
+        'route_short_name': '', 'mode': 'bus',
+        'trips': {},
+        'arrival_offsets': [], 'departure_offsets': [],
+        'route_long_name': '', 'id': '1', 'route': [],
+        'await_departure': [], 'ordered_stops': []}
+    n.schedule._graph.graph['service_to_route_map']['10314'].append('1')
+    n.schedule._graph.graph['route_to_service_map']['1'] = '10314'
+
     assert set(n.schedule.service_ids()) == {'10314'}
     correct_routes = [['25508485', '21667818']]
     routes = n.schedule_routes_nodes()
@@ -1505,7 +1641,7 @@ def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
 def test_schedule_routes_with_disconnected_routes(network_object_from_test_data):
     n = network_object_from_test_data
     n.add_link('2', 2345678, 987875)
-    n.schedule.route('VJbd8660f05fe6f744e58a66ae12bd66acbca88b98').route.append('2')
+    n.schedule.apply_attributes_to_routes({'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'route': ['1', '2']}})
     correct_routes = [['25508485', '21667818'], [2345678, 987875]]
     routes = n.schedule_routes_nodes()
     assert correct_routes == routes
@@ -1662,7 +1798,7 @@ def test_read_matsim_network_with_duplicated_node_ids_records_removal_in_changel
                       ('remove', 'id', '21667818')]}}
     )
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(network.change_log.log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
+    assert_frame_equal(network.change_log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
                        check_names=False,
                        check_dtype=False)
 
@@ -1683,7 +1819,7 @@ def test_read_matsim_network_with_duplicated_link_ids_records_reindexing_in_chan
          'new_attributes': {0: "{'heyooo': '1'}"}, 'diff': {0: [('change', 'id', ('1', '1_1'))]}}
     )
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(network.change_log.log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
+    assert_frame_equal(network.change_log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
                        check_names=False,
                        check_dtype=False)
 
@@ -1972,7 +2108,10 @@ def test_has_schedule_with_valid_network_routes_with_valid_routes(route):
     n.add_link('1', 1, 2, attribs={"modes": ['bus']})
     n.add_link('2', 2, 3, attribs={"modes": ['car', 'bus']})
     route.route = ['1', '2']
-    n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route, route])])
+    n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route])])
+    route.reindex('service_1')
+    n.schedule.add_route('service', route)
+    n.schedule.apply_attributes_to_routes({'service_0': {'route': ['1', '2']}, 'service_1': {'route': ['1', '2']}})
     assert n.has_schedule_with_valid_network_routes()
 
 
@@ -2009,8 +2148,9 @@ def test_invalid_network_routes_with_valid_route(route):
     n = Network('epsg:27700')
     n.add_link('1', 1, 2, attribs={"modes": ['car', 'bus']})
     n.add_link('2', 2, 3, attribs={"modes": ['bus']})
-    route.route = ['1', '2']
+    route.reindex('route')
     n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route])])
+    n.schedule.apply_attributes_to_routes({'route': {'route': ['1', '2']}})
     assert n.invalid_network_routes() == []
 
 
@@ -2018,20 +2158,20 @@ def test_invalid_network_routes_with_invalid_route(route):
     n = Network('epsg:27700')
     n.add_link('1', 1, 2)
     n.add_link('2', 2, 3)
-    route.route = ['3', '4']
-    route.id = 'route'
+    route.reindex('route')
     n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route])])
-    assert n.invalid_network_routes() == [('service', 'route')]
+    n.schedule.apply_attributes_to_routes({'route': {'route': ['3', '4']}})
+    assert n.invalid_network_routes() == ['route']
 
 
 def test_invalid_network_routes_with_empty_route(route):
     n = Network('epsg:27700')
     n.add_link('1', 1, 2)
     n.add_link('2', 2, 3)
-    route.route = []
-    route.id = 'route'
+    route.reindex('route')
     n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route])])
-    assert n.invalid_network_routes() == [('service', 'route')]
+    n.schedule.apply_attributes_to_routes({'route': {'route': []}})
+    assert n.invalid_network_routes() == ['route']
 
 
 def test_generate_validation_report_with_pt2matsim_network(network_object_from_test_data):
@@ -2056,9 +2196,10 @@ def test_generate_validation_report_with_pt2matsim_network(network_object_from_t
             'route_level': {'10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'is_valid_route': False,
                                                                                      'invalid_stages': [
                                                                                          'not_has_correctly_ordered_route']}}}},
-        'routing': {'services_have_routes_in_the_graph': False, 'service_routes_with_invalid_network_route': [
-            ('10314', 'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98')], 'route_to_crow_fly_ratio': {
-            '10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': 'Division by zero'}}}}
+        'routing': {'services_have_routes_in_the_graph': False,
+                    'service_routes_with_invalid_network_route': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
+                    'route_to_crow_fly_ratio': {
+                        '10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': 'Division by zero'}}}}
     assert_semantically_equal(report, correct_report)
 
 
@@ -2087,41 +2228,6 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
                         '2': {'is_valid_route': True, 'invalid_stages': []}}}},
         'routing': {'services_have_routes_in_the_graph': True, 'service_routes_with_invalid_network_route': [],
                     'route_to_crow_fly_ratio': {'service': {'1': 0.037918141839160244, '2': 0.037918141839160244}}}}
-    assert_semantically_equal(report, correct_report)
-
-
-def test_generate_validation_report_with_non_uniquely_indexed_routes(correct_schedule):
-    n = Network('epsg:27700')
-    n.add_link('1', 1, 2, attribs={'length': 2, "modes": ['car', 'bus']})
-    n.add_link('2', 2, 3, attribs={'length': 2, "modes": ['car', 'bus']})
-
-    for serv_id, route in correct_schedule.routes():
-        route.id = '1'
-    n.schedule = correct_schedule
-
-    report = n.generate_validation_report()
-    correct_report = {
-        'graph': {
-            'graph_connectivity': {
-                'car': {'problem_nodes': {'dead_ends': [3], 'unreachable_node': [1]},
-                        'number_of_connected_subgraphs': 3},
-                'walk': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
-                         'number_of_connected_subgraphs': 0},
-                'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
-                         'number_of_connected_subgraphs': 0}},
-            'links_over_1km_length': []},
-        'schedule': {
-            'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
-                               'has_valid_services': False, 'invalid_services': ['service']},
-            'service_level': {'service': {'is_valid_service': False,
-                                          'invalid_stages': ['not_has_uniquely_indexed_routes'],
-                                          'has_valid_routes': True,
-                                          'invalid_routes': []}},
-            'route_level': {'service': {0: {'is_valid_route': True, 'invalid_stages': []},
-                                        1: {'is_valid_route': True, 'invalid_stages': []}}}},
-        'routing': {'services_have_routes_in_the_graph': True,
-                    'service_routes_with_invalid_network_route': [],
-                    'route_to_crow_fly_ratio': {'service': {0: 0.037918141839160244, 1: 0.037918141839160244}}}}
     assert_semantically_equal(report, correct_report)
 
 
@@ -2161,9 +2267,11 @@ def test_write_to_matsim_generates_network_matsim_file_if_network_is_car_only(ne
 
 
 def test_write_to_matsim_generates_change_log_csv(network_object_from_test_data, tmpdir):
-    expected_change_log_path = os.path.join(tmpdir, 'change_log.csv')
+    expected_change_log_path = os.path.join(tmpdir, 'network_change_log.csv')
+    expected_schedule_change_log_path = os.path.join(tmpdir, 'schedule_change_log.csv')
     assert not os.path.exists(expected_change_log_path)
 
     network_object_from_test_data.write_to_matsim(tmpdir)
 
     assert os.path.exists(expected_change_log_path)
+    assert os.path.exists(expected_schedule_change_log_path)

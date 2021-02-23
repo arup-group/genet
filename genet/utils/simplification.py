@@ -1,5 +1,4 @@
 import genet.utils.parallel as parallel
-import networkx as nx
 from math import ceil
 from shapely.geometry import LineString, Point
 import logging
@@ -226,7 +225,7 @@ def simplify_graph(n, no_processes=1):
         del indexed_paths_to_simplify[old_id]
     new_ids = list(indexed_paths_to_simplify.keys())
     old_ids = [set(indexed_paths_to_simplify[_id]['ids']) for _id in new_ids]
-    n.change_log.simplify_bunch(old_ids, new_ids, indexed_paths_to_simplify, links_to_add)
+    n.change_log = n.change_log.simplify_bunch(old_ids, new_ids, indexed_paths_to_simplify, links_to_add)
     del links_to_add
 
     # generate map between old and new ids
@@ -242,26 +241,27 @@ def simplify_graph(n, no_processes=1):
     if n.schedule:
         logging.info("Updating the Schedule")
         # update stop's link reference ids
-        new_stops_attribs = {}
-        for node, link_ref_id in n.schedule._graph.nodes(data='linkRefId'):
-            try:
-                new_stops_attribs[node] = {'linkRefId': n.link_simplification_map[link_ref_id]}
-            except KeyError:
-                # Not all linkref ids would have changed
-                pass
-        nx.set_node_attributes(n.schedule._graph, new_stops_attribs)
+        n.schedule.apply_function_to_stops(n.link_simplification_map, 'linkRefId')
         logging.info("Updated Stop Link Reference Ids")
 
         # update schedule routes
-        for service_id, route in n.schedule.routes():
-            new_route = []
-            for link in route.route:
-                updated_route_link = link
-                if link in n.link_simplification_map:
-                    updated_route_link = n.link_simplification_map[link]
-                if not new_route:
-                    new_route = [updated_route_link]
-                elif new_route[-1] != updated_route_link:
-                    new_route.append(updated_route_link)
-            route.route = new_route
+        df_routes = n.schedule.route_attribute_data(keys=['route'])
+        df_routes['route'] = df_routes['route'].apply(lambda x: update_link_ids(x, n.link_simplification_map))
+        n.schedule.apply_attributes_to_routes(df_routes.T.to_dict())
         logging.info("Updated Network Routes")
+        logging.info("Finished simplifying network")
+
+
+def update_link_ids(old_route, link_mapping):
+    new_route = []
+    for link in old_route:
+        updated_route_link = link
+        try:
+            updated_route_link = link_mapping[link]
+        except KeyError:
+            pass
+        if not new_route:
+            new_route = [updated_route_link]
+        elif new_route[-1] != updated_route_link:
+            new_route.append(updated_route_link)
+    return new_route

@@ -342,7 +342,7 @@ def test_saving_network_with_geometry_produces_polyline_if_link_already_has_othe
     assert found_geometry_attrib
 
 
-def test_write_matsim_network_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
+def test_write_matsim_network_produces_semantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
                                                                                   tmpdir):
     matsim_xml_writer.write_matsim_network(tmpdir, network_object_from_test_data)
 
@@ -361,14 +361,14 @@ def test_generates_valid_matsim_schedule_xml_file(network_object_from_test_data,
                     schedule_dtd.error_log.filter_from_errors()[0])
 
 
-def test_write_matsim_schedule_produces_symantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
+def test_write_matsim_schedule_produces_semantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
                                                                                    tmpdir):
     matsim_xml_writer.write_matsim_schedule(tmpdir, network_object_from_test_data.schedule)
 
     xml_diff.assert_semantically_equal(os.path.join(tmpdir, 'schedule.xml'), pt2matsim_schedule_file)
 
 
-def test_write_matsim_schedule_produces_symantically_equal_xml_to_input_matsim_xml_if_stops_need_to_reprojected(
+def test_write_matsim_schedule_produces_semantically_equal_xml_to_input_matsim_xml_if_stops_need_to_reprojected(
         network_object_from_test_data, tmpdir):
     # we change all the stops in the one service and one route that exists in the test data
     network_object_from_test_data.schedule.route('VJbd8660f05fe6f744e58a66ae12bd66acbca88b98').reproject('epsg:3035')

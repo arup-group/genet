@@ -56,7 +56,7 @@ def get_node(element, config):
 
     node = {}
     node['osmid'] = element['id']
-    node['s2id'] = spatial.grab_index_s2(element['lat'], element['lon'])
+    node['s2id'] = spatial.generate_index_s2(element['lat'], element['lon'])
     node['x'], node['y'] = element['lat'], element['lon']
     if 'tags' in element:
         for useful_tag in config.USEFUL_TAGS_NODE:

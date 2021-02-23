@@ -3,6 +3,8 @@ from genet.utils import graph_operations
 from anytree import Node, RenderTree
 from tests.fixtures import assert_semantically_equal
 import logging
+from pandas.testing import assert_frame_equal
+from pandas import DataFrame
 
 
 def generate_output_tree(root):
@@ -29,8 +31,8 @@ def test_extract_graph_links_with_flat_condition():
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': 'yes'},
     )
 
@@ -45,8 +47,8 @@ def test_extract_graph_links_with_flat_condition_and_list_value():
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_link('2', 3, 4, attribs={'attributes': ['yes', 'no', 'bobby']})
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': 'yes'},
     )
 
@@ -61,8 +63,8 @@ def test_extract_graph_links_with_flat_condition_and_list_value_specifying_to_ig
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_link('2', 3, 4, attribs={'attributes': ['yes', 'no', 'bobby']})
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': 'yes'},
         mixed_dtypes=False
     )
@@ -77,8 +79,8 @@ def test_extract_graph_links_with_nested_condition():
     n.add_link('1', 2, 3, attribs={
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': {'osm:way:highway': {'text': 'primary'}}},
     )
 
@@ -93,8 +95,8 @@ def test_extract_graph_links_with_list_of_conditions():
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions=[{'attributes': {'osm:way:highway': {'text': 'primary'}}},
                     {'attributes': 'yes'}],
         how=any
@@ -111,8 +113,8 @@ def test_extract_graph_links_with_list_of_conditions_strict():
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions=[{'attributes': {'osm:way:highway': {'text': 'primary'}}},
                     {'attributes': {'osm:way:highway': {'name': 'osm:way:highway'}}}],
         how=all
@@ -129,8 +131,8 @@ def test_extract_graph_links_with_list_condition():
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
     n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': {'osm:way:highway': {'text': ['primary', 'some_other_highway']}}}
     )
 
@@ -145,8 +147,8 @@ def test_extract_graph_links_with_list_condition_and_list_value():
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': {'primary', 'other'}}}})
     n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': {'osm:way:highway': {'text': ['primary', 'some_other_highway']}}}
     )
 
@@ -161,8 +163,8 @@ def test_extract_graph_links_with_list_condition_and_list_value_specifying_to_ig
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': {'primary', 'other'}}}})
     n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': {'osm:way:highway': {'text': ['primary', 'some_other_highway']}}},
         mixed_dtypes=False
     )
@@ -178,8 +180,8 @@ def test_extract_graph_links_with_bound_condition():
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 1}}})
     n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': {'osm:way:highway': {'text': (2, 10)}}}
     )
 
@@ -194,8 +196,8 @@ def test_extract_graph_links_with_bound_condition_and_list_value():
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': [0, 1]}}})
     n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': {'osm:way:highway': {'text': (2, 10)}}}
     )
 
@@ -210,8 +212,8 @@ def test_extract_graph_links_with_bound_condition_and_list_value_specifying_to_i
         'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': [0, 1]}}})
     n.add_link('2', 3, 4, attribs={'attributes': 'yes'})
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': {'osm:way:highway': {'text': (2, 10)}}},
         mixed_dtypes=False
     )
@@ -230,8 +232,8 @@ def test_extract_graph_links_with_callable_condition():
     def condition(val):
         return val == 9
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': {'osm:way:highway': {'text': condition}}}
     )
 
@@ -249,8 +251,8 @@ def test_extract_graph_links_with_callable_condition_and_list_value():
     def condition(val):
         return val == 9
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': {'osm:way:highway': {'text': condition}}}
     )
 
@@ -268,131 +270,13 @@ def test_extract_graph_links_with_callable_condition_and_list_value_specifying_t
     def condition(val):
         return val == 9
 
-    links = graph_operations.extract_links_on_edge_attributes(
-        n,
+    links = graph_operations.extract_on_attributes(
+        n.links(),
         conditions={'attributes': {'osm:way:highway': {'text': condition}}},
         mixed_dtypes=False
     )
 
     assert links == []
-
-
-def test_extract_graph_nodes_with_flat_condition():
-    n = Network('epsg:27700')
-    n.add_node(1, {
-        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
-    n.add_node(2, {
-        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
-    n.add_node(3, {'attributes': 'yes'})
-
-    nodes = graph_operations.extract_nodes_on_node_attributes(
-        n,
-        conditions={'attributes': 'yes'},
-    )
-
-    assert nodes == [3]
-
-
-def test_extract_graph_nodes_with_nested_condition():
-    n = Network('epsg:27700')
-    n.add_node(1, {
-        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
-    n.add_node(2, {
-        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
-
-    nodes = graph_operations.extract_nodes_on_node_attributes(
-        n,
-        conditions={'attributes': {'osm:way:highway': {'text': 'primary'}}},
-    )
-
-    assert nodes == [1, 2]
-
-
-def test_extract_graph_nodes_with_list_of_conditions():
-    n = Network('epsg:27700')
-    n.add_node(1, {
-        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
-    n.add_node(2, {
-        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
-    n.add_node(3, {'attributes': 'yes'})
-
-    nodes = graph_operations.extract_nodes_on_node_attributes(
-        n,
-        conditions=[{'attributes': {'osm:way:highway': {'text': 'primary'}}},
-                    {'attributes': 'yes'}],
-        how=any
-    )
-
-    assert nodes == [1, 2, 3]
-
-
-def test_extract_graph_nodes_with_list_of_conditions_strict():
-    n = Network('epsg:27700')
-    n.add_node(1, {'attributes': {
-        'osm:way:highway': {'name': 'osm:way:highway:to:hell', 'class': 'java.lang.String', 'text': 'primary'}}})
-    n.add_node(2, {
-        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
-    n.add_node(3, {'attributes': 'yes'})
-
-    nodes = graph_operations.extract_nodes_on_node_attributes(
-        n,
-        conditions=[{'attributes': {'osm:way:highway': {'text': 'primary'}}},
-                    {'attributes': {'osm:way:highway': {'name': 'osm:way:highway'}}}],
-        how=all
-    )
-
-    assert nodes == [2]
-
-
-def test_extract_graph_nodes_with_list_condition_with():
-    n = Network('epsg:27700')
-    n.add_node(1, {
-        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
-    n.add_node(2, {
-        'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}}})
-    n.add_node(3, {'attributes': 'yes'})
-
-    nodes = graph_operations.extract_nodes_on_node_attributes(
-        n,
-        conditions={'attributes': {'osm:way:highway': {'text': ['primary', 'some_other_highway']}}}
-    )
-
-    assert nodes == [1, 2]
-
-
-def test_extract_graph_nodes_with_bound_condition():
-    n = Network('epsg:27700')
-    n.add_node(1,
-               {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 9}}})
-    n.add_node(2,
-               {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 1}}})
-    n.add_node(3, {'attributes': 'yes'})
-
-    nodes = graph_operations.extract_nodes_on_node_attributes(
-        n,
-        conditions={'attributes': {'osm:way:highway': {'text': (2, 10)}}}
-    )
-
-    assert nodes == [1]
-
-
-def test_extract_graph_nodes_with_callable_condition():
-    n = Network('epsg:27700')
-    n.add_node(1,
-               {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 9}}})
-    n.add_node(2,
-               {'attributes': {'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 1}}})
-    n.add_node(3, {'attributes': 'yes'})
-
-    def condition(val):
-        return val == 9
-
-    nodes = graph_operations.extract_nodes_on_node_attributes(
-        n,
-        conditions={'attributes': {'osm:way:highway': {'text': condition}}}
-    )
-
-    assert nodes == [1]
 
 
 def test_get_attribute_schema_with_nested_dictionaries():
@@ -483,6 +367,80 @@ def test_get_attribute_data_under_key_with_nested_link_data_and_nested_key():
 
     data = graph_operations.get_attribute_data_under_key(input_list, {'attributes': {'osm:way:highway': 'text'}})
     assert_semantically_equal(data, {'0': 'primary', '1': 'secondary'})
+
+
+def test_building_attribute_dataframe_with_a_single_key_string_input():
+    df = graph_operations.build_attribute_dataframe(
+        [('1', {'key': 1, 'another_key': 2}), ('2', {'key': 3})], keys='key')
+    assert_frame_equal(df, DataFrame({'key': {'1': 1, '2': 3}}))
+
+
+def test_building_attribute_dataframe_with_a_single_key_list_input():
+    df = graph_operations.build_attribute_dataframe(
+        [('1', {'key': 1, 'another_key': 2}), ('2', {'key': 3})], keys=['key'])
+    assert_frame_equal(df, DataFrame({'key': {'1': 1, '2': 3}}))
+
+
+def test_building_attribute_dataframe_with_multiple_keys_and_missing_value():
+    df = graph_operations.build_attribute_dataframe(
+        [('1', {'key': 1, 'another_key': 2}), ('2', {'key': 3})], keys=['key', 'another_key'])
+    assert_frame_equal(df, DataFrame({'key': {'1': 1, '2': 3}, 'another_key': {'1': 2.0, '2': float('nan')}}))
+
+
+def test_building_attribute_dataframe_with_multiple_keys_and_index_name():
+    df = graph_operations.build_attribute_dataframe(
+        [('1', {'key': 1, 'another_key': 2}), ('2', {'key': 3, 'another_key': 11})], keys=['key', 'another_key'],
+        index_name='nameee'
+    )
+    correct_df = DataFrame({'key': {'1': 1, '2': 3}, 'another_key': {'1': 2, '2': 11}})
+    correct_df.index = df.index.set_names(['nameee'])
+    assert_frame_equal(df, correct_df)
+
+
+def iterate(l):
+    for _ in l:
+        yield _
+
+
+def test_building_attribute_dataframe_with_multiple_keys_and_iterator():
+    data = [('1', {'key': 1, 'another_key': 2}), ('2', {'key': 3, 'another_key': 11})]
+    df = graph_operations.build_attribute_dataframe(iterate(data), keys=['key', 'another_key'])
+    assert_frame_equal(df,
+                       DataFrame({'key': {'1': 1, '2': 3}, 'another_key': {'1': 2, '2': 11}}))
+
+
+def do_nothing(x):
+    return x
+
+
+def test_apply_to_attributes_delegates_to_correct_function_when_passed_callable(mocker):
+    mocker.patch.object(graph_operations, 'apply_function_to_attributes')
+    graph_operations.apply_to_attributes([1,2,3], do_nothing, 'location')
+    graph_operations.apply_function_to_attributes.assert_called_once_with([1,2,3], do_nothing, 'location')
+
+
+def add_attributes(x):
+    return x['a'] + x['b']
+
+
+def test_applying_function_to_attributes():
+    d = graph_operations.apply_to_attributes(
+        [(1,{'a':2, 'b':4}),(2,{'1':4, '2':8}),(3,{'a':6, 'b':10})], add_attributes, 'location')
+    assert_semantically_equal(d, {1:{'location':6}, 3:{'location': 16}})
+
+
+def test_apply_to_attributes_delegates_to_correct_function_when_passed_dict(mocker):
+    mocker.patch.object(graph_operations, 'apply_mapping_to_attributes')
+    graph_operations.apply_to_attributes([1,2,3], {1:1, 2:2, 3:3}, 'location')
+    graph_operations.apply_mapping_to_attributes.assert_called_once_with([1,2,3], {1:1, 2:2, 3:3}, 'location')
+
+
+def test_applying_dict_map_to_attributes():
+    d = graph_operations.apply_to_attributes(
+        [(1,{'a':2, 'b':4}),(2,{'a':4, 'b':8}),(3,{'a':6, 'b':10})], {2:0, 4:10}, 'a')
+    assert_semantically_equal(d,
+                              {1:{'a':0},
+                               2:{'a':10}})
 
 
 def test_consolidating_node_ids_does_nothing_to_matching_nodes_in_matching_coordinate_system():

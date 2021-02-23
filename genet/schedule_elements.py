@@ -1,9 +1,14 @@
 from typing import Union, Dict, List
 from pyproj import Transformer
 import networkx as nx
+import numpy as np
 import logging
+import os
 from datetime import datetime
 from pandas import DataFrame
+from copy import deepcopy
+import dictdiffer
+from s2sphere import CellId
 import genet.utils.plot as plot
 import genet.utils.spatial as spatial
 import genet.utils.dict_support as dict_support
@@ -11,11 +16,15 @@ import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.gtfs_reader as gtfs_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.utils.persistence as persistence
+import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
 import genet.modify.schedule as mod_schedule
+import genet.modify.change_log as change_log
 import genet.use.schedule as use_schedule
 import genet.validate.schedule_validation as schedule_validation
 import genet.outputs_handler.geojson as gngeojson
+from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisationError, ServiceInitialisationError, \
+    UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData
 
 # number of decimal places to consider when comparing lat lons
 SPATIAL_TOLERANCE = 8
@@ -26,25 +35,58 @@ class ScheduleElement:
     Base class for Route, Service and Schedule
     """
 
-    def __init__(self, stops):
-        self._graph = self._build_graph(stops)
-        self.reference_nodes = list(self._graph.nodes())
-        self.reference_edges = list(self._graph.edges())
-        self.epsg = self.find_epsg()
-        self._graph.graph['crs'] = {'init': self.epsg}
+    def __init__(self):
+        # check if in graph first
+        if 'crs' in self._graph.graph:
+            self.epsg = self._graph.graph['crs']['init']
+        else:
+            self.epsg = self.find_epsg()
+            self._graph.graph['crs'] = {'init': self.epsg}
 
-    def _update_graph(self, new_graph):
-        self._graph = new_graph
+    def _surrender_to_graph(self):
+        d = deepcopy(self.__dict__)
+        return d
+
+    def _get_service_from_graph(self, service_id):
+        if service_id in self._graph.graph['services']:
+            return Service(_graph=self._graph, **self._graph.graph['services'][service_id])
+        else:
+            raise ServiceIndexError(f'Service with index {service_id} not found')
+
+    def _get_route_from_graph(self, route_id):
+        if route_id in self._graph.graph['routes']:
+            return Route(_graph=self._graph, **self._graph.graph['routes'][route_id])
+        else:
+            raise RouteIndexError(f'Route with index {route_id} not found')
+
+    def _stop_ids_in_graph(self, stop_ids: List[str]):
+        return set(stop_ids).issubset(set(self._graph.nodes))
+
+    def _route_ids_in_graph(self, route_ids: List[str]):
+        return set(route_ids).issubset(set(self._graph.graph['routes'].keys()))
+
+    def _service_ids_in_graph(self, service_ids: List[str]):
+        return set(service_ids).issubset(set(self._graph.graph['services'].keys()))
+
+    def change_log(self):
+        return self._graph.graph['change_log']
+
+    def reference_nodes(self):
+        pass
+
+    def reference_edges(self):
+        pass
 
     def stop(self, stop_id):
-        return Stop(**self._graph.nodes[stop_id])
+        stop_data = {k: v for k, v in dict(self._graph.nodes[stop_id]).items() if k not in {'routes', 'services'}}
+        return Stop(**stop_data)
 
     def stops(self):
         """
         Iterable returns stops in the Schedule Element
         :return:
         """
-        for s in self.reference_nodes:
+        for s in self.reference_nodes():
             yield self.stop(s)
 
     def modes(self):
@@ -56,15 +98,13 @@ class ScheduleElement:
 
     def mode_graph_map(self):
         mode_map = {mode: set() for mode in self.modes()}
-        for _id, route in self.routes():
-            mode_map[route.mode] |= set(route.reference_edges)
+        reference_edges = self.reference_edges()
+        for mode in mode_map:
+            mode_map[mode] = {(u, v) for u, v in reference_edges if mode in self._graph[u][v]['modes']}
         return mode_map
 
-    def _build_graph(self, stops):
-        pass
-
     def graph(self):
-        return nx.edge_subgraph(self._graph, self.reference_edges)
+        return nx.DiGraph(nx.edge_subgraph(self._graph, self.reference_edges()))
 
     def subgraph(self, edges):
         return nx.DiGraph(nx.edge_subgraph(self.graph(), edges))
@@ -96,8 +136,15 @@ class ScheduleElement:
             self.epsg = new_epsg
 
     def find_epsg(self):
-        for n in self.reference_nodes:
-            return self.stop(n).epsg
+        if 'crs' in self._graph.graph:
+            return self._graph.graph['crs']['init']
+        else:
+            epsg = list({d for k, d in dict(self._graph.nodes(data='epsg', default='')).items()} - {''})
+            if epsg:
+                if len(epsg) == 1:
+                    return epsg[0]
+                else:
+                    return epsg
         return None
 
 
@@ -105,15 +152,20 @@ class Stop:
     """
     A transit stop that features in a Route object
 
-    Parameters
+    Required Parameters
     ----------
     :param id: unique identifier
     :param x: x coordinate or lat if using 'epsg:4326'
     :param y: y coordinate or lon if using 'epsg:4326'
     :param epsg: 'epsg:12345'
+
+    Optional Parameters
+    ----------
     :param transformer: pyproj.Transformer.from_crs(epsg, 'epsg:4326') optional but makes things MUCH faster if you're
     reading through a lot of stops in the same projection, all stops are mapped back to 'epsg:4326' and indexed with
     s2sphere
+    :param name: human readable name for the stop
+    :param kwargs: additional attributes
     """
 
     def __init__(self, id: Union[str, int], x: Union[str, int, float], y: Union[str, int, float], epsg: str,
@@ -136,9 +188,9 @@ class Stop:
         if 's2_id' in kwargs:
             self.s2_id = kwargs['s2_id']
         else:
-            self.s2_id = spatial.grab_index_s2(lat=self.lat, lng=self.lon)
+            self.s2_id = spatial.generate_index_s2(lat=self.lat, lng=self.lon)
 
-        self.additional_attributes = []
+        self.additional_attributes = set()
         if kwargs:
             self.add_additional_attributes(kwargs)
 
@@ -190,13 +242,13 @@ class Stop:
         """
         adds attributes defined by keys of the attribs dictionary with values of the corresponding values
         ignores keys: 'id', 'x', 'y'
-        :param attribs:
+        :param attribs: the additional attributes {attrribute_name: attribute_value}
         :return:
         """
         for k, v in attribs.items():
-            if k not in self.__dict__ or not self.__dict__[k]:
+            if k not in self.__dict__ or (not self.__dict__[k] and k != "additional_attributes"):
                 setattr(self, k, v)
-                self.additional_attributes.append(k)
+                self.additional_attributes.add(k)
 
     def iter_through_additional_attributes(self):
         for attr_key in self.additional_attributes:
@@ -232,33 +284,37 @@ class Route(ScheduleElement):
     A Route is an object which contains information about the trips, times and offsets, mode and name of the route which
     forms a part of a Service.
 
-    Parameters
+    Required Parameters
     ----------
     :param route_short_name: route's short name
     :param mode: mode
-    :param stops: list of Stop class objects
     :param trips: dictionary {'trip_id' : 'HH:MM:SS' - departure time from first stop}
     :param arrival_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
     :param departure_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
-    :param route: optional, network link_ids traversed by the vehicles in this Route instance
+
+    Optional Parameters (note, not providing some of the parameters may result in the object failing validation)
+    ----------
+    :param stops: ordered list of Stop class objects or Stop IDs already present in a Schedule, if generating a Route
+        to add
     :param route_long_name: optional, verbose name for the route if exists
-    :param id: optional, unique identifier for the route if available, if not given, at the time of writing outputs to
-        matsim network files, an id will be generated from the service id the route belongs to and the index of the
-        route in the list of routes of that service.
+    :param route: optional, network link_ids traversed by the vehicles in this Route instance
+    :param id: optional, unique identifier for the route if available, if not given, will be generated
     :param await_departure: optional, list of bools of length stops param, whether to await departure at each stop
+    :param kwargs: additional attributes
     """
 
-    def __init__(self, route_short_name: str, mode: str, stops: List[Stop], trips: Dict[str, str],
-                 arrival_offsets: List[str], departure_offsets: List[str], route: list = None,
-                 route_long_name: str = '', id: str = '', await_departure: list = None):
-        self.ordered_stops = [stop.id for stop in stops]
+    def __init__(self, route_short_name: str, mode: str, trips: Dict[str, str], arrival_offsets: List[str],
+                 departure_offsets: List[str], route: list = None, route_long_name: str = '', id: str = '',
+                 await_departure: list = None, stops: List[Union[Stop, str]] = None, **kwargs):
         self.route_short_name = route_short_name
-        self.mode = mode.lower()
+        self.mode = mode
         self.trips = trips
         self.arrival_offsets = arrival_offsets
         self.departure_offsets = departure_offsets
         self.route_long_name = route_long_name
         self.id = id
+        ordered_stops = None
+        _graph = None
         if route is None:
             self.route = []
         else:
@@ -267,7 +323,36 @@ class Route(ScheduleElement):
             self.await_departure = []
         else:
             self.await_departure = await_departure
-        super().__init__(stops)
+        if kwargs:
+            if 'ordered_stops' in kwargs:
+                ordered_stops = kwargs.pop('ordered_stops')
+            if '_graph' in kwargs:
+                _graph = kwargs.pop('_graph')
+            self.add_additional_attributes(kwargs)
+
+        if ordered_stops is not None:
+            if _graph is not None:
+                # check graph type and schema
+                verify_graph_schema(_graph)
+                self._graph = _graph
+            else:
+                raise RouteInitialisationError('When passing `ordered_stops` you are expected to pass `_graph` too. '
+                                               'You may prefer to pass a list of Stop objects to `stops` instead')
+            # check all stops in _graph
+            if not self._stop_ids_in_graph(ordered_stops):
+                raise RouteInitialisationError('Some stop IDs passed in `ordered_stops` are missing from the _graph '
+                                               'object passed')
+            self.ordered_stops = ordered_stops
+        elif stops is not None:
+            try:
+                self.ordered_stops = [stop.id for stop in stops]
+            except AttributeError:
+                self.ordered_stops = stops
+            self._graph = self._build_graph(stops=stops)
+        else:
+            raise RouteInitialisationError('You need to either pass `ordered_stops` with a valid `_graph` or '
+                                           'a list of Stop objects to `stops`')
+        super().__init__()
 
     def __eq__(self, other):
         same_route_name = self.route_short_name == other.route_short_name
@@ -287,22 +372,74 @@ class Route(ScheduleElement):
 
     def _build_graph(self, stops: List[Stop]):
         route_graph = nx.DiGraph(name='Route graph')
-        route_nodes = [(stop.id, stop.__dict__) for stop in stops]
+        try:
+            route_nodes = [(stop.id, stop.__dict__) for stop in stops]
+            stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
+        except AttributeError:
+            route_nodes = [(stop, {}) for stop in stops]
+            stop_edges = [(from_stop, to_stop) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
         route_graph.add_nodes_from(route_nodes, routes=[self.id])
-        stop_edges = [(from_stop.id, to_stop.id) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
         route_graph.add_edges_from(stop_edges, routes=[self.id], modes=[self.mode])
+        route_graph.graph['routes'] = {self.id: self._surrender_to_graph()}
+        route_graph.graph['services'] = {}
+        route_graph.graph['change_log'] = change_log.ChangeLog()
         return route_graph
+
+    def add_additional_attributes(self, attribs: dict):
+        """
+        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
+        :param attribs: the additional attributes {attribute_name: attribute_value}
+        :return:
+        """
+        for k, v in attribs.items():
+            if k not in self.__dict__:
+                setattr(self, k, v)
+
+    def reference_nodes(self):
+        return {node for node, node_routes in self._graph.nodes(data='routes') if self.id in node_routes}
+
+    def reference_edges(self):
+        return {(u, v) for u, v, edge_routes in self._graph.edges(data='routes') if self.id in edge_routes}
 
     def modes(self):
         return [self.mode]
 
+    def _index_unique(self, idx):
+        return idx not in self._graph.graph['routes']
+
     def reindex(self, new_id):
+        """
+        Changes the current index of the object to `new_id`
+        :param new_id: desired value of the new index
+        :return:
+        """
+        if not self._index_unique(new_id):
+            raise RouteIndexError(f'Route of index {new_id} already exists')
         if self.id != new_id:
             # change data on graph
             g = self.graph()
-            for stop in self.reference_nodes:
+            for stop in self.reference_nodes():
                 g.nodes[stop]['routes'] = list((set(g.nodes[stop]['routes']) - {self.id}) | {new_id})
+            for u, v in self.reference_edges():
+                g[u][v]['routes'] = list((set(g[u][v]['routes']) - {self.id}) | {new_id})
             self._graph.update(g)
+            self._graph.graph['routes'][new_id] = self._graph.graph['routes'][self.id]
+            self._graph.graph['routes'][new_id]['id'] = new_id
+            del self._graph.graph['routes'][self.id]
+
+            if 'route_to_service_map' in self._graph.graph:
+                # if route is tied to a service, update the indexing
+                corresponding_service_id = self._graph.graph['route_to_service_map'][self.id]
+                self._graph.graph['service_to_route_map'][corresponding_service_id] = list(
+                    set(self._graph.graph['service_to_route_map'][corresponding_service_id]) - {self.id} | {new_id})
+                self._graph.graph['route_to_service_map'][new_id] = corresponding_service_id
+                del self._graph.graph['route_to_service_map'][self.id]
+
+            self._graph.graph['change_log'].modify(
+                object_type='route', old_id=self.id, new_id=new_id,
+                old_attributes={'id': self.id}, new_attributes={'id': new_id}
+            )
+            logging.info(f'Reindexed Route from {self.id} to {new_id}')
             self.id = new_id
 
     def print(self):
@@ -325,7 +462,7 @@ class Route(ScheduleElement):
 
     def stops(self):
         """
-        Iterable returns stops in the Route in order of travel
+        Iterable returns Stop objects in the Route in order of travel
         :return:
         """
         for s in self.ordered_stops:
@@ -346,7 +483,7 @@ class Route(ScheduleElement):
         """
         This iterator is on the same level as the object and yields itself
         """
-        yield None, self
+        yield self
 
     def generate_trips_dataframe(self, gtfs_day='19700101'):
         df = None
@@ -355,8 +492,8 @@ class Route(ScheduleElement):
                 [use_schedule.get_offset(self.departure_offsets[i]) for i in range(len(self.ordered_stops) - 1)],
             'arrival_time':
                 [use_schedule.get_offset(self.arrival_offsets[i]) for i in range(1, len(self.ordered_stops))],
-            'from_stop': [self.ordered_stops[i] for i in range(len(self.ordered_stops) - 1)],
-            'to_stop': [self.ordered_stops[i] for i in range(1, len(self.ordered_stops))]
+            'from_stop': self.ordered_stops[:-1],
+            'to_stop': self.ordered_stops[1:]
         })
         for trip_id, trip_dep_time in self.trips.items():
             trip_df = _df.copy()
@@ -485,32 +622,44 @@ class Service(ScheduleElement):
     """
     A Service is an object containing unique routes pertaining to the same public transit service
 
-    Parameters
+    Required Parameters
     ----------
-    :param services: dictionary of Service class objects {'service_id' : Service}
-    :param stops_mapping: dictionary of Stop class objects {'stop_id': Stop} which pertain to the Services
-    :param epsg: 'epsg:12345'
+    :param id: unique identifier for the service
+
+    Optional Parameters (note, not providing some of the parameters may result in the object failing validation)
+    ----------
+    :param routes: list of Route objects, if the Routes are not uniquely indexed, they will be re-indexed
+    :param name: string, name for the service, if not provided, will inherit the first non-trivial name from routes
+    :param kwargs: additional attributes
     """
 
-    def __init__(self, id: str, routes: List[Route], name: str = ''):
+    def __init__(self, id: str, routes: List[Route] = None, name: str = '', **kwargs):
         self.id = id
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
         self.name = str(name)
-        if not name and routes:
+        _graph = None
+        if not self.name and routes:
             for route in routes:
                 if route.route_short_name:
                     self.name = str(route.route_short_name)
                     break
-        # create a dictionary and index if not unique ids
-        self._routes = {}
-        for route in routes:
-            _id = route.id
-            if (not _id) or (_id in self._routes):
-                _id = self.id + f'_{len(self._routes)}'
-                route.reindex(_id)
-            self._routes[_id] = route
-        super().__init__(None)
+        if kwargs:
+            if '_graph' in kwargs:
+                _graph = kwargs.pop('_graph')
+            self.add_additional_attributes(kwargs)
+
+        if _graph is not None:
+            # check graph type and schema
+            verify_graph_schema(_graph)
+            self._graph = _graph
+        elif routes is not None:
+            # re-index if not unique ids
+            self._graph = self._build_graph(self._ensure_unique_routes(routes))
+        else:
+            raise ServiceInitialisationError('You need to pass either a valid `_graph` or a list of Route objects to '
+                                             '`routes`')
+        super().__init__()
 
     def __eq__(self, other):
         return self.id == other.id
@@ -522,53 +671,114 @@ class Service(ScheduleElement):
             len(self))
 
     def __getitem__(self, route_id):
-        return self._routes[route_id]
+        return self._get_route_from_graph(route_id)
 
     def __str__(self):
         return self.info()
 
     def __len__(self):
-        return len(self._routes)
+        return len(list(self.route_ids()))
 
-    def _build_graph(self, stops=None):
+    def _build_graph(self, routes):
+        _id = self.id
         nodes = {}
         edges = {}
-        for route in self._routes.values():
+        graph_routes = {}
+        service_graph = nx.DiGraph(name='Service graph')
+        service_graph.graph['change_log'] = change_log.ChangeLog()
+        for route in routes:
             g = route.graph()
             nodes = dict_support.merge_complex_dictionaries(dict(g.nodes(data=True)), nodes)
             edges = dict_support.combine_edge_data_lists(list(g.edges(data=True)), edges)
+            graph_routes = dict_support.merge_complex_dictionaries(g.graph['routes'], graph_routes)
+            service_graph.graph['change_log'] = service_graph.graph['change_log'].merge_logs(
+                g.graph['change_log']
+            )
 
-        service_graph = nx.DiGraph(name='Service graph')
-        service_graph.add_nodes_from(nodes, services=[self.id])
-        service_graph.add_edges_from(edges, services=[self.id])
+        service_graph.add_nodes_from(nodes, services=[_id])
+        service_graph.add_edges_from(edges, services=[_id])
         nx.set_node_attributes(service_graph, nodes)
-        # update route graphs by the larger graph
-        self._update_graph(service_graph)
+        service_graph.graph['routes'] = deepcopy(graph_routes)
+        service_graph.graph['services'] = {_id: self._surrender_to_graph()}
+        service_graph.graph['route_to_service_map'] = {route.id: _id for route in routes}
+        service_graph.graph['service_to_route_map'] = {_id: [route.id for route in routes]}
         return service_graph
 
-    def _update_graph(self, new_graph):
-        self._graph = new_graph
-        for route in self._routes.values():
-            route._graph = new_graph
+    def add_additional_attributes(self, attribs: dict):
+        """
+        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
+        :param attribs: the additional attributes {attribute_name: attribute_value}
+        :return:
+        """
+        for k, v in attribs.items():
+            if k not in self.__dict__:
+                setattr(self, k, v)
+
+    def _ensure_unique_routes(self, routes: List[Route]):
+        unique_routes = []
+        route_ids = []
+        for route in routes:
+            idx = route.id
+            if (not idx) or (idx in route_ids):
+                new_id = self.id + f'_{len(unique_routes)}'
+                route.reindex(new_id)
+                logging.warning(f'Route has been re-indexed from {idx} tp {new_id} due to an ID clash')
+                idx = new_id
+            route_ids.append(idx)
+            unique_routes.append(route)
+        return unique_routes
+
+    def reference_nodes(self):
+        return {node for node, node_services in self._graph.nodes(data='services') if self.id in node_services}
+
+    def reference_edges(self):
+        return {(u, v) for u, v, edge_services in self._graph.edges(data='services') if self.id in edge_services}
+
+    def _index_unique(self, idx):
+        return idx not in self._graph.graph['services']
 
     def reindex(self, new_id):
+        """
+        Changes the current index of the object to `new_id`
+        :param new_id: desired value of the new index
+        :return:
+        """
+        if not self._index_unique(new_id):
+            raise ServiceIndexError(f'Service of index {new_id} already exists')
         if self.id != new_id:
             # change data on graph
             g = self.graph()
-            for stop in self.reference_nodes:
+            for stop in self.reference_nodes():
                 g.nodes[stop]['services'] = list((set(g.nodes[stop]['services']) - {self.id}) | {new_id})
+            for u, v in self.reference_edges():
+                g[u][v]['services'] = list((set(g[u][v]['services']) - {self.id}) | {new_id})
             self._graph.update(g)
+            self._graph.graph['services'][new_id] = self._graph.graph['services'][self.id]
+            self._graph.graph['services'][new_id]['id'] = new_id
+            del self._graph.graph['services'][self.id]
+
+            # if service has routes tied to it, update the indexing
+            for r_id in self.route_ids():
+                self._graph.graph['route_to_service_map'][r_id] = new_id
+            self._graph.graph['service_to_route_map'][new_id] = self._graph.graph['service_to_route_map'][self.id]
+            del self._graph.graph['service_to_route_map'][self.id]
+
+            self._graph.graph['change_log'].modify(
+                object_type='service', old_id=self.id, new_id=new_id,
+                old_attributes={'id': self.id}, new_attributes={'id': new_id}
+            )
+            logging.info(f'Reindexed Service from {self.id} to {new_id}')
             self.id = new_id
 
     def print(self):
         print(self.info())
 
     def info(self):
-        return '{} ID: {}\nName: {}\nNumber of routes: {}\nNumber of unique stops: {}'.format(
-            self.__class__.__name__, self.id, self.name, len(self), len(self.reference_nodes))
+        return '{} ID: {}\nName: {}\nNumber of routes: {}\nNumber of stops: {}'.format(
+            self.__class__.__name__, self.id, self.name, len(self), len(self.reference_nodes()))
 
     def plot(self, show=True, save=False, output_dir=''):
-        if self.reference_nodes:
+        if self.reference_nodes():
             return plot.plot_graph(
                 nx.MultiGraph(self.graph()),
                 filename='service_{}_graph'.format(self.id),
@@ -580,7 +790,7 @@ class Service(ScheduleElement):
 
     def generate_trips_dataframe(self, gtfs_day='19700101'):
         df = None
-        for route_id, route in self.routes():
+        for route in self.routes():
             _df = route.generate_trips_dataframe(gtfs_day=gtfs_day)
             if df is None:
                 df = _df
@@ -597,17 +807,24 @@ class Service(ScheduleElement):
         :param route_id:
         :return:
         """
-        return self._routes[route_id]
+        return self._get_route_from_graph(route_id)
+
+    def route_ids(self):
+        """
+        Iterator for the Route IDs in the Service
+        """
+        for route_id in self._graph.graph['service_to_route_map'][self.id]:
+            yield route_id
 
     def routes(self):
         """
-        Iterator for _routes in the service
+        Iterator for the Route objects in the Service
         """
-        for route in self._routes.values():
-            yield self.id, route
+        for route_id in self.route_ids():
+            yield self._get_route_from_graph(route_id)
 
     def is_exact(self, other):
-        return (self.id == other.id) and (self._routes == other._routes)
+        return (self.id == other.id) and (set(self.route_ids()) == set(other.route_ids()))
 
     def isin_exact(self, services: list):
         for other in services:
@@ -624,19 +841,13 @@ class Service(ScheduleElement):
         return list(nx.nodes_with_selfloops(self.graph()))
 
     def validity_of_routes(self):
-        return [route.is_valid_route() for route in self._routes.values()]
+        return [route.is_valid_route() for route in self.routes()]
 
     def has_valid_routes(self):
         return all(self.validity_of_routes())
 
     def invalid_routes(self):
-        return [route for route in self._routes.values() if not route.is_valid_route()]
-
-    def has_uniquely_indexed_routes(self):
-        indices = set([route.id for route in self._routes.values()])
-        if len(indices) != len(self):
-            return False
-        return True
+        return [route for route in self.routes() if not route.is_valid_route()]
 
     def has_id(self):
         return self.id
@@ -649,10 +860,6 @@ class Service(ScheduleElement):
             valid = False
             invalid_stages.append('not_has_valid_routes')
 
-        if not bool(self.has_uniquely_indexed_routes()):
-            valid = False
-            invalid_stages.append('not_has_uniquely_indexed_routes')
-
         if return_reason:
             return valid, invalid_stages
         return valid
@@ -662,33 +869,64 @@ class Schedule(ScheduleElement):
     """
     Class to provide methods and structure for transit schedules
 
-    Parameters
+    Optional Parameters
     ----------
     :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     :param services: list of Service class objects
+    :param _graph: Schedule graph, used for re-instantiating the object, passed without `services`
     """
 
-    def __init__(self, epsg, services: List[Service] = None):
+    def __init__(self, epsg: str = '', services: List[Service] = None, _graph: nx.DiGraph = None):
+        if _graph is not None:
+            # check graph type and schema
+            verify_graph_schema(_graph)
+            self._graph = _graph
+            if epsg == '':
+                try:
+                    epsg = self._graph.graph['crs']['init']
+                except KeyError:
+                    raise UndefinedCoordinateSystemError(
+                        'You need to specify the coordinate system for the schedule')
+        else:
+            if epsg == '':
+                raise UndefinedCoordinateSystemError('You need to specify the coordinate system for the schedule')
+            used_service_indices = []
+            used_route_indices = set()
+            if services is not None:
+                for service in services:
+                    idx = service.id
+                    route_ids = set(service.route_ids())
+                    if idx in used_service_indices:
+                        i = 0
+                        new_idx = idx
+                        while new_idx in used_service_indices:
+                            new_idx = f'{idx}_{i}'
+                            i += 1
+                        service.reindex(new_idx)
+                        logging.warning(f'Service has been re-indexed from {idx} to {new_idx} due to an ID clash')
+                        idx = new_idx
+                    clashing_route_ids = route_ids & used_route_indices
+                    for r_id in clashing_route_ids:
+                        # Services index their routes uniquely within themselves
+                        service.route(r_id).reindex(f'{idx}_{r_id}')
+                    used_route_indices |= set(service.route_ids())
+                    used_service_indices.append(idx)
+            else:
+                services = []
+            self._graph = self._build_graph(services)
         self.init_epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
-        if services is None:
-            self.services = {}
-        else:
-            assert epsg != '', 'You need to specify the coordinate system for the schedule'
-            self.services = {}
-            for service in services:
-                self.services[service.id] = service
         self.minimal_transfer_times = {}
-        super().__init__(None)
+        super().__init__()
 
     def __nonzero__(self):
         return self.services
 
     def __getitem__(self, service_id):
-        return self.services[service_id]
+        return self._get_service_from_graph(service_id)
 
     def __contains__(self, service_id):
-        return service_id in self.services
+        return service_id in self._graph.graph['services']
 
     def __repr__(self):
         return "<{} instance at {}: with {} services>".format(
@@ -700,43 +938,55 @@ class Schedule(ScheduleElement):
         return self.info()
 
     def __len__(self):
-        return len(self.services)
+        return len(self.service_ids())
 
-    def _build_graph(self, stops=None):
+    def _build_graph(self, services):
         nodes = {}
         edges = {}
-        for service_id, service in self.services.items():
+        graph_routes = {}
+        graph_services = {}
+        schedule_graph = nx.DiGraph(name='Schedule graph')
+        schedule_graph.graph['route_to_service_map'] = {}
+        schedule_graph.graph['service_to_route_map'] = {}
+        schedule_graph.graph['change_log'] = change_log.ChangeLog()
+
+        for service in services:
             g = service.graph()
             nodes = dict_support.merge_complex_dictionaries(dict(g.nodes(data=True)), nodes)
             edges = dict_support.combine_edge_data_lists(list(g.edges(data=True)), edges)
+            graph_routes = dict_support.merge_complex_dictionaries(g.graph['routes'], graph_routes)
+            graph_services = dict_support.merge_complex_dictionaries(g.graph['services'], graph_services)
+            schedule_graph.graph['route_to_service_map'] = {**schedule_graph.graph['route_to_service_map'],
+                                                            **g.graph['route_to_service_map']}
+            schedule_graph.graph['service_to_route_map'] = {**schedule_graph.graph['service_to_route_map'],
+                                                            **g.graph['service_to_route_map']}
+            schedule_graph.graph['change_log'] = schedule_graph.graph['change_log'].merge_logs(
+                g.graph['change_log']
+            )
             # TODO check for clashing stop ids overwriting data
 
-        schedule_graph = nx.DiGraph(name='Schedule graph')
         schedule_graph.add_nodes_from(nodes)
         schedule_graph.add_edges_from(edges)
         nx.set_node_attributes(schedule_graph, nodes)
-        # update service and route graphs by the larger graph
-        self._update_graph(schedule_graph)
+        schedule_graph.graph['routes'] = graph_routes
+        schedule_graph.graph['services'] = graph_services
         return schedule_graph
 
-    def _update_graph(self, new_graph):
-        self._graph = new_graph
-        for service in self.services.values():
-            service._graph = new_graph
-            for route in service._routes.values():
-                route._graph = new_graph
+    def reference_nodes(self):
+        return set(self._graph.nodes())
+
+    def reference_edges(self):
+        return set(self._graph.edges())
 
     def reindex(self, new_id):
         if isinstance(self, Schedule):
-            raise NotImplementedError('Schedule is not an indexed object')
+            raise NotImplementedError('Schedule is not currently an indexed object')
 
     def add(self, other):
         """
-        takes the services dictionary and adds them to the current
-        services stored in the Schedule. Have to be separable!
-        I.e. the keys in services cannot overlap with the ones already
-        existing (TODO: add merging complicated schedules, parallels to the merging gtfs work)
-        :param services: (see tests for the dict schema)
+        Adds another Schedule. They have to be separable! I.e. the keys in services cannot overlap with the ones
+        already present (TODO: add merging complicated schedules, parallels to the merging gtfs work)
+        :param other: the other Schedule object to add
         :return:
         """
         if not self.is_separable_from(other):
@@ -745,26 +995,34 @@ class Schedule(ScheduleElement):
         elif self.epsg != other.epsg:
             other.reproject(self.epsg)
 
-        self.services = {**other.services, **self.services}
+        self._graph.graph['services'] = dict_support.merge_complex_dictionaries(
+            other._graph.graph['services'], self._graph.graph['services'])
+        self._graph.graph['routes'] = dict_support.merge_complex_dictionaries(
+            other._graph.graph['routes'], self._graph.graph['routes'])
+        self._graph.graph['route_to_service_map'] = \
+            {**self._graph.graph['route_to_service_map'], **other._graph.graph['route_to_service_map']}
+        self._graph.graph['service_to_route_map'] = \
+            {**self._graph.graph['service_to_route_map'], **other._graph.graph['service_to_route_map']}
         self.minimal_transfer_times = {**other.minimal_transfer_times, **self.minimal_transfer_times}
         # todo assuming separate schedules, with non conflicting ids, nodes and edges
         self._graph.update(other._graph)
-        other._update_graph(self._graph)
-        self.reference_nodes = list(set(self.reference_nodes) | set(other.reference_nodes))
-        self.reference_edges = list(set(self.reference_edges) | set(other.reference_edges))
+
+        # merge change_log DataFrames
+        self._graph.graph['change_log'] = self.change_log().merge_logs(other.change_log())
 
     def is_separable_from(self, other):
-        unique_service_ids = set(other.services.keys()) & set(self.services.keys()) == set()
-        unique_nodes = set(other.reference_nodes) & set(self.reference_nodes) == set()
-        unique_edges = set(other.reference_edges) & set(self.reference_edges) == set()
-        return unique_service_ids and unique_nodes and unique_edges
+        unique_service_ids = set(other.service_ids()) & set(self.service_ids()) == set()
+        unique_route_ids = set(other.route_ids()) & set(self.route_ids()) == set()
+        unique_nodes = other.reference_nodes() & self.reference_nodes() == set()
+        unique_edges = other.reference_edges() & self.reference_edges() == set()
+        return unique_service_ids and unique_route_ids and unique_nodes and unique_edges
 
     def print(self):
         print(self.info())
 
     def info(self):
-        return 'Schedule:\nNumber of services: {}\nNumber of unique routes: {}\nNumber of stops: {}'.format(
-            self.__len__(), self.number_of_routes(), len(self.reference_nodes))
+        return 'Schedule:\nNumber of services: {}\nNumber of routes: {}\nNumber of stops: {}'.format(
+            self.__len__(), self.number_of_routes(), len(self.reference_nodes()))
 
     def graph(self):
         return self._graph
@@ -773,6 +1031,7 @@ class Schedule(ScheduleElement):
         """
         Changes projection of the element to new_epsg
         :param new_epsg: 'epsg:1234'
+        :param processes: integer number of processes to split stops data to be processed in parallel
         :return:
         """
         ScheduleElement.reproject(self, new_epsg, processes=processes)
@@ -792,46 +1051,732 @@ class Schedule(ScheduleElement):
         )
 
     def generate_trips_dataframe(self, gtfs_day='19700101'):
-        df = None
-        for service_id, service in self.services.items():
-            _df = service.generate_trips_dataframe(gtfs_day=gtfs_day)
-            if df is None:
-                df = _df
-            else:
-                df = df.append(_df)
-        df = df.reset_index(drop=True)
+        df = self.route_attribute_data(
+            keys=['route_short_name', 'mode', 'trips', 'arrival_offsets', 'departure_offsets', 'ordered_stops', 'id'])
+        df = df.rename(columns={'id': 'route', 'route_short_name': 'route_name'})
+        df['route_name'] = df['route_name'].apply(lambda x: x.replace("\\", "_").replace("/", "_"))
+        df['service'] = df['route'].apply(lambda x: self._graph.graph['route_to_service_map'][x])
+        df['service_name'] = df['service'].apply(
+            lambda x: self._graph.graph['services'][x]['name'].replace("\\", "_").replace("/", "_"))
+        df['ordered_stops'] = df['ordered_stops'].apply(lambda x: list(zip(x[:-1], x[1:])))
+        df['departure_offsets'] = df['departure_offsets'].apply(lambda x: list(map(use_schedule.get_offset, x[:-1])))
+        df['arrival_offsets'] = df['arrival_offsets'].apply(lambda x: list(map(use_schedule.get_offset, x[1:])))
+
+        # expand the frame stop to stop and extract offsets for arrival and departure from these stops
+        stop_cols = np.concatenate(df['ordered_stops'].values)
+        dep_offset_cols = np.concatenate(df['departure_offsets'].values)
+        arr_offset_cols = np.concatenate(df['arrival_offsets'].values)
+        df = DataFrame({
+            col: np.repeat(df[col].values, df['ordered_stops'].str.len())
+            for col in set(df.columns) - {'ordered_stops', 'arrival_offsets', 'departure_offsets'}}
+        ).assign(from_stop=stop_cols[:, 0],
+                 to_stop=stop_cols[:, 1],
+                 departure_time=dep_offset_cols,
+                 arrival_time=arr_offset_cols)
+
+        df['from_stop_name'] = df['from_stop'].apply(
+            lambda x: self._graph.nodes[x]['name'].replace("\\", "_").replace("/", "_"))
+        df['to_stop_name'] = df['to_stop'].apply(
+            lambda x: self._graph.nodes[x]['name'].replace("\\", "_").replace("/", "_"))
+
+        # expand the frame on all the trips each route makes
+        trips = np.concatenate(
+            df['trips'].apply(
+                lambda x: [(k, use_schedule.sanitise_time(time, gtfs_day)) for k, time in x.items()]).values)
+        df = DataFrame({
+            col: np.repeat(df[col].values, df['trips'].str.len())
+            for col in set(df.columns) - {'trips'}}
+        ).assign(trip=trips[:, 0],
+                 trip_dep_time=trips[:, 1]).sort_values(by=['route', 'trip', 'departure_time']).reset_index(drop=True)
+
+        df['departure_time'] = df['trip_dep_time'] + df['departure_time']
+        df['arrival_time'] = df['trip_dep_time'] + df['arrival_time']
+        df = df.drop('trip_dep_time', axis=1)
         return df
 
     def service_ids(self):
-        return list(self.services.keys())
+        """
+        Returns list of service ids in the Schedule
+        """
+        return list(self._graph.graph['services'].keys())
+
+    def has_service(self, service_id):
+        """
+        Returns True if a service with ID `service_id` exists in the Schedule, False otherwise
+        """
+        return service_id in self.service_ids()
+
+    def services(self):
+        """
+        Iterator for Service objects in the Services of the Schedule
+        """
+        for service_id in self.service_ids():
+            yield self._get_service_from_graph(service_id)
 
     def route(self, route_id):
         """
-        Gives the route under id: route_id or a list of routes with such route ids if not uniquely indexed
-        :param route_id:
+        Gives the Route objects under route_id
+        :param route_id: string
         :return:
         """
-        routes = []
-        for service_id, service in self.services.items():
-            if route_id in service._routes:
-                routes.append(service[route_id])
-        if not routes:
-            raise KeyError(f'{route_id} not found in any of the Services')
-        if len(routes) == 1:
-            return routes[0]
-        else:
-            return routes
+        return self._get_route_from_graph(route_id)
+
+    def route_ids(self):
+        """
+        Returns list of route ids in the Schedule
+        """
+        return list(self._graph.graph['routes'].keys())
+
+    def has_route(self, route_id):
+        """
+        Returns True if a route with ID `route_id` exists in the Schedule, False otherwise
+        """
+        return route_id in self._graph.graph['routes'].keys()
 
     def routes(self):
         """
-        Iterator for _routes in the schedule
+        Iterator for Route objects in the Services of the Schedule
         """
-        for service_id, service in self.services.items():
-            for route in service._routes.values():
-                yield service_id, route
+        for route_id in self.route_ids():
+            yield self._get_route_from_graph(route_id)
 
     def number_of_routes(self):
-        return len([r for id, r in self.routes()])
+        return len(self._graph.graph['routes'])
+
+    def has_stop(self, stop_id):
+        """
+        Returns True if a stop with ID `stop_id` exists in the Schedule, False otherwise
+        """
+        return self._graph.has_node(stop_id)
+
+    def service_attribute_summary(self, data=False):
+        """
+        Parses through data stored for Services in the Schedule and gives a summary tree.
+        If data is True, shows also up to 5 unique values stored under such keys.
+        :param data: bool, False by default
+        :return:
+        """
+        root = graph_operations.get_attribute_schema(self._graph.graph['services'].items(), data=data)
+        graph_operations.render_tree(root, data)
+
+    def route_attribute_summary(self, data=False):
+        """
+        Parses through data stored for Routes in the Schedule and gives a summary tree.
+        If data is True, shows also up to 5 unique values stored under such keys.
+        :param data: bool, False by default
+        :return:
+        """
+        root = graph_operations.get_attribute_schema(self._graph.graph['routes'].items(), data=data)
+        graph_operations.render_tree(root, data)
+
+    def stop_attribute_summary(self, data=False):
+        """
+        Parses through data stored for Stops in the Schedule and gives a summary tree.
+        If data is True, shows also up to 5 unique values stored under such keys.
+        :param data: bool, False by default
+        :return:
+        """
+        root = graph_operations.get_attribute_schema(self._graph.nodes(data=True), data=data)
+        graph_operations.render_tree(root, data)
+
+    def service_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Service IDs, with attribute data stored for Services under `key`
+        :param keys: list of either a string e.g. 'name', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=self._graph.graph['services'].items(), keys=keys, index_name=index_name)
+
+    def route_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Route IDs, with attribute data stored for Routes under `key`
+        :param keys: list of either a string e.g. 'mode', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=self._graph.graph['routes'].items(), keys=keys, index_name=index_name)
+
+    def stop_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Stop IDs, with attribute data stored for Stops under `key`
+        :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=self._graph.nodes(data=True), keys=keys, index_name=index_name)
+
+    def extract_service_ids_on_attributes(self, conditions: Union[list, dict], how=any, mixed_dtypes=True):
+        """
+        Extracts IDs of Services stored in the Schedule based on values of their attributes.
+        Fails silently, assumes not all Services have those attributes. In the case were the attributes stored are
+        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
+        :param conditions: {'attribute_key': 'target_value'} or nested
+        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+
+            - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+              lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+            - function that returns a boolean given the value e.g.
+
+            def below_exclusive_upper_bound(value):
+                return value < 100
+
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+        :param how : {all, any}, default any
+
+        The level of rigour used to match conditions
+
+            * all: means all conditions need to be met
+            * any: means at least one condition needs to be met
+
+        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
+        values e.g. as in simplified networks.
+        :return: list of ids in the schedule satisfying conditions
+        """
+        return graph_operations.extract_on_attributes(
+            self._graph.graph['services'].items(), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
+
+    def extract_route_ids_on_attributes(self, conditions: Union[list, dict], how=any, mixed_dtypes=True):
+        """
+        Extracts IDs of Routes stored in the Schedule based on values of their attributes.
+        Fails silently, assumes not all Routes have those attributes. In the case were the attributes stored are
+        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
+        :param conditions: {'attribute_key': 'target_value'} or nested
+        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+
+            - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+              lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+            - function that returns a boolean given the value e.g.
+
+            def below_exclusive_upper_bound(value):
+                return value < 100
+
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+        :param how : {all, any}, default any
+
+        The level of rigour used to match conditions
+
+            * all: means all conditions need to be met
+            * any: means at least one condition needs to be met
+
+        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
+        values e.g. as in simplified networks.
+        :return: list of ids in the schedule satisfying conditions
+        """
+        return graph_operations.extract_on_attributes(
+            self._graph.graph['routes'].items(), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
+
+    def extract_stop_ids_on_attributes(self, conditions: Union[list, dict], how=any, mixed_dtypes=True):
+        """
+        Extracts IDs of Stops stored in the Schedule based on values of their attributes.
+        Fails silently, assumes not all Routes have those attributes. In the case were the attributes stored are
+        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
+        :param conditions: {'attribute_key': 'target_value'} or nested
+        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+
+            - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+              lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+            - function that returns a boolean given the value e.g.
+
+            def below_exclusive_upper_bound(value):
+                return value < 100
+
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+        :param how : {all, any}, default any
+
+        The level of rigour used to match conditions
+
+            * all: means all conditions need to be met
+            * any: means at least one condition needs to be met
+
+        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
+        values e.g. as in simplified networks.
+        :return: list of ids in the schedule satisfying conditions
+        """
+        return graph_operations.extract_on_attributes(
+            self._graph.nodes(data=True), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
+
+    def services_on_modal_condition(self, modes: Union[str, list]):
+        """
+        Finds Service IDs which hold Routes with modes or singular mode given in `modes`.
+        Note that a Service can have Routes with different modes.
+        :param modes: string mode e.g. 'bus' or a list of such modes e.g. ['bus', 'rail']
+        :return: list of Service IDs
+        """
+        route_ids = self.routes_on_modal_condition(modes=modes)
+        return list({self._graph.graph['route_to_service_map'][r_id] for r_id in route_ids})
+
+    def routes_on_modal_condition(self, modes: Union[str, list]):
+        """
+        Finds Route IDs with modes or singular mode given in `modes`
+        :param modes: string mode e.g. 'bus' or a list of such modes e.g. ['bus', 'rail']
+        :return: list of Route IDs
+        """
+        conditions = {'mode': modes}
+        return self.extract_route_ids_on_attributes(conditions=conditions)
+
+    def stops_on_modal_condition(self, modes: Union[str, list]):
+        """
+        Finds Stop IDs used by Routes with modes or singular mode given in `modes`
+        :param modes: string mode e.g. 'bus' or a list of such modes e.g. ['bus', 'rail']
+        :return: list of Stop IDs
+        """
+        route_ids = self.routes_on_modal_condition(modes=modes)
+        return self.extract_stop_ids_on_attributes(conditions={'routes': route_ids})
+
+    def services_on_spatial_condition(self, region_input, how='intersect'):
+        """
+        Returns Service IDs which intersect region_input, by default, or are contained within region_input if
+        how='contain'
+        :param region_input:
+        :param how:
+            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
+            region_input
+            - 'contain' will return IDs of the Services whose all of the Stops are contained within the region_input
+        :return: Service IDs
+        """
+        if how == 'intersect':
+            stops_intersecting = self.stops_on_spatial_condition(region_input)
+            return list({item for sublist in [self._graph.nodes[x]['services'] for x in stops_intersecting] for item in
+                         sublist})
+        elif how == 'within':
+            routes_contained = set(self.routes_on_spatial_condition(region_input, how='within'))
+            return [service_id for service_id, route_ids in self._graph.graph['service_to_route_map'].items() if
+                    set(route_ids).issubset(routes_contained)]
+        else:
+            raise NotImplementedError('Only `intersect` and `within` options for `how` param.')
+
+    def routes_on_spatial_condition(self, region_input, how='intersect'):
+        """
+        Returns Route IDs which intersect region_input, by default, or are contained within region_input if
+        how='contain'
+        :param region_input:
+            - path to a geojson file, can have multiple features
+            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
+             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
+             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
+            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :param how:
+            - 'intersect' default, will return IDs of the Routes whose at least one Stop intersects the
+            region_input
+            - 'contain' will return IDs of the Routes whose all of the Stops are contained within the region_input
+        :return: Route IDs
+        """
+        stops_intersecting = set(self.stops_on_spatial_condition(region_input))
+        if how == 'intersect':
+            return list(
+                {item for sublist in [self._graph.nodes[x]['routes'] for x in stops_intersecting] for item in sublist})
+        elif how == 'within':
+            return self.extract_route_ids_on_attributes(
+                conditions={'ordered_stops': lambda x: set(x).issubset(stops_intersecting)}, mixed_dtypes=False)
+        else:
+            raise NotImplementedError('Only `intersect` and `within` options for `how` param.')
+
+    def stops_on_spatial_condition(self, region_input):
+        """
+        Returns Stop IDs which intersect region_input
+        :param region_input:
+            - path to a geojson file, can have multiple features
+            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
+             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
+             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
+            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :return: Stop IDs
+        """
+        if isinstance(region_input, str):
+            if persistence.is_geojson(region_input):
+                return self._find_stops_on_geojson(region_input)
+            else:
+                # is assumed to be hex
+                return self._find_stops_on_s2_geometry(region_input)
+        else:
+            # assumed to be a shapely.geometry input
+            return self._find_stops_on_shapely_geometry(region_input)
+
+    def _find_stops_on_geojson(self, geojson_input):
+        shapely_input = spatial.read_geojson_to_shapely(geojson_input)
+        return self._find_stops_on_shapely_geometry(shapely_input)
+
+    def _find_stops_on_shapely_geometry(self, shapely_input):
+        stops_gdf = gngeojson.generate_geodataframes(self._graph)[0]
+        return list(stops_gdf[stops_gdf.intersects(shapely_input)].index)
+
+    def _find_stops_on_s2_geometry(self, s2_input):
+        cell_union = spatial.s2_hex_to_cell_union(s2_input)
+        return [_id for _id, s2_id in self._graph.nodes(data='s2_id') if cell_union.intersects(CellId(s2_id))]
+
+    def _verify_no_id_change(self, new_attributes):
+        id_changes = [id for id, change_dict in new_attributes.items() if
+                      ('id' in change_dict) and (change_dict['id'] != id)]
+        if len(id_changes) != 0:
+            raise NotImplementedError('Changing id can only be done via the `reindex` method')
+
+    def apply_attributes_to_services(self, new_attributes: dict):
+        """
+        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
+        stored for the Services presently, so no data is lost, unless it is being overwritten. Changing IDs this way
+        with result in an error. Use Service's `reindex` method instead.
+        :param new_attributes: keys are Service IDs and values are dictionaries of data to add/replace if present
+        :return:
+        """
+        self._verify_no_id_change(new_attributes)
+        services = list(new_attributes.keys())
+        old_attribs = [deepcopy(self._graph.graph['services'][service]) for service in services]
+        new_attribs = [{**self._graph.graph['services'][service], **new_attributes[service]} for service in services]
+
+        self._graph.graph['change_log'] = self.change_log().modify_bunch('service', services, old_attribs, services,
+                                                                         new_attribs)
+
+        for service, new_service_attribs in zip(services, new_attribs):
+            self._graph.graph['services'][service] = new_service_attribs
+        logging.info(f'Changed Service attributes for {len(services)} services')
+
+    def apply_attributes_to_routes(self, new_attributes: dict):
+        """
+        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
+        stored for the Routes presently, so no data is lost, unless it is being overwritten. Changing IDs this way
+        with result in an error. Use Route's `reindex` method instead.
+        :param new_attributes: keys are Route IDs and values are dictionaries of data to add/replace if present
+        :return:
+        """
+        self._verify_no_id_change(new_attributes)
+        routes = list(new_attributes.keys())
+        old_attribs = [deepcopy(self._graph.graph['routes'][route]) for route in routes]
+        new_attribs = [{**self._graph.graph['routes'][route], **new_attributes[route]} for route in routes]
+
+        self._graph.graph['change_log'] = self.change_log().modify_bunch('route', routes, old_attribs, routes,
+                                                                         new_attribs)
+
+        for route, new_route_attribs in zip(routes, new_attribs):
+            self._graph.graph['routes'][route] = new_route_attribs
+        logging.info(f'Changed Route attributes for {len(routes)} routes')
+
+    def apply_attributes_to_stops(self, new_attributes: dict):
+        """
+        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
+        stored for the Stops presently, so no data is lost, unless it is being overwritten. Changing IDs this way
+        with result in an error. Use Stop's `reindex` method instead.
+        :param new_attributes: keys are Stop IDs and values are dictionaries of data to add/replace if present
+        :return:
+        """
+        self._verify_no_id_change(new_attributes)
+        stops = list(new_attributes.keys())
+        old_attribs = [deepcopy(self._graph.nodes[stop]) for stop in stops]
+        new_attribs = [{**self._graph.nodes[stop], **new_attributes[stop]} for stop in stops]
+
+        self._graph.graph['change_log'] = self.change_log().modify_bunch('stop', stops, old_attribs, stops, new_attribs)
+
+        nx.set_node_attributes(self._graph, dict(zip(stops, new_attribs)))
+        logging.info(f'Changed Stop attributes for {len(stops)} stops')
+
+    def apply_function_to_services(self, function, location: str):
+        """
+        Applies a function or mapping to Services within the Schedule. Fails silently, if the keys referred to by the
+        function are not present, they will not be considered. The function will only be applied where it is possible.
+        :param function: function, a callable, of Service attributes dictionary returning a value that should be stored
+            under `location` or a dictionary mapping - in the case of a dictionary all values stored under `location`
+            will be mapped to new values given by the mapping, if they are present.
+        :param location: where to save the results: string defining the key in the Service attributes dictionary
+        :return:
+        """
+        new_attributes = graph_operations.apply_to_attributes(self._graph.graph['services'].items(), function, location)
+        self.apply_attributes_to_services(new_attributes)
+
+    def apply_function_to_routes(self, function, location: str):
+        """
+        Applies a function or mapping to Routes within the Schedule. Fails silently, if the keys referred to by the
+        function are not present, they will not be considered. The function will only be applied where it is possible.
+        :param function: function, a callable, of Route attributes dictionary returning a value that should be stored
+            under `location` or a dictionary mapping - in the case of a dictionary all values stored under `location`
+            will be mapped to new values given by the mapping, if they are present.
+        :param location: where to save the results: string defining the key in the Route attributes dictionary
+        :return:
+        """
+        new_attributes = graph_operations.apply_to_attributes(self._graph.graph['routes'].items(), function, location)
+        self.apply_attributes_to_routes(new_attributes)
+
+    def apply_function_to_stops(self, function, location: str):
+        """
+        Applies a function or mapping to Stops within the Schedule. Fails silently, if the keys referred to by the
+        function are not present, they will not be considered. The function will only be applied where it is possible.
+        :param function: function, a callable, of Stop attributes dictionary returning a value that should be stored
+            under `location` or a dictionary mapping - in the case of a dictionary all values stored under `location`
+            will be mapped to new values given by the mapping, if they are present.
+        :param location: where to save the results: string defining the key in the Stop attributes dictionary
+        :return:
+        """
+        new_attributes = graph_operations.apply_to_attributes(self._graph.nodes(data=True), function, location)
+        self.apply_attributes_to_stops(new_attributes)
+
+    def _compare_stops_data(self, g):
+        stop_data_in_g = {k: {_k: _v for _k, _v in v.items() if _k not in {'routes', 'services'}} for k, v in
+                          dict(g.nodes(data=True)).items()}
+        stops_without_data = []
+        stops_with_conflicting_data = []
+
+        for stop, data in stop_data_in_g.items():
+            if stop in self._graph.nodes():
+                schedule_stop_data = {_k: _v for _k, _v in dict(self._graph.nodes[stop]).items() if
+                                      _k not in {'routes', 'services'}}
+                if (not data) and (not schedule_stop_data):
+                    stops_without_data.append(stop)
+                if data:
+                    diff = list(dictdiffer.diff(data, schedule_stop_data))
+                    # look for 'change' diffs as that has potential to overwrite/loose data
+                    if [event for event in diff if event[0] == 'change']:
+                        stops_with_conflicting_data.append(stop)
+            elif not data:
+                stops_without_data.append(stop)
+        return stops_without_data, stops_with_conflicting_data
+
+    def add_service(self, service: Service, force=False):
+        """
+        Adds a service to Schedule.
+        :param service: genet.Service object, must have index unique w.r.t. Services already in the Schedule
+        :param force: force the add, even if the stops in the Service have data conflicting with the stops of the same
+            IDs that are already in the Schedule. This will force the Service to be added, the stops data of currently
+            in the Schedule will persist. If you want to change the data for stops use `apply_attributes_to_stops` or
+            `apply_function_to_stops`.
+        :return:
+        """
+        if self.has_service(service.id):
+            raise ServiceIndexError(f'Service with ID `{service.id}` already exists in the Schedule.')
+        for route in service.routes():
+            if self.has_route(route.id):
+                logging.warning(f'Route with ID `{route.id}` within this Service `{service.id}` already exists in the '
+                                f'Schedule. This Route will be reindexed to `{service.id}_{route.id}`')
+                route.reindex(f'{service.id}_{route.id}')
+
+        g = service.graph()
+        stops_without_data, stops_with_conflicting_data = self._compare_stops_data(g)
+        if stops_without_data:
+            logging.warning(f'The following stops are missing data: {stops_without_data}')
+        if stops_with_conflicting_data:
+            if force:
+                logging.warning(f'The following stops will inherit the data currently stored under those Stop IDs in '
+                                f'the Schedule: {stops_with_conflicting_data}.')
+            else:
+                raise ConflictingStopData("The following stops would inherit data currently stored under those "
+                                          f"Stop IDs in the Schedule: {stops_with_conflicting_data}. Use `force=True` "
+                                          "to continue with this operation in this manner. If you want to change the "
+                                          "data for stops use `apply_attributes_to_stops` or "
+                                          "`apply_function_to_stops`.")
+        nodes = dict_support.merge_complex_dictionaries(
+            dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
+        edges = dict_support.combine_edge_data_lists(
+            list(g.edges(data=True)), list(self._graph.edges(data=True)))
+        graph_routes = dict_support.merge_complex_dictionaries(
+            g.graph['routes'], self._graph.graph['routes'])
+        graph_services = dict_support.merge_complex_dictionaries(
+            g.graph['services'], self._graph.graph['services'])
+        self._graph.graph['route_to_service_map'] = {**self._graph.graph['route_to_service_map'],
+                                                     **g.graph['route_to_service_map']}
+        self._graph.graph['service_to_route_map'] = {**self._graph.graph['service_to_route_map'],
+                                                     **g.graph['service_to_route_map']}
+
+        self._graph.add_nodes_from(nodes)
+        self._graph.add_edges_from(edges)
+        nx.set_node_attributes(self._graph, nodes)
+        self._graph.graph['routes'] = graph_routes
+        self._graph.graph['services'] = graph_services
+
+        service_data = self._graph.graph['services'][service.id]
+        route_ids = list(service.route_ids())
+        self._graph.graph['change_log'].add(object_type='service', object_id=service.id, object_attributes=service_data)
+        logging.info(f'Added Service with index `{service.id}`, data={service_data} and Routes: {route_ids}')
+        service._graph = self._graph
+        return service
+
+    def remove_service(self, service_id):
+        """
+        Removes Service under index `service_id`
+        :param service_id:
+        :return:
+        """
+        if not self.has_service(service_id):
+            raise ServiceIndexError(f'Service with ID `{service_id}` does not exist in the Schedule. '
+                                    "Cannot remove a Service that isn't present.")
+        service = self[service_id]
+        service_data = self._graph.graph['services'][service_id]
+        route_ids = set(self._graph.graph['service_to_route_map'][service_id])
+        for stop in service.reference_nodes():
+            self._graph.nodes[stop]['routes'] = list(set(self._graph.nodes[stop]['routes']) - route_ids)
+            self._graph.nodes[stop]['services'] = list(set(self._graph.nodes[stop]['services']) - {service_id})
+        for u, v in service.reference_edges():
+            self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) - route_ids)
+            self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) - {service_id})
+
+        del self._graph.graph['services'][service_id]
+        del self._graph.graph['service_to_route_map'][service_id]
+        for r_id in route_ids:
+            del self._graph.graph['route_to_service_map'][r_id]
+            del self._graph.graph['routes'][r_id]
+        self._graph.graph['change_log'].remove(object_type='service', object_id=service_id,
+                                               object_attributes=service_data)
+        logging.info(f'Removed Service with index `{service_id}`, data={service_data} and Routes: {route_ids}')
+
+    def add_route(self, service_id, route: Route, force=False):
+        """
+        Adds route to a service already in the Schedule.
+        :param service_id: service id in the Schedule to add the route to
+        :param route: Route object to add
+        :param force: force the add, even if the stops in the Route have data conflicting with the stops of the same
+            IDs that are already in the Schedule. This will force the Route to be added, the stops data of currently
+            in the Schedule will persist. If you want to change the data for stops use `apply_attributes_to_stops` or
+            `apply_function_to_stops`.
+        :return:
+        """
+        if not self.has_service(service_id):
+            raise ServiceIndexError(f'Service with ID `{service_id}` does not exist in the Schedule. '
+                                    'You must add a Route to an existing Service, or add a new Service')
+        if self.has_route(route.id):
+            service = self[service_id]
+            logging.warning(f'Route with ID `{route.id}` within already exists in the Schedule. '
+                            f'This Route will be reindexed to `{service_id}_{len(service)+1}`')
+            route.reindex(f'{service_id}_{len(service)+1}')
+
+        g = route.graph()
+        stops_without_data, stops_with_conflicting_data = self._compare_stops_data(g)
+        if stops_without_data:
+            logging.warning(f'The following stops are missing data: {stops_without_data}')
+        if stops_with_conflicting_data:
+            if force:
+                logging.warning(f'The following stops will inherit the data currently stored under those Stop IDs in '
+                                f'the Schedule: {stops_with_conflicting_data}.')
+            else:
+                raise ConflictingStopData("The following stops would inherit data currently stored under those "
+                                          f"Stop IDs in the Schedule: {stops_with_conflicting_data}. Use `force=True` "
+                                          "to continue with this operation in this manner. If you want to change the "
+                                          "data for stops use `apply_attributes_to_stops` or "
+                                          "`apply_function_to_stops`.")
+        nx.set_edge_attributes(g, {edge: {'services': [service_id]} for edge in set(g.edges())})
+        nx.set_node_attributes(g, {node: {'services': [service_id]} for node in set(g.nodes())})
+        nodes = dict_support.merge_complex_dictionaries(
+            dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
+        edges = dict_support.combine_edge_data_lists(
+            list(g.edges(data=True)), list(self._graph.edges(data=True)))
+        graph_routes = dict_support.merge_complex_dictionaries(
+            g.graph['routes'], self._graph.graph['routes'])
+        self._graph.graph['route_to_service_map'][route.id] = service_id
+        self._graph.graph['service_to_route_map'][service_id].append(route.id)
+
+        self._graph.add_nodes_from(nodes)
+        self._graph.add_edges_from(edges)
+        nx.set_node_attributes(self._graph, nodes)
+        self._graph.graph['routes'] = graph_routes
+
+        route_data = self._graph.graph['routes'][route.id]
+        self._graph.graph['change_log'].add(object_type='route', object_id=route.id, object_attributes=route_data)
+        logging.info(f'Added Route with index `{route.id}`, data={route_data} to Service `{service_id}` within the '
+                     f'Schedule')
+        route._graph = self._graph
+        return route
+
+    def remove_route(self, route_id):
+        """
+        Removes Route under index `route_id`
+        :param route_id:
+        :return:
+        """
+        if not self.has_route(route_id):
+            raise RouteIndexError(f'Route with ID `{route_id}` does not exist in the Schedule. '
+                                  "Cannot remove a Route that isn't present.")
+        route = self.route(route_id)
+        route_data = self._graph.graph['routes'][route_id]
+        service_id = self._graph.graph['route_to_service_map'][route_id]
+
+        for stop in route.reference_nodes():
+            self._graph.nodes[stop]['routes'] = list(set(self._graph.nodes[stop]['routes']) - {route_id})
+            if (not self._graph.nodes[stop]['routes']) or (
+                    set(self._graph.nodes[stop]['routes']) & set(self._graph.graph['service_to_route_map'])):
+                self._graph.nodes[stop]['services'] = list(set(self._graph.nodes[stop]['services']) - {service_id})
+        for u, v in route.reference_edges():
+            self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) - {route_id})
+            if (not self._graph[u][v]['routes']) or (
+                    set(self._graph[u][v]['routes']) & set(self._graph.graph['service_to_route_map'])):
+                self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) - {service_id})
+
+        self._graph.graph['service_to_route_map'][service_id].remove(route_id)
+        del self._graph.graph['route_to_service_map'][route_id]
+        del self._graph.graph['routes'][route_id]
+        self._graph.graph['change_log'].remove(object_type='route', object_id=route_id, object_attributes=route_data)
+        logging.info(f'Removed Route with index `{route_id}`, data={route_data}. '
+                     f'It was linked to Service `{service_id}`.')
+
+    def remove_stop(self, stop_id):
+        """
+        Removes Stop under index `stop_id`
+        :param stop_id:
+        :return:
+        """
+        if not self.has_stop(stop_id):
+            raise StopIndexError(f'Stop with ID `{stop_id}` does not exist in the Schedule. '
+                                 "Cannot remove a Stop that isn't present.")
+
+        stop_data = self._graph.nodes[stop_id]
+        routes_affected = stop_data.pop('routes')
+        services_affected = stop_data.pop('services')
+        self._graph.remove_node(stop_id)
+        self._graph.graph['change_log'].remove(object_type='stop', object_id=stop_id, object_attributes=stop_data)
+        logging.info(f'Removed Stop with index `{stop_id}`, data={stop_data}. '
+                     f'Routes affected: {routes_affected}. Services affected: {services_affected}.')
+
+    def remove_unsused_stops(self):
+        stops_to_remove = []
+        for stop, data in self._graph.nodes(data='routes'):
+            if not data:
+                stops_to_remove.append(stop)
+        for stop in stops_to_remove:
+            self.remove_stop(stop)
+        logging.info(f'Removed Stops with indecies `{stops_to_remove}` which were not used by any Routes.')
 
     def is_strongly_connected(self):
         if nx.number_strongly_connected_components(self.graph()) == 1:
@@ -842,19 +1787,13 @@ class Schedule(ScheduleElement):
         return list(nx.nodes_with_selfloops(self.graph()))
 
     def validity_of_services(self):
-        return [service.is_valid_service() for service_id, service in self.services.items()]
+        return [service.is_valid_service() for service in self.services()]
 
     def has_valid_services(self):
         return all(self.validity_of_services())
 
     def invalid_services(self):
-        return [service for service_id, service in self.services.items() if not service.is_valid_service()]
-
-    def has_uniquely_indexed_services(self):
-        indices = set([service.id for service_id, service in self.services.items()])
-        if len(indices) != len(self.services):
-            return False
-        return True
+        return [service for service in self.services() if not service.is_valid_service()]
 
     def is_valid_schedule(self, return_reason=False):
         invalid_stages = []
@@ -863,10 +1802,6 @@ class Schedule(ScheduleElement):
         if not self.has_valid_services():
             valid = False
             invalid_stages.append('not_has_valid_services')
-
-        if not bool(self.has_uniquely_indexed_services()):
-            valid = False
-            invalid_stages.append('not_has_uniquely_indexed_services')
 
         if return_reason:
             return valid, invalid_stages
@@ -928,3 +1863,39 @@ class Schedule(ScheduleElement):
         persistence.ensure_dir(output_dir)
         vehicles = matsim_xml_writer.write_matsim_schedule(output_dir, self)
         matsim_xml_writer.write_vehicles(output_dir, vehicles)
+        self.change_log().export(os.path.join(output_dir, 'schedule_change_log.csv'))
+
+
+def verify_graph_schema(graph):
+    if not isinstance(graph, nx.DiGraph):
+        raise ScheduleElementGraphSchemaError(
+            f'Object of type {type(graph)} passed. The graph for a schedule element needs '
+            f'to be a networkx.DiGraph')
+
+    required_stop_attributes = {'x', 'y', 'id', 'epsg'}
+    for node, node_attribs in graph.nodes(data=True):
+        if not required_stop_attributes.issubset(set(node_attribs.keys())):
+            missing_attribs = required_stop_attributes - set(node_attribs.keys())
+            raise ScheduleElementGraphSchemaError(f'Node/Stop {node} is missing the following attributes: '
+                                                  f'{missing_attribs}')
+
+    required_route_attributes = {'arrival_offsets', 'ordered_stops', 'route_short_name', 'mode', 'departure_offsets',
+                                 'trips'}
+    if 'routes' not in graph.graph:
+        raise ScheduleElementGraphSchemaError('Graph is missing `routes` attribute')
+    else:
+        for route_id, route_dict in graph.graph['routes'].items():
+            if not required_route_attributes.issubset(set(route_dict.keys())):
+                missing_attribs = required_route_attributes - set(route_dict.keys())
+                raise ScheduleElementGraphSchemaError(f'Route {route_id} is missing the following attributes: '
+                                                      f'{missing_attribs}')
+
+    required_service_attributes = {'id'}
+    if 'services' not in graph.graph:
+        raise ScheduleElementGraphSchemaError('Graph is missing `services` attribute')
+    else:
+        for service_id, service_dict in graph.graph['services'].items():
+            if not required_service_attributes.issubset(set(service_dict.keys())):
+                missing_attribs = required_service_attributes - set(service_dict.keys())
+                raise ScheduleElementGraphSchemaError(f'Service {service_id} is missing the following attributes: '
+                                                      f'{missing_attribs}')

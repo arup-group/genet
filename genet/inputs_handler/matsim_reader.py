@@ -22,7 +22,7 @@ def read_node(elem, g, node_id_mapping, transformer):
     # ideally we would check if the transformer was created with always_xy=True and swap
     # lat and long values if so, but there is no obvious way to interrogate the transformer
     attribs['lon'], attribs['lat'] = lon, lat
-    attribs['s2_id'] = spatial.grab_index_s2(lat, lon)
+    attribs['s2_id'] = spatial.generate_index_s2(lat, lon)
     node_id = attribs['id']
     if node_id in node_id_mapping:
         logging.warning('This MATSim network has a node that is not unique: {}. Generating a new id would'
