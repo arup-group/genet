@@ -1384,8 +1384,8 @@ class Network:
                     new_attributes=self.link(duplicated_link)
                 )
 
-    def read_matsim_schedule(self, path):
-        self.schedule.read_matsim_schedule(path)
+    def read_matsim_schedule(self, schedule_path, vehicles_path=''):
+        self.schedule.read_matsim_schedule(schedule_path, vehicles_path)
 
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)

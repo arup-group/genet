@@ -9,7 +9,7 @@ import lxml
 from shapely.geometry import LineString, Polygon
 from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
-    full_fat_default_config_path, correct_schedule
+    full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path
 from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.inputs_handler import matsim_reader
 from genet.core import Network
@@ -1828,9 +1828,9 @@ def test_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_epsg_from
     mocker.patch.object(Schedule, 'read_matsim_schedule')
     network = Network('epsg:27700')
     network.read_matsim_network(pt2matsim_network_test_file)
-    network.read_matsim_schedule(pt2matsim_schedule_file)
+    network.read_matsim_schedule(pt2matsim_schedule_file, vehicles_path='')
 
-    Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file)
+    Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file, '')
 
 
 def test_has_node_when_node_is_in_the_graph():
@@ -2120,7 +2120,7 @@ def test_has_schedule_with_valid_network_routes_with_some_valid_routes(route):
     n.add_link('1', 1, 2)
     n.add_link('2', 2, 3)
     route.route = ['1', '2']
-    route_2 = Route(route_short_name='', mode='', stops=[],
+    route_2 = Route(route_short_name='', mode='bus', stops=[],
                     trips={'trip_id': ['1'], 'trip_departure_time': ['13:00:00'], 'vehicle_id': ['veh_1_bus']},
                     arrival_offsets=[], departure_offsets=[], route=['10000'])
     n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route, route_2])])

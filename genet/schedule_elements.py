@@ -4,6 +4,7 @@ import networkx as nx
 import numpy as np
 import logging
 import os
+import io
 import yaml
 import pkgutil
 from datetime import datetime
@@ -902,12 +903,13 @@ class Schedule(ScheduleElement):
         Defaults to reading `genet/configs/vehicles/vehicle_definitions.yml`
     """
 
-    def __init__(self, epsg: str = '', services: List[Service] = None, _graph: nx.DiGraph = None,
-                 vehicles=None, vehicle_types: Union[str, dict] = 'configs/vehicles/vehicle_definitions.yml'):
-        if persistence.is_yml(vehicle_types):
-            self.vehicle_types = read_vehicle_types(vehicle_types)
-        else:
+    def __init__(self, epsg: str = '', services: List[Service] = None, _graph: nx.DiGraph = None, vehicles=None,
+                 vehicle_types: Union[str, dict] = pkgutil.get_data(__name__, os.path.join("configs", "vehicles",
+                                                                                           "vehicle_definitions.yml"))):
+        if isinstance(vehicle_types, dict):
             self.vehicle_types = vehicle_types
+        else:
+            self.vehicle_types = read_vehicle_types(vehicle_types)
 
         if _graph is not None:
             # check graph type and schema
@@ -2079,5 +2081,12 @@ def verify_graph_schema(graph):
                                                       f'{missing_attribs}')
 
 
-def read_vehicle_types(yml_path):
-    return yaml.load(pkgutil.get_data(__name__, yml_path),  Loader=yaml.FullLoader)['VEHICLE_TYPES']
+def read_vehicle_types(yml):
+    """
+    :param yml: path to .yml file based on example vehicles config in `genet/configs/vehicles/vehicle_definitions.yml`
+        or a bytes stream of that file
+    :return:
+    """
+    if persistence.is_yml(yml):
+        yml = io.open(yml, mode='r')
+    return yaml.load(yml, Loader=yaml.FullLoader)['VEHICLE_TYPES']

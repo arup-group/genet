@@ -1333,8 +1333,8 @@ def test_validate_vehicle_definitions_warns_of_missing_vehicle_types(schedule, c
     assert "{'type': 'bus'}" in caplog.records[1].message
 
 
-def test_reading_vehicle_types_from_default_config():
-    vehicle_types = read_vehicle_types('configs/vehicles/vehicle_definitions.yml')
+def test_reading_vehicle_types_from_a_yml_config(vehicle_definitions_config_path):
+    vehicle_types = read_vehicle_types(vehicle_definitions_config_path)
     assert_semantically_equal(vehicle_types, {
         'bus': {'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}}, 'length': {'meter': '18.0'},
                 'width': {'meter': '2.5'}, 'accessTime': {'secondsPerPerson': '0.5'},

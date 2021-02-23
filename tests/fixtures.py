@@ -12,6 +12,8 @@ pt2matsim_network_test_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network.xml"))
 pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
+pt2matsim_vehicles_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml"))
 
 
 ###########################################################
@@ -60,7 +62,7 @@ def assert_logging_warning_caught_with_message_containing(clog, message):
 def network_object_from_test_data():
     n = Network('epsg:27700')
     n.read_matsim_network(pt2matsim_network_test_file)
-    n.read_matsim_schedule(pt2matsim_schedule_file)
+    n.read_matsim_schedule(pt2matsim_schedule_file, pt2matsim_vehicles_file)
     return n
 
 
@@ -70,7 +72,7 @@ def network_object_from_test_data():
 @pytest.fixture()
 def schedule_object_from_test_data():
     s = Schedule('epsg:27700')
-    s.read_matsim_schedule(pt2matsim_schedule_file)
+    s.read_matsim_schedule(pt2matsim_schedule_file, pt2matsim_vehicles_file)
     return s
 
 
@@ -399,3 +401,12 @@ def slim_default_config_path():
 @pytest.fixture()
 def slim_default_config():
     return osm_reader.Config(os.path.join(os.path.dirname(__file__), "..", "genet", "configs", "OSM", "slim_config.yml"))
+
+###########################################################
+# vehicle types configs
+###########################################################
+
+@pytest.fixture()
+def vehicle_definitions_config_path():
+    return os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                        "..", "genet", "configs", "vehicles", "vehicle_definitions.yml"))
