@@ -2,6 +2,7 @@ import pandas as pd
 import json
 import os
 import genet.utils.persistence as persistence
+import genet.utils.dict_support as dict_support
 
 
 class AuxiliaryFile:
@@ -13,7 +14,7 @@ class AuxiliaryFile:
         self.path_to_file = path_to_file
         self.filename = os.path.basename(path_to_file)
         self.data = self.read_file()
-        self.attachments = set()
+        self.attachments = []
         self.map = {}
 
     def read_file(self):
@@ -31,8 +32,13 @@ class AuxiliaryFile:
         with open(self.path_to_file) as json_file:
             return json.load(json_file)
 
-    def attach_to_object(self, indicies: set):
-        self.attachments.add('')
+    def attach(self, indicies: set):
+        if isinstance(self.data, dict):
+            self.attachments += dict_support.find_nested_paths_to_value(self.data, indicies)
+        if isinstance(self.data, pd.DataFrame):
+            for col in self.data.columns:
+                if set(self.data[col]) & indicies:
+                    self.attachments.append(col)
 
     def is_attached(self):
         return self.attachments
