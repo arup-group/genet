@@ -42,6 +42,24 @@ def test_is_geojson_identifies_regular_string_isnt_geojson():
     assert not persistence.is_geojson('hello,darkness,my,old,friend')
 
 
+def test_is_csv_identifies_csv():
+    zip_dir = os.path.join('path', 'to', 'dir', 'file.csv')
+    assert persistence.is_csv(zip_dir)
+
+
+def test_is_csv_identifies_regular_string_isnt_csv():
+    assert not persistence.is_csv('hello,darkness,my,old,friend')
+
+
+def test_is_json_identifies_json():
+    zip_dir = os.path.join('path', 'to', 'dir', 'file.json')
+    assert persistence.is_json(zip_dir)
+
+
+def test_is_json_identifies_regular_string_isnt_json():
+    assert not persistence.is_json('hello,darkness,my,old,friend')
+
+
 def test_is_zip_identifies_zip():
     zip_dir = os.path.join('path', 'to', 'dir', 'file.zip')
     assert persistence.is_zip(zip_dir)
