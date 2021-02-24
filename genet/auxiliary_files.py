@@ -44,8 +44,14 @@ class AuxiliaryFile:
         return self.attachments
 
     def build_identity_map(self):
-        # todo use self.attachments locations to build a dictionary of all indices in data mapping to themselves
-        pass
+        ids = set()
+        for attachment in self.attachments:
+            attachment_data = dict_support.get_nested_value(self.data, attachment)
+            if isinstance(attachment_data, (list, set)):
+                ids |= set(attachment_data)
+            else:
+                ids.add(attachment_data)
+        self.map = dict(zip(ids, ids))
 
     def update(self):
         # todo use map to update all index mentions under self.attachments locations

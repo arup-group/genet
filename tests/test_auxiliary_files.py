@@ -52,3 +52,15 @@ def test_attaching_links_benchmark_to_network(links_benchmark, network):
                                            {'bus': {'2': {'in': 'links'}}}, {'bus': {'2': {'out': 'links'}}},
                                            {'car': {'1': {'out': 'links'}}}, {'car': {'2': {'in': 'links'}}},
                                            {'bus': {'1': {'out': 'links'}}}, {'bus': {'2': {'in': 'links'}}}]
+
+
+def test_building_identity_map_for_links_benchmark(links_benchmark):
+    links_benchmark.attachments = [{'car': {'1': {'in': 'links'}}}, {'car': {'1': {'out': 'links'}}},
+                                   {'car': {'2': {'in': 'links'}}}, {'car': {'2': {'out': 'links'}}},
+                                   {'bus': {'1': {'in': 'links'}}}, {'bus': {'1': {'out': 'links'}}},
+                                   {'bus': {'2': {'in': 'links'}}}, {'bus': {'2': {'out': 'links'}}},
+                                   {'car': {'1': {'out': 'links'}}}, {'car': {'2': {'in': 'links'}}},
+                                   {'bus': {'1': {'out': 'links'}}}, {'bus': {'2': {'in': 'links'}}}]
+
+    links_benchmark.build_identity_map()
+    assert links_benchmark.map == {'0': '0', '3': '3', '2': '2', '1': '1', '4': '4'}
