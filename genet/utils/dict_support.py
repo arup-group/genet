@@ -69,6 +69,14 @@ def find_nested_paths_to_value(d: dict, value: Union[str, int, float, set, list]
     return paths
 
 
+def nest_at_leaf(d: dict, value):
+    for k, v in d.items():
+        if isinstance(v, dict):
+            nest_at_leaf(v, value)
+        else:
+            d[k] = {v: value}
+    return d
+
 
 def merge_complex_dictionaries(d1, d2):
     """

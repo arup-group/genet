@@ -65,6 +65,13 @@ def test_finding_multiple_nested_paths_on_condition():
     assert dict_support.find_nested_paths_to_value(d, value) == [{'1': {'2': {'3': '4'}}}, {'1': '7'}, '11']
 
 
+def test_nesting_at_leaf_with_some_value():
+    d = {'1': {'2': {'3': {'4': 'hey'}}}}
+    _d = dict_support.nest_at_leaf(d, 'some')
+    assert d == {'1': {'2': {'3': {'4': {'hey': 'some'}}}}}
+    assert _d == {'1': {'2': {'3': {'4': {'hey': 'some'}}}}}
+
+
 def test_merging_simple_dictionaries():
     return_d = dict_support.merge_complex_dictionaries(
         {'a': 1, 'b': 3},

@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 import os
+from copy import deepcopy
 import genet.utils.persistence as persistence
 import genet.utils.dict_support as dict_support
 
@@ -10,6 +11,7 @@ class AuxiliaryFile:
     Represents an auxiliary file of JSON or CSV format, links/attaches itself to the Network or Schedule object.
     Does not require a specific schema
     """
+
     def __init__(self, path_to_file: str):
         self.path_to_file = path_to_file
         self.filename = os.path.basename(path_to_file)
@@ -53,10 +55,20 @@ class AuxiliaryFile:
                 ids.add(attachment_data)
         self.map = dict(zip(ids, ids))
 
+    def has_updates(self):
+        return any([k != v for k, v in self.map.items()])
+
     def update(self):
-        # todo use map to update all index mentions under self.attachments locations
-        # todo build identity map again
-        pass
+        if self.has_updates():
+            for attachment in self.attachments:
+                attachment_data = dict_support.get_nested_value(self.data, attachment)
+                if isinstance(attachment_data, (list, set)):
+                    value = attachment_data.__class__(map(self.map.get, attachment_data))
+                else:
+                    value = self.map[attachment_data]
+                self.data = dict_support.set_nested_value(
+                    self.data, dict_support.nest_at_leaf(deepcopy(attachment), value))
+            self.build_identity_map()
 
     def write_to_file(self, output_dir):
-        pass
+        self.update()
