@@ -125,6 +125,12 @@ def test_updating_links_benchmark(links_benchmark):
     assert not links_benchmark.has_updates()
 
 
+def test_saving_links_benchmark(links_benchmark, tmpdir):
+    assert not os.path.exists(os.path.join(tmpdir, links_benchmark.filename))
+    links_benchmark.write_to_file(tmpdir)
+    assert os.path.exists(os.path.join(tmpdir, links_benchmark.filename))
+
+
 def test_attaching_links_benchmark_csv_to_network(links_benchmark_csv, network):
     links_benchmark_csv.attach({link_id for link_id, dat in network.links()})
 
@@ -155,3 +161,9 @@ def test_updating_links_benchmark_csv(links_benchmark_csv):
                               'other_links': {0: '005', 1: '006', 2: '007', 3: '008'}})
     assert_frame_equal(links_benchmark_csv.data, correct_data)
     assert not links_benchmark_csv.has_updates()
+
+
+def test_saving_links_benchmark_csv(links_benchmark_csv, tmpdir):
+    assert not os.path.exists(os.path.join(tmpdir, links_benchmark_csv.filename))
+    links_benchmark_csv.write_to_file(tmpdir)
+    assert os.path.exists(os.path.join(tmpdir, links_benchmark_csv.filename))

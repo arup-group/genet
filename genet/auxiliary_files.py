@@ -98,3 +98,17 @@ class AuxiliaryFile:
 
     def write_to_file(self, output_dir):
         self.update()
+        persistence.ensure_dir(output_dir)
+        if persistence.is_csv(self.filename):
+            return self._write_csv(output_dir)
+        elif persistence.is_json(self.filename):
+            return self._write_json(output_dir)
+        else:
+            raise NotImplementedError(f'File {self.filename} is not currently supported as an auxiliary file.')
+
+    def _write_csv(self, output_dir):
+        self.data.to_csv(os.path.join(output_dir, self.filename))
+
+    def _write_json(self, output_dir):
+        with open(os.path.join(output_dir, self.filename), 'w') as outfile:
+            json.dump(self.data, outfile)
