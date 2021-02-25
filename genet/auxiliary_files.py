@@ -2,6 +2,7 @@ import pandas as pd
 import json
 import os
 import ast
+import logging
 from copy import deepcopy
 import genet.utils.persistence as persistence
 import genet.utils.dict_support as dict_support
@@ -103,6 +104,7 @@ class AuxiliaryFile:
     def write_to_file(self, output_dir):
         self.update()
         persistence.ensure_dir(output_dir)
+        logging.info(f'Saving auxiliary file {self.filename} in {output_dir}')
         if persistence.is_csv(self.filename):
             return self._write_csv(output_dir)
         elif persistence.is_json(self.filename):
