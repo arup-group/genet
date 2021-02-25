@@ -44,24 +44,19 @@ def pt_stop_benchmark():
 
 def test_attaching_links_benchmark_to_network(links_benchmark, network):
     links_benchmark.attach({link_id for link_id, dat in network.links()})
-    links_benchmark.attach({node_id for node_id, dat in network.nodes()})
 
     assert links_benchmark.is_attached()
     assert links_benchmark.attachments == [{'car': {'1': {'in': 'links'}}}, {'car': {'1': {'out': 'links'}}},
                                            {'car': {'2': {'in': 'links'}}}, {'car': {'2': {'out': 'links'}}},
                                            {'bus': {'1': {'in': 'links'}}}, {'bus': {'1': {'out': 'links'}}},
-                                           {'bus': {'2': {'in': 'links'}}}, {'bus': {'2': {'out': 'links'}}},
-                                           {'car': {'1': {'out': 'links'}}}, {'car': {'2': {'in': 'links'}}},
-                                           {'bus': {'1': {'out': 'links'}}}, {'bus': {'2': {'in': 'links'}}}]
+                                           {'bus': {'2': {'in': 'links'}}}, {'bus': {'2': {'out': 'links'}}}]
 
 
 def test_building_identity_map_for_links_benchmark(links_benchmark):
     links_benchmark.attachments = [{'car': {'1': {'in': 'links'}}}, {'car': {'1': {'out': 'links'}}},
                                    {'car': {'2': {'in': 'links'}}}, {'car': {'2': {'out': 'links'}}},
                                    {'bus': {'1': {'in': 'links'}}}, {'bus': {'1': {'out': 'links'}}},
-                                   {'bus': {'2': {'in': 'links'}}}, {'bus': {'2': {'out': 'links'}}},
-                                   {'car': {'1': {'out': 'links'}}}, {'car': {'2': {'in': 'links'}}},
-                                   {'bus': {'1': {'out': 'links'}}}, {'bus': {'2': {'in': 'links'}}}]
+                                   {'bus': {'2': {'in': 'links'}}}, {'bus': {'2': {'out': 'links'}}}]
 
     links_benchmark.build_identity_map()
     assert links_benchmark.map == {'0': '0', '3': '3', '2': '2', '1': '1', '4': '4'}
@@ -71,9 +66,7 @@ def test_updating_links_benchmark(links_benchmark):
     links_benchmark.attachments = [{'car': {'1': {'in': 'links'}}}, {'car': {'1': {'out': 'links'}}},
                                    {'car': {'2': {'in': 'links'}}}, {'car': {'2': {'out': 'links'}}},
                                    {'bus': {'1': {'in': 'links'}}}, {'bus': {'1': {'out': 'links'}}},
-                                   {'bus': {'2': {'in': 'links'}}}, {'bus': {'2': {'out': 'links'}}},
-                                   {'car': {'1': {'out': 'links'}}}, {'car': {'2': {'in': 'links'}}},
-                                   {'bus': {'1': {'out': 'links'}}}, {'bus': {'2': {'in': 'links'}}}]
+                                   {'bus': {'2': {'in': 'links'}}}, {'bus': {'2': {'out': 'links'}}}]
     links_benchmark.map = {'0': '000', '3': '003', '2': '002', '1': '001', '4': '004'}
 
     links_benchmark.update()
@@ -120,3 +113,4 @@ def test_updating_links_benchmark(links_benchmark):
                                           '7': 721.0, '8': 592.0, '9': 487.0, '10': 488.0, '11': 514.0, '12': 498.0,
                                           '13': 659.0, '14': 749.0, '15': 786.0, '16': 1009.0, '17': 908.0, '18': 845.0,
                                           '19': 578.0, '20': 370.0, '21': 273.0, '22': 230.0, '23': 137.0}}}}})
+    assert not links_benchmark.has_updates()
