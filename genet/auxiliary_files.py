@@ -11,7 +11,7 @@ class AuxiliaryFile:
     """
     Represents an auxiliary file of JSON or CSV format, links/attaches itself to the Network or Schedule object.
     Does not require a specific schema but can only handle one type of indicies. So a file has to correspond to
-    either link IDs, node IDs or stop IDs, no mixing allowed.
+    either link IDs, node IDs no mixing allowed.
     """
 
     def __init__(self, path_to_file: str):
@@ -52,6 +52,7 @@ class AuxiliaryFile:
                         self.attachments.append(col)
                 elif set(self.data[col]) & indicies:
                     self.attachments.append(col)
+        self.build_identity_map()
 
     def is_attached(self):
         return self.attachments
@@ -72,6 +73,9 @@ class AuxiliaryFile:
                 else:
                     ids |= set(self.data[attachment])
         self.map = dict(zip(ids, ids))
+
+    def apply_map(self, id_map):
+        self.map = {**self.map, **id_map}
 
     def has_updates(self):
         return any([k != v for k, v in self.map.items()])

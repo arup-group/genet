@@ -71,6 +71,12 @@ def test_building_identity_map_for_links_benchmark(links_benchmark):
     assert links_benchmark.map == {'0': '0', '3': '3', '2': '2', '1': '1', '4': '4'}
 
 
+def test_applying_map(links_benchmark):
+    links_benchmark.map = {'0': '0', '3': '3', '2': '2', '1': '1', '4': '4'}
+    links_benchmark.apply_map({'0': '000', '3': '003', '2': '002', '1': '001'})
+    assert links_benchmark.map == {'0': '000', '3': '003', '2': '002', '1': '001', '4': '4'}
+
+
 def test_updating_links_benchmark(links_benchmark):
     links_benchmark.attachments = [{'car': {'1': {'in': 'links'}}}, {'car': {'1': {'out': 'links'}}},
                                    {'car': {'2': {'in': 'links'}}}, {'car': {'2': {'out': 'links'}}},
