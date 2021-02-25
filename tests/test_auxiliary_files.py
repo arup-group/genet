@@ -1,12 +1,16 @@
 import pytest
 import sys
 import os
+from pandas.testing import assert_frame_equal
+from pandas import DataFrame
 from genet import Network, Service, Route, Stop, AuxiliaryFile
 from tests.fixtures import assert_semantically_equal
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 links_benchmark_path = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "links_benchmark.json"))
+links_benchmark_csv_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "links_benchmark.csv"))
 pt_stop_benchmark_path = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "pt_stop_benchmark.json"))
 
@@ -32,6 +36,11 @@ def network():
 @pytest.fixture()
 def links_benchmark():
     return AuxiliaryFile(links_benchmark_path)
+
+
+@pytest.fixture()
+def links_benchmark_csv():
+    return AuxiliaryFile(links_benchmark_csv_path)
 
 
 # pt stops are not currently able to change indices
@@ -114,3 +123,35 @@ def test_updating_links_benchmark(links_benchmark):
                                           '13': 659.0, '14': 749.0, '15': 786.0, '16': 1009.0, '17': 908.0, '18': 845.0,
                                           '19': 578.0, '20': 370.0, '21': 273.0, '22': 230.0, '23': 137.0}}}}})
     assert not links_benchmark.has_updates()
+
+
+def test_attaching_links_benchmark_csv_to_network(links_benchmark_csv, network):
+    links_benchmark_csv.attach({link_id for link_id, dat in network.links()})
+
+    assert links_benchmark_csv.is_attached()
+    assert links_benchmark_csv.attachments == ['links', 'other_links']
+
+
+def test_building_identity_map_for_links_benchmark_csv(links_benchmark_csv):
+    links_benchmark_csv.attachments = ['links', 'other_links']
+
+    links_benchmark_csv.build_identity_map()
+    assert links_benchmark_csv.map == {'8': '8', '3': '3', '4': '4', '1': '1', '2': '2', '5': '5', '6': '6', '7': '7'}
+
+
+def test_updating_links_benchmark_csv(links_benchmark_csv):
+    links_benchmark_csv.attachments = ['links', 'other_links']
+    links_benchmark_csv.map = {'8': '008', '3': '003', '4': '004', '1': '001', '2': '002', '5': '005', '6': '006',
+                               '7': '007'}
+
+    links_benchmark_csv.update()
+
+    correct_data = DataFrame({'id': {0: 'L001', 1: 'L001', 2: 'L002', 3: 'L002'},
+                              'direction': {0: 'north', 1: 'south', 2: 'east', 3: 'west'},
+                              'latitude': {0: 51.44550275, 1: 51.44550275, 2: 51.44469799, 3: 51.44469799},
+                              'longitude': {0: -0.234686018, 1: -0.234686018, 2: -0.233398422, 3: -0.233398422},
+                              'osm_id': {0: 19074660, 1: 19074660, 2: 142592756, 3: 132778373},
+                              'links': {0: ['001'], 1: ['002'], 2: ['003'], 3: ['004']},
+                              'other_links': {0: '005', 1: '006', 2: '007', 3: '008'}})
+    assert_frame_equal(links_benchmark_csv.data, correct_data)
+    assert not links_benchmark_csv.has_updates()

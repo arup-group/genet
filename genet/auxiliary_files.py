@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 import os
+import ast
 from copy import deepcopy
 import genet.utils.persistence as persistence
 import genet.utils.dict_support as dict_support
@@ -9,7 +10,8 @@ import genet.utils.dict_support as dict_support
 class AuxiliaryFile:
     """
     Represents an auxiliary file of JSON or CSV format, links/attaches itself to the Network or Schedule object.
-    Does not require a specific schema
+    Does not require a specific schema but can only handle one type of indicies. So a file has to correspond to
+    either link IDs, node IDs or stop IDs, no mixing allowed.
     """
 
     def __init__(self, path_to_file: str):
@@ -28,7 +30,13 @@ class AuxiliaryFile:
             raise NotImplementedError(f'File {self.path_to_file} is not currently supported as an auxiliary file.')
 
     def _read_csv(self):
-        return pd.read_csv(self.path_to_file)
+        df = pd.read_csv(self.path_to_file)
+        for col in df.columns:
+            try:
+                df[col] = df[col].apply(lambda x: ast.literal_eval(x))
+            except ValueError:
+                pass
+        return df
 
     def _read_json(self):
         with open(self.path_to_file) as json_file:
@@ -39,7 +47,10 @@ class AuxiliaryFile:
             self.attachments += dict_support.find_nested_paths_to_value(self.data, indicies)
         if isinstance(self.data, pd.DataFrame):
             for col in self.data.columns:
-                if set(self.data[col]) & indicies:
+                if all([isinstance(x, (list, set)) for x in self.data[col]]):
+                    if set(self.data[col].sum()) & indicies:
+                        self.attachments.append(col)
+                elif set(self.data[col]) & indicies:
                     self.attachments.append(col)
 
     def is_attached(self):
@@ -47,12 +58,19 @@ class AuxiliaryFile:
 
     def build_identity_map(self):
         ids = set()
-        for attachment in self.attachments:
-            attachment_data = dict_support.get_nested_value(self.data, attachment)
-            if isinstance(attachment_data, (list, set)):
-                ids |= set(attachment_data)
-            else:
-                ids.add(attachment_data)
+        if isinstance(self.data, dict):
+            for attachment in self.attachments:
+                attachment_data = dict_support.get_nested_value(self.data, attachment)
+                if isinstance(attachment_data, (list, set)):
+                    ids |= set(attachment_data)
+                else:
+                    ids.add(attachment_data)
+        else:
+            for attachment in self.attachments:
+                if all([isinstance(x, (list, set)) for x in self.data[attachment]]):
+                    ids |= set(self.data[attachment].sum())
+                else:
+                    ids |= set(self.data[attachment])
         self.map = dict(zip(ids, ids))
 
     def has_updates(self):
@@ -60,14 +78,22 @@ class AuxiliaryFile:
 
     def update(self):
         if self.has_updates():
-            for attachment in self.attachments:
-                attachment_data = dict_support.get_nested_value(self.data, attachment)
-                if isinstance(attachment_data, (list, set)):
-                    value = attachment_data.__class__(map(self.map.get, attachment_data))
-                else:
-                    value = self.map[attachment_data]
-                self.data = dict_support.set_nested_value(
-                    self.data, dict_support.nest_at_leaf(deepcopy(attachment), value))
+            if isinstance(self.data, dict):
+                for attachment in self.attachments:
+                    attachment_data = dict_support.get_nested_value(self.data, attachment)
+                    if isinstance(attachment_data, (list, set)):
+                        value = attachment_data.__class__(map(self.map.get, attachment_data))
+                    else:
+                        value = self.map[attachment_data]
+                    self.data = dict_support.set_nested_value(
+                        self.data, dict_support.nest_at_leaf(deepcopy(attachment), value))
+            else:
+                for attachment in self.attachments:
+                    if all([isinstance(x, (list, set)) for x in self.data[attachment]]):
+                        self.data[attachment] = self.data[attachment].apply(
+                            lambda x: x.__class__([self.map[i] for i in x]))
+                    else:
+                        self.data[attachment] = self.data[attachment].replace(self.map)
             self.build_identity_map()
 
     def write_to_file(self, output_dir):
