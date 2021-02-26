@@ -1398,12 +1398,18 @@ class Network:
     def read_auxiliary_link_file(self, file_path):
         aux_file = auxiliary_files.AuxiliaryFile(file_path)
         aux_file.attach({link_id for link_id, dat in self.links()})
-        self.auxiliary_files['link'][aux_file.filename] = aux_file
+        if aux_file.is_attached():
+            self.auxiliary_files['link'][aux_file.filename] = aux_file
+        else:
+            logging.warning(f'Auxiliary file {file_path} failed to attach to {self.__name__} links')
 
     def read_auxiliary_node_file(self, file_path):
         aux_file = auxiliary_files.AuxiliaryFile(file_path)
         aux_file.attach({node_id for node_id, dat in self.nodes()})
-        self.auxiliary_files['node'][aux_file.filename] = aux_file
+        if aux_file.is_attached():
+            self.auxiliary_files['node'][aux_file.filename] = aux_file
+        else:
+            logging.warning(f'Auxiliary file {file_path} failed to attach to {self.__name__} nodes')
 
     def update_link_auxiliary_files(self, id_map: dict):
         """
