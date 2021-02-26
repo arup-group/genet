@@ -10,9 +10,15 @@ import genet.utils.dict_support as dict_support
 
 class AuxiliaryFile:
     """
-    Represents an auxiliary file of JSON or CSV format, links/attaches itself to the Network or Schedule object.
-    Does not require a specific schema but can only handle one type of indicies. So a file has to correspond to
-    either link IDs, node IDs no mixing allowed.
+    Represents an auxiliary file of JSON or CSV format, can be 'attached' to a Network or Schedule object by sharing
+    their IDs through the `attach` method.
+    Does not require the file to follow a specific schema, it will search for an overlap in indices and record the path
+    to that data within the file in the `attachments` attribute. It works under a few assumptions though:
+        - for CSV: table with single level indexing. The IDs can be nested in lists.
+        - for JSON: any level of nestedness is allowed, the IDs can live singularly or within lists.
+    In both cases, the IDs of interest need to be stored as values and no other data using the same values is stored
+    in the file.
+    Can handle only one type of indices. So a file has to correspond to one set of indices, no mixing allowed.
     """
 
     def __init__(self, path_to_file: str):
@@ -43,15 +49,15 @@ class AuxiliaryFile:
         with open(self.path_to_file) as json_file:
             return json.load(json_file)
 
-    def attach(self, indicies: set):
+    def attach(self, indices: set):
         if isinstance(self.data, dict):
-            self.attachments += dict_support.find_nested_paths_to_value(self.data, indicies)
+            self.attachments += dict_support.find_nested_paths_to_value(self.data, indices)
         if isinstance(self.data, pd.DataFrame):
             for col in self.data.columns:
                 if all([isinstance(x, (list, set)) for x in self.data[col]]):
-                    if set(self.data[col].sum()) & indicies:
+                    if set(self.data[col].sum()) & indices:
                         self.attachments.append(col)
-                elif set(self.data[col]) & indicies:
+                elif set(self.data[col]) & indices:
                     self.attachments.append(col)
         self.build_identity_map()
 
