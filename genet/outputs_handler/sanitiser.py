@@ -1,3 +1,5 @@
+import sys
+from numpy import number
 from geopandas import GeoDataFrame, GeoSeries
 
 
@@ -17,6 +19,9 @@ def sanitise_geodataframe(gdf):
         if gdf[col].apply(lambda x: isinstance(x, (set, list))).any():
             gdf[col] = gdf[col].apply(lambda x: ','.join(x))
         elif gdf[col].apply(lambda x: isinstance(x, dict)).any():
+            gdf[col] = gdf[col].apply(lambda x: str(x))
+    for col in gdf.select_dtypes(include=number).columns.tolist():
+        if (gdf[col] > sys.maxsize).any():
             gdf[col] = gdf[col].apply(lambda x: str(x))
     return gdf
 
