@@ -458,6 +458,23 @@ def test_applying_attributes_to_route(schedule):
     assert schedule.route('1').route_short_name == 'new_name'
 
 
+def test_applying_mode_attributes_to_route_results_in_correct_mode_methods(schedule):
+    assert schedule.route('1').mode == 'bus'
+    assert schedule.modes() == {'bus'}
+    assert schedule.mode_graph_map() == {
+        'bus': {('3', '4'), ('2', '3'), ('1', '2'), ('6', '7'), ('5', '6'), ('7', '8')}}
+
+    schedule.apply_attributes_to_routes({'1': {'mode': 'new_bus'}})
+
+    assert schedule.route('1').mode == 'new_bus'
+    assert schedule.modes() == {'bus', 'new_bus'}
+    assert schedule['service'].modes() == {'bus', 'new_bus'}
+    assert schedule.mode_graph_map() == {'bus': {('7', '8'), ('6', '7'), ('5', '6')},
+                                         'new_bus': {('3', '4'), ('1', '2'), ('2', '3')}}
+    assert schedule['service'].mode_graph_map() == {'bus': {('6', '7'), ('7', '8'), ('5', '6')},
+                                                    'new_bus': {('3', '4'), ('2', '3'), ('1', '2')}}
+
+
 def test_applying_attributes_changing_id_to_route_throws_error(schedule):
     assert '1' in schedule._graph.graph['routes']
     assert schedule._graph.graph['routes']['1']['id'] == '1'
