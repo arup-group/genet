@@ -90,8 +90,8 @@ def test_stops_equal():
 def test_stop_already_in_epsg_4326_gives_lat_lon():
     a = Stop(id='0', x=-0.14910908709500162, y=51.52370573323939, epsg='epsg:4326')
 
-    assert a.lat == a.x
-    assert a.lon == a.y
+    assert a.lat == a.y
+    assert a.lon == a.x
 
 
 def test_stops_exact():

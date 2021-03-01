@@ -146,9 +146,9 @@ def test_reproject_changes_x_y_values_for_all_nodes(network1):
     network1.reproject('epsg:4326')
     nodes = dict(network1.nodes())
     correct_nodes = {
-        '101982': {'id': '101982', 'x': 51.52287873323954, 'y': -0.14625948709424305, 'lon': -0.14625948709424305,
+        '101982': {'id': '101982', 'x': -0.14625948709424305, 'y': 51.52287873323954, 'lon': -0.14625948709424305,
                    'lat': 51.52287873323954, 's2_id': 5221390329378179879},
-        '101986': {'id': '101986', 'x': 51.52228713323965, 'y': -0.14439428709377497, 'lon': -0.14439428709377497,
+        '101986': {'id': '101986', 'x': -0.14439428709377497, 'y': 51.52228713323965, 'lon': -0.14439428709377497,
                    'lat': 51.52228713323965, 's2_id': 5221390328605860387}}
 
     target_change_log = pd.DataFrame(
@@ -158,12 +158,12 @@ def test_reproject_changes_x_y_values_for_all_nodes(network1):
             3: "{'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118', 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879}",
             4: "{'id': '101986', 'x': '528835.203274008', 'y': '182006.27331298392', 'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387}"},
          'new_attributes': {
-             3: "{'id': '101982', 'x': 51.52287873323954, 'y': -0.14625948709424305, 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879}",
-             4: "{'id': '101986', 'x': 51.52228713323965, 'y': -0.14439428709377497, 'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387}"},
-         'diff': {3: [('change', 'x', ('528704.1425925883', 51.52287873323954)),
-                      ('change', 'y', ('182068.78193707118', -0.14625948709424305))],
-                  4: [('change', 'x', ('528835.203274008', 51.52228713323965)),
-                      ('change', 'y', ('182006.27331298392', -0.14439428709377497))]}}
+             3: "{'id': '101982', 'x': -0.14625948709424305, 'y': 51.52287873323954, 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879}",
+             4: "{'id': '101986', 'x': -0.14439428709377497, 'y': 51.52228713323965, 'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387}"},
+         'diff': {3: [('change', 'x', ('528704.1425925883', -0.14625948709424305)),
+                      ('change', 'y', ('182068.78193707118', 51.52287873323954))],
+                  4: [('change', 'x', ('528835.203274008', -0.14439428709377497)),
+                      ('change', 'y', ('182006.27331298392', 51.52228713323965))]}}
     )
     assert_semantically_equal(nodes, correct_nodes)
     for i in [3, 4]:
@@ -977,14 +977,16 @@ def test_links_on_spatial_condition_with_s2_region(network_object_from_test_data
     assert set(links) == {'1', '2'}
 
 
-def test_links_on_spatial_condition_with_intersection_and_complex_geometry_that_falls_outside_region(network_object_from_test_data):
+def test_links_on_spatial_condition_with_intersection_and_complex_geometry_that_falls_outside_region(
+        network_object_from_test_data):
     region = Polygon([(-0.1487016677856445, 51.52556684350165), (-0.14063358306884766, 51.5255134425896),
                       (-0.13865947723388672, 51.5228700191647), (-0.14093399047851562, 51.52006622056997),
                       (-0.1492595672607422, 51.51974577545329), (-0.1508045196533203, 51.52276321095246),
                       (-0.1487016677856445, 51.52556684350165)])
     network_object_from_test_data.add_link(
         '2', u='21667818', v='25508485',
-        attribs={'geometry': LineString([(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
+        attribs={'geometry': LineString(
+            [(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
     links = network_object_from_test_data.links_on_spatial_condition(region, how='intersect')
     assert set(links) == {'1', '2'}
 
@@ -1000,14 +1002,16 @@ def test_links_on_spatial_condition_with_containement(network_object_from_test_d
     assert set(links) == {'1'}
 
 
-def test_links_on_spatial_condition_with_containement_and_complex_geometry_that_falls_outside_region(network_object_from_test_data):
+def test_links_on_spatial_condition_with_containement_and_complex_geometry_that_falls_outside_region(
+        network_object_from_test_data):
     region = Polygon([(-0.1487016677856445, 51.52556684350165), (-0.14063358306884766, 51.5255134425896),
                       (-0.13865947723388672, 51.5228700191647), (-0.14093399047851562, 51.52006622056997),
                       (-0.1492595672607422, 51.51974577545329), (-0.1508045196533203, 51.52276321095246),
                       (-0.1487016677856445, 51.52556684350165)])
     network_object_from_test_data.add_link(
         '2', u='21667818', v='25508485',
-        attribs={'geometry': LineString([(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
+        attribs={'geometry': LineString(
+            [(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
     links = network_object_from_test_data.links_on_spatial_condition(region, how='within')
     assert set(links) == {'1'}
 
@@ -1020,11 +1024,13 @@ def test_links_on_spatial_condition_with_containement_and_s2_region(network_obje
     assert set(links) == {'1'}
 
 
-def test_links_on_spatial_condition_with_containement_and_complex_geometry_that_falls_outside_s2_region(network_object_from_test_data):
+def test_links_on_spatial_condition_with_containement_and_complex_geometry_that_falls_outside_s2_region(
+        network_object_from_test_data):
     region = '48761ad04d,48761ad054,48761ad05c,48761ad061,48761ad085,48761ad08c,48761ad094,48761ad09c,48761ad0b,48761ad0d,48761ad0f,48761ad14,48761ad182c,48761ad19c,48761ad1a4,48761ad1ac,48761ad1b4,48761ad1bac,48761ad3d7f,48761ad3dc,48761ad3e4,48761ad3ef,48761ad3f4,48761ad3fc,48761ad41,48761ad43,48761ad5d,48761ad5e4,48761ad5ec,48761ad5fc,48761ad7,48761ad803,48761ad81c,48761ad824,48761ad82c,48761ad9d,48761ad9e4,48761ad9e84,48761ad9fc,48761ada04,48761ada0c,48761b2804,48761b2814,48761b281c,48761b283,48761b2844,48761b284c,48761b2995,48761b29b4,48761b29bc,48761b29d,48761b29f,48761b2a04'
     network_object_from_test_data.add_link(
         '2', u='21667818', v='25508485',
-        attribs={'geometry': LineString([(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
+        attribs={'geometry': LineString(
+            [(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
     links = network_object_from_test_data.links_on_spatial_condition(region, how='within')
     assert set(links) == {'1'}
 
@@ -1653,12 +1659,12 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
     network = Network('epsg:27700')
     network.read_osm(osm_test_file, full_fat_default_config_path, 1)
     assert_semantically_equal(dict(network.nodes()), {
-        '0': {'id': '0', 'x': 622502.8306679451, 'y': -5526117.781903352, 'lat': 0.008554364250688652,
-              'lon': -0.0006545205888310243, 's2_id': 1152921492875543713},
-        '1': {'id': '1', 'x': 622502.8132744529, 'y': -5524378.838447345, 'lat': 0.024278505899735615,
-              'lon': -0.0006545205888310243, 's2_id': 1152921335974974453},
-        '2': {'id': '2', 'x': 622502.8314014417, 'y': -5527856.725358106, 'lat': -0.00716977739835831,
-              'lon': -0.0006545205888310243, 's2_id': 384307157539499829}})
+        '0': {'id': '0', 'x': 623528.0918284899, 'y': -5527136.199112928, 'lat': -0.0006545205888310243,
+              'lon': 0.008554364250688652, 's2_id': 1152921492875543713},
+        '1': {'id': '1', 'x': 625278.7312853877, 'y': -5527136.1998170335, 'lat': -0.0006545205888310243,
+              'lon': 0.024278505899735615, 's2_id': 1152921335974974453},
+        '2': {'id': '2', 'x': 621777.4693340246, 'y': -5527136.198414324, 'lat': -0.0006545205888310243,
+              'lon': -0.00716977739835831, 's2_id': 384307157539499829}})
     assert len(list(network.links())) == 11
 
     number_of_0_multi_idx = 0

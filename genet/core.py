@@ -153,7 +153,7 @@ class Network:
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
         if epsg != 'epsg:4326':
-            self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
+            self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
         else:
             self.transformer = None
 
