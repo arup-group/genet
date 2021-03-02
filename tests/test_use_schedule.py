@@ -86,8 +86,6 @@ def test_generating_edge_vph_geodataframe(schedule):
                                                 5: 'Stop_3', 6: 'Stop_2', 7: 'Stop_2', 8: '', 9: '', 10: 'Stop_3',
                                                 11: 'Stop_3'},
                                'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1},
-                               'modes': {0: ['bus'], 1: ['bus'], 2: ['bus'], 3: ['bus'], 4: ['bus'], 5: ['bus'],
-                                         6: ['bus'], 7: ['bus'], 8: ['bus'], 9: ['bus'], 10: ['bus'], 11: ['bus']},
                                'geometry': {
                                    0: LineString([(-7.557106577683727, 49.76682779861249),
                                                   (-7.557148039524952, 49.766825803756994)]),
@@ -139,8 +137,6 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
                                                 5: 'Stop_3', 6: 'Stop_2', 7: 'Stop_2', 8: '', 9: '', 10: 'Stop_3',
                                                 11: 'Stop_3'},
                                'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1},
-                               'modes': {0: ['bus'], 1: ['bus'], 2: ['bus'], 3: ['bus'], 4: ['bus'], 5: ['bus'],
-                                         6: ['bus'], 7: ['bus'], 8: ['bus'], 9: ['bus'], 10: ['bus'], 11: ['bus']},
                                'geometry': {
                                    0: LineString([(-7.557106577683727, 49.76682779861249),
                                                   (-7.557148039524952, 49.766825803756994)]),
@@ -183,7 +179,6 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
                                'to_stop': {0: '1', 1: '1', 2: '2', 3: '2', 4: '3', 5: '3'},
                                'to_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2', 4: 'Stop_3',
                                                 5: 'Stop_3'},
-                               'modes': {0: ['bus'], 1: ['bus'], 2: ['bus'], 3: ['bus'], 4: ['bus'], 5: ['bus']},
                                'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1},
                                'geometry': {0: LineString([(-7.557148039524952, 49.766825803756994),
                                                            (-7.557106577683727, 49.76682779861249)]),
