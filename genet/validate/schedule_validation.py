@@ -44,7 +44,8 @@ def generate_validation_report(schedule):
             logging.warning('Service id={} is not valid'.format(service_id))
 
     invalid_stages = []
-    invalid_services = [service_id for service_id in schedule.service_ids() if not report['service_level'][service_id]['is_valid_service']]
+    invalid_services = [service_id for service_id in schedule.service_ids() if
+                        not report['service_level'][service_id]['is_valid_service']]
 
     if invalid_services:
         is_valid_schedule = False
@@ -55,10 +56,10 @@ def generate_validation_report(schedule):
         has_valid_services = True
 
     report['schedule_level'] = {
-            'is_valid_schedule': is_valid_schedule,
-            'invalid_stages': invalid_stages,
-            'has_valid_services': has_valid_services,
-            'invalid_services': [service.id for service in schedule.invalid_services()]}
+        'is_valid_schedule': is_valid_schedule,
+        'invalid_stages': invalid_stages,
+        'has_valid_services': has_valid_services,
+        'invalid_services': invalid_services}
 
     if not is_valid_schedule:
         logging.warning('This schedule is not valid')
