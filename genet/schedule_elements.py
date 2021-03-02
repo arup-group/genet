@@ -1012,12 +1012,14 @@ class Schedule(ScheduleElement):
         schedule_graph.graph['services'] = graph_services
         return schedule_graph
 
-    def generate_vehicles(self):
+    def generate_vehicles(self, overwrite=False):
         """
         Generate vehicles for the Schedule. Returns dictionary of vehicle IDs from Route objects, mapping them to
         vehicle types in vehicle_types. Looks like this:
             {veh_id : {'type': 'bus'}}
         Generates itself from the vehicles IDs which exist in Routes, maps to the mode of the Route.
+        :param overwrite: False by default. If False, does not overwrite the types of vehicles currently in the schedule
+            If True, generates completely new vehicle types for all vehicles in the schedule based on Route modes
         :return:
         """
         if self:
@@ -1034,7 +1036,11 @@ class Schedule(ScheduleElement):
                                                    ' Vehicles and modes in question: '
                                                    f'{vehicles_to_modes[(vehicles_to_modes.str.len() > 1)].to_dict()}')
             df = df.set_index('vehicle_id')
-            self.vehicles = {**df.T.to_dict(), **self.vehicles}
+            if overwrite:
+                self.vehicles = df.T.to_dict()
+                self.validate_vehicle_definitions()
+            else:
+                self.vehicles = {**df.T.to_dict(), **self.vehicles}
 
     def route_trips_to_dataframe(self, gtfs_day='19700101'):
         df = self.route_attribute_data(

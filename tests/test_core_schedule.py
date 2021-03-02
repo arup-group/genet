@@ -1164,7 +1164,7 @@ def test_generating_vehicles_with_shared_vehicles_and_consistent_modes(mocker, s
                                                   'v_3': {'type': 'rail'}})
 
 
-def test_generating_additional_vehicles(schedule):
+def test_generating_additional_vehicles_by_default(schedule):
     r = Route(
         route_short_name='N55',
         mode='bus',
@@ -1186,6 +1186,16 @@ def test_generating_additional_vehicles(schedule):
     assert_semantically_equal(schedule.vehicles, {'veh_3_bus': {'type': '_bus'}, 'veh_4_bus': {'type': '_bus'},
                                          'veh_1_bus': {'type': '_bus'}, 'veh_2_bus': {'type': '_bus'},
                                          'some_bus_2': {'type': 'bus'}})
+
+
+def test_generating_new_vehicles_with_overwite_True(schedule):
+    # change existing vehicle types to be different from mode to test whether they are regenerated with default
+    # mode type
+    schedule.vehicles = {'veh_3_bus': {'type': '_bus'}, 'veh_4_bus': {'type': '_bus'}, 'veh_1_bus': {'type': '_bus'},
+                         'veh_2_bus': {'type': '_bus'}}
+    schedule.generate_vehicles(overwrite=True)
+    assert_semantically_equal(schedule.vehicles, {'veh_3_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'},
+                                         'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'}})
 
 
 def test_generating_vehicles_with_shared_vehicles_and_inconsistent_modes(mocker, schedule):
