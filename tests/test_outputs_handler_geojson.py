@@ -73,7 +73,6 @@ def test_generating_schedule_graph_geodataframe(network):
                      }
     correct_links = {'services': {0: ['service']},
                      'routes': {0: ['1', '2']},
-                     'modes': {0: ['bus']},
                      'u': {0: '0'},
                      'v': {0: '1'},
                      'key': {0: 0}}

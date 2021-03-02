@@ -382,7 +382,7 @@ class Route(ScheduleElement):
             route_nodes = [(stop, {}) for stop in stops]
             stop_edges = [(from_stop, to_stop) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
         route_graph.add_nodes_from(route_nodes, routes=[self.id])
-        route_graph.add_edges_from(stop_edges, routes=[self.id], modes=[self.mode])
+        route_graph.add_edges_from(stop_edges, routes=[self.id])
         route_graph.graph['routes'] = {self.id: self._surrender_to_graph()}
         route_graph.graph['services'] = {}
         route_graph.graph['change_log'] = change_log.ChangeLog()

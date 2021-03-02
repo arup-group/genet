@@ -80,12 +80,12 @@ def test_initiating_service(service):
               'lat': 49.76683608549253, 'lon': -7.557121424907424, 's2_id': 5205973754090203369,
               'additional_attributes': {'linkRefId'}, 'linkRefId': '3'}})
     assert_semantically_equal(list(s._graph.edges(data=True)),
-                              [('5', '6', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('6', '7', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('7', '8', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
-                               ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
-                               ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])
+                              [('5', '6', {'services': ['service'], 'routes': ['2']}),
+                               ('6', '7', {'services': ['service'], 'routes': ['2']}),
+                               ('7', '8', {'services': ['service'], 'routes': ['2']}),
+                               ('1', '2', {'services': ['service'], 'routes': ['1']}),
+                               ('2', '3', {'services': ['service'], 'routes': ['1']}),
+                               ('3', '4', {'services': ['service'], 'routes': ['1']})])
     log = s._graph.graph.pop('change_log')
     assert log.empty
     assert_semantically_equal(s._graph.graph,
@@ -216,12 +216,12 @@ def test_build_graph_builds_correct_graph():
                                      'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
                                      'name': '', 'additional_attributes': set(), 'services': ['service']}})
     assert_semantically_equal(list(g.edges(data=True)),
-                              [('5', '6', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('6', '7', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('7', '8', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
-                               ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
-                               ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])
+                              [('5', '6', {'services': ['service'], 'routes': ['2']}),
+                               ('6', '7', {'services': ['service'], 'routes': ['2']}),
+                               ('7', '8', {'services': ['service'], 'routes': ['2']}),
+                               ('1', '2', {'services': ['service'], 'routes': ['1']}),
+                               ('2', '3', {'services': ['service'], 'routes': ['1']}),
+                               ('3', '4', {'services': ['service'], 'routes': ['1']})])
 
 
 def test_build_graph_builds_correct_graph_when_some_stops_overlap():
