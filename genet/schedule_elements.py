@@ -76,9 +76,41 @@ class ScheduleElement:
     def reference_nodes(self):
         pass
 
+    def route_reference_nodes(self, route_id):
+        """
+        Method to extract nodes for a route straight from the graph, equivalent to route_object.reference_nodes() but
+        faster if used from a higher order object like Service or Schedule
+        :return: graph nodes for the route with ID: route_id - not ordered
+        """
+        return {node for node, node_routes in self._graph.nodes(data='routes') if route_id in node_routes}
+
+    def service_reference_nodes(self, service_id):
+        """
+        Method to extract nodes for a service straight from the graph, equivalent to service_object.reference_nodes()
+        but faster if used from a higher order object: Schedule
+        :return: graph nodes for the service with ID: service_id - not ordered
+        """
+        return {node for node, node_services in self._graph.nodes(data='services') if service_id in node_services}
+
     @abstractmethod
     def reference_edges(self):
         pass
+
+    def route_reference_edges(self, route_id):
+        """
+        Method to extract edges for a route straight from the graph, equivalent to route_object.reference_edges() but
+        faster if used from a higher order object like Service or Schedule
+        :return: graph edges for the route with ID: route_id
+        """
+        return {(u, v) for u, v, edge_routes in self._graph.edges(data='routes') if route_id in edge_routes}
+
+    def service_reference_edges(self, service_id):
+        """
+        Method to extract nodes for a service straight from the graph, equivalent to service_object.reference_edges()
+        but faster if used from a higher order object: Schedule
+        :return: graph edges for the service with ID: service_id
+        """
+        return {(u, v) for u, v, edge_services in self._graph.edges(data='services') if service_id in edge_services}
 
     def stop(self, stop_id):
         stop_data = {k: v for k, v in dict(self._graph.nodes[stop_id]).items() if k not in {'routes', 'services'}}
@@ -399,10 +431,10 @@ class Route(ScheduleElement):
                 setattr(self, k, v)
 
     def reference_nodes(self):
-        return {node for node, node_routes in self._graph.nodes(data='routes') if self.id in node_routes}
+        return self.route_reference_nodes(self.id)
 
     def reference_edges(self):
-        return {(u, v) for u, v, edge_routes in self._graph.edges(data='routes') if self.id in edge_routes}
+        return self.route_reference_edges(self.id)
 
     def modes(self):
         return {self.mode}
@@ -732,10 +764,10 @@ class Service(ScheduleElement):
         return unique_routes
 
     def reference_nodes(self):
-        return {node for node, node_services in self._graph.nodes(data='services') if self.id in node_services}
+        return self.service_reference_nodes(self.id)
 
     def reference_edges(self):
-        return {(u, v) for u, v, edge_services in self._graph.edges(data='services') if self.id in edge_services}
+        return self.service_reference_edges(self.id)
 
     def modes(self):
         return {r.mode for r in self.routes()}

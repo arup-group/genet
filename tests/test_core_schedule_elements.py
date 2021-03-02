@@ -132,6 +132,34 @@ def test_all_elements_in_schedule_share_the_same_graph(schedule):
     assert_all_elements_share_graph(schedule)
 
 
+def test_generating_reference_nodes_for_route(schedule):
+    reference_nodes_from_graph = schedule.route_reference_nodes(route_id='1')
+    reference_nodes_from_object = schedule.route('1').reference_nodes()
+    assert reference_nodes_from_graph == reference_nodes_from_object
+    assert reference_nodes_from_graph == {'1', '0'}
+
+
+def test_generating_reference_edges_for_route(schedule):
+    reference_edges_from_graph = schedule.route_reference_edges(route_id='1')
+    reference_edges_from_object = schedule.route('1').reference_edges()
+    assert reference_edges_from_graph == reference_edges_from_object
+    assert reference_edges_from_graph == {('0', '1')}
+
+
+def test_generating_reference_nodes_for_service(schedule):
+    reference_nodes_from_graph = schedule.service_reference_nodes(service_id='service1')
+    reference_nodes_from_object = schedule['service1'].reference_nodes()
+    assert reference_nodes_from_graph == reference_nodes_from_object
+    assert reference_nodes_from_graph == {'2', '1', '0'}
+
+
+def test_generating_reference_edges_for_service(schedule):
+    reference_edges_from_graph = schedule.service_reference_edges(service_id='service1')
+    reference_edges_from_object = schedule['service1'].reference_edges()
+    assert reference_edges_from_graph == reference_edges_from_object
+    assert reference_edges_from_graph == {('0', '1'), ('1', '2')}
+
+
 def test_reindexing_route(schedule):
     r = schedule.route('1')
     assert set(schedule['service1'].route_ids()) == {'1', '2'}
