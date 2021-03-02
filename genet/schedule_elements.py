@@ -1094,6 +1094,12 @@ class Schedule(ScheduleElement):
         df = df.drop('trip_dep_time', axis=1)
         return df
 
+    def service_to_route_map(self):
+        return self._graph.graph['service_to_route_map']
+
+    def route_to_service_map(self):
+        return self._graph.graph['route_to_service_map']
+
     def service_ids(self):
         """
         Returns list of service ids in the Schedule
