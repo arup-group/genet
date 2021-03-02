@@ -81,7 +81,6 @@ def test_generating_schedule_graph_geodataframe(network):
                      }
     correct_links = {'services': {0: ['service']},
                      'routes': {0: ['1', '2']},
-                     'modes': {0: ['bus']},
                      'u': {0: '0'},
                      'v': {0: '1'},
                      'key': {0: 0}}
@@ -110,6 +109,11 @@ def test_modal_subset(network):
 
     assert len(car) == 1
     assert car.loc[0, 'modes'] == ['car', 'walk']
+
+
+def test_generating_standard_outputs_after_modifying_modes_in_schedule(network, tmpdir):
+    network.schedule.apply_attributes_to_routes({'1': {'mode': 'different_bus'}, '2': {'mode': 'other_bus'}})
+    gngeojson.generate_standard_outputs_for_schedule(network.schedule, tmpdir)
 
 
 def test_save_to_geojson(network, tmpdir):

@@ -1235,8 +1235,9 @@ class Network:
             i += 1
 
     def has_schedule_with_valid_network_routes(self):
-        if all([route.has_network_route() for route in self.schedule_routes()]):
-            return all([self.is_valid_network_route(route) for route in self.schedule_routes()])
+        routes = [route for route in self.schedule_routes()]
+        if all([route.has_network_route() for route in routes]):
+            return all([self.is_valid_network_route(route) for route in routes])
         return False
 
     def calculate_route_to_crow_fly_ratio(self, route: schedule_elements.Route):
@@ -1293,14 +1294,11 @@ class Network:
             report['schedule'] = self.schedule.generate_validation_report()
 
             route_to_crow_fly_ratio = {}
-            for service in self.schedule.services():
-                service_id = service.id
-                for route in self.schedule_routes():
-                    route_id = route.id
-                    if service_id in route_to_crow_fly_ratio:
-                        route_to_crow_fly_ratio[service_id][route_id] = self.calculate_route_to_crow_fly_ratio(route)
-                    else:
-                        route_to_crow_fly_ratio[service_id] = {route_id: self.calculate_route_to_crow_fly_ratio(route)}
+            for service_id, route_ids in self.schedule.service_to_route_map().items():
+                route_to_crow_fly_ratio[service_id] = {}
+                for route_id in route_ids:
+                    route_to_crow_fly_ratio[service_id][route_id] = self.calculate_route_to_crow_fly_ratio(
+                        self.schedule.route(route_id))
 
             report['routing'] = {
                 'services_have_routes_in_the_graph': self.has_schedule_with_valid_network_routes(),
