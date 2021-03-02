@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import Union, Dict, List
 from pyproj import Transformer
 import networkx as nx
@@ -71,9 +72,11 @@ class ScheduleElement:
     def change_log(self):
         return self._graph.graph['change_log']
 
+    @abstractmethod
     def reference_nodes(self):
         pass
 
+    @abstractmethod
     def reference_edges(self):
         pass
 
@@ -89,18 +92,18 @@ class ScheduleElement:
         for s in self.reference_nodes():
             yield self.stop(s)
 
+    @abstractmethod
+    def routes(self):
+        pass
+
+    @abstractmethod
     def modes(self):
-        edge_modes = self.graph().edges(data='modes')
-        modes = set()
-        for u, v, e_modes in edge_modes:
-            modes |= set(e_modes)
-        return list(modes)
+        pass
 
     def mode_graph_map(self):
         mode_map = {mode: set() for mode in self.modes()}
-        reference_edges = self.reference_edges()
-        for mode in mode_map:
-            mode_map[mode] = {(u, v) for u, v in reference_edges if mode in self._graph[u][v]['modes']}
+        for route in self.routes():
+            mode_map[route.mode] = mode_map[route.mode] | {(u, v) for u, v in route.reference_edges()}
         return mode_map
 
     def graph(self):
@@ -379,7 +382,7 @@ class Route(ScheduleElement):
             route_nodes = [(stop, {}) for stop in stops]
             stop_edges = [(from_stop, to_stop) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
         route_graph.add_nodes_from(route_nodes, routes=[self.id])
-        route_graph.add_edges_from(stop_edges, routes=[self.id], modes=[self.mode])
+        route_graph.add_edges_from(stop_edges, routes=[self.id])
         route_graph.graph['routes'] = {self.id: self._surrender_to_graph()}
         route_graph.graph['services'] = {}
         route_graph.graph['change_log'] = change_log.ChangeLog()
@@ -402,7 +405,7 @@ class Route(ScheduleElement):
         return {(u, v) for u, v, edge_routes in self._graph.edges(data='routes') if self.id in edge_routes}
 
     def modes(self):
-        return [self.mode]
+        return {self.mode}
 
     def _index_unique(self, idx):
         return idx not in self._graph.graph['routes']
@@ -734,6 +737,9 @@ class Service(ScheduleElement):
     def reference_edges(self):
         return {(u, v) for u, v, edge_services in self._graph.edges(data='services') if self.id in edge_services}
 
+    def modes(self):
+        return {r.mode for r in self.routes()}
+
     def _index_unique(self, idx):
         return idx not in self._graph.graph['services']
 
@@ -977,6 +983,22 @@ class Schedule(ScheduleElement):
 
     def reference_edges(self):
         return set(self._graph.edges())
+
+    def modes(self):
+        return set(self.route_attribute_data(keys='mode')['mode'].unique())
+
+    def mode_to_routes_map(self):
+        df = self.route_attribute_data(keys=['mode'], index_name='route_id').reset_index()
+        return df.groupby('mode')['route_id'].apply(list).to_dict()
+
+    def mode_graph_map(self):
+        mode_map = {}
+        mode_to_routes_map = self.mode_to_routes_map()
+        for mode, route_ids in mode_to_routes_map.items():
+            mode_map[mode] = set(graph_operations.extract_on_attributes(
+                iterator=[((u, v), data) for u, v, data in self._graph.edges(data=True)],
+                conditions={'routes': route_ids}))
+        return mode_map
 
     def reindex(self, new_id):
         if isinstance(self, Schedule):
