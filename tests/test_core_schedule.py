@@ -103,12 +103,12 @@ def test_initiating_schedule(schedule):
               'lat': 49.76683608549253, 'lon': -7.557121424907424, 's2_id': 5205973754090203369,
               'additional_attributes': set()}})
     assert_semantically_equal(list(s._graph.edges(data=True)),
-                              [('5', '6', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('6', '7', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('7', '8', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
-                               ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
-                               ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])
+                              [('5', '6', {'services': ['service'], 'routes': ['2']}),
+                               ('6', '7', {'services': ['service'], 'routes': ['2']}),
+                               ('7', '8', {'services': ['service'], 'routes': ['2']}),
+                               ('1', '2', {'services': ['service'], 'routes': ['1']}),
+                               ('2', '3', {'services': ['service'], 'routes': ['1']}),
+                               ('3', '4', {'services': ['service'], 'routes': ['1']})])
     log = s._graph.graph.pop('change_log')
     assert log.empty
     assert_semantically_equal(s._graph.graph,
@@ -482,6 +482,23 @@ def test_applying_attributes_to_route(schedule):
     assert schedule.route('1').route_short_name == 'new_name'
 
 
+def test_applying_mode_attributes_to_route_results_in_correct_mode_methods(schedule):
+    assert schedule.route('1').mode == 'bus'
+    assert schedule.modes() == {'bus'}
+    assert schedule.mode_graph_map() == {
+        'bus': {('3', '4'), ('2', '3'), ('1', '2'), ('6', '7'), ('5', '6'), ('7', '8')}}
+
+    schedule.apply_attributes_to_routes({'1': {'mode': 'new_bus'}})
+
+    assert schedule.route('1').mode == 'new_bus'
+    assert schedule.modes() == {'bus', 'new_bus'}
+    assert schedule['service'].modes() == {'bus', 'new_bus'}
+    assert schedule.mode_graph_map() == {'bus': {('7', '8'), ('6', '7'), ('5', '6')},
+                                         'new_bus': {('3', '4'), ('1', '2'), ('2', '3')}}
+    assert schedule['service'].mode_graph_map() == {'bus': {('6', '7'), ('7', '8'), ('5', '6')},
+                                                    'new_bus': {('3', '4'), ('2', '3'), ('1', '2')}}
+
+
 def test_applying_attributes_changing_id_to_route_throws_error(schedule):
     assert '1' in schedule._graph.graph['routes']
     assert schedule._graph.graph['routes']['1']['id'] == '1'
@@ -607,9 +624,8 @@ def test_adding_service_with_clashing_stops_data_does_not_overwrite_existing_sto
     schedule.add_service(s, force=True)
 
     assert_semantically_equal(dict(s.graph().nodes(data=True)), expected_stops_data)
-    assert_semantically_equal(s.graph()['1']['2'],
-                              {'routes': ['1', '3'], 'modes': ['bus'], 'services': ['some_id', 'service']})
-    assert_semantically_equal(s.graph()['2']['5'], {'routes': ['3'], 'modes': ['bus'], 'services': ['some_id']})
+    assert_semantically_equal(s.graph()['1']['2'], {'routes': ['1', '3'], 'services': ['some_id', 'service']})
+    assert_semantically_equal(s.graph()['2']['5'], {'routes': ['3'], 'services': ['some_id']})
 
 
 def test_adding_service_with_clashing_stops_data_without_force_flag_throws_error(schedule):
@@ -695,14 +711,14 @@ def test_creating_a_route_to_add_using_id_references_to_existing_stops_inherits_
     assert_semantically_equal(dict(r._graph.nodes(data=True)),
                               {'1': {'routes': ['3']}, '2': {'routes': ['3']}, '5': {'routes': ['3']}})
     assert_semantically_equal(list(r._graph.edges(data=True)),
-                              [('1', '2', {'routes': ['3'], 'modes': ['bus']}),
-                               ('2', '5', {'routes': ['3'], 'modes': ['bus']})])
+                              [('1', '2', {'routes': ['3']}),
+                               ('2', '5', {'routes': ['3']})])
 
     schedule.add_route('service', r)
 
     assert_semantically_equal(dict(r.graph().nodes(data=True)), expected_stops_data)
-    assert_semantically_equal(r.graph()['1']['2'], {'routes': ['1', '3'], 'modes': ['bus'], 'services': ['service']})
-    assert_semantically_equal(r.graph()['2']['5'], {'routes': ['3'], 'modes': ['bus'], 'services': ['service']})
+    assert_semantically_equal(r.graph()['1']['2'], {'routes': ['1', '3'], 'services': ['service']})
+    assert_semantically_equal(r.graph()['2']['5'], {'routes': ['3'], 'services': ['service']})
 
 
 def test_creating_a_route_to_add_giving_existing_schedule_stops(schedule):
@@ -741,14 +757,14 @@ def test_creating_a_route_to_add_giving_existing_schedule_stops(schedule):
                                      'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
                                      'additional_attributes': set()}})
     assert_semantically_equal(list(r._graph.edges(data=True)),
-                              [('1', '2', {'routes': ['3'], 'modes': ['bus']}),
-                               ('2', '5', {'routes': ['3'], 'modes': ['bus']})])
+                              [('1', '2', {'routes': ['3']}),
+                               ('2', '5', {'routes': ['3']})])
 
     schedule.add_route('service', r)
 
     assert_semantically_equal(dict(r.graph().nodes(data=True)), expected_stops_data)
-    assert_semantically_equal(r.graph()['1']['2'], {'routes': ['1', '3'], 'modes': ['bus'], 'services': ['service']})
-    assert_semantically_equal(r.graph()['2']['5'], {'routes': ['3'], 'modes': ['bus'], 'services': ['service']})
+    assert_semantically_equal(r.graph()['1']['2'], {'routes': ['1', '3'], 'services': ['service']})
+    assert_semantically_equal(r.graph()['2']['5'], {'routes': ['3'], 'services': ['service']})
 
 
 def test_adding_route_with_clashing_stops_data_does_not_overwrite_existing_stops(schedule):
@@ -782,8 +798,8 @@ def test_adding_route_with_clashing_stops_data_does_not_overwrite_existing_stops
     schedule.add_route('service', r, force=True)
 
     assert_semantically_equal(dict(r.graph().nodes(data=True)), expected_stops_data)
-    assert_semantically_equal(r.graph()['1']['2'], {'routes': ['1', '3'], 'modes': ['bus'], 'services': ['service']})
-    assert_semantically_equal(r.graph()['2']['5'], {'routes': ['3'], 'modes': ['bus'], 'services': ['service']})
+    assert_semantically_equal(r.graph()['1']['2'], {'routes': ['1', '3'], 'services': ['service']})
+    assert_semantically_equal(r.graph()['2']['5'], {'routes': ['3'], 'services': ['service']})
 
 
 def test_adding_route_with_clashing_stops_data_only_flags_those_that_are_actually_different(schedule):
@@ -880,12 +896,12 @@ def test_removing_route_updates_services_on_nodes_and_edges(schedule):
                                      'lon': -7.5570681956375, 's2_id': 5205973754097123809,
                                      'additional_attributes': set()}})
     assert_semantically_equal(list(schedule.graph().edges(data=True)),
-                              [('5', '6', {'services': [], 'routes': [], 'modes': ['bus']}),
-                               ('6', '7', {'services': [], 'routes': [], 'modes': ['bus']}),
-                               ('7', '8', {'services': [], 'routes': [], 'modes': ['bus']}),
-                               ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
-                               ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
-                               ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])
+                              [('5', '6', {'services': [], 'routes': []}),
+                               ('6', '7', {'services': [], 'routes': []}),
+                               ('7', '8', {'services': [], 'routes': []}),
+                               ('3', '4', {'services': ['service'], 'routes': ['1']}),
+                               ('1', '2', {'services': ['service'], 'routes': ['1']}),
+                               ('2', '3', {'services': ['service'], 'routes': ['1']})])
 
 
 def test_removing_stop(schedule):
@@ -1090,14 +1106,14 @@ def test_build_graph_builds_correct_graph(strongly_connected_schedule):
                                      'epsg': 'epsg:27700', 'lat': 49.766856648946295, 'lon': -7.5570681956375,
                                      's2_id': 5205973754097123809, 'additional_attributes': set(), 'name': 'Stop_4'}})
     assert_semantically_equal(list(g.edges(data=True)),
-                              [('5', '2', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('2', '7', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('2', '3', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
-                               ('7', '8', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('8', '5', {'services': ['service'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('3', '4', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
-                               ('4', '1', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']}),
-                               ('1', '2', {'services': ['service'], 'routes': ['1'], 'modes': ['bus']})])
+                              [('5', '2', {'services': ['service'], 'routes': ['2']}),
+                               ('2', '7', {'services': ['service'], 'routes': ['2']}),
+                               ('2', '3', {'services': ['service'], 'routes': ['1']}),
+                               ('7', '8', {'services': ['service'], 'routes': ['2']}),
+                               ('8', '5', {'services': ['service'], 'routes': ['2']}),
+                               ('3', '4', {'services': ['service'], 'routes': ['1']}),
+                               ('4', '1', {'services': ['service'], 'routes': ['1']}),
+                               ('1', '2', {'services': ['service'], 'routes': ['1']})])
 
 
 def test_building_trips_dataframe(schedule):

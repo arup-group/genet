@@ -247,8 +247,8 @@ def test_schedule_subgraph(schedule):
     sub_g = schedule.subgraph({('1', '2'), ('0', '1')})
 
     assert_semantically_equal(list(sub_g.edges(data=True)),
-                              [('1', '2', {'services': ['service1'], 'routes': ['2'], 'modes': ['bus']}),
-                               ('0', '1', {'services': ['service1'], 'routes': ['1'], 'modes': ['bus']})])
+                              [('1', '2', {'services': ['service1'], 'routes': ['2']}),
+                               ('0', '1', {'services': ['service1'], 'routes': ['1']})])
 
     assert_semantically_equal(dict(sub_g.nodes(data=True)),
                               {'0': {'services': ['service1'], 'routes': ['1'], 'id': '0', 'x': 529455.7452394223,
@@ -270,7 +270,7 @@ def test_service_subgraph(schedule):
     sub_g = schedule['service1'].subgraph({('0', '1')})
 
     assert_semantically_equal(list(sub_g.edges(data=True)),
-                              [('0', '1', {'services': ['service1'], 'routes': ['1'], 'modes': ['bus']})])
+                              [('0', '1', {'services': ['service1'], 'routes': ['1']})])
 
     assert_semantically_equal(dict(sub_g.nodes(data=True)),
                               {'0': {'services': ['service1'], 'routes': ['1'], 'id': '0', 'x': 529455.7452394223,
@@ -288,7 +288,7 @@ def test_route_subgraph(schedule):
     sub_g = schedule.route('1').subgraph({('0', '1')})
 
     assert_semantically_equal(list(sub_g.edges(data=True)),
-                              [('0', '1', {'services': ['service1'], 'routes': ['1'], 'modes': ['bus']})])
+                              [('0', '1', {'services': ['service1'], 'routes': ['1']})])
 
     assert_semantically_equal(dict(sub_g.nodes(data=True)),
                               {'1': {'services': ['service1'], 'routes': ['2', '1'], 'id': '1', 'x': 529350.7866124967,

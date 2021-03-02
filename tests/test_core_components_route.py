@@ -68,9 +68,9 @@ def test_initiating_route(route):
         '4': {'routes': ['1'], 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
               'additional_attributes': {'linkRefId'}, 'linkRefId': '4'}})
-    assert_semantically_equal(list(r._graph.edges(data=True)), [('1', '2', {'routes': ['1'], 'modes': ['bus']}),
-                                                                ('2', '3', {'routes': ['1'], 'modes': ['bus']}),
-                                                                ('3', '4', {'routes': ['1'], 'modes': ['bus']})])
+    assert_semantically_equal(list(r._graph.edges(data=True)), [('1', '2', {'routes': ['1']}),
+                                                                ('2', '3', {'routes': ['1']}),
+                                                                ('3', '4', {'routes': ['1']})])
     log = r._graph.graph.pop('change_log')
     assert log.empty
     assert_semantically_equal(r._graph.graph, {'name': 'Route graph', 'routes': {
@@ -136,9 +136,9 @@ def test_build_graph_builds_correct_graph():
                                      'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
                                      'name': '', 'additional_attributes': set()}})
     assert_semantically_equal(list(g.edges(data=True)),
-                              [('1', '2', {'routes': [''], 'modes': ['bus']}),
-                               ('2', '3', {'routes': [''], 'modes': ['bus']}),
-                               ('3', '4', {'routes': [''], 'modes': ['bus']})])
+                              [('1', '2', {'routes': ['']}),
+                               ('2', '3', {'routes': ['']}),
+                               ('3', '4', {'routes': ['']})])
 
 
 def test_routes_equal(stop_epsg_27700):
