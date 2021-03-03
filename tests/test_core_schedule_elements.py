@@ -90,7 +90,7 @@ def schedule_graph():
                       'route': ['1', '2'], 'await_departure': []}},
         services={'service2': {'id': 'service2', 'name': 'route3'},
                   'service1': {'id': 'service1', 'name': 'route1'}},
-        route_to_service_map={'1': 'service1', '2':'service1', '3':'service2', '4':'service2'},
+        route_to_service_map={'1': 'service1', '2': 'service1', '3': 'service2', '4': 'service2'},
         service_to_route_map={'service1': ['1', '2'], 'service2': ['3', '4']},
         crs={'init': 'epsg:27700'}
     )
@@ -162,86 +162,92 @@ def test_generating_reference_edges_for_service(schedule):
 
 def test_splitting_service_on_direction_finds_two_distinct_directions():
     service = Service(id='service1',
-                routes=[
-                    Route(id='1', route_short_name='route1', mode='bus',
-                          stops=[
-                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='0'),
-                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='1'),
-                              Stop(id='2', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')
-                          ],
-                          trips={'route1_04:40:00': '04:40:00'},
-                          arrival_offsets=['00:00:00', '00:02:00'],
-                          departure_offsets=['00:00:00', '00:02:00'],
-                          route=['0', '1', '2']),
-                    Route(id='2', route_short_name='route2', mode='bus',
-                          stops=[
-                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='1'),
-                              Stop(id='2', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')
-                          ],
-                          trips={'route2_05:40:00': '05:40:00'},
-                          arrival_offsets=['00:00:00', '00:03:00'],
-                          departure_offsets=['00:00:00', '00:05:00'],
-                          route=['1', '2']),
-                    Route(id='3', route_short_name='route3', mode='bus',
-                          stops=[
-                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='1'),
-                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='0')
-                          ],
-                          trips={'route1_04:40:00': '04:40:00'},
-                          arrival_offsets=['00:00:00', '00:02:00'],
-                          departure_offsets=['00:00:00', '00:02:00'],
-                          route=['0', '1']),
-                    Route(id='4', route_short_name='route4', mode='bus',
-                          stops=[
-                              Stop(id='2', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2'),
-                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='1'),
-                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='0'),
-                          ],
-                          trips={'route2_05:40:00': '05:40:00'},
-                          arrival_offsets=['00:00:00', '00:03:00'],
-                          departure_offsets=['00:00:00', '00:05:00'],
-                          route=['1', '2'])
-                ])
+                      routes=[
+                          Route(id='1', route_short_name='route1', mode='bus',
+                                stops=['0', '1', '2'],
+                                trips={'route1_04:40:00': '04:40:00'},
+                                arrival_offsets=['00:00:00', '00:02:00'],
+                                departure_offsets=['00:00:00', '00:02:00'],
+                                route=['0', '1', '2']),
+                          Route(id='2', route_short_name='route2', mode='bus',
+                                stops=['1', '2'],
+                                trips={'route2_05:40:00': '05:40:00'},
+                                arrival_offsets=['00:00:00', '00:03:00'],
+                                departure_offsets=['00:00:00', '00:05:00'],
+                                route=['1', '2']),
+                          Route(id='3', route_short_name='route3', mode='bus',
+                                stops=['1', '0'],
+                                trips={'route1_04:40:00': '04:40:00'},
+                                arrival_offsets=['00:00:00', '00:02:00'],
+                                departure_offsets=['00:00:00', '00:02:00'],
+                                route=['0', '1']),
+                          Route(id='4', route_short_name='route4', mode='bus',
+                                stops=['2', '1', '0'],
+                                trips={'route2_05:40:00': '05:40:00'},
+                                arrival_offsets=['00:00:00', '00:03:00'],
+                                departure_offsets=['00:00:00', '00:05:00'],
+                                route=['1', '2'])
+                      ])
     routes, graphs_edges = service.split_by_direction()
     assert routes == [{'2', '1'}, {'4', '3'}]
     assert graphs_edges == [{('1', '2'), ('0', '1')}, {('1', '0'), ('2', '1')}]
 
+
 def test_splitting_service_on_direction_combines_separated_routes():
     service = Service(id='service1',
-                routes=[
-                    Route(id='1', route_short_name='route1', mode='bus',
-                          stops=[
-                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='0'),
-                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='1')
-                          ],
-                          trips={'route1_04:40:00': '04:40:00'},
-                          arrival_offsets=['00:00:00', '00:02:00'],
-                          departure_offsets=['00:00:00', '00:02:00'],
-                          route=['0', '1']),
-                    Route(id='2', route_short_name='route2', mode='bus',
-                          stops=[
-                              Stop(id='2', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2'),
-                              Stop(id='3', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='3')
-                          ],
-                          trips={'route2_05:40:00': '05:40:00'},
-                          arrival_offsets=['00:00:00', '00:03:00'],
-                          departure_offsets=['00:00:00', '00:05:00'],
-                          route=['2', '3']),
-                    Route(id='3', route_short_name='route3', mode='bus',
-                          stops=[
-                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='0'),
-                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='1'),
-                              Stop(id='2', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2'),
-                              Stop(id='3', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='3')
-                          ],
-                          trips={'route1_04:40:00': '04:40:00'},
-                          arrival_offsets=['00:00:00', '00:02:00'],
-                          departure_offsets=['00:00:00', '00:02:00'],
-                          route=['0', '1', '2', '3'])
-                ])
+                      routes=[
+                          Route(id='1', route_short_name='route1', mode='bus',
+                                stops=['0', '1'],
+                                trips={'route1_04:40:00': '04:40:00'},
+                                arrival_offsets=['00:00:00', '00:02:00'],
+                                departure_offsets=['00:00:00', '00:02:00'],
+                                route=['0', '1']),
+                          Route(id='2', route_short_name='route2', mode='bus',
+                                stops=['2', '3'],
+                                trips={'route2_05:40:00': '05:40:00'},
+                                arrival_offsets=['00:00:00', '00:03:00'],
+                                departure_offsets=['00:00:00', '00:05:00'],
+                                route=['2', '3']),
+                          Route(id='3', route_short_name='route3', mode='bus',
+                                stops=['0', '1', '2', '3'],
+                                trips={'route1_04:40:00': '04:40:00'},
+                                arrival_offsets=['00:00:00', '00:02:00'],
+                                departure_offsets=['00:00:00', '00:02:00'],
+                                route=['0', '1', '2', '3'])
+                      ])
     routes, graphs_edges = service.split_by_direction()
     assert routes == [{'3', '1', '2'}]
     assert graphs_edges == [{('1', '2'), ('2', '3'), ('0', '1')}]
+
+
+def test_splitting_service_on_direction_with_loopy_routes():
+    service = Service(id='service1',
+                      routes=[
+                          Route(id='1_dir_1', route_short_name='route1', mode='bus',
+                                stops=['A', 'B', 'C', 'D', 'E', 'A'],
+                                trips={'route1_04:40:00': '04:40:00'},
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='2_dir_1', route_short_name='route2', mode='bus',
+                                stops=['A', 'C', 'E', 'A'],
+                                trips={'route2_05:40:00': '05:40:00'},
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='3_dir_2', route_short_name='route3', mode='bus',
+                                stops=['A', 'E', 'D', 'C', 'B', 'A'],
+                                trips={'route1_04:40:00': '04:40:00'},
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='4_dir_2', route_short_name='route4', mode='bus',
+                                stops=['A', 'E', 'C', 'A'],
+                                trips={'route1_04:40:00': '04:40:00'},
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                      ])
+    routes, graphs_edges = service.split_by_direction()
+    assert routes == [{'1_dir_1', '2_dir_1'}, {'3_dir_2', '4_dir_2'}]
+    assert graphs_edges == [{('A', 'C'), ('B', 'C'), ('C', 'D'), ('E', 'A'), ('A', 'B'), ('D', 'E'), ('C', 'E')},
+                            {('E', 'D'), ('A', 'E'), ('D', 'C'), ('B', 'A'), ('C', 'A'), ('C', 'B'), ('E', 'C')}]
 
 
 def test_reindexing_route(schedule):
@@ -564,8 +570,8 @@ def test_graph_schema_verification_throws_error_when_missing_route_attributes():
 def test_graph_schema_verification_throws_error_when_services_missing():
     g = DiGraph()
     g.add_node('1', x=1, y=2, id='1', epsg='epsg:27700')
-    g.graph['routes'] = {'1': {'arrival_offsets':[], 'ordered_stops':[], 'route_short_name':'', 'mode':'',
-                               'departure_offsets':[], 'trips':{}}}
+    g.graph['routes'] = {'1': {'arrival_offsets': [], 'ordered_stops': [], 'route_short_name': '', 'mode': '',
+                               'departure_offsets': [], 'trips': {}}}
 
     with pytest.raises(ScheduleElementGraphSchemaError) as e:
         verify_graph_schema(g)
@@ -575,8 +581,8 @@ def test_graph_schema_verification_throws_error_when_services_missing():
 def test_graph_schema_verification_throws_error_when_missing_service_attributes():
     g = DiGraph()
     g.add_node('1', x=1, y=2, id='1', epsg='epsg:27700')
-    g.graph['routes'] = {'1': {'arrival_offsets':[], 'ordered_stops':[], 'route_short_name':'', 'mode':'',
-                               'departure_offsets':[], 'trips':{}}}
+    g.graph['routes'] = {'1': {'arrival_offsets': [], 'ordered_stops': [], 'route_short_name': '', 'mode': '',
+                               'departure_offsets': [], 'trips': {}}}
     g.graph['services'] = {'1': {}}
 
     with pytest.raises(ScheduleElementGraphSchemaError) as e:
