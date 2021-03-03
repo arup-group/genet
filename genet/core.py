@@ -23,6 +23,7 @@ import genet.utils.plot as plot
 import genet.utils.simplification as simplification
 import genet.schedule_elements as schedule_elements
 import genet.validate.network_validation as network_validation
+import genet.auxiliary_files as auxiliary_files
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -35,6 +36,7 @@ class Network:
         self.schedule = schedule_elements.Schedule(epsg)
         self.change_log = change_log.ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
+        self.auxiliary_files = {'node': {}, 'link': {}}
         # link_id_mapping maps between (usually string literal) index per edge to the from and to nodes that are
         # connected by the edge
         self.link_id_mapping = {}
@@ -655,6 +657,7 @@ class Network:
                                old_attributes=self.node(node_id), new_attributes=new_attribs)
         self.apply_attributes_to_node(node_id, new_attribs)
         self.graph = nx.relabel_nodes(self.graph, {node_id: new_node_id})
+        self.update_node_auxiliary_files({node_id: new_node_id})
         if not silent:
             logging.info(f'Changed Node index from {node_id} to {new_node_id}')
 
@@ -669,6 +672,7 @@ class Network:
         self.apply_attributes_to_link(link_id, new_attribs)
         self.link_id_mapping[new_link_id] = self.link_id_mapping[link_id]
         del self.link_id_mapping[link_id]
+        self.update_link_auxiliary_files({link_id: new_link_id})
         if not silent:
             logging.info(f'Changed Link index from {link_id} to {new_link_id}')
 
@@ -942,6 +946,7 @@ class Network:
         """
         self.change_log.remove(object_type='node', object_id=node_id, object_attributes=self.node(node_id))
         self.graph.remove_node(node_id)
+        self.update_node_auxiliary_files({node_id: None})
         if not silent:
             logging.info(f'Removed Node under index: {node_id}')
 
@@ -959,6 +964,7 @@ class Network:
             self.change_log = self.change_log.remove_bunch(
                 object_type='node', id_bunch=nodes, attributes_bunch=[self.node(node_id) for node_id in nodes])
         self.graph.remove_nodes_from(nodes)
+        self.update_node_auxiliary_files(dict(zip(nodes, [None]*len(nodes))))
         if not silent:
             logging.info(f'Removed {len(nodes)} nodes.')
 
@@ -973,6 +979,7 @@ class Network:
         u, v, multi_idx = self.edge_tuple_from_link_id(link_id)
         self.graph.remove_edge(u, v, multi_idx)
         del self.link_id_mapping[link_id]
+        self.update_link_auxiliary_files({link_id: None})
         if not silent:
             logging.info(f'Removed link under index: {link_id}')
 
@@ -992,6 +999,7 @@ class Network:
         self.graph.remove_edges_from([self.edge_tuple_from_link_id(link_id) for link_id in links])
         for link_id in links:
             del self.link_id_mapping[link_id]
+        self.update_link_auxiliary_files(dict(zip(links, [None]*len(links))))
         if not silent:
             logging.info(f'Removed {len(links)} links')
 
@@ -1385,12 +1393,50 @@ class Network:
     def read_matsim_schedule(self, path):
         self.schedule.read_matsim_schedule(path)
 
+    def read_auxiliary_link_file(self, file_path):
+        aux_file = auxiliary_files.AuxiliaryFile(file_path)
+        aux_file.attach({link_id for link_id, dat in self.links()})
+        if aux_file.is_attached():
+            self.auxiliary_files['link'][aux_file.filename] = aux_file
+        else:
+            logging.warning(f'Auxiliary file {file_path} failed to attach to {self.__name__} links')
+
+    def read_auxiliary_node_file(self, file_path):
+        aux_file = auxiliary_files.AuxiliaryFile(file_path)
+        aux_file.attach({node_id for node_id, dat in self.nodes()})
+        if aux_file.is_attached():
+            self.auxiliary_files['node'][aux_file.filename] = aux_file
+        else:
+            logging.warning(f'Auxiliary file {file_path} failed to attach to {self.__name__} nodes')
+
+    def update_link_auxiliary_files(self, id_map: dict):
+        """
+        :param id_map: dict map between old link ID and new link ID
+        :return:
+        """
+        for name, aux_file in self.auxiliary_files['link'].items():
+            aux_file.apply_map(id_map)
+
+    def update_node_auxiliary_files(self, id_map: dict):
+        """
+        :param id_map: dict map between old node ID and new node ID
+        :return:
+        """
+        for name, aux_file in self.auxiliary_files['node'].items():
+            aux_file.apply_map(id_map)
+
+    def write_auxiliary_files(self, output_dir):
+        for id_type in {'node', 'link'}:
+            for name, aux_file in self.auxiliary_files[id_type].items():
+                aux_file.write_to_file(output_dir)
+
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_matsim_network(output_dir, self)
         if self.schedule:
             self.schedule.write_to_matsim(output_dir)
         self.change_log.export(os.path.join(output_dir, 'network_change_log.csv'))
+        self.write_auxiliary_files(os.path.join(output_dir, 'auxiliary_files'))
 
     def save_network_to_geojson(self, output_dir):
         geojson.save_network_to_geojson(self, output_dir)

@@ -233,6 +233,7 @@ def simplify_graph(n, no_processes=1):
     for old_id_list, new_id in zip(old_ids, new_ids):
         for _id in old_id_list:
             n.link_simplification_map[_id] = new_id
+    n.update_link_auxiliary_files(n.link_simplification_map)
 
     logging.info(
         f"Simplified graph: {initial_node_count} to {len(n.graph)} nodes, {initial_edge_count} to "
