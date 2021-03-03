@@ -364,7 +364,7 @@ def test_is_valid_with_single_stop_network():
 
 
 def test_building_trips_dataframe(route):
-    df = route.generate_trips_dataframe()
+    df = route.route_trips_with_stops_to_dataframe()
 
     correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 10:00:00'), 1: Timestamp('1970-01-01 10:05:00'),
                                                2: Timestamp('1970-01-01 10:09:00'), 3: Timestamp('1970-01-01 20:00:00'),

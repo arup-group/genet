@@ -497,7 +497,13 @@ class Route(ScheduleElement):
         """
         yield self
 
-    def generate_trips_dataframe(self, gtfs_day='19700101'):
+    def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
         df = None
         _df = DataFrame({
             'departure_time':
@@ -805,10 +811,16 @@ class Service(ScheduleElement):
                 e_c='#EC7063'
             )
 
-    def generate_trips_dataframe(self, gtfs_day='19700101'):
+    def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
         df = None
         for route in self.routes():
-            _df = route.generate_trips_dataframe(gtfs_day=gtfs_day)
+            _df = route.route_trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
             if df is None:
                 df = _df
             else:
@@ -1049,6 +1061,14 @@ class Schedule(ScheduleElement):
                 self.vehicles = {**df.T.to_dict(), **self.vehicles}
 
     def route_trips_to_dataframe(self, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        Check out also `route_trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
+        over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
         df = self.route_attribute_data(
             keys=[{'trips': 'trip_id'}, {'trips': 'trip_departure_time'}, {'trips': 'vehicle_id'}],
             index_name='route_id')
@@ -1245,7 +1265,15 @@ class Schedule(ScheduleElement):
             e_c='#EC7063'
         )
 
-    def generate_trips_dataframe(self, gtfs_day='19700101'):
+    def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        Check out also `route_trips_to_dataframe` for a simplified version (trips, their departure times and vehicles
+        only)
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
         df = self.route_attribute_data(
             keys=['route_short_name', 'mode', 'trips', 'arrival_offsets', 'departure_offsets', 'ordered_stops', 'id'])
         df = df.rename(columns={'id': 'route', 'route_short_name': 'route_name'})

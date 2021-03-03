@@ -34,8 +34,11 @@ def test_swallows_exceptions_making_new_directories(mocker):
 
 
 def test_is_yml_identifies_yml():
-    zip_dir = os.path.join('path', 'to', 'dir', 'file.yml')
-    assert persistence.is_yml(zip_dir)
+    assert persistence.is_yml(os.path.join('path', 'to', 'dir', 'file.yml'))
+
+
+def test_is_yml_identifies_yaml():
+    assert persistence.is_yml(os.path.join('path', 'to', 'dir', 'file.yaml'))
 
 
 def test_is_yml_identifies_regular_string_isnt_yml():
@@ -47,8 +50,7 @@ def test_is_yml_identifies_a_dictionary_isnt_yml():
 
 
 def test_is_geojson_identifies_geojson():
-    zip_dir = os.path.join('path', 'to', 'dir', 'file.geojson')
-    assert persistence.is_geojson(zip_dir)
+    assert persistence.is_geojson(os.path.join('path', 'to', 'dir', 'file.geojson'))
 
 
 def test_is_geojson_identifies_regular_string_isnt_geojson():
@@ -56,13 +58,11 @@ def test_is_geojson_identifies_regular_string_isnt_geojson():
 
 
 def test_is_zip_identifies_zip():
-    zip_dir = os.path.join('path', 'to', 'dir', 'file.zip')
-    assert persistence.is_zip(zip_dir)
+    assert persistence.is_zip(os.path.join('path', 'to', 'dir', 'file.zip'))
 
 
 def test_is_zip_identifies_folder_isnt_zip():
-    zip_dir = os.path.join('path', 'to', 'dir')
-    assert not persistence.is_zip(zip_dir)
+    assert not persistence.is_zip(os.path.join('path', 'to', 'dir'))
 
 
 def test_zipping_folder(tmpdir):

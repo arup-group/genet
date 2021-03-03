@@ -1117,7 +1117,7 @@ def test_build_graph_builds_correct_graph(strongly_connected_schedule):
 
 
 def test_building_trips_dataframe(schedule):
-    df = schedule.generate_trips_dataframe()
+    df = schedule.route_trips_with_stops_to_dataframe()
 
     correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 13:00:00'), 1: Timestamp('1970-01-01 13:05:00'),
                                                2: Timestamp('1970-01-01 13:09:00'), 3: Timestamp('1970-01-01 13:30:00'),
@@ -1214,7 +1214,7 @@ def test_generating_new_vehicles_with_overwite_True(schedule):
                                          'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'}})
 
 
-def test_generating_vehicles_with_shared_vehicles_and_inconsistent_modes(mocker, schedule):
+def test_rejects_inconsistent_modes_when_generating_vehicles(mocker, schedule):
     mocker.patch.object(DataFrame, 'drop',
                         return_value=DataFrame({'vehicle_id': ['v_1', 'v_2', 'v_1', 'v_3', 'v_3'],
                                                 'type': ['bus', 'bus', 'rail', 'rail', 'rail']}))

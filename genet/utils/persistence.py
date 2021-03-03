@@ -13,7 +13,7 @@ def ensure_dir(direc):
 
 def is_yml(path):
     if isinstance(path, str):
-        return path.lower().endswith(".yml")
+        return path.lower().endswith(".yml") or path.lower().endswith(".yaml")
     return False
 
 

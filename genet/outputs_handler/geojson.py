@@ -66,7 +66,7 @@ def save_network_to_geojson(n, output_dir):
 def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700101'):
     logging.info('Generating geojson standard outputs for schedule')
     schedule_nodes, schedule_links = generate_geodataframes(schedule.graph())
-    df = schedule.generate_trips_dataframe(gtfs_day=gtfs_day)
+    df = schedule.route_trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
     df_all_modes_vph = None
 
     vph_dir = os.path.join(output_dir, 'vehicles_per_hour')

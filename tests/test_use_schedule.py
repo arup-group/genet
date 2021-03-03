@@ -66,7 +66,7 @@ def test_offsets_going_over_24_hrs_why_not():
 
 def test_generating_edge_vph_geodataframe(schedule):
     nodes, links = gngeojson.generate_geodataframes(schedule.graph())
-    df = schedule.generate_trips_dataframe()
+    df = schedule.route_trips_with_stops_to_dataframe()
     df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 18:00:00'),
@@ -117,7 +117,7 @@ def test_generating_edge_vph_geodataframe(schedule):
 
 def test_generating_edge_vph_geodataframe_for_service(schedule):
     nodes, links = gngeojson.generate_geodataframes(schedule['service'].graph())
-    df = schedule['service'].generate_trips_dataframe()
+    df = schedule['service'].route_trips_with_stops_to_dataframe()
     df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 18:00:00'),
@@ -168,7 +168,7 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
 
 def test_generating_edge_vph_geodataframe_for_route(schedule):
     nodes, links = gngeojson.generate_geodataframes(schedule.route('2').graph())
-    df = schedule.route('2').generate_trips_dataframe()
+    df = schedule.route('2').route_trips_with_stops_to_dataframe()
     df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 19:00:00'),
@@ -197,7 +197,7 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
 
 
 def test_generating_trips_per_day_per_service(schedule):
-    df_trips = use_schedule.trips_per_day_per_service(schedule.generate_trips_dataframe())
+    df_trips = use_schedule.trips_per_day_per_service(schedule.route_trips_with_stops_to_dataframe())
 
     correct_df = DataFrame(
         {'service': {0: 'service'},
@@ -209,7 +209,7 @@ def test_generating_trips_per_day_per_service(schedule):
 
 
 def test_generating_trips_per_day_per_route(schedule):
-    df_trips = use_schedule.trips_per_day_per_route(schedule.generate_trips_dataframe())
+    df_trips = use_schedule.trips_per_day_per_route(schedule.route_trips_with_stops_to_dataframe())
 
     correct_df = DataFrame(
         {'route': {0: '1', 1: '2'},
@@ -279,7 +279,7 @@ def test_aggregating_trips_per_day_per_route_by_end_stop_pairs(schedule_with_a_c
                         return_value=[('01', '4'), ('01', '04'), ('01', '1'), ('4', '04'), ('4', '1'), ('04', '1')])
 
     trips_per_day_per_route = use_schedule.trips_per_day_per_route(
-        schedule_with_a_couple_services_that_overlap_stations.generate_trips_dataframe())
+        schedule_with_a_couple_services_that_overlap_stations.route_trips_with_stops_to_dataframe())
 
     df = use_schedule.aggregate_trips_per_day_per_route_by_end_stop_pairs(
         schedule_with_a_couple_services_that_overlap_stations, trips_per_day_per_route)

@@ -64,8 +64,7 @@ if __name__ == '__main__':
         if vehicles:
             logging.info(f'Reading in vehicles at {vehicles}')
         else:
-            logging.info('No vehicles file given with the Schedule, vehicle types will be based on default '
-                         'genet/configs/vehicles/vehicle_definitions.yml')
+            logging.info('No vehicles file given with the Schedule, vehicle types will be based on the default.')
         n.read_matsim_schedule(schedule, vehicles)
     logging.info('Simplifying the Network.')
 
