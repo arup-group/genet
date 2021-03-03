@@ -777,32 +777,41 @@ class Service(ScheduleElement):
             {direction_1: {'routes': ['route_id'], 'graph_edges': [(stop_1, stop_2), ...]},
              direction_2: {'routes': ['different_route_id'], 'graph_edges': [(stop_2, stop_1), ...]}}
         """
-        direction_dict = {
-            'direction_1': {'routes': {}, 'graph_edges': {}},
-            'direction_2': {'routes': {}, 'graph_edges': {}}
-        }
+        import itertools
+
+        def route_overlap_condition():
+            return [bool(graph_edge_group & route_edges) for graph_edge_group in graph_edges]
+
+        def merge_multiple_overlaps():
+            merged_route_group = {route_id}
+            merged_graph_edges = route_edges
+            overlap_mask = route_overlap_condition()
+            overlap_routes = list(itertools.compress(routes, overlap_mask))
+            overlap_graph_edges = list(itertools.compress(graph_edges, overlap_mask))
+            for r, e in zip(overlap_routes, overlap_graph_edges):
+                merged_route_group |= r
+                merged_graph_edges |= e
+                routes.remove(r)
+                graph_edges.remove(e)
+            routes.append(merged_route_group)
+            graph_edges.append(merged_graph_edges)
+
         routes = []
         graph_edges = []
-
-        g = self.graph()
-        service_routes = set(g.graph['service_to_route_map'][self.id])
-        for u, v, data in g.edges(data='routes'):
-            data = set(data) & service_routes
-            edge = u, v
-            route_overlap = sum([bool(routes_group & data) for routes_group in routes])
+        for route_id in self.route_ids():
+            route_edges = set(self.route_reference_edges(route_id))
+            route_overlap = sum(route_overlap_condition())
             if route_overlap == 0:
-                routes.append(set(data))
-                graph_edges.append({edge})
+                routes.append({route_id})
+                graph_edges.append(route_edges)
             elif route_overlap == 1:
                 for routes_group, graph_edge_group in zip(routes, graph_edges):
-                    if routes_group & data:
-                        routes_group |= data
-                        graph_edge_group.add(edge)
+                    if graph_edge_group & route_edges:
+                        routes_group.add(route_id)
+                        graph_edge_group |= route_edges
             else:
-                # the edge is ambiguous, separate it
-                routes.append(set(data))
-                graph_edges.append({edge})
-        return direction_dict
+                merge_multiple_overlaps()
+        return routes, graph_edges
 
     def modes(self):
         return {r.mode for r in self.routes()}

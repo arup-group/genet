@@ -160,7 +160,7 @@ def test_generating_reference_edges_for_service(schedule):
     assert reference_edges_from_graph == {('0', '1'), ('1', '2')}
 
 
-def test_splitting_service_on_direction():
+def test_splitting_service_on_direction_finds_two_distinct_directions():
     service = Service(id='service1',
                 routes=[
                     Route(id='1', route_short_name='route1', mode='bus',
@@ -202,7 +202,46 @@ def test_splitting_service_on_direction():
                           departure_offsets=['00:00:00', '00:05:00'],
                           route=['1', '2'])
                 ])
-    service.split_by_direction()
+    routes, graphs_edges = service.split_by_direction()
+    assert routes == [{'2', '1'}, {'4', '3'}]
+    assert graphs_edges == [{('1', '2'), ('0', '1')}, {('1', '0'), ('2', '1')}]
+
+def test_splitting_service_on_direction_combines_separated_routes():
+    service = Service(id='service1',
+                routes=[
+                    Route(id='1', route_short_name='route1', mode='bus',
+                          stops=[
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='0'),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='1')
+                          ],
+                          trips={'route1_04:40:00': '04:40:00'},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00'],
+                          route=['0', '1']),
+                    Route(id='2', route_short_name='route2', mode='bus',
+                          stops=[
+                              Stop(id='2', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2'),
+                              Stop(id='3', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='3')
+                          ],
+                          trips={'route2_05:40:00': '05:40:00'},
+                          arrival_offsets=['00:00:00', '00:03:00'],
+                          departure_offsets=['00:00:00', '00:05:00'],
+                          route=['2', '3']),
+                    Route(id='3', route_short_name='route3', mode='bus',
+                          stops=[
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='0'),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='1'),
+                              Stop(id='2', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2'),
+                              Stop(id='3', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='3')
+                          ],
+                          trips={'route1_04:40:00': '04:40:00'},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00'],
+                          route=['0', '1', '2', '3'])
+                ])
+    routes, graphs_edges = service.split_by_direction()
+    assert routes == [{'3', '1', '2'}]
+    assert graphs_edges == [{('1', '2'), ('2', '3'), ('0', '1')}]
 
 
 def test_reindexing_route(schedule):
