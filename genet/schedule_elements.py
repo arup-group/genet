@@ -769,6 +769,41 @@ class Service(ScheduleElement):
     def reference_edges(self):
         return self.service_reference_edges(self.id)
 
+    def split_by_direction(self):
+        """
+        Divide the routes and the graph of the Service by direction e.g. North- and Southbound. Depending on the mode,
+        typically a Service will have either 1 or 2 directions. Some Services will have more.
+        :return: Dictionary with directions:
+            {direction_1: {'routes': ['route_id'], 'graph_edges': [(stop_1, stop_2), ...]},
+             direction_2: {'routes': ['different_route_id'], 'graph_edges': [(stop_2, stop_1), ...]}}
+        """
+        direction_dict = {
+            'direction_1': {'routes': {}, 'graph_edges': {}},
+            'direction_2': {'routes': {}, 'graph_edges': {}}
+        }
+        routes = []
+        graph_edges = []
+
+        g = self.graph()
+        service_routes = set(g.graph['service_to_route_map'][self.id])
+        for u, v, data in g.edges(data='routes'):
+            data = set(data) & service_routes
+            edge = u, v
+            route_overlap = sum([bool(routes_group & data) for routes_group in routes])
+            if route_overlap == 0:
+                routes.append(set(data))
+                graph_edges.append({edge})
+            elif route_overlap == 1:
+                for routes_group, graph_edge_group in zip(routes, graph_edges):
+                    if routes_group & data:
+                        routes_group |= data
+                        graph_edge_group.add(edge)
+            else:
+                # the edge is ambiguous, separate it
+                routes.append(set(data))
+                graph_edges.append({edge})
+        return direction_dict
+
     def modes(self):
         return {r.mode for r in self.routes()}
 
