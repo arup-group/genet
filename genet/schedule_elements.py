@@ -779,13 +779,23 @@ class Service(ScheduleElement):
         """
         import itertools
 
-        def route_overlap_condition():
-            return [bool(graph_edge_group & route_edges) for graph_edge_group in graph_edges]
+        def route_overlap_condition(graph_edge_group):
+            edges_in_common = bool(graph_edge_group & route_edges)
+            if edges_in_common:
+                return edges_in_common
+            else:
+                from_nodes = {i[0] for i in route_edges}
+                to_nodes = {i[1] for i in route_edges}
+                shares_from_node = (from_nodes - to_nodes) & {i[0] for i in graph_edge_group}
+                shares_to_node = (to_nodes - from_nodes) & {i[1] for i in graph_edge_group}
+                return bool(shares_from_node) & bool(shares_to_node)
+
+        def route_overlap_mask():
+            return [route_overlap_condition(graph_edge_group) for graph_edge_group in graph_edges]
 
         def merge_multiple_overlaps():
             merged_route_group = {route_id}
             merged_graph_edges = route_edges
-            overlap_mask = route_overlap_condition()
             overlap_routes = list(itertools.compress(routes, overlap_mask))
             overlap_graph_edges = list(itertools.compress(graph_edges, overlap_mask))
             for r, e in zip(overlap_routes, overlap_graph_edges):
@@ -800,15 +810,16 @@ class Service(ScheduleElement):
         graph_edges = []
         for route_id in self.route_ids():
             route_edges = set(self.route_reference_edges(route_id))
-            route_overlap = sum(route_overlap_condition())
+            overlap_mask = route_overlap_mask()
+            route_overlap = sum(overlap_mask)
             if route_overlap == 0:
                 routes.append({route_id})
                 graph_edges.append(route_edges)
             elif route_overlap == 1:
-                for routes_group, graph_edge_group in zip(routes, graph_edges):
-                    if graph_edge_group & route_edges:
-                        routes_group.add(route_id)
-                        graph_edge_group |= route_edges
+                for routes_group, graph_edge_group in zip(list(itertools.compress(routes, overlap_mask)),
+                                                          list(itertools.compress(graph_edges, overlap_mask))):
+                    routes_group.add(route_id)
+                    graph_edge_group |= route_edges
             else:
                 merge_multiple_overlaps()
         return routes, graph_edges

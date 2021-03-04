@@ -250,6 +250,36 @@ def test_splitting_service_on_direction_with_loopy_routes():
                             {('E', 'D'), ('A', 'E'), ('D', 'C'), ('B', 'A'), ('C', 'A'), ('C', 'B'), ('E', 'C')}]
 
 
+def test_splitting_service_on_direction_with_routes_that_have_non_overlapping_graph_edges_produces_two_directions():
+    service = Service(id='service1',
+                      routes=[
+                          Route(id='1_dir_1', route_short_name='route1', mode='rail',
+                                stops=['A', 'B', 'C', 'D'],
+                                trips={'route1_04:40:00': '04:40:00'},
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='2_dir_1', route_short_name='route2', mode='rail',
+                                stops=['A', 'C'],
+                                trips={'route2_05:40:00': '05:40:00'},
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='3_dir_2', route_short_name='route3', mode='rail',
+                                stops=['C', 'B', 'A'],
+                                trips={'route1_04:40:00': '04:40:00'},
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='4_dir_2', route_short_name='route4', mode='rail',
+                                stops=['C', 'A'],
+                                trips={'route1_04:40:00': '04:40:00'},
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                      ])
+    routes, graphs_edges = service.split_by_direction()
+    assert routes == [{'1_dir_1', '2_dir_1'}, {'3_dir_2', '4_dir_2'}]
+    assert graphs_edges == [{('A', 'B'), ('B', 'C'), ('C', 'D'), ('A', 'C')},
+                            {('B', 'A'), ('C', 'A'), ('C', 'B')}]
+
+
 def test_reindexing_route(schedule):
     r = schedule.route('1')
     assert set(schedule['service1'].route_ids()) == {'1', '2'}
