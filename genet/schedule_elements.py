@@ -788,7 +788,6 @@ class Service(ScheduleElement):
             ordered_stops = self._graph.graph['routes'][route_id]['ordered_stops']
             start_stop = self.stop(ordered_stops[0])
             end_stop = self.stop(ordered_stops[-1])
-            # todo check stop the same, clock and anti clockwise
             if start_stop == end_stop:
                 # just check which way it's heading
                 end_stop = self.stop(ordered_stops[1])
