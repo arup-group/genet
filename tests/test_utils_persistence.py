@@ -33,6 +33,33 @@ def test_swallows_exceptions_making_new_directories(mocker):
     os.makedirs.assert_called_once()
 
 
+def test_is_geojson_identifies_geojson():
+    zip_dir = os.path.join('path', 'to', 'dir', 'file.geojson')
+    assert persistence.is_geojson(zip_dir)
+
+
+def test_is_geojson_identifies_regular_string_isnt_geojson():
+    assert not persistence.is_geojson('hello,darkness,my,old,friend')
+
+
+def test_is_csv_identifies_csv():
+    zip_dir = os.path.join('path', 'to', 'dir', 'file.csv')
+    assert persistence.is_csv(zip_dir)
+
+
+def test_is_csv_identifies_regular_string_isnt_csv():
+    assert not persistence.is_csv('hello,darkness,my,old,friend')
+
+
+def test_is_json_identifies_json():
+    zip_dir = os.path.join('path', 'to', 'dir', 'file.json')
+    assert persistence.is_json(zip_dir)
+
+
+def test_is_json_identifies_regular_string_isnt_json():
+    assert not persistence.is_json('hello,darkness,my,old,friend')
+
+
 def test_is_zip_identifies_zip():
     zip_dir = os.path.join('path', 'to', 'dir', 'file.zip')
     assert persistence.is_zip(zip_dir)
@@ -41,3 +68,20 @@ def test_is_zip_identifies_zip():
 def test_is_zip_identifies_folder_isnt_zip():
     zip_dir = os.path.join('path', 'to', 'dir')
     assert not persistence.is_zip(zip_dir)
+
+
+def test_zipping_folder(tmpdir):
+
+    folder = os.path.join(tmpdir, 'folder_to_zip_up')
+    persistence.ensure_dir(folder)
+
+    with open(os.path.join(folder, 'helloworld.txt'), 'wb') as f:
+        f.write(b'hello world')
+        f.close()
+
+    assert os.path.exists(os.path.join(folder, 'helloworld.txt'))
+    assert not os.path.exists(os.path.join(tmpdir, 'folder_to_zip_up.zip'))
+
+    persistence.zip_folder(folder)
+
+    assert os.path.exists(os.path.join(tmpdir, 'folder_to_zip_up.zip'))

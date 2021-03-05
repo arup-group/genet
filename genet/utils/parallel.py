@@ -80,6 +80,8 @@ def multiprocess_wrap(data, split, apply, combine, processes=1, **kwargs):
     :param kwargs: that need to be passed to the function `apply` which remain constant across all data
     :return: output of the combine function
     """
+    if processes == 1:
+        return apply(data, **kwargs)
     try:
         data_partitioned = split(data, processes=processes)
     except TypeError:

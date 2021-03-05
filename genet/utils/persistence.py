@@ -1,5 +1,6 @@
 import os
 import logging
+import shutil
 
 
 def ensure_dir(direc):
@@ -10,5 +11,21 @@ def ensure_dir(direc):
             logging.warning(e)
 
 
+def is_geojson(path):
+    return path.lower().endswith(".geojson")
+
+
+def is_csv(path):
+    return path.lower().endswith(".csv")
+
+
+def is_json(path):
+    return path.lower().endswith(".json")
+
+
 def is_zip(path):
     return path.lower().endswith(".zip")
+
+
+def zip_folder(folder_path):
+    shutil.make_archive(folder_path, 'zip', folder_path)

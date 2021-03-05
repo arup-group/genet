@@ -11,25 +11,41 @@ class Filter:
 
     Parameters
     ----------
-    :param conditions
-    Dictionary of (or list of such dictionaries)
-    key = edge attribute key
-    value = either another key, if the edge data is nested or the target condition for what the value should be. That
-     is:
-    - single value, string, int, float, where the edge_data[key] == value
-    - list of single values as above, where edge_data[key] in list(value1, value2)
-    - for int or float values, two-tuple bound (lower_bound, upper_bound) where
-      lower_bound <= edge_data[key] <= upper_bound
-    - function that returns a boolean given the value e.g.
+    :param conditions e.g. {'attributes': {'osm:way:osmid': {'text': 12345}}}
 
-    def below_exclusive_upper_bound(value):
-        return value < 100
+    Dictionary of (or list of such dictionaries)
+        key = edge attribute key
+        value = either another key, if the edge data is nested or the target condition for what the value should be.
+        That is:
+            - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+              lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+            - function that returns a boolean given the value e.g.
+
+            def below_exclusive_upper_bound(value):
+                return value < 100
+
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
 
     :param how : {all, any}, default any
+
     The level of rigour used to match conditions
 
-    * all: means all conditions need to be met
-    * any: means at least one condition needs to be met
+        * all: means all conditions need to be met
+        * any: means at least one condition needs to be met
+
+    :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
+    values e.g. as in simplified networks.
     """
 
     def __init__(
@@ -38,9 +54,11 @@ class Filter:
                 list,
                 Dict[str, Union[dict, Union[str, int, float], list, Callable[[str, int, float], bool]]]
             ] = None,
-            how=any):
+            how=any,
+            mixed_dtypes=True):
         self.conditions = conditions
         self.how = how
+        self.mixed_dtypes = mixed_dtypes
 
     def satisfies_conditions(self, data_dict):
         if isinstance(self.conditions, list):
@@ -61,75 +79,84 @@ class Filter:
                     # keep going
                     satisfies = self.evaluate_condition(val, data_dict[key])
                 elif isinstance(val, (int, float, str)):
-                    # value is that value
-                    satisfies = data_dict[key] == val
-                elif isinstance(val, list):
-                    # value is one of the items in the list
-                    satisfies = data_dict[key] in val
+                    if isinstance(data_dict[key], (list, set)) and self.mixed_dtypes:
+                        satisfies = val in data_dict[key]
+                    else:
+                        # value is that value
+                        satisfies = data_dict[key] == val
+                elif isinstance(val, (list, set)):
+                    if isinstance(data_dict[key], (list, set)) and self.mixed_dtypes:
+                        if set(data_dict[key]) & set(val):
+                            satisfies = True
+                    else:
+                        # value is one of the items in the list
+                        satisfies = data_dict[key] in val
                 elif isinstance(val, tuple):
-                    # value is within the bound
-                    assert len(val) == 2, 'Tuple defining the bound has to be a two-tuple: (lower_bound, upper_bound)'
-                    satisfies = data_dict[key] >= val[0] and data_dict[key] <= val[1]
+                    if len(val) != 2:
+                        raise AttributeError(
+                            'Tuple defining the bound has to be a two-tuple: (lower_bound, upper_bound)')
+                    if isinstance(data_dict[key], (list, set)) and self.mixed_dtypes:
+                        return any([val[0] <= value <= val[1] for value in data_dict[key]])
+                    else:
+                        try:
+                            # value is within the bound
+                            satisfies = val[0] <= data_dict[key] <= val[1]
+                        except TypeError:
+                            # ignore types not suitable for this condition
+                            pass
                 elif callable(val):
-                    # value is a function of data_dict[key] that returns a bool
-                    satisfies = val(data_dict[key])
+                    if isinstance(data_dict[key], (list, set)) and self.mixed_dtypes:
+                        return any([val(value) for value in data_dict[key]])
+                    else:
+                        # value is a function of data_dict[key] that returns a bool
+                        satisfies = val(data_dict[key])
         return satisfies
 
 
-def extract_links_on_edge_attributes(network, conditions: Union[list, dict], how=any):
+def extract_on_attributes(iterator, conditions: Union[list, dict], how=any, mixed_dtypes=True):
     """
-    Extracts graph links based on values of attributes saved on the edges. Fails silently,
-    assumes not all edges have those attributes.
-    :param network: genet.core.Network object
+    Extracts ids in iterator based on values of attributes attached to the items. Fails silently,
+    assumes not all items have those attributes. In the case were the attributes stored are
+    a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+    an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+    deemed successful by default. To disable this behaviour set mixed_dtypes to False.
+    :param iterator: generator, list or set of two-tuples: (id of the item, attributes of the item)
     :param conditions: {'attribute_key': 'target_value'} or nested
     {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
 
-    - single value, string, int, float, where the edge_data[key] == value
-    - list of single values as above, where edge_data[key] in list(value1, value2)
-    - for int or float values, two-tuple bound (lower_bound, upper_bound) where
-      lower_bound <= edge_data[key] <= upper_bound
-    - function that returns a boolean given the value e.g.
+            - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
 
-    def below_exclusive_upper_bound(value):
-        return value < 100
+            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
 
-    :param how: {all, any}, default any
-    How to subset the graph if more than one condition is specified in values_to_subset_on
+            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+              lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
 
-    * all: means all conditions need to be met
-    * any: means at least one condition needs to be met
-    :return: list of link ids of the input network
+            - function that returns a boolean given the value e.g.
+
+            def below_exclusive_upper_bound(value):
+                return value < 100
+
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+    :param how : {all, any}, default any
+
+    The level of rigour used to match conditions
+
+        * all: means all conditions need to be met
+        * any: means at least one condition needs to be met
+
+    :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
+    values e.g. as in simplified networks.
+    :return: list of ids in input iterator satisfying conditions
     """
-    filter = Filter(conditions, how)
-    return [link_id for link_id, link_attribs in network.links() if filter.satisfies_conditions(link_attribs)]
-
-
-def extract_nodes_on_node_attributes(network, conditions: Union[list, dict], how=any):
-    """
-    Extracts graph nodes based on values of attributes saved on the nodes. Fails silently,
-    assumes not all nodes have all of the attributes.
-    :param network: genet.core.Network object
-    :param conditions: {'attribute_key': 'target_value'} or nested
-    {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
-
-    - single value, string, int, float, where the node_data[key] == value
-    - list of single values as above, where node_data[key] in list(value1, value2)
-    - for int or float values, two-tuple bound (lower_bound, upper_bound) where
-      lower_bound <= node_data[key] <= upper_bound
-    - function that returns a boolean given the value e.g.
-
-    def below_exclusive_upper_bound(value):
-        return value < 100
-
-    :param how: {all, any}, default any
-    How to subset the graph if more than one condition is specified in values_to_subset_on
-
-    * all: means all conditions need to be met
-    * any: means at least one condition needs to be met
-    :return: list of node ids of the input network
-    """
-    filter = Filter(conditions, how)
-    return [node_id for node_id, node_attribs in network.nodes() if filter.satisfies_conditions(node_attribs)]
+    filter = Filter(conditions, how, mixed_dtypes)
+    return [_id for _id, attribs in iterator if filter.satisfies_conditions(attribs)]
 
 
 def get_attribute_schema(iterator, data=False):
@@ -148,7 +175,7 @@ def get_attribute_schema(iterator, data=False):
                 append_to_tree(v, twin)
             elif not twin:
                 if data:
-                    if isinstance(v, list):
+                    if isinstance(v, (list, set)):
                         values = set(v)
                     else:
                         values = {v}
@@ -157,7 +184,7 @@ def get_attribute_schema(iterator, data=False):
                     Node(k, parent=parent)
             elif data:
                 node = get_identical_twin_if_exists(parent, k)
-                if isinstance(v, list):
+                if isinstance(v, (list, set)):
                     values = set(v)
                 else:
                     values = {v}
@@ -207,6 +234,76 @@ def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
         get_the_data(_attribs, key)
 
     return data
+
+
+def build_attribute_dataframe(iterator, keys: Union[list, str], index_name: str = None):
+    """
+    Builds a pandas.DataFrame from data in iterator.
+    :param iterator: iterator or list of tuples (id, dictionary data with keys of interest)
+    :param keys: keys to extract data from. Can be a string, list or dictionary/list of dictionaries if accessing
+    nested dictionaries, for example on using dictionaries see `get_attribute_data_under_key` docstring.
+    :param index_name:
+    :return:
+    """
+    df = None
+    if isinstance(keys, str):
+        keys = [keys]
+    if len(keys) > 1:
+        iterator = list(iterator)
+    for key in keys:
+        if isinstance(key, dict):
+            # consolidate nestedness to get a name for the column
+            name = str(key)
+            name = name.replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
+        else:
+            name = key
+
+        col_series = pd.Series(get_attribute_data_under_key(iterator, key))
+        col_series.name = name
+
+        if df is not None:
+            df = df.merge(pd.DataFrame(col_series), left_index=True, right_index=True, how='outer')
+        else:
+            df = pd.DataFrame(col_series)
+    if index_name:
+        df.index = df.index.set_names([index_name])
+    return df
+
+
+def apply_to_attributes(iterator, to_apply, location):
+    if isinstance(to_apply, dict):
+        return apply_mapping_to_attributes(iterator, to_apply, location)
+    else:
+        return apply_function_to_attributes(iterator, to_apply, location)
+
+
+def apply_mapping_to_attributes(iterator, mapping, location):
+    new_attributes = {}
+    # assumes mapping at the same location
+    for item_id, item_attribs in iterator:
+        try:
+            new_attributes[item_id] = {location: mapping[item_attribs[location]]}
+        except KeyError:
+            # Not all items are required to work with the mapping. Fail silently and only apply
+            # to relevant items
+            pass
+    if (not new_attributes) and mapping:
+        logging.warning(f'Mapping attributes resulted in 0 changes. Ensure your location variable: {location} exists'
+                        f'as keys in the input dictionaries. Only dictionaries with location={location} keys will be'
+                        'mapped.')
+    return new_attributes
+
+
+def apply_function_to_attributes(iterator, function, location):
+    new_attributes = {}
+    for item_id, item_attribs in iterator:
+        try:
+            new_attributes[item_id] = {location: function(item_attribs)}
+        except KeyError:
+            # Not all items are required to work with the function. Fail silently and only apply
+            # to relevant items
+            pass
+    return new_attributes
 
 
 def consolidate_node_indices(left, right):

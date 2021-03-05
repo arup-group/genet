@@ -1,11 +1,13 @@
 import networkx as nx
 import pandas as pd
+import geopandas as gpd
 import uuid
 import logging
 import os
 from copy import deepcopy
 from typing import Union, List, Dict
 from pyproj import Transformer
+from s2sphere import CellId
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.osm_reader as osm_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
@@ -17,9 +19,11 @@ import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
 import genet.utils.dict_support as dict_support
-import genet.validate.network_validation as network_validation
 import genet.utils.plot as plot
+import genet.utils.simplification as simplification
 import genet.schedule_elements as schedule_elements
+import genet.validate.network_validation as network_validation
+import genet.auxiliary_files as auxiliary_files
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -27,11 +31,12 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 class Network:
     def __init__(self, epsg):
         self.epsg = epsg
-        self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
-        self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg})
+        self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
+        self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg}, simplified=False)
         self.schedule = schedule_elements.Schedule(epsg)
         self.change_log = change_log.ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
+        self.auxiliary_files = {'node': {}, 'link': {}}
         # link_id_mapping maps between (usually string literal) index per edge to the from and to nodes that are
         # connected by the edge
         self.link_id_mapping = {}
@@ -45,11 +50,15 @@ class Network:
 
     def add(self, other):
         """
+        This let's you add on `other` genet.Network to the network this method is called on.
         This is deliberately not a magic function to discourage `new_network = network_1 + network_2` (and memory
         goes out the window)
         :param other:
         :return:
         """
+        if self.is_simplified() != other.is_simplified():
+            raise RuntimeError('You cannot add simplified and non-simplified networks together')
+
         # consolidate coordinate systems
         if other.epsg != self.epsg:
             logging.info(f'Attempting to merge two networks in different coordinate systems. '
@@ -70,8 +79,7 @@ class Network:
         self.schedule.add(other.schedule)
 
         # merge change_log DataFrames
-        self.change_log.log = self.change_log.log.append(other.change_log.log)
-        self.change_log.log = self.change_log.log.sort_values(by='timestamp').reset_index(drop=True)
+        self.change_log = self.change_log.merge_logs(other.change_log)
 
     def print(self):
         print(self.info())
@@ -125,30 +133,45 @@ class Network:
         :param processes: max number of process to split computation across
         :return:
         """
+        # reproject nodes
         nodes_attribs = dict(self.nodes())
         new_nodes_attribs = parallel.multiprocess_wrap(
             data=nodes_attribs, split=parallel.split_dict, apply=modify_graph.reproj, combine=parallel.combine_dict,
             processes=processes, from_proj=self.epsg, to_proj=new_epsg)
+        self.apply_attributes_to_nodes(new_nodes_attribs)
 
-        node_keys = list(nodes_attribs.keys())
-        self.change_log.modify_bunch('node', node_keys, [nodes_attribs[node] for node in node_keys], node_keys,
-                                     [{**nodes_attribs[node], **new_nodes_attribs[node]} for node in node_keys])
-        nx.set_node_attributes(self.graph, new_nodes_attribs)
+        # reproject geometries
+        gdf_geometries = gpd.GeoDataFrame(self.link_attribute_data_under_keys(['geometry']))
+        gdf_geometries.crs = self.epsg
+        gdf_geometries = gdf_geometries.to_crs(new_epsg)
+        new_link_attribs = gdf_geometries.T.to_dict()
+        self.apply_attributes_to_links(new_link_attribs)
 
         if self.schedule:
             self.schedule.reproject(new_epsg, processes)
         self.initiate_crs_transformer(new_epsg)
+        self.graph.graph['crs'] = {'init': self.epsg}
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
         if epsg != 'epsg:4326':
-            self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
+            self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
         else:
             self.transformer = None
 
+    def simplify(self, no_processes=1):
+        if self.is_simplified():
+            raise RuntimeError('This network has already been simplified. You cannot simplify the graph twice.')
+        simplification.simplify_graph(self, no_processes)
+        # mark graph as having been simplified
+        self.graph.graph["simplified"] = True
+
+    def is_simplified(self):
+        return self.graph.graph["simplified"]
+
     def node_attribute_summary(self, data=False):
         """
-        Is expensive. Parses through data stored on nodes and gives a summary tree of the data stored on the nodes.
+        Parses through data stored on nodes and gives a summary tree of the data stored on the nodes.
         If data is True, shows also up to 5 unique values stored under such keys.
         :param data: bool, False by default
         :return:
@@ -158,7 +181,7 @@ class Network:
 
     def node_attribute_data_under_key(self, key):
         """
-        Generates a pandas.Series object index by node ids, with data stored on the nodes under `key`
+        Generates a pandas.Series object indexed by node ids, with data stored on the nodes under `key`
         :param key: either a string e.g. 'x', or if accessing nested information, a dictionary
             e.g. {'attributes': {'osm:way:name': 'text'}}
         :return: pandas.Series
@@ -167,35 +190,17 @@ class Network:
 
     def node_attribute_data_under_keys(self, keys: list, index_name=None):
         """
-        Generates a pandas.DataFrame object index by link ids, with data stored on the nodes under `key`
+        Generates a pandas.DataFrame object indexed by link ids, with data stored on the nodes under `key`
         :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
             e.g. {'attributes': {'osm:way:name': 'text'}}
         :param index_name: optional, gives the index_name to dataframes index
         :return: pandas.DataFrame
         """
-        df = None
-        for key in keys:
-            if isinstance(key, dict):
-                # consolidate nestedness to get a name for the column
-                name = str(key)
-                name = name.replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
-            else:
-                name = key
-
-            col_series = self.node_attribute_data_under_key(key)
-            col_series.name = name
-
-            if df is not None:
-                df = df.merge(pd.DataFrame(col_series), left_index=True, right_index=True, how='outer')
-            else:
-                df = pd.DataFrame(col_series)
-        if index_name:
-            df.index = df.index.set_names([index_name])
-        return df
+        return graph_operations.build_attribute_dataframe(self.nodes(), keys=keys, index_name=index_name)
 
     def link_attribute_summary(self, data=False):
         """
-        Is expensive. Parses through data stored on links and gives a summary tree of the data stored on the links.
+        Parses through data stored on links and gives a summary tree of the data stored on the links.
         If data is True, shows also up to 5 unique values stored under such keys.
         :param data: bool, False by default
         :return:
@@ -205,7 +210,7 @@ class Network:
 
     def link_attribute_data_under_key(self, key: Union[str, dict]):
         """
-        Generates a pandas.Series object index by link ids, with data stored on the links under `key`
+        Generates a pandas.Series object indexed by link ids, with data stored on the links under `key`
         :param key: either a string e.g. 'modes', or if accessing nested information, a dictionary
             e.g. {'attributes': {'osm:way:name': 'text'}}
         :return: pandas.Series
@@ -214,31 +219,197 @@ class Network:
 
     def link_attribute_data_under_keys(self, keys: list, index_name=None):
         """
-        Generates a pandas.DataFrame object index by link ids, with data stored on the links under `key`
+        Generates a pandas.DataFrame object indexed by link ids, with data stored on the links under `key`
         :param keys: list of either a string e.g. 'modes', or if accessing nested information, a dictionary
             e.g. {'attributes': {'osm:way:name': 'text'}}
         :param index_name: optional, gives the index_name to dataframes index
         :return: pandas.DataFrame
         """
-        df = None
-        for key in keys:
-            if isinstance(key, dict):
-                # consolidate nestedness to get a name for the column
-                name = str(key)
-                name = name.replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
-            else:
-                name = key
+        return graph_operations.build_attribute_dataframe(self.links(), keys=keys, index_name=index_name)
 
-            col_series = self.link_attribute_data_under_key(key)
-            col_series.name = name
+    def extract_nodes_on_node_attributes(self, conditions: Union[list, dict], how=any, mixed_dtypes=True):
+        """
+        Extracts graph node IDs based on values of attributes saved on the nodes. Fails silently,
+        assumes not all nodes have all of the attributes. In the case were the attributes stored are
+        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
+        :param conditions: {'attribute_key': 'target_value'} or nested
+        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
 
-            if df is not None:
-                df = df.merge(pd.DataFrame(col_series), left_index=True, right_index=True, how='outer')
-            else:
-                df = pd.DataFrame(col_series)
-        if index_name:
-            df.index = df.index.set_names([index_name])
-        return df
+            - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+              lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+            - function that returns a boolean given the value e.g.
+
+            def below_exclusive_upper_bound(value):
+                return value < 100
+
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+        :param how : {all, any}, default any
+
+        The level of rigour used to match conditions
+
+            * all: means all conditions need to be met
+            * any: means at least one condition needs to be met
+
+        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
+        values e.g. as in simplified networks.
+        :return: list of node ids in the network satisfying conditions
+        """
+        return graph_operations.extract_on_attributes(
+            self.nodes(), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
+
+    def extract_links_on_edge_attributes(self, conditions: Union[list, dict], how=any, mixed_dtypes=True):
+        """
+        Extracts graph link IDs based on values of attributes saved on the edges. Fails silently,
+        assumes not all links have those attributes. In the case were the attributes stored are
+        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
+        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
+        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
+        :param conditions: {'attribute_key': 'target_value'} or nested
+        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+
+            - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+              lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+            - function that returns a boolean given the value e.g.
+
+            def below_exclusive_upper_bound(value):
+                return value < 100
+
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+        :param how : {all, any}, default any
+
+        The level of rigour used to match conditions
+
+            * all: means all conditions need to be met
+            * any: means at least one condition needs to be met
+
+        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
+        values e.g. as in simplified networks.
+        :return: list of link ids in the network satisfying conditions
+        """
+        return graph_operations.extract_on_attributes(
+            self.links(), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
+
+    def links_on_modal_condition(self, modes: Union[str, list]):
+        """
+        Finds link IDs with modes or singular mode given in `modes`
+        :param modes: string mode e.g. 'car' or a list of such modes e.g. ['car', 'walk']
+        :return: list of link IDs
+        """
+        return self.extract_links_on_edge_attributes(conditions={'modes': modes}, mixed_dtypes=True)
+
+    def nodes_on_modal_condition(self, modes: Union[str, list]):
+        """
+        Finds node IDs with modes or singular mode given in `modes`
+        :param modes: string mode e.g. 'car' or a list of such modes e.g. ['car', 'walk']
+        :return: list of link IDs
+        """
+        links = self.links_on_modal_condition(modes)
+        nodes = {self.link(link)['from'] for link in links} | {self.link(link)['to'] for link in links}
+        return list(nodes)
+
+    def modal_subgraph(self, modes: Union[str, list]):
+        return self.subgraph_on_link_conditions(conditions={'modes': modes}, mixed_dtypes=True)
+
+    def nodes_on_spatial_condition(self, region_input):
+        """
+        Returns node IDs which intersect region_input
+        :param region_input:
+            - path to a geojson file, can have multiple features
+            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
+             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
+             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
+            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :return: node IDs
+        """
+        if not isinstance(region_input, str):
+            # assumed to be a shapely.geometry input
+            gdf = geojson.generate_geodataframes(self.graph)[0]
+            return self._find_ids_on_shapely_geometry(gdf, how='intersect', shapely_input=region_input)
+        elif persistence.is_geojson(region_input):
+            gdf = geojson.generate_geodataframes(self.graph)[0]
+            return self._find_ids_on_geojson(gdf, how='intersect', geojson_input=region_input)
+        else:
+            # is assumed to be hex
+            return self._find_node_ids_on_s2_geometry(region_input)
+
+    def links_on_spatial_condition(self, region_input, how='intersect'):
+        """
+        Returns link IDs which intersect region_input
+        :param region_input:
+            - path to a geojson file, can have multiple features
+            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
+             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
+             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
+            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :return: link IDs
+        """
+        gdf = geojson.generate_geodataframes(self.graph)[1]
+        if not isinstance(region_input, str):
+            # assumed to be a shapely.geometry input
+            return self._find_ids_on_shapely_geometry(gdf, how, region_input)
+        elif persistence.is_geojson(region_input):
+            return self._find_ids_on_geojson(gdf, how, region_input)
+        else:
+            # is assumed to be hex
+            return self._find_link_ids_on_s2_geometry(gdf, how, region_input)
+
+    def _find_ids_on_geojson(self, gdf, how, geojson_input):
+        shapely_input = spatial.read_geojson_to_shapely(geojson_input)
+        return self._find_ids_on_shapely_geometry(gdf=gdf, how=how, shapely_input=shapely_input)
+
+    def _find_ids_on_shapely_geometry(self, gdf, how, shapely_input):
+        if how == 'intersect':
+            return list(gdf[gdf.intersects(shapely_input)]['id'])
+        if how == 'within':
+            return list(gdf[gdf.within(shapely_input)]['id'])
+        else:
+            raise NotImplementedError('Only `intersect` and `contain` options for `how` param.')
+
+    def _find_node_ids_on_s2_geometry(self, s2_input):
+        cell_union = spatial.s2_hex_to_cell_union(s2_input)
+        return [_id for _id, s2_id in self.graph.nodes(data='s2_id') if cell_union.intersects(CellId(s2_id))]
+
+    def _find_link_ids_on_s2_geometry(self, gdf, how, s2_input):
+        gdf['geometry'] = gdf['geometry'].apply(lambda x: spatial.swap_x_y_in_linestring(x))
+        gdf['s2_geometry'] = gdf['geometry'].apply(lambda x: spatial.generate_s2_geometry(x))
+        gdf = gdf.set_index('id')
+        links = gdf['s2_geometry'].T.to_dict()
+
+        cell_union = spatial.s2_hex_to_cell_union(s2_input)
+        if how == 'intersect':
+            return [_id for _id, s2_geom in links.items() if
+                    any([cell_union.intersects(CellId(s2_id)) for s2_id in s2_geom])]
+        elif how == 'within':
+            return [_id for _id, s2_geom in links.items() if
+                    all([cell_union.intersects(CellId(s2_id)) for s2_id in s2_geom])]
+        else:
+            raise NotImplementedError('Only `intersect` and `within` options for `how` param.')
 
     def add_node(self, node: Union[str, int], attribs: dict = None, silent: bool = False):
         """
@@ -258,7 +429,16 @@ class Network:
             logging.info(f'Added Node with index `{node}` and data={attribs}')
         return node
 
-    def add_nodes(self, nodes_and_attribs: dict):
+    def add_nodes(self, nodes_and_attribs: dict, silent: bool = False, ignore_change_log: bool = False):
+        """
+        Adds nodes, reindexes if indices are clashing with nodes already in the network
+        :param nodes_and_attribs: {index_for_node: {attribute dictionary for that node}}
+        :param silent: whether to mute stdout logging messages
+        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
+        :return:
+        """
         # check for clashing nodes
         clashing_node_ids = set(dict(self.nodes()).keys()) & set(nodes_and_attribs.keys())
 
@@ -280,10 +460,12 @@ class Network:
         nodes_and_attribs_to_add = df_nodes.T.to_dict()
 
         self.graph.add_nodes_from([(node_id, attribs) for node_id, attribs in nodes_and_attribs_to_add.items()])
-        self.change_log.add_bunch(object_type='node', id_bunch=list(nodes_and_attribs_to_add.keys()),
-                                  attributes_bunch=list(nodes_and_attribs_to_add.values()))
-
-        logging.info(f'Added {len(nodes_and_attribs)} nodes')
+        if not ignore_change_log:
+            self.change_log = self.change_log.add_bunch(object_type='node',
+                                                        id_bunch=list(nodes_and_attribs_to_add.keys()),
+                                                        attributes_bunch=list(nodes_and_attribs_to_add.values()))
+        if not silent:
+            logging.info(f'Added {len(nodes_and_attribs)} nodes')
         return reindexing_dict, nodes_and_attribs_to_add
 
     def add_edge(self, u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None, attribs: dict = None,
@@ -305,11 +487,15 @@ class Network:
             logging.info(f'Added edge from `{u}` to `{v}` with link_id `{link_id}`')
         return link_id
 
-    def add_edges(self, edges_attributes: List[dict]):
+    def add_edges(self, edges_attributes: List[dict], silent: bool = False, ignore_change_log: bool = False):
         """
         Adds multiple edges, generates their unique link ids
         :param edges_attributes: List of edges, each item in list is a dictionary defining the edge attributes,
         contains at least 'from': node_id and 'to': node_id entries,
+        :param silent: whether to mute stdout logging messages
+        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
         :return:
         """
         # check for compulsory attribs
@@ -322,7 +508,7 @@ class Network:
         df_edges['id'] = self.generate_indices_for_n_edges(len(df_edges))
         df_edges = df_edges.set_index('id', drop=False)
 
-        return self.add_links(df_edges.T.to_dict())
+        return self.add_links(df_edges.T.to_dict(), silent=silent, ignore_change_log=ignore_change_log)
 
     def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None,
                  attribs: dict = None, silent: bool = False):
@@ -366,11 +552,15 @@ class Network:
                          f'multi-index:{multi_edge_idx}, and data={attribs}')
         return link_id
 
-    def add_links(self, links_and_attributes: Dict[str, dict]):
+    def add_links(self, links_and_attributes: Dict[str, dict], silent: bool = False, ignore_change_log: bool = False):
         """
         Adds multiple edges, generates their unique link ids
         :param links_and_attributes: Dictionary of link ids and corresponding edge attributes, each edge attributes
         contains at least 'from': node_id and 'to': node_id entries,
+        :param silent: whether to mute stdout logging messages
+        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
         :return:
         """
         # check for compulsory attribs
@@ -407,6 +597,10 @@ class Network:
                 return group
 
             clashing_multi_idxs = _df[_df['id_in_graph'].notna()]['id_to_add']
+            df_clashing_midx = _df[_df['id_to_add'].isin(clashing_multi_idxs)]
+            clashing_multi_idxs = \
+                _df[_df['from'].isin(df_clashing_midx['from']) & _df['to'].isin(df_clashing_midx['to'])]['id_to_add']
+
             df_links.loc[df_links['id'].isin(clashing_multi_idxs)] = df_links[
                 df_links['id'].isin(clashing_multi_idxs)].groupby(['from', 'to']).apply(generate_unique_multi_idx)
 
@@ -425,7 +619,8 @@ class Network:
         # end with updated links_and_attributes dict
         add_to_link_id_mapping = df_links[['from', 'to', 'multi_edge_idx']].T.to_dict()
         df_links = df_links.drop('multi_edge_idx', axis=1)
-        links_and_attributes = df_links.T.to_dict()
+        links_and_attributes = {_id: {k: v for k, v in m.items() if dict_support.notna(v)} for _id, m in
+                                df_links.T.to_dict().items()}
 
         # update link_id_mapping
         self.link_id_mapping = {**self.link_id_mapping, **add_to_link_id_mapping}
@@ -433,9 +628,12 @@ class Network:
         self.graph.add_edges_from(
             [(attribs['from'], attribs['to'], add_to_link_id_mapping[link]['multi_edge_idx'], attribs) for link, attribs
              in links_and_attributes.items()])
-        self.change_log.add_bunch(object_type='link', id_bunch=list(links_and_attributes.keys()),
-                                  attributes_bunch=list(links_and_attributes.values()))
-        logging.info(f'Added {len(links_and_attributes)} links')
+        if not ignore_change_log:
+            self.change_log = self.change_log.add_bunch(
+                object_type='link', id_bunch=list(links_and_attributes.keys()),
+                attributes_bunch=list(links_and_attributes.values()))
+        if not silent:
+            logging.info(f'Added {len(links_and_attributes)} links')
         return reindexing_dict, links_and_attributes
 
     def reindex_node(self, node_id, new_node_id, silent: bool = False):
@@ -443,9 +641,9 @@ class Network:
         if self.node_id_exists(new_node_id):
             new_node_id = self.generate_index_for_node()
         # extract link ids which will be affected byt the node relabel and change the from anf to attributes
-        from_links = graph_operations.extract_links_on_edge_attributes(self, conditions={'from': node_id})
+        from_links = self.extract_links_on_edge_attributes(conditions={'from': node_id})
         self.apply_attributes_to_links({link: {'from': new_node_id} for link in from_links})
-        to_links = graph_operations.extract_links_on_edge_attributes(self, conditions={'to': node_id})
+        to_links = self.extract_links_on_edge_attributes(conditions={'to': node_id})
         self.apply_attributes_to_links({link: {'to': new_node_id} for link in to_links})
         # update link_id_mapping
         for k in from_links:
@@ -459,6 +657,7 @@ class Network:
                                old_attributes=self.node(node_id), new_attributes=new_attribs)
         self.apply_attributes_to_node(node_id, new_attribs)
         self.graph = nx.relabel_nodes(self.graph, {node_id: new_node_id})
+        self.update_node_auxiliary_files({node_id: new_node_id})
         if not silent:
             logging.info(f'Changed Node index from {node_id} to {new_node_id}')
 
@@ -473,16 +672,19 @@ class Network:
         self.apply_attributes_to_link(link_id, new_attribs)
         self.link_id_mapping[new_link_id] = self.link_id_mapping[link_id]
         del self.link_id_mapping[link_id]
+        self.update_link_auxiliary_files({link_id: new_link_id})
         if not silent:
             logging.info(f'Changed Link index from {link_id} to {new_link_id}')
 
-    def subgraph_on_link_conditions(self, conditions):
+    def subgraph_on_link_conditions(self, conditions, how=any, mixed_dtypes=True):
         """
         Gives a subgraph of network.graph based on matching conditions defined in conditions
-        :param conditions as describen in graph_operations.extract_links_on_edge_attributes
+        :param conditions as described in graph_operations.extract_links_on_edge_attributes
+        :param how as described in graph_operations.extract_links_on_edge_attributes
+        :param mixed_dtypes as described in graph_operations.extract_links_on_edge_attributes
         :return:
         """
-        links = graph_operations.extract_links_on_edge_attributes(self, conditions)
+        links = self.extract_links_on_edge_attributes(conditions=conditions, how=how, mixed_dtypes=mixed_dtypes)
         edges_for_sub = [
             (self.link_id_mapping[link]['from'],
              self.link_id_mapping[link]['to'],
@@ -502,17 +704,6 @@ class Network:
             except KeyError:
                 pass
         return modes
-
-    def modal_subgraph(self, modes: Union[str, list]):
-        if isinstance(modes, str):
-            modes = {modes}
-        else:
-            modes = set(modes)
-
-        def modal_condition(modes_list):
-            return set(modes_list) & modes
-
-        return self.subgraph_on_link_conditions(conditions={'modes': modal_condition})
 
     def find_shortest_path(self, from_node, to_node, modes: Union[str, list] = None, subgraph: nx.MultiDiGraph = None,
                            return_nodes=False):
@@ -581,7 +772,7 @@ class Network:
         old_attribs = [deepcopy(self.node(node)) for node in nodes]
         new_attribs = [{**self.node(node), **new_attributes[node]} for node in nodes]
 
-        self.change_log.modify_bunch('node', nodes, old_attribs, nodes, new_attribs)
+        self.change_log = self.change_log.modify_bunch('node', nodes, old_attribs, nodes, new_attribs)
 
         nx.set_node_attributes(self.graph, dict(zip(nodes, new_attribs)))
         logging.info(f'Changed Node attributes for {len(nodes)} nodes')
@@ -663,7 +854,7 @@ class Network:
                     edge_tuples.append((u, v, multi_idx))
 
         edge_ids = list(map(str, edge_tuples))
-        self.change_log.modify_bunch(
+        self.change_log = self.change_log.modify_bunch(
             object_type='edge',
             old_id_bunch=edge_ids,
             old_attributes=old_attribs,
@@ -718,7 +909,7 @@ class Network:
         new_attribs = [dict_support.set_nested_value(self.link(link), new_attributes[link]) for link in links]
         edge_tuples = [self.edge_tuple_from_link_id(link) for link in links]
 
-        self.change_log.modify_bunch('link', links, old_attribs, links, new_attribs)
+        self.change_log = self.change_log.modify_bunch('link', links, old_attribs, links, new_attribs)
         nx.set_edge_attributes(
             self.graph,
             dict(zip(edge_tuples, new_attribs)))
@@ -726,7 +917,7 @@ class Network:
 
     def apply_function_to_links(self, function, location: str):
         """
-        Applies function to node attributes dictionary
+        Applies function to link attributes dictionary
         :param function: function of node attributes dictionary returning a value that should be stored
         under `location`
         :param location: where to save the results: string defining the key in the nodes attributes dictionary
@@ -755,19 +946,27 @@ class Network:
         """
         self.change_log.remove(object_type='node', object_id=node_id, object_attributes=self.node(node_id))
         self.graph.remove_node(node_id)
+        self.update_node_auxiliary_files({node_id: None})
         if not silent:
-            logging.info(f'Removed node under index: {node_id}')
+            logging.info(f'Removed Node under index: {node_id}')
 
-    def remove_nodes(self, nodes):
+    def remove_nodes(self, nodes, ignore_change_log=False, silent=False):
         """
         Removes several nodes and all adjacent edges
-        :param nodes:
+        :param nodes: list or set
+        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
+        :param silent: whether to mute stdout logging messages
         :return:
         """
-        self.change_log.remove_bunch(object_type='node', id_bunch=nodes,
-                                     attributes_bunch=[self.node(node_id) for node_id in nodes])
+        if not ignore_change_log:
+            self.change_log = self.change_log.remove_bunch(
+                object_type='node', id_bunch=nodes, attributes_bunch=[self.node(node_id) for node_id in nodes])
         self.graph.remove_nodes_from(nodes)
-        logging.info(f'Removed {len(nodes)} nodes.')
+        self.update_node_auxiliary_files(dict(zip(nodes, [None]*len(nodes))))
+        if not silent:
+            logging.info(f'Removed {len(nodes)} nodes.')
 
     def remove_link(self, link_id, silent: bool = False):
         """
@@ -780,21 +979,29 @@ class Network:
         u, v, multi_idx = self.edge_tuple_from_link_id(link_id)
         self.graph.remove_edge(u, v, multi_idx)
         del self.link_id_mapping[link_id]
+        self.update_link_auxiliary_files({link_id: None})
         if not silent:
             logging.info(f'Removed link under index: {link_id}')
 
-    def remove_links(self, links):
+    def remove_links(self, links, ignore_change_log=False, silent=False):
         """
         Removes the multi edges pertaining to links given
-        :param links:
+        :param links: set or list
+        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
+        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
+        reduce changelog bloat.
+        :param silent: whether to mute stdout logging messages
         :return:
         """
-        self.change_log.remove_bunch(object_type='link', id_bunch=links,
-                                     attributes_bunch=[self.link(link_id) for link_id in links])
+        if not ignore_change_log:
+            self.change_log = self.change_log.remove_bunch(
+                object_type='link', id_bunch=links, attributes_bunch=[self.link(link_id) for link_id in links])
         self.graph.remove_edges_from([self.edge_tuple_from_link_id(link_id) for link_id in links])
         for link_id in links:
             del self.link_id_mapping[link_id]
-        logging.info(f'Removed {len(links)} links')
+        self.update_link_auxiliary_files(dict(zip(links, [None]*len(links))))
+        if not silent:
+            logging.info(f'Removed {len(links)} links')
 
     def number_of_multi_edges(self, u, v):
         """
@@ -858,28 +1065,27 @@ class Network:
 
     def services(self):
         """
-        Iterator returning services
+        Iterator returning Service objects
         :return:
         """
-        for id, service in self.schedule.services.items():
+        for service in self.schedule.services():
             yield service
 
     def schedule_routes(self):
         """
-        Iterator returning service_id and a route within that service
+        Iterator returning Route objects within the Schedule
         :return:
         """
-        for service_id, route in self.schedule.routes():
-            yield service_id, route
+        for route in self.schedule.routes():
+            yield route
 
     def schedule_routes_nodes(self):
         routes = []
-        for service_id, _route in self.schedule_routes():
+        for _route in self.schedule_routes():
             if _route.route:
                 route_nodes = graph_operations.convert_list_of_link_ids_to_network_nodes(self, _route.route)
                 if len(route_nodes) != 1:
-                    logging.warning(f'The route: {_route.id} within service {service_id}, is disconnected. Consists '
-                                    f'of {len(route_nodes)} chunks.')
+                    logging.warning(f'The route: {_route.id} is disconnected. Consists of {len(route_nodes)} chunks.')
                     routes.extend(route_nodes)
                 else:
                     routes.append(route_nodes[0])
@@ -921,10 +1127,10 @@ class Network:
             logging.info(f'Link with id {link_id} is not in the network.')
             return False
 
-    def has_links(self, link_ids: list, conditions: Union[list, dict] = None):
+    def has_links(self, link_ids: list, conditions: Union[list, dict] = None, mixed_dtypes=True):
         """
-        Whether the Network contains the links given in the link_ids list. If attribs is specified, checks whether the
-        Network contains the links specified and those links match the attributes in the attribs dict.
+        Whether the Network contains the links given in the link_ids list. If conditions is specified, checks whether
+        the Network contains the links specified and those links match the attributes in the conditions dict.
         :param link_ids: list of link ids e.g. ['1', '102']
         :param conditions: confer graph_operations.Filter conditions
         :return:
@@ -933,7 +1139,7 @@ class Network:
         if not conditions:
             return has_all_links
         elif has_all_links:
-            filter = graph_operations.Filter(conditions, how=any)
+            filter = graph_operations.Filter(conditions, how=any, mixed_dtypes=mixed_dtypes)
             links_satisfy = [link_id for link_id in link_ids if filter.satisfies_conditions(self.link(link_id))]
             return set(links_satisfy) == set(link_ids)
         else:
@@ -1002,30 +1208,29 @@ class Network:
         return False
 
     def generate_index_for_edge(self, avoid_keys: Union[list, set] = None, silent: bool = False):
-        existing_keys = set(self.link_id_mapping.keys())
-        if avoid_keys:
-            existing_keys = existing_keys | set(avoid_keys)
-        try:
-            id = max([int(i) for i in existing_keys]) + 1
-        except ValueError:
-            id = len(existing_keys) + 1
-        if (id in existing_keys) or (str(id) in existing_keys):
-            id = uuid.uuid4()
+        _id = list(self.generate_indices_for_n_edges(n=1, avoid_keys=avoid_keys))[0]
         if not silent:
-            logging.info(f'Generated link id {id}.')
-        return str(id)
+            logging.info(f'Generated link id {_id}.')
+        return str(_id)
 
     def generate_indices_for_n_edges(self, n, avoid_keys: Union[list, set] = None):
         existing_keys = set(self.link_id_mapping.keys())
         if avoid_keys:
             existing_keys = existing_keys | set(avoid_keys)
-        try:
-            id_set = set([str(max([int(i) for i in existing_keys]) + j) for j in range(1, n + 1)])
-        except ValueError:
-            id_set = set([str(len(existing_keys) + j) for j in range(1, n + 1)])
-        if id_set & existing_keys:
-            id_set = id_set - existing_keys
-            id_set = id_set | set([str(uuid.uuid4()) for i in range(n - len(id_set))])
+        id_set = set(map(str, range(n))) - existing_keys
+        _max = 0
+        loop_no = 0
+
+        while len(id_set) != n:
+            if loop_no > 0:
+                if not _max:
+                    _max = n
+                else:
+                    _max += n
+            missing_ns = n - len(id_set)
+            id_set |= set(map(str, range(_max + 1, _max + missing_ns + 1))) - existing_keys
+            loop_no += 1
+
         logging.info(f'Generated {len(id_set)} link ids.')
         return id_set
 
@@ -1038,8 +1243,9 @@ class Network:
             i += 1
 
     def has_schedule_with_valid_network_routes(self):
-        if all([route.has_network_route() for service_id, route in self.schedule_routes()]):
-            return all([self.is_valid_network_route(route) for service_id, route in self.schedule_routes()])
+        routes = [route for route in self.schedule_routes()]
+        if all([route.has_network_route() for route in routes]):
+            return all([self.is_valid_network_route(route) for route in routes])
         return False
 
     def calculate_route_to_crow_fly_ratio(self, route: schedule_elements.Route):
@@ -1051,12 +1257,9 @@ class Network:
             return 'Division by zero'
 
     def is_valid_network_route(self, route: schedule_elements.Route):
-        def modal_condition(modes_list):
-            return set(modes_list) & {route.mode}
-
         if self.has_links(route.route):
             valid_link_chain = self.has_valid_link_chain(route.route)
-            links_have_correct_modes = self.has_links(route.route, {'modes': modal_condition})
+            links_have_correct_modes = self.has_links(route.route, {'modes': route.mode}, mixed_dtypes=True)
             if not links_have_correct_modes:
                 logging.info(f'Some link ids in Route: {route.id} don\'t accept the route\'s mode: {route.mode}')
             return valid_link_chain and links_have_correct_modes
@@ -1064,8 +1267,8 @@ class Network:
         return False
 
     def invalid_network_routes(self):
-        return [(service_id, route.id) for service_id, route in self.schedule.routes() if not route.has_network_route()
-                or not self.is_valid_network_route(route)]
+        return [route.id for route in self.schedule.routes() if
+                not route.has_network_route() or not self.is_valid_network_route(route)]
 
     def generate_validation_report(self, link_length_threshold=1000):
         """
@@ -1091,8 +1294,7 @@ class Network:
         def links_over_threshold_length(value):
             return value >= link_length_threshold
 
-        report['graph']['links_over_1km_length'] = graph_operations.extract_links_on_edge_attributes(
-            self,
+        report['graph']['links_over_1km_length'] = self.extract_links_on_edge_attributes(
             conditions={'length': links_over_threshold_length}
         )
 
@@ -1100,19 +1302,11 @@ class Network:
             report['schedule'] = self.schedule.generate_validation_report()
 
             route_to_crow_fly_ratio = {}
-            for service_id, route in self.schedule_routes():
-                service_level_invalid_stages = report['schedule']['service_level'][service_id]['invalid_stages']
-                if 'not_has_uniquely_indexed_routes' in service_level_invalid_stages:
-                    if service_id in route_to_crow_fly_ratio:
-                        route_id = len(route_to_crow_fly_ratio[service_id])
-                    else:
-                        route_id = 0
-                else:
-                    route_id = route.id
-                if service_id in route_to_crow_fly_ratio:
-                    route_to_crow_fly_ratio[service_id][route_id] = self.calculate_route_to_crow_fly_ratio(route)
-                else:
-                    route_to_crow_fly_ratio[service_id] = {route_id: self.calculate_route_to_crow_fly_ratio(route)}
+            for service_id, route_ids in self.schedule.service_to_route_map().items():
+                route_to_crow_fly_ratio[service_id] = {}
+                for route_id in route_ids:
+                    route_to_crow_fly_ratio[service_id][route_id] = self.calculate_route_to_crow_fly_ratio(
+                        self.schedule.route(route_id))
 
             report['routing'] = {
                 'services_have_routes_in_the_graph': self.has_schedule_with_valid_network_routes(),
@@ -1132,6 +1326,8 @@ class Network:
         :return: None
         """
         geojson.generate_standard_outputs(self, output_dir, gtfs_day)
+        logging.info('Finished generating standard outputs. Zipping folder.')
+        persistence.zip_folder(output_dir)
 
     def read_osm(self, osm_file_path, osm_read_config, num_processes: int = 1):
         """
@@ -1174,6 +1370,8 @@ class Network:
             matsim_reader.read_network(path, self.transformer)
         self.graph.graph['name'] = 'Network graph'
         self.graph.graph['crs'] = {'init': self.epsg}
+        if 'simplified' not in self.graph.graph:
+            self.graph.graph['simplified'] = False
 
         for node_id, duplicated_node_attribs in duplicated_nodes.items():
             for duplicated_node_attrib in duplicated_node_attribs:
@@ -1195,12 +1393,50 @@ class Network:
     def read_matsim_schedule(self, path):
         self.schedule.read_matsim_schedule(path)
 
+    def read_auxiliary_link_file(self, file_path):
+        aux_file = auxiliary_files.AuxiliaryFile(file_path)
+        aux_file.attach({link_id for link_id, dat in self.links()})
+        if aux_file.is_attached():
+            self.auxiliary_files['link'][aux_file.filename] = aux_file
+        else:
+            logging.warning(f'Auxiliary file {file_path} failed to attach to {self.__name__} links')
+
+    def read_auxiliary_node_file(self, file_path):
+        aux_file = auxiliary_files.AuxiliaryFile(file_path)
+        aux_file.attach({node_id for node_id, dat in self.nodes()})
+        if aux_file.is_attached():
+            self.auxiliary_files['node'][aux_file.filename] = aux_file
+        else:
+            logging.warning(f'Auxiliary file {file_path} failed to attach to {self.__name__} nodes')
+
+    def update_link_auxiliary_files(self, id_map: dict):
+        """
+        :param id_map: dict map between old link ID and new link ID
+        :return:
+        """
+        for name, aux_file in self.auxiliary_files['link'].items():
+            aux_file.apply_map(id_map)
+
+    def update_node_auxiliary_files(self, id_map: dict):
+        """
+        :param id_map: dict map between old node ID and new node ID
+        :return:
+        """
+        for name, aux_file in self.auxiliary_files['node'].items():
+            aux_file.apply_map(id_map)
+
+    def write_auxiliary_files(self, output_dir):
+        for id_type in {'node', 'link'}:
+            for name, aux_file in self.auxiliary_files[id_type].items():
+                aux_file.write_to_file(output_dir)
+
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_matsim_network(output_dir, self)
         if self.schedule:
             self.schedule.write_to_matsim(output_dir)
-        self.change_log.export(os.path.join(output_dir, 'change_log.csv'))
+        self.change_log.export(os.path.join(output_dir, 'network_change_log.csv'))
+        self.write_auxiliary_files(os.path.join(output_dir, 'auxiliary_files'))
 
     def save_network_to_geojson(self, output_dir):
         geojson.save_network_to_geojson(self, output_dir)

@@ -1,6 +1,9 @@
+import os
 import pandas as pd
 from datetime import datetime, timedelta
 import geopandas as gpd
+import numpy as np
+import itertools
 
 
 def sanitise_time(time, gtfs_day='19700101'):
@@ -22,38 +25,16 @@ def get_offset(time):
     return timedelta(seconds=int(time_list[0]) * 60 * 60 + int(time_list[1]) * 60 + int(time_list[2]))
 
 
-def generate_trips_dataframe(schedule_element, route_ids=None, gtfs_day='19700101'):
-    """
-    Generates trips dataframe for the schedule element
-    :param schedule_element: Route, Service or Schedule
-    :param route_ids: Optional, to build the dataframe only for specific route ids. You can pass just one route id but
-    that's the same as giving that route element as schedule_element and more efficient.
-    :return:
-    """
-    df = pd.DataFrame(columns=['departure_time', 'arrival_time', 'from_stop', 'to_stop', 'trip', 'route', 'service'])
-
-    for _id, route in schedule_element.routes():
-        if (not route_ids) or (route.id in route_ids):
-            _df = route.generate_trips_dataframe(gtfs_day)
-            _df['route'] = route.id
-            _df['service'] = _id
-            _df['mode'] = route.mode
-            df = df.append(_df)
-    df = df.reset_index(drop=True)
-    return df
-
-
-def generate_edge_vph_geodataframe(df, gdf_nodes, gdf_links):
+def generate_edge_vph_geodataframe(df, gdf_links):
     """
     Generates vehicles per hour for a trips dataframe
     :param df: trips dataframe
-    :param gdf_nodes: geodataframe containing nodes of the schedule (element) graph
     :param gdf_links: geodataframe containing links of the schedule (element) graph
     :return:
     """
-    df['hour'] = df['departure_time'].dt.round("H")
+    df.loc[:, 'hour'] = df['departure_time'].dt.round("H")
     df = df.groupby(['hour', 'trip', 'from_stop', 'to_stop']).count().reset_index()
-    df['vph'] = 1
+    df.loc[:, 'vph'] = 1
     df = df.groupby(['hour', 'from_stop', 'to_stop']).sum().reset_index()
 
     cols_to_delete = ['departure_time', 'arrival_time']
@@ -64,12 +45,98 @@ def generate_edge_vph_geodataframe(df, gdf_nodes, gdf_links):
     df = pd.merge(gpd.GeoDataFrame(df), gdf_links[['u', 'v', 'geometry']], left_on=['from_stop', 'to_stop'],
                   right_on=['u', 'v'])
     cols_to_delete.extend(['u', 'v'])
-    if 'name' in gdf_nodes:
-        df = pd.merge(df, gdf_nodes[['id', 'name']], left_on='from_stop', right_on='id', how='left')
-        df = df.rename(columns={'name': 'from_stop_name'})
-        df = pd.merge(df, gdf_nodes[['id', 'name']], left_on='to_stop', right_on='id', how='left')
-        df = df.rename(columns={'name': 'to_stop_name'})
-        cols_to_delete.extend(['id_x', 'id_y'])
-
     df = df.drop(cols_to_delete, axis=1)
+    return df
+
+
+def vehicles_per_hour(df, aggregate_by: list, output_path=''):
+    """
+    Generates vehicles per hour for a trips dataframe
+    :param df: trips dataframe
+    :param aggregate_by:
+    :param output_path: path for the frame with .csv extension
+    :return:
+    """
+    df.loc[:, 'hour'] = df['departure_time'].dt.round("H")
+    df.loc[:, 'hour'] = df['hour'].dt.hour
+    df = df.groupby(['hour', 'trip'] + aggregate_by).count().reset_index()
+    df.loc[:, 'vph'] = 1
+    df = pd.pivot_table(df, values='vph', index=aggregate_by, columns=['hour'],
+                        aggfunc=np.sum).reset_index()
+    df = df.fillna(0)
+    if output_path:
+        df.to_csv(output_path)
+    return df
+
+
+def trips_per_day_per_service(df, output_dir=''):
+    """
+    Generates trips per day per service for a trips dataframe
+    :param df: trips dataframe
+    :param output_dir: directory to save `trips_per_day_per_service.csv`
+    :return:
+    """
+    trips_per_day = df.groupby(['service', 'service_name', 'route', 'mode']).nunique()['trip'].reset_index()
+    trips_per_day = trips_per_day.groupby(['service', 'service_name', 'mode']).sum()['trip'].reset_index()
+    trips_per_day = trips_per_day.rename(columns={'trip': 'number_of_trips'})
+    if output_dir:
+        trips_per_day.to_csv(os.path.join(output_dir, 'trips_per_day_per_service.csv'))
+    return trips_per_day
+
+
+def trips_per_day_per_route(df, output_dir=''):
+    """
+    Generates trips per day per route for a trips dataframe
+    :param df: trips dataframe
+    :param output_dir: directory to save `trips_per_day_per_service.csv`
+    :return:
+    """
+    trips_per_day = df.groupby(['route', 'route_name', 'mode']).nunique()['trip'].reset_index()
+    trips_per_day = trips_per_day.rename(columns={'trip': 'number_of_trips'})
+    if output_dir:
+        trips_per_day.to_csv(os.path.join(output_dir, 'trips_per_day_per_route.csv'))
+    return trips_per_day
+
+
+def aggregate_trips_per_day_per_route_by_end_stop_pairs(schedule, trips_per_day_per_route):
+    def route_id_intersect(row):
+        intersect = set(schedule.graph().nodes[row['station_A']]['routes']) & set(
+            schedule.graph().nodes[row['station_B']]['routes'])
+        if intersect:
+            return intersect
+        else:
+            return float('nan')
+
+    df = None
+    for mode in schedule.modes():
+        end_points = set()
+        for route in schedule.routes():
+            if route.mode == mode:
+                end_points |= {stop.id for stop in route.stops() if
+                               (route.graph().out_degree(stop.id) == 0) or (route.graph().in_degree(stop.id) == 0)}
+        df_stops = pd.DataFrame.from_records(
+            list(itertools.combinations({schedule.stop(pt).id for pt in end_points}, 2)),
+            columns=['station_A', 'station_B']
+        )
+        df_stops['station_A_name'] = df_stops['station_A'].apply(lambda x: schedule.stop(x).name)
+        df_stops['station_B_name'] = df_stops['station_B'].apply(lambda x: schedule.stop(x).name)
+        df_stops['mode'] = mode
+        if df is None:
+            df = df_stops
+        else:
+            df = df.append(df_stops)
+    df['routes_in_common'] = df.apply(lambda x: route_id_intersect(x), axis=1)
+    df = df.dropna()
+    trips_per_day_per_route = trips_per_day_per_route.set_index('route')
+    df['number_of_trips'] = df['routes_in_common'].apply(
+        lambda x: sum([trips_per_day_per_route.loc[r_id, 'number_of_trips'] for r_id in x]))
+    return df
+
+
+def aggregate_by_stop_names(df_aggregate_trips_per_day_per_route_by_end_stop_pairs):
+    df = df_aggregate_trips_per_day_per_route_by_end_stop_pairs
+    df = df[(df['station_A_name'] != '') & (df['station_B_name'] != '')]
+    if not df.empty:
+        df[['station_A_name', 'station_B_name']] = np.sort(df[['station_A_name', 'station_B_name']], axis=1)
+        df = df.groupby(['station_A_name', 'station_B_name', 'mode']).sum()['number_of_trips'].reset_index()
     return df

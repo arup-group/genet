@@ -3,10 +3,11 @@ import s2sphere as s2
 import networkx as nx
 import numpy as np
 import statistics
+import json
+from shapely.geometry import LineString, shape, GeometryCollection
 import pandas as pd
 import geopandas as gpd
 import genet.outputs_handler.geojson as gngeojson
-
 APPROX_EARTH_RADIUS = 6371008.8
 S2_LEVELS_FOR_SPATIAL_INDEXING = [0, 6, 8, 12, 18, 24, 30]
 
@@ -17,7 +18,33 @@ def decode_polyline_to_s2_points(_polyline):
     :return:
     """
     decoded = polyline.decode(_polyline)
-    return [grab_index_s2(lat, lon) for lat, lon in decoded]
+    return [generate_index_s2(lat, lon) for lat, lon in decoded]
+
+
+def encode_shapely_linestring_to_polyline(linestring):
+    """
+    :param linestring: shapely.geometry.LineString
+    :return: google encoded polyline
+    """
+    return polyline.encode(linestring.coords)
+
+
+def swap_x_y_in_linestring(linestring):
+    """
+    swaps x with y in a shapely linestring,e.g. from LineString([(1,2), (3,4)]) to LineString([(2,1), (4,3)])
+    :param linestring: shapely.geometry.LineString
+    :return: shapely.geometry.LineString
+    """
+    return LineString((p[1], p[0]) for p in linestring.coords)
+
+
+def decode_polyline_to_shapely_linestring(_polyline):
+    """
+    :param _polyline: google encoded polyline
+    :return: shapely.geometry.LineString
+    """
+    decoded = polyline.decode(_polyline)
+    return LineString(decoded)
 
 
 def compute_average_proximity_to_polyline(poly_1, poly_2):
@@ -42,14 +69,43 @@ def compute_average_proximity_to_polyline(poly_1, poly_2):
     return statistics.mean(closest_distances)
 
 
-def grab_index_s2(lat, lng):
+def read_geojson_to_shapely(geojson_file):
+    # https://gist.github.com/pramukta/6d1a2de485d7dc4c5480bf5fbb7b93d2#file-shapely_geojson_recipe-py
+    with open(geojson_file) as f:
+        features = json.load(f)["features"]
+    return GeometryCollection([shape(feature["geometry"]).buffer(0) for feature in features])
+
+
+def s2_hex_to_cell_union(hex_area):
+    hex_area = hex_area.split(',')
+    cell_ids = []
+    for token in hex_area:
+        cell_ids.append(s2.CellId.from_token(token))
+    return s2.CellUnion(cell_ids=cell_ids)
+
+
+def generate_index_s2(lat, lng):
     """
-    Returns s2.CellID from lat and lon
+    Returns s2.CellId from lat and lon
     :param lat
     :param lng
     :return:
     """
     return s2.CellId.from_lat_lng(s2.LatLng.from_degrees(lat, lng)).id()
+
+
+def generate_s2_geometry(points):
+    """
+    Generate ordered list of s2.CellIds
+    :param points: list of (lat,lng) tuples, list of shapely.geometry.Points or LineString
+    :return:
+    """
+    if isinstance(points, LineString):
+        points = list(points.coords)
+    try:
+        return [generate_index_s2(pt.x, pt.y) for pt in points]
+    except AttributeError:
+        return [generate_index_s2(pt[0], pt[1]) for pt in points]
 
 
 def distance_between_s2cellids(s2cellid1, s2cellid2):
