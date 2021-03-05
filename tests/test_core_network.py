@@ -6,6 +6,7 @@ import pandas as pd
 import networkx as nx
 import pytest
 import lxml
+import json
 from shapely.geometry import LineString, Polygon
 from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
@@ -2281,3 +2282,79 @@ def test_write_to_matsim_generates_change_log_csv(network_object_from_test_data,
 
     assert os.path.exists(expected_change_log_path)
     assert os.path.exists(expected_schedule_change_log_path)
+
+
+benchmark_path_json = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "links_benchmark.json"))
+benchmark_path_csv = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "links_benchmark.csv"))
+@pytest.fixture()
+def aux_network():
+    n = Network('epsg:27700')
+    n.add_nodes({'1': {'x': 1, 'y': 2, 's2_id': 0}, '2': {'x': 1, 'y': 2, 's2_id': 0},
+                 '3': {'x': 1, 'y': 2, 's2_id': 0}, '4': {'x': 1, 'y': 2, 's2_id': 0}})
+    n.add_links({'1': {'from': '1', 'to': '2', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1, 'modes': {'car'}},
+                 '2': {'from': '1', 'to': '3', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1, 'modes': {'car'}},
+                 '3': {'from': '2', 'to': '4', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1, 'modes': {'car'}},
+                 '4': {'from': '3', 'to': '4', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1, 'modes': {'car'}}})
+    n.read_auxiliary_link_file(benchmark_path_json)
+    n.read_auxiliary_node_file(benchmark_path_csv)
+    return n
+
+
+def test_reindexing_network_node_with_auxiliary_files(aux_network):
+    aux_network.reindex_node('3', '0')
+    assert aux_network.auxiliary_files['node']['links_benchmark.csv'].map == {'2': '2', '3': '0', '4': '4', '1': '1'}
+    assert aux_network.auxiliary_files['link']['links_benchmark.json'].map == {'2': '2', '1': '1', '3': '3', '4': '4'}
+
+
+def test_reindexing_network_link_with_auxiliary_files(aux_network):
+    aux_network.reindex_link('2', '0')
+    assert aux_network.auxiliary_files['node']['links_benchmark.csv'].map == {'2': '2', '3': '3', '4': '4', '1': '1'}
+    assert aux_network.auxiliary_files['link']['links_benchmark.json'].map == {'2': '0', '1': '1', '3': '3', '4': '4'}
+
+
+def test_removing_network_node_with_auxiliary_files(aux_network):
+    aux_network.remove_nodes(['1', '2'])
+    aux_network.remove_node('3')
+    assert aux_network.auxiliary_files['node']['links_benchmark.csv'].map == {'2': None, '3': None, '4': '4', '1': None}
+    assert aux_network.auxiliary_files['link']['links_benchmark.json'].map == {'2': '2', '1': '1', '3': '3', '4': '4'}
+
+
+def test_removing_network_link_with_auxiliary_files(aux_network):
+    aux_network.remove_links(['1', '2'])
+    aux_network.remove_link('3')
+    assert aux_network.auxiliary_files['node']['links_benchmark.csv'].map == {'2': '2', '3': '3', '4': '4', '1': '1'}
+    assert aux_network.auxiliary_files['link']['links_benchmark.json'].map == {'2': None, '1': None, '3': None, '4': '4'}
+
+
+def test_simplifying_network_with_auxiliary_files(aux_network):
+    aux_network.simplify()
+
+    assert aux_network.auxiliary_files['node']['links_benchmark.csv'].map == {'1': '1', '2': None, '3': None, '4': '4'}
+    assert aux_network.auxiliary_files['link']['links_benchmark.json'].map == {
+        '2': aux_network.link_simplification_map['2'],
+        '1': aux_network.link_simplification_map['1'],
+        '3': aux_network.link_simplification_map['3'],
+        '4': aux_network.link_simplification_map['4']}
+
+
+def test_saving_network_with_auxiliary_files_with_changes(aux_network, tmpdir):
+    aux_network.auxiliary_files['node']['links_benchmark.csv'].map = {'2': None, '3': None, '4': '04', '1': None}
+    aux_network.auxiliary_files['link']['links_benchmark.json'].map = {'2': '002', '1': '001', '3': '003', '4': '004'}
+
+    expected_json_aux_file = os.path.join(tmpdir, 'auxiliary_files', 'links_benchmark.json')
+    expected_csv_aux_file = os.path.join(tmpdir, 'auxiliary_files', 'links_benchmark.csv')
+
+    assert not os.path.exists(expected_json_aux_file)
+    assert not os.path.exists(expected_csv_aux_file)
+
+    aux_network.write_to_matsim(tmpdir)
+
+    assert os.path.exists(expected_json_aux_file)
+    assert os.path.exists(expected_csv_aux_file)
+
+    with open(expected_json_aux_file) as json_file:
+        assert json.load(json_file)['car']['2']['in']['links'] == ['002']
+
+    assert pd.read_csv(expected_csv_aux_file)['links'].to_dict() == {0: '[None]', 1: '[None]', 2: '[None]', 3: "['04']"}
