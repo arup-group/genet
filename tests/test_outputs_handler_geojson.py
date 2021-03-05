@@ -21,6 +21,14 @@ def network(correct_schedule):
     return n
 
 
+def test_saving_values_which_result_in_overflow(tmpdir):
+    n = Network('epsg:27700')
+    n.add_node('0', attribs={'x': 528704.1425925883, 'y': 182068.78193707118, 's2_id': 7860190995130875979})
+    n.add_node('1', attribs={'x': 528804.1425925883, 'y': 182168.78193707118, 's2_id': 12118290696817869383})
+    n.add_link('link_0', '0', '1', attribs={'length': 123, 'modes': ['car', 'walk'], 'ids': ['1', '2']})
+    n.save_network_to_geojson(tmpdir)
+
+
 def test_generating_network_graph_geodataframe(network):
     nodes, links = gngeojson.generate_geodataframes(network.graph)
     correct_nodes = {

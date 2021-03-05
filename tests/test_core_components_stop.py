@@ -1,4 +1,4 @@
-from genet.schedule_elements import Stop
+from genet.schedule_elements import Stop, SPATIAL_TOLERANCE
 from tests.fixtures import stop_epsg_27700, assert_semantically_equal
 from pyproj import Proj, Transformer
 import os
@@ -15,16 +15,26 @@ def test_reproject_stops_without_transformer():
     a = Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')
     a.reproject('epsg:4326')
 
-    assert_semantically_equal({'x': a.x, 'y': a.y}, {'x': 51.52370573323939, 'y': -0.14910908709500162})
+    correct_lat = 51.52370573323939
+    correct_lon = -0.14910908709500162
+
+    assert_semantically_equal({'x': a.x, 'y': a.y}, {'x': correct_lon, 'y': correct_lat})
+    assert round(a.lat, SPATIAL_TOLERANCE) == round(correct_lat, SPATIAL_TOLERANCE)
+    assert round(a.lon, SPATIAL_TOLERANCE) == round(correct_lon, SPATIAL_TOLERANCE)
     assert a.epsg == 'epsg:4326'
 
 
 def test_reproject_stops_with_transformer():
     a = Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')
-    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'))
+    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'), always_xy=True)
     a.reproject('epsg:4326', transformer)
 
-    assert_semantically_equal({'x': a.x, 'y': a.y}, {'x': 51.52370573323939, 'y': -0.14910908709500162})
+    correct_lat = 51.52370573323939
+    correct_lon = -0.14910908709500162
+
+    assert_semantically_equal({'x': a.x, 'y': a.y}, {'x': correct_lon, 'y': correct_lat})
+    assert round(a.lat, SPATIAL_TOLERANCE) == round(correct_lat, SPATIAL_TOLERANCE)
+    assert round(a.lon, SPATIAL_TOLERANCE) == round(correct_lon, SPATIAL_TOLERANCE)
     assert a.epsg == 'epsg:4326'
 
 
@@ -80,8 +90,8 @@ def test_stops_equal():
 def test_stop_already_in_epsg_4326_gives_lat_lon():
     a = Stop(id='0', x=-0.14910908709500162, y=51.52370573323939, epsg='epsg:4326')
 
-    assert a.lat == a.x
-    assert a.lon == a.y
+    assert a.lat == a.y
+    assert a.lon == a.x
 
 
 def test_stops_exact():

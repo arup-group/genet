@@ -211,7 +211,7 @@ def test_plot_delegates_to_util_plot_plot_graph_routes(mocker, schedule):
 
 
 def test_reproject_changes_projection_for_all_stops_in_route():
-    correct_x_y = {'x': 51.52393050617373, 'y': -0.14967658860132668}
+    correct_x_y = {'x': -0.14967658860132668, 'y': 51.52393050617373}
     schedule = Schedule(
         'epsg:27700',
         [Service(id='10314', routes=[
