@@ -10,7 +10,7 @@ def reproj_stops(schedule_element_nodes: dict, new_epsg):
     :param new_epsg: 'epsg:1234', the epsg stops are being projected to
     :return: dict: stop ids from schedule_element_nodes: changed stop data in dict format new x, y and epsg
     """
-    transformers = {epsg: Transformer.from_crs(epsg, new_epsg) for epsg in
+    transformers = {epsg: Transformer.from_crs(epsg, new_epsg, always_xy=True) for epsg in
                     DataFrame(schedule_element_nodes).T['epsg'].unique()}
 
     reprojected_node_attribs = {}

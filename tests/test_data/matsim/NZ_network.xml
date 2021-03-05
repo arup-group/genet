@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v2.dtd">
+<network>
+	<attributes>
+		<attribute name="crs" class="java.lang.String">{'init': 'epsg:2193'}</attribute>
+		<attribute name="simplified" class="java.lang.String">False</attribute>
+	</attributes>
+    <nodes>
+        <node id="7872447671905026061" x="1789300.631705982" y="5494320.626099871" >
+		</node>
+        <node id="7858001326813216825" x="1756643.5667029365" y="5937269.480530882" >
+		</node>
+    </nodes>
+    <links capperiod="01:00:00" effectivecellsize="7.5" effectivelanewidth="3.75">
+		<link id="1" from="7858001326813216825" to="7872447671905026061" length="52.765151087870265" freespeed="4.166666666666667" capacity="600.0" permlanes="1.0" oneway="1" modes="car,walk" >
+			<attributes>
+				<attribute name="osm:way:access" class="java.lang.String" >permissive</attribute>
+			</attributes>
+		</link>
+    </links>
+</network>

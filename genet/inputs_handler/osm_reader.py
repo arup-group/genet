@@ -116,7 +116,7 @@ def create_s2_indexed_osm_graph(response_jsons, config, num_processes, bidirecti
 
 
 def generate_graph_nodes(nodes, epsg):
-    input_to_output_transformer = Transformer.from_crs('epsg:4326', epsg)
+    input_to_output_transformer = Transformer.from_crs('epsg:4326', epsg, always_xy=True)
     nodes_and_attributes = {}
     for node_id, attribs in nodes.items():
         x, y = spatial.change_proj(attribs['x'], attribs['y'], input_to_output_transformer)
@@ -124,8 +124,8 @@ def generate_graph_nodes(nodes, epsg):
             'id': str(node_id),
             'x': x,
             'y': y,
-            'lat': attribs['x'],
-            'lon': attribs['y'],
+            'lat': attribs['y'],
+            'lon': attribs['x'],
             's2_id': attribs['s2id']
         }
     return nodes_and_attributes
