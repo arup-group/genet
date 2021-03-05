@@ -5,6 +5,7 @@ import numpy as np
 import statistics
 import json
 from shapely.geometry import LineString, shape, GeometryCollection
+
 APPROX_EARTH_RADIUS = 6371008.8
 S2_LEVELS_FOR_SPATIAL_INDEXING = [0, 6, 8, 12, 18, 24, 30]
 
@@ -128,13 +129,13 @@ def map_azimuth_to_name(azimuth):
     degrees from North (0)
     """
     azimuth_to_name = {
-    (-22.5, 22.5): 'North Bound',
-    (22.5, 67.5): 'North-East Bound',
-    (67.5, 112.5): 'East Bound',
-    (112.5, 157.5): 'South-East Bound',
-    (-157.5, -112.5): 'South-West Bound',
-    (-112.5, -67.5): 'West Bound',
-    (-67.5, -22.5): 'North-West Bound',
+        (-22.5, 22.5): 'North Bound',
+        (22.5, 67.5): 'North-East Bound',
+        (67.5, 112.5): 'East Bound',
+        (112.5, 157.5): 'South-East Bound',
+        (-157.5, -112.5): 'South-West Bound',
+        (-112.5, -67.5): 'West Bound',
+        (-67.5, -22.5): 'North-West Bound',
     }
     if azimuth > 180 or azimuth < -180:
         raise NotImplementedError(f'Azimuth value of {azimuth} given. Only implemented for -180 =< azimuth =< 180')
@@ -218,6 +219,7 @@ def create_subsetting_area(CellIds, angle=0, buffer_multiplier=None):
      less than 1, the subsetting area has to at least cover the points passed to generate the area)
     :return: s2.Cap
     """
+
     def sum_pts(pts):
         p = None
         for p_n in pts:
