@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from typing import Union, Dict, List
-from pyproj import Transformer
+from pyproj import Transformer, Geod
 import networkx as nx
 import numpy as np
 import logging
@@ -8,6 +8,8 @@ import os
 from datetime import datetime
 from pandas import DataFrame
 from copy import deepcopy
+from collections import defaultdict
+import itertools
 import dictdiffer
 from s2sphere import CellId
 import genet.utils.plot as plot
@@ -771,14 +773,48 @@ class Service(ScheduleElement):
 
     def split_by_direction(self):
         """
-        Divide the routes and the graph of the Service by direction e.g. North- and Southbound. Depending on the mode,
-        typically a Service will have either 1 or 2 directions. Some Services will have more.
-        :return: Dictionary with directions:
-            {direction_1: {'routes': ['route_id'], 'graph_edges': [(stop_1, stop_2), ...]},
-             direction_2: {'routes': ['different_route_id'], 'graph_edges': [(stop_2, stop_1), ...]}}
+        Divide the routes of the Service by direction e.g. North- and Southbound. Depending on the mode,
+        typically a Service will have either 1 or 2 directions. Some Services will have more, especially ones that
+        are loops.
+        :return: Dictionary with directions as keys and lists of routes which head in that direction as values. E.g.:
+        {
+            North-East Bound: ['route_1', 'route_2'],
+            South-West Bound: ['route_3', 'route_4']
+        }
         """
-        import itertools
+        geodesic = Geod(ellps='WGS84')
+        route_direction_map = {}
+        for route_id in self.route_ids():
+            ordered_stops = self._graph.graph['routes'][route_id]['ordered_stops']
+            start_stop = self.stop(ordered_stops[0])
+            end_stop = self.stop(ordered_stops[-1])
+            # todo check stop the same, clock and anti clockwise
+            if start_stop == end_stop:
+                # just check which way it's heading
+                end_stop = self.stop(ordered_stops[1])
+            azimuth = geodesic.inv(
+                lats1=start_stop.lat,
+                lons1=start_stop.lon,
+                lats2=end_stop.lat,
+                lons2=end_stop.lon)[0]
+            route_direction_map[route_id] = spatial.map_azimuth_to_name(azimuth)
+        res = defaultdict(list)
+        for key, val in sorted(route_direction_map.items()):
+            res[val].append(key)
+        return dict(res)
 
+    def split_graph(self):
+        """
+        Divide the routes and the graph of the Service by share of Service's graph. Most services with have one or two
+        outputs, but some will have more. The results of this method may vary from `split_by_direction`. The output
+        graph edges in the list will be independent of each other (the edges will be independent, but they may share
+        nodes), sometimes producing more than two sets.
+        The method is not symmetric, if the Routes in a Service are listed in a different order this may lead to some
+        graph groups merging (in a desired way).
+        :return: tuple (routes, graph_groups) where routes is a list of sets with grouped route IDs and graph_groups
+            is a list of the same length as routes, each item is a set of graph edges and corresponds to the item in
+            routes list in that same index
+        """
         def route_overlap_condition(graph_edge_group):
             edges_in_common = bool(graph_edge_group & route_edges)
             if edges_in_common:

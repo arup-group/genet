@@ -122,6 +122,30 @@ def change_proj(x, y, crs_transformer):
     return crs_transformer.transform(x, y)
 
 
+def map_azimuth_to_name(azimuth):
+    """
+    assumes -180 =< azimuth =< 180
+    degrees from North (0)
+    """
+    azimuth_to_name = {
+    (-22.5, 22.5): 'North Bound',
+    (22.5, 67.5): 'North-East Bound',
+    (67.5, 112.5): 'East Bound',
+    (112.5, 157.5): 'South-East Bound',
+    (-157.5, -112.5): 'South-West Bound',
+    (-112.5, -67.5): 'West Bound',
+    (-67.5, -22.5): 'North-West Bound',
+    }
+    if azimuth > 180 or azimuth < -180:
+        raise NotImplementedError(f'Azimuth value of {azimuth} given. Only implemented for -180 =< azimuth =< 180')
+    for (lower_bound, upper_bound), name in azimuth_to_name.items():
+        if lower_bound < azimuth <= upper_bound:
+            return name
+    # (-157.5, -180 | 180, 157.5): 'South Bound'
+    if azimuth > 157.5 or azimuth <= -157.5:
+        return 'South Bound'
+
+
 def find_common_cell(edge):
     u, v, w = edge
     _u = s2.CellId(u)
