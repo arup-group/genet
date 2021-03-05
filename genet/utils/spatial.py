@@ -8,6 +8,7 @@ from shapely.geometry import LineString, shape, GeometryCollection
 import pandas as pd
 import geopandas as gpd
 import genet.outputs_handler.geojson as gngeojson
+
 APPROX_EARTH_RADIUS = 6371008.8
 S2_LEVELS_FOR_SPATIAL_INDEXING = [0, 6, 8, 12, 18, 24, 30]
 
@@ -160,6 +161,10 @@ def grow_point(x, distance):
     return x.buffer(distance)
 
 
+def approximate_metres_distance_in_4326_degrees(distance, lat):
+    return ((float(distance) / 111111) + float(distance) / (111111 * np.cos(np.radians(float(lat))))) / 2
+
+
 class SpatialTree(nx.DiGraph):
     def __init__(self, n=None):
         super().__init__()
@@ -185,21 +190,25 @@ class SpatialTree(nx.DiGraph):
 
     def closest_links(self, gdf_points, distance_radius, mode):
         """
-        Given a GeoDataFrame `gdf_points` with a`geometry` column with Points, finds closest links within
-        `distance_radius` from the spatial tree which accept `mode`
-        :param gdf_points:
-        :param distance_radius:
+        Given a GeoDataFrame `gdf_points` with a`geometry` column with shapely.geometry.Points,
+        finds closest links within `distance_radius` from the spatial tree which accept `mode`.
+        Does not work very close to the poles.
+        :param gdf_points: GeoDataFrame, uniquely indexed, in crs: EPSG:4326 shapely.geometry.Points (lon,lat)
+        :param distance_radius: metres
         :param mode:
         :return: GeoDataFrame
         """
-        # todo make work with metres
-        gdf_points['geometry'] = gdf_points['geometry'].apply(lambda x: grow_point(x, distance_radius))
+        bdds = gdf_points['geometry'].bounds
+        approx_lat = (bdds['miny'].mean() + bdds['maxy'].mean()) / 2
+        # https://gis.stackexchange.com/questions/2951/algorithm-for-offsetting-a-latitude-longitude-by-some-amount-of-meters
+        approx_degree_radius = approximate_metres_distance_in_4326_degrees(distance_radius, approx_lat)
+        gdf_points['geometry'] = gdf_points['geometry'].apply(lambda x: grow_point(x, approx_degree_radius))
         closest_links = gpd.sjoin(
             self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, {mode}), axis=1)],
             gdf_points,
             how='right',
             op='intersects')
-        return closest_links[['stop', 'id']]
+        return closest_links['id']
 
     def shortest_paths(self, df_pt_edges, mode, u_col='u', v_col='v'):
         """
@@ -214,13 +223,11 @@ class SpatialTree(nx.DiGraph):
             lambda x: nx.shortest_path(G=self.subgraph(links), source=x[u_col], target=x[v_col]), axis=1)
         return df_pt_edges
 
-
     def path_length(self, G, source, target):
         try:
             return nx.dijkstra_path_length(G, source, target)
         except nx.NetworkXNoPath:
             pass
-
 
     def shortest_path_lengths(self, df_pt_edges, mode, u_col='u', v_col='v'):
         """

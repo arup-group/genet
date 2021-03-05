@@ -97,11 +97,11 @@ def test_s2_hex_to_cell_union():
     hex_area = '48761ad71,48761ad723,48761ad724c,48761ad73c,48761ad744,48761ad75d3,48761ad75d5,48761ad765,48761ad767,48761ad76c,48761ad774,48761ad779,48761ad77b,48761ad783,48761ad784c,48761ad7854,48761ad794,48761ad79c,48761ad7a4,48761ad7ac,48761ad7b1,48761ad7bc'
     cell_union = spatial.s2_hex_to_cell_union(hex_area)
     assert {cell.id() for cell in cell_union.cell_ids()} == {
-     5221390329319522304, 5221390329709592576, 5221390328971395072, 5221390329290162176, 5221390329843810304,
-     5221390330266386432, 5221390330268483584, 5221390330397458432, 5221390330431012864, 5221390330514898944,
-     5221390330649116672, 5221390330733002752, 5221390330766557184, 5221390330900774912, 5221390330930135040,
-     5221390330938523648, 5221390331185987584, 5221390331320205312, 5221390331454423040, 5221390331588640768,
-     5221390331672526848, 5221390331857076224}
+        5221390329319522304, 5221390329709592576, 5221390328971395072, 5221390329290162176, 5221390329843810304,
+        5221390330266386432, 5221390330268483584, 5221390330397458432, 5221390330431012864, 5221390330514898944,
+        5221390330649116672, 5221390330733002752, 5221390330766557184, 5221390330900774912, 5221390330930135040,
+        5221390330938523648, 5221390331185987584, 5221390331320205312, 5221390331454423040, 5221390331588640768,
+        5221390331672526848, 5221390331857076224}
 
 
 def test_grabs_point_indexes_from_s2(mocker):
@@ -144,16 +144,6 @@ def test_delegates_distance_between_int_points_query_to_s2(mocker):
     s2sphere.LatLng.get_distance.assert_called_once()
 
 
-def test_create_subsetting_area_with_two_cells_check_distance_from_centre_is_roughly_the_same_for_both():
-    cap = spatial.create_subsetting_area([5221390301001263407, 5221390302696205321])
-    cap_centre = s2sphere.CellId.from_point(cap.axis())
-    dist_1 = cap_centre.to_lat_lng().get_distance(s2sphere.CellId(5221390301001263407).to_lat_lng()).radians
-    dist_2 = cap_centre.to_lat_lng().get_distance(s2sphere.CellId(5221390302696205321).to_lat_lng()).radians
-    assert cap.contains(s2sphere.CellId(5221390301001263407).to_point())
-    assert cap.contains(s2sphere.CellId(5221390302696205321).to_point())
-    assert round(dist_1, 8) == round(dist_2, 8)
-
-
 def test_SpatialTree_adds_links(network):
     spatial_tree = spatial.SpatialTree(network)
 
@@ -164,19 +154,98 @@ def test_SpatialTree_adds_links(network):
                               {'link_1': {}, 'link_2': {}, 'link_3': {}, 'link_4': {}})
 
 
-def test_SpatialTree_closest_links(network):
+def test_SpatialTree_closest_links_in_london(network):
     spatial_tree = spatial.SpatialTree(network)
-    stops = GeoDataFrame({'stop': ['stop_10m_to_link_1', 'stop_20m_to_link_1', 'stop_15m_to_link_2'],
-                          'geometry': [Point(-0.15186089346604492, 51.51950409732838),
-                                       Point(-0.1520233977548685, 51.51952913606585),
-                                       Point(-0.15164747576623197, 51.520660715220636)]})
+    stops = GeoDataFrame({'geometry': {
+        'stop_10m_to_link_1': Point(-0.15186089346604492, 51.51950409732838),
+        'stop_20m_to_link_1': Point(-0.1520233977548685, 51.51952913606585),
+        'stop_15m_to_link_2': Point(-0.15164747576623197, 51.520660715220636)}}
+    )
     stops.crs = {'init': 'epsg:4326'}
 
     closest_links = spatial_tree.closest_links(stops, 30, mode='car')
-    assert_semantically_equal(closest_links,
+    assert_semantically_equal(closest_links.reset_index().groupby('index')['id'].apply(list).to_dict(),
                               {'stop_10m_to_link_1': ['link_1'],
                                'stop_20m_to_link_1': ['link_1'],
                                'stop_15m_to_link_2': ['link_2', 'link_4']})
+
+
+def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
+    # (close to equator)
+    n = Network('epsg:4326')
+    n.add_nodes({'1': {'x': 109.380477773586,'y': 0.3203433505415778}, '2': {'x': 109.38042852136014,'y': 0.32031507655538294}})
+    n.add_link(link_id='link_1', u='1', v='2',
+               attribs={
+                   'modes': ['car']
+               })
+    spatial_tree = spatial.SpatialTree(n)
+    stops = GeoDataFrame({'geometry': {
+        'stop_15m_to_link_1': Point(109.380607, 0.320333)
+    }})
+    stops.crs = {'init': 'epsg:4326'}
+
+    closest_links = spatial_tree.closest_links(stops, 20, mode='car')
+    assert_semantically_equal(closest_links.reset_index().groupby('index')['id'].apply(list).to_dict(),
+                              {'stop_15m_to_link_1': ['link_1']})
+
+
+def test_SpatialTree_closest_links_in_indonesia_doesnt_find_link_within_10_metres():
+    # (close to equator)
+    n = Network('epsg:4326')
+    n.add_nodes({'1': {'x': 109.380477773586,'y': 0.3203433505415778}, '2': {'x': 109.38042852136014,'y': 0.32031507655538294}})
+    n.add_link(link_id='link_1', u='1', v='2',
+               attribs={
+                   'modes': ['car']
+               })
+    spatial_tree = spatial.SpatialTree(n)
+    stops = GeoDataFrame({'geometry': {
+        'stop_15m_to_link_1': Point(109.380607, 0.320333)
+    }})
+    stops.crs = {'init': 'epsg:4326'}
+
+    closest_links = spatial_tree.closest_links(stops, 10, mode='car')
+    closest_links = closest_links.dropna()
+    assert closest_links.empty
+
+
+def test_SpatialTree_closest_links_in_north_canada_finds_link_within_20_metres():
+    # (out in the boonies)
+    n = Network('epsg:4326')
+    n.add_nodes({'1': {'x': -93.25129666354827,'y': 73.66401680598872},
+                 '2': {'x': -93.25140295754169,'y': 73.66417415921647}})
+    n.add_link(link_id='link_1', u='1', v='2',
+               attribs={
+                   'modes': ['car']
+               })
+    spatial_tree = spatial.SpatialTree(n)
+    stops = GeoDataFrame({'geometry': {
+        'stop_15m_to_link_1': Point(-93.250971, 73.664114)
+    }})
+    stops.crs = {'init': 'epsg:4326'}
+
+    closest_links = spatial_tree.closest_links(stops, 30, mode='car')
+    assert_semantically_equal(closest_links.reset_index().groupby('index')['id'].apply(list).to_dict(),
+                              {'stop_15m_to_link_1': ['link_1']})
+
+
+def test_SpatialTree_closest_links_in_north_canada_doesnt_find_link_within_10_metres():
+    # (out in the boonies)
+    n = Network('epsg:4326')
+    n.add_nodes({'1': {'x': -93.25129666354827,'y': 73.66401680598872},
+                 '2': {'x': -93.25140295754169,'y': 73.66417415921647}})
+    n.add_link(link_id='link_1', u='1', v='2',
+               attribs={
+                   'modes': ['car']
+               })
+    spatial_tree = spatial.SpatialTree(n)
+    stops = GeoDataFrame({'geometry': {
+        'stop_15m_to_link_1': Point(-93.250971, 73.664114)
+    }})
+    stops.crs = {'init': 'epsg:4326'}
+
+    closest_links = spatial_tree.closest_links(stops, 10, mode='car')
+    closest_links = closest_links.dropna()
+    assert closest_links.empty
 
 
 def test_SpatialTree_shortest_paths(network):
