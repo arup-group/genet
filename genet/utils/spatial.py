@@ -7,6 +7,7 @@ import json
 from shapely.geometry import LineString, shape, GeometryCollection
 import pandas as pd
 import geopandas as gpd
+from typing import Union
 import genet.outputs_handler.geojson as gngeojson
 
 APPROX_EARTH_RADIUS = 6371008.8
@@ -188,14 +189,19 @@ class SpatialTree(nx.DiGraph):
         edges = pd.merge(self.links[cols], self.links[cols], left_on='to', right_on='from', suffixes=('_to', '_from'))
         self.add_edges_from(list(zip(edges['id_to'], edges['id_from'])))
 
-    def closest_links(self, gdf_points, distance_radius, mode):
+    def modal_links_geodataframe(self, modes: Union(str, set)):
+        if isinstance(modes, str):
+            modes = {modes}
+        return self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, modes), axis=1)]
+
+    def closest_links(self, gdf_points, distance_radius, modes):
         """
         Given a GeoDataFrame `gdf_points` with a`geometry` column with shapely.geometry.Points,
         finds closest links within `distance_radius` from the spatial tree which accept `mode`.
         Does not work very close to the poles.
         :param gdf_points: GeoDataFrame, uniquely indexed, in crs: EPSG:4326 shapely.geometry.Points (lon,lat)
         :param distance_radius: metres
-        :param mode:
+        :param modes: str of set of strings to consider modal subgraph
         :return: GeoDataFrame
         """
         bdds = gdf_points['geometry'].bounds
@@ -204,21 +210,21 @@ class SpatialTree(nx.DiGraph):
         approx_degree_radius = approximate_metres_distance_in_4326_degrees(distance_radius, approx_lat)
         gdf_points['geometry'] = gdf_points['geometry'].apply(lambda x: grow_point(x, approx_degree_radius))
         closest_links = gpd.sjoin(
-            self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, {mode}), axis=1)],
+            self.modal_links_geodataframe(modes),
             gdf_points,
             how='right',
             op='intersects')
         return closest_links['id']
 
-    def shortest_paths(self, df_pt_edges, mode, u_col='u', v_col='v'):
+    def shortest_paths(self, df_pt_edges, modes, u_col='u', v_col='v'):
         """
 
         :param df_pt_edges: pandas DataFrame
-        :param mode:
+        :param modes: str of set of strings to consider modal subgraph
         :return:
         """
         # todo add weight
-        links = self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, {mode}), axis=1)]['id']
+        links = self.modal_links_geodataframe(modes)['id']
         df_pt_edges['shortest_path'] = df_pt_edges.apply(
             lambda x: nx.shortest_path(G=self.subgraph(links), source=x[u_col], target=x[v_col]), axis=1)
         return df_pt_edges
@@ -229,15 +235,15 @@ class SpatialTree(nx.DiGraph):
         except nx.NetworkXNoPath:
             pass
 
-    def shortest_path_lengths(self, df_pt_edges, mode, u_col='u', v_col='v'):
+    def shortest_path_lengths(self, df_pt_edges, modes, u_col='u', v_col='v'):
         """
 
         :param df_pt_edges: pandas DataFrame
-        :param mode:
+        :param modes: str of set of strings to consider modal subgraph
         :return:
         """
         # todo add weight
-        links = self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, {mode}), axis=1)]['id']
+        links = self.modal_links_geodataframe(modes)['id']
         df_pt_edges['path_lengths'] = df_pt_edges.apply(
             lambda x: self.path_length(G=self.subgraph(links), source=x[u_col], target=x[v_col]), axis=1)
         return df_pt_edges
