@@ -185,8 +185,13 @@ class SpatialTree(nx.DiGraph):
         self.add_nodes_from(nodes)
 
         cols = ['from', 'to', 'id']
-        edges = pd.merge(self.links[cols], self.links[cols], left_on='to', right_on='from', suffixes=('_to', '_from'))
-        self.add_edges_from(list(zip(edges['id_to'], edges['id_from'])))
+        edge_data_cols = list(set(self.links.columns) - set(cols + ['modes', 'geometry', 'u', 'v', 'key']))
+        edges = pd.merge(self.links[cols + edge_data_cols], self.links[cols], left_on='to', right_on='from',
+                         suffixes=('_to', '_from'))
+        edge_data = edges[edge_data_cols].T.to_dict()
+        self.add_edges_from(list(zip(edges['id_to'],
+                                     edges['id_from'],
+                                     [edge_data[idx] for idx in edges['id_to'].index])))
 
     def modal_links_geodataframe(self, modes):
         """
@@ -220,17 +225,19 @@ class SpatialTree(nx.DiGraph):
             op='intersects')
         return closest_links['id']
 
-    def shortest_paths(self, df_pt_edges, modes, u_col='u', v_col='v'):
+    def shortest_paths(self, df_pt_edges, modes, from_col='u', to_col='v'):
         """
-
-        :param df_pt_edges: pandas DataFrame
-        :param modes: str of set of strings to consider modal subgraph
-        :return:
+        :param df_pt_edges: pandas DataFrame with a `from_col` and `to_col` defining links stored in the graph for
+        which a path is required
+        :param modes: str of set of strings to consider modal subgraph for routing
+        :param from_col: name of the column which gives ID for the source link
+        :param to_col: name of the column which gives ID for the target link
+        :return: df_pt_edges with an extra column 'shortest_path'
         """
         # todo add weight
         links = self.modal_links_geodataframe(modes)['id']
         df_pt_edges['shortest_path'] = df_pt_edges.apply(
-            lambda x: nx.shortest_path(G=self.subgraph(links), source=x[u_col], target=x[v_col]), axis=1)
+            lambda x: nx.shortest_path(G=self.subgraph(links), source=x[from_col], target=x[to_col]), axis=1)
         return df_pt_edges
 
     def path_length(self, G, source, target):
@@ -239,15 +246,17 @@ class SpatialTree(nx.DiGraph):
         except nx.NetworkXNoPath:
             pass
 
-    def shortest_path_lengths(self, df_pt_edges, modes, u_col='u', v_col='v'):
+    def shortest_path_lengths(self, df_pt_edges, modes, from_col='u', to_col='v'):
         """
-
-        :param df_pt_edges: pandas DataFrame
-        :param modes: str of set of strings to consider modal subgraph
-        :return:
+        :param df_pt_edges: pandas DataFrame with a `from_col` and `to_col` defining links stored in the graph for
+        which a path length is required
+        :param modes: str of set of strings to consider modal subgraph for routing
+        :param from_col: name of the column which gives ID for the source link
+        :param to_col: name of the column which gives ID for the target link
+        :return: df_pt_edges with an extra column 'shortest_path'
         """
         # todo add weight
         links = self.modal_links_geodataframe(modes)['id']
         df_pt_edges['path_lengths'] = df_pt_edges.apply(
-            lambda x: self.path_length(G=self.subgraph(links), source=x[u_col], target=x[v_col]), axis=1)
+            lambda x: self.path_length(G=self.subgraph(links), source=x[from_col], target=x[to_col]), axis=1)
         return df_pt_edges
