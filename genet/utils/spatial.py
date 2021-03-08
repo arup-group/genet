@@ -7,7 +7,6 @@ import json
 from shapely.geometry import LineString, shape, GeometryCollection
 import pandas as pd
 import geopandas as gpd
-from typing import Union
 import genet.outputs_handler.geojson as gngeojson
 
 APPROX_EARTH_RADIUS = 6371008.8
@@ -189,7 +188,12 @@ class SpatialTree(nx.DiGraph):
         edges = pd.merge(self.links[cols], self.links[cols], left_on='to', right_on='from', suffixes=('_to', '_from'))
         self.add_edges_from(list(zip(edges['id_to'], edges['id_from'])))
 
-    def modal_links_geodataframe(self, modes: Union(str, set)):
+    def modal_links_geodataframe(self, modes):
+        """
+        Subsets the links geodataframe on modes
+        :param modes: str or set of str
+        :return:
+        """
         if isinstance(modes, str):
             modes = {modes}
         return self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, modes), axis=1)]

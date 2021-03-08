@@ -163,7 +163,7 @@ def test_SpatialTree_closest_links_in_london(network):
     )
     stops.crs = {'init': 'epsg:4326'}
 
-    closest_links = spatial_tree.closest_links(stops, 30, mode='car')
+    closest_links = spatial_tree.closest_links(stops, 30, modes='car')
     assert_semantically_equal(closest_links.reset_index().groupby('index')['id'].apply(list).to_dict(),
                               {'stop_10m_to_link_1': ['link_1'],
                                'stop_20m_to_link_1': ['link_1'],
@@ -184,7 +184,7 @@ def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
     }})
     stops.crs = {'init': 'epsg:4326'}
 
-    closest_links = spatial_tree.closest_links(stops, 20, mode='car')
+    closest_links = spatial_tree.closest_links(stops, 20, modes='car')
     assert_semantically_equal(closest_links.reset_index().groupby('index')['id'].apply(list).to_dict(),
                               {'stop_15m_to_link_1': ['link_1']})
 
@@ -203,7 +203,7 @@ def test_SpatialTree_closest_links_in_indonesia_doesnt_find_link_within_10_metre
     }})
     stops.crs = {'init': 'epsg:4326'}
 
-    closest_links = spatial_tree.closest_links(stops, 10, mode='car')
+    closest_links = spatial_tree.closest_links(stops, 10, modes='car')
     closest_links = closest_links.dropna()
     assert closest_links.empty
 
@@ -223,7 +223,7 @@ def test_SpatialTree_closest_links_in_north_canada_finds_link_within_20_metres()
     }})
     stops.crs = {'init': 'epsg:4326'}
 
-    closest_links = spatial_tree.closest_links(stops, 30, mode='car')
+    closest_links = spatial_tree.closest_links(stops, 30, modes='car')
     assert_semantically_equal(closest_links.reset_index().groupby('index')['id'].apply(list).to_dict(),
                               {'stop_15m_to_link_1': ['link_1']})
 
@@ -243,7 +243,7 @@ def test_SpatialTree_closest_links_in_north_canada_doesnt_find_link_within_10_me
     }})
     stops.crs = {'init': 'epsg:4326'}
 
-    closest_links = spatial_tree.closest_links(stops, 10, mode='car')
+    closest_links = spatial_tree.closest_links(stops, 10, modes='car')
     closest_links = closest_links.dropna()
     assert closest_links.empty
 
@@ -253,5 +253,5 @@ def test_SpatialTree_shortest_paths(network):
     stops = DataFrame({'u': ['link_1', 'link_2', 'link_2'],
                        'v': ['link_2', 'link_3', 'link_4']})
 
-    stops = spatial_tree.shortest_path_lengths(stops, mode='car')
+    stops = spatial_tree.shortest_path_lengths(stops, modes='car')
     pass
