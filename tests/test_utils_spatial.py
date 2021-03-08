@@ -149,8 +149,8 @@ def test_SpatialTree_adds_links(network):
 
     assert_semantically_equal(list(spatial_tree.edges(data=True)),
                               [('link_1', 'link_2', {'length': 153.0294}), ('link_1', 'link_3', {'length': 153.0294}),
-                                ('link_2', 'link_4', {'length': 78.443}), ('link_3', 'link_4', {'length': 78.443}),
-                                ('link_4', 'link_2', {'length': 78.443}), ('link_4', 'link_3', {'length': 78.443})]
+                               ('link_2', 'link_4', {'length': 78.443}), ('link_3', 'link_4', {'length': 78.443}),
+                               ('link_4', 'link_2', {'length': 78.443}), ('link_4', 'link_3', {'length': 78.443})]
                               )
     assert_semantically_equal(dict(spatial_tree.nodes(data=True)),
                               {'link_1': {}, 'link_2': {}, 'link_3': {}, 'link_4': {}})
@@ -175,7 +175,8 @@ def test_SpatialTree_closest_links_in_london(network):
 def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
     # (close to equator)
     n = Network('epsg:4326')
-    n.add_nodes({'1': {'x': 109.380477773586,'y': 0.3203433505415778}, '2': {'x': 109.38042852136014,'y': 0.32031507655538294}})
+    n.add_nodes({'1': {'x': 109.380477773586, 'y': 0.3203433505415778},
+                 '2': {'x': 109.38042852136014, 'y': 0.32031507655538294}})
     n.add_link(link_id='link_1', u='1', v='2',
                attribs={
                    'modes': ['car']
@@ -194,7 +195,8 @@ def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
 def test_SpatialTree_closest_links_in_indonesia_doesnt_find_link_within_10_metres():
     # (close to equator)
     n = Network('epsg:4326')
-    n.add_nodes({'1': {'x': 109.380477773586,'y': 0.3203433505415778}, '2': {'x': 109.38042852136014,'y': 0.32031507655538294}})
+    n.add_nodes({'1': {'x': 109.380477773586, 'y': 0.3203433505415778},
+                 '2': {'x': 109.38042852136014, 'y': 0.32031507655538294}})
     n.add_link(link_id='link_1', u='1', v='2',
                attribs={
                    'modes': ['car']
@@ -213,8 +215,8 @@ def test_SpatialTree_closest_links_in_indonesia_doesnt_find_link_within_10_metre
 def test_SpatialTree_closest_links_in_north_canada_finds_link_within_20_metres():
     # (out in the boonies)
     n = Network('epsg:4326')
-    n.add_nodes({'1': {'x': -93.25129666354827,'y': 73.66401680598872},
-                 '2': {'x': -93.25140295754169,'y': 73.66417415921647}})
+    n.add_nodes({'1': {'x': -93.25129666354827, 'y': 73.66401680598872},
+                 '2': {'x': -93.25140295754169, 'y': 73.66417415921647}})
     n.add_link(link_id='link_1', u='1', v='2',
                attribs={
                    'modes': ['car']
@@ -233,8 +235,8 @@ def test_SpatialTree_closest_links_in_north_canada_finds_link_within_20_metres()
 def test_SpatialTree_closest_links_in_north_canada_doesnt_find_link_within_10_metres():
     # (out in the boonies)
     n = Network('epsg:4326')
-    n.add_nodes({'1': {'x': -93.25129666354827,'y': 73.66401680598872},
-                 '2': {'x': -93.25140295754169,'y': 73.66417415921647}})
+    n.add_nodes({'1': {'x': -93.25129666354827, 'y': 73.66401680598872},
+                 '2': {'x': -93.25140295754169, 'y': 73.66417415921647}})
     n.add_link(link_id='link_1', u='1', v='2',
                attribs={
                    'modes': ['car']
@@ -252,8 +254,27 @@ def test_SpatialTree_closest_links_in_north_canada_doesnt_find_link_within_10_me
 
 def test_SpatialTree_shortest_paths(network):
     spatial_tree = spatial.SpatialTree(network)
-    stops = DataFrame({'u': ['link_1', 'link_2', 'link_2'],
-                       'v': ['link_2', 'link_3', 'link_4']})
+    df = DataFrame({'u': ['link_1', 'link_2', 'link_2', 'link_1'],
+                    'v': ['link_2', 'link_3', 'link_4', 'link_4']})
 
-    stops = spatial_tree.shortest_path_lengths(stops, modes='car')
-    pass
+    df = spatial_tree.shortest_paths(df, modes='car')
+    assert_semantically_equal(df.T.to_dict(),
+                              {0: {'u': 'link_1', 'v': 'link_2', 'shortest_path': ['link_1', 'link_2']},
+                               1: {'u': 'link_2', 'v': 'link_3', 'shortest_path': None},
+                               2: {'u': 'link_2', 'v': 'link_4', 'shortest_path': ['link_2', 'link_4']},
+                               3: {'u': 'link_1', 'v': 'link_4', 'shortest_path': ['link_1', 'link_2', 'link_4']}}
+                              )
+
+
+def test_SpatialTree_shortest_path_lengths(network):
+    spatial_tree = spatial.SpatialTree(network)
+    df = DataFrame({'u': ['link_1', 'link_2', 'link_2', 'link_1'],
+                    'v': ['link_2', 'link_3', 'link_4', 'link_4']})
+
+    df = spatial_tree.shortest_path_lengths(df, modes='car')
+    assert_semantically_equal(df.T.to_dict(),
+                              {0: {'u': 'link_1', 'v': 'link_2', 'path_lengths': 153.0294},
+                               1: {'u': 'link_2', 'v': 'link_3', 'path_lengths': float('nan')},
+                               2: {'u': 'link_2', 'v': 'link_4', 'path_lengths': 78.443},
+                               3: {'u': 'link_1', 'v': 'link_4', 'path_lengths': 231.4724}}
+                              )
