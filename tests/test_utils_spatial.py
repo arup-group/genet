@@ -3,6 +3,7 @@ import pytest
 from shapely.geometry import Point, LineString
 from geopandas import GeoDataFrame
 from pandas import DataFrame
+from numpy import int64
 from genet.utils import spatial
 from genet import Network
 from tests.fixtures import *
@@ -97,6 +98,17 @@ def test_delegates_distance_between_int_points_query_to_s2(mocker):
     distance = spatial.distance_between_s2cellids(
         s2sphere.CellId.from_lat_lng(s2sphere.LatLng.from_degrees(53.483959, -2.244644)).id(),
         s2sphere.CellId.from_lat_lng(s2sphere.LatLng.from_degrees(53.583959, -2.344644)).id())
+
+    earth_radius_metres = 6371008.8
+    assert distance == 3 * earth_radius_metres
+    s2sphere.LatLng.get_distance.assert_called_once()
+
+
+def test_delegates_distance_between_npint64_points_query_to_s2(mocker):
+    mocker.patch.object(s2sphere.LatLng, 'get_distance', return_value=s2sphere.Angle(radians=3))
+    distance = spatial.distance_between_s2cellids(
+        int64(s2sphere.CellId.from_lat_lng(s2sphere.LatLng.from_degrees(53.483959, -2.244644)).id()),
+        int64(s2sphere.CellId.from_lat_lng(s2sphere.LatLng.from_degrees(53.583959, -2.344644)).id()))
 
     earth_radius_metres = 6371008.8
     assert distance == 3 * earth_radius_metres

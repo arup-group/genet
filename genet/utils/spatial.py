@@ -126,37 +126,6 @@ def change_proj(x, y, crs_transformer):
     return crs_transformer.transform(x, y)
 
 
-def find_common_cell(edge):
-    u, v, w = edge
-    _u = s2.CellId(u)
-    _v = s2.CellId(v)
-    while _u != _v and not _u.is_face():
-        _u = _u.parent()
-        _v = _v.parent()
-    if _u.is_face():
-        # if u is a face then v will be a face too, only need to check u
-        return 0
-    return _u
-
-
-def find_edges_from_common_cell_to_root(s2_link, link_id):
-    common_cell = find_common_cell(s2_link)
-    edges_to_add = []
-    if common_cell != 0:
-        lvl = common_cell.level()
-        _lvls = [s2_lvl for s2_lvl in S2_LEVELS_FOR_SPATIAL_INDEXING if lvl >= s2_lvl]
-        common_cell = common_cell.parent(_lvls[-1])
-        edges_to_add.append((common_cell.id(), link_id))
-        if _lvls:
-            for i in range(len(_lvls) - 1):
-                edges_to_add.append((common_cell.parent(_lvls[i]).id(), common_cell.parent(_lvls[i + 1]).id()))
-        # add the connection to the super cell
-        edges_to_add.append((0, common_cell.parent(_lvls[0]).id()))
-    else:
-        edges_to_add.append((0, link_id))
-    return edges_to_add
-
-
 def grow_point(x, distance):
     return x.buffer(distance)
 
