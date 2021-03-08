@@ -1,7 +1,6 @@
 import os
 import logging
 import osmnx as ox
-from geopandas import GeoDataFrame, GeoSeries
 from networkx import MultiDiGraph
 from itertools import chain
 import genet.use.schedule as use_schedule
