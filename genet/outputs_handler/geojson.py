@@ -34,20 +34,6 @@ def generate_geodataframes(graph):
     return gdf_nodes, gdf_links
 
 
-def sanitise_geodataframe(gdf):
-    if isinstance(gdf, GeoSeries):
-        gdf = GeoDataFrame(gdf)
-    gdf = gdf.fillna('None')
-    object_columns = gdf.select_dtypes(['object']).columns
-    for col in object_columns:
-        if gdf[col].apply(lambda x: isinstance(x, list)).any():
-            gdf[col] = gdf[col].apply(lambda x: ','.join(x))
-        elif gdf[col].apply(lambda x: isinstance(x, dict)).any():
-            # TODO add support for dictionaries
-            pass
-    return gdf
-
-
 def save_geodataframe(gdf, filename, output_dir):
     if not gdf.empty:
         gdf = sanitiser.sanitise_geodataframe(gdf)
