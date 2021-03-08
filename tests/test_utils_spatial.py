@@ -170,15 +170,15 @@ def test_SpatialTree_adds_links(network):
 
 def test_SpatialTree_closest_links_in_london(network):
     spatial_tree = spatial.SpatialTree(network)
-    stops = GeoDataFrame({'geometry': {
-        'stop_10m_to_link_1': Point(-0.15186089346604492, 51.51950409732838),
-        'stop_20m_to_link_1': Point(-0.1520233977548685, 51.51952913606585),
-        'stop_15m_to_link_2': Point(-0.15164747576623197, 51.520660715220636)}}
-    )
+    stops = GeoDataFrame({
+        'id': {0: 'stop_10m_to_link_1', 1: 'stop_15m_to_link_2', 2: 'stop_20m_to_link_1'},
+        'geometry': {0: Point(-0.15186089346604492, 51.51950409732838),
+                     1: Point(-0.15164747576623197, 51.520660715220636),
+                     2: Point(-0.1520233977548685, 51.51952913606585)}})
     stops.crs = {'init': 'epsg:4326'}
 
     closest_links = spatial_tree.closest_links(stops, 30, modes='car')
-    assert_semantically_equal(closest_links.reset_index().groupby('index')['id'].apply(list).to_dict(),
+    assert_semantically_equal(closest_links.reset_index().groupby('id')['link_id'].apply(list).to_dict(),
                               {'stop_10m_to_link_1': ['link_1'],
                                'stop_20m_to_link_1': ['link_1'],
                                'stop_15m_to_link_2': ['link_2', 'link_4']})
@@ -200,7 +200,7 @@ def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
     stops.crs = {'init': 'epsg:4326'}
 
     closest_links = spatial_tree.closest_links(stops, 20, modes='car')
-    assert_semantically_equal(closest_links.reset_index().groupby('index')['id'].apply(list).to_dict(),
+    assert_semantically_equal(closest_links.reset_index().groupby('index')['link_id'].apply(list).to_dict(),
                               {'stop_15m_to_link_1': ['link_1']})
 
 
@@ -240,7 +240,7 @@ def test_SpatialTree_closest_links_in_north_canada_finds_link_within_20_metres()
     stops.crs = {'init': 'epsg:4326'}
 
     closest_links = spatial_tree.closest_links(stops, 30, modes='car')
-    assert_semantically_equal(closest_links.reset_index().groupby('index')['id'].apply(list).to_dict(),
+    assert_semantically_equal(closest_links.reset_index().groupby('index')['link_id'].apply(list).to_dict(),
                               {'stop_15m_to_link_1': ['link_1']})
 
 

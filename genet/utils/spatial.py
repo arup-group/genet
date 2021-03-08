@@ -131,6 +131,7 @@ def grow_point(x, distance):
 
 
 def approximate_metres_distance_in_4326_degrees(distance, lat):
+    # https://gis.stackexchange.com/questions/2951/algorithm-for-offsetting-a-latitude-longitude-by-some-amount-of-meters
     return ((float(distance) / 111111) + float(distance) / (111111 * np.cos(np.radians(float(lat))))) / 2
 
 
@@ -149,18 +150,19 @@ class SpatialTree(nx.DiGraph):
         :return:
         """
         self.links = gngeojson.generate_geodataframes(n.graph)[1]
+        self.links = self.links.rename(columns={'id': 'link_id'})
 
-        nodes = self.links.set_index('id').T.to_dict()
+        nodes = self.links.set_index('link_id').T.to_dict()
         self.add_nodes_from(nodes)
 
-        cols = ['from', 'to', 'id']
+        cols = ['from', 'to', 'link_id']
         edge_data_cols = list(set(self.links.columns) - set(cols + ['modes', 'geometry', 'u', 'v', 'key']))
         edges = pd.merge(self.links[cols + edge_data_cols], self.links[cols], left_on='to', right_on='from',
                          suffixes=('_to', '_from'))
         edge_data = edges[edge_data_cols].T.to_dict()
-        self.add_edges_from(list(zip(edges['id_to'],
-                                     edges['id_from'],
-                                     [edge_data[idx] for idx in edges['id_to'].index])))
+        self.add_edges_from(list(zip(edges['link_id_to'],
+                                     edges['link_id_from'],
+                                     [edge_data[idx] for idx in edges['link_id_to'].index])))
 
     def modal_links_geodataframe(self, modes):
         """
@@ -184,15 +186,15 @@ class SpatialTree(nx.DiGraph):
         """
         bdds = gdf_points['geometry'].bounds
         approx_lat = (bdds['miny'].mean() + bdds['maxy'].mean()) / 2
-        # https://gis.stackexchange.com/questions/2951/algorithm-for-offsetting-a-latitude-longitude-by-some-amount-of-meters
         approx_degree_radius = approximate_metres_distance_in_4326_degrees(distance_radius, approx_lat)
         gdf_points['geometry'] = gdf_points['geometry'].apply(lambda x: grow_point(x, approx_degree_radius))
         closest_links = gpd.sjoin(
-            self.modal_links_geodataframe(modes),
+            self.modal_links_geodataframe(modes)[['link_id', 'geometry']],
             gdf_points,
             how='right',
-            op='intersects')
-        return closest_links['id']
+            op='intersects'
+        )
+        return closest_links
 
     def path(self, G, source, target, weight=None):
         try:
@@ -210,7 +212,7 @@ class SpatialTree(nx.DiGraph):
         :param weight: weight for routing, defaults ot length
         :return: df_pt_edges with an extra column 'shortest_path'
         """
-        links = self.modal_links_geodataframe(modes)['id']
+        links = self.modal_links_geodataframe(modes)['link_id']
         df_pt_edges['shortest_path'] = df_pt_edges.apply(
             lambda x: self.path(G=self.subgraph(links), source=x[from_col], target=x[to_col], weight=weight),
             axis=1)
@@ -232,7 +234,7 @@ class SpatialTree(nx.DiGraph):
         :param weight: weight for routing, defaults ot length
         :return: df_pt_edges with an extra column 'shortest_path'
         """
-        links = self.modal_links_geodataframe(modes)['id']
+        links = self.modal_links_geodataframe(modes)['link_id']
         df_pt_edges['path_lengths'] = df_pt_edges.apply(
             lambda x: self.path_length(G=self.subgraph(links), source=x[from_col], target=x[to_col], weight=weight),
             axis=1)
