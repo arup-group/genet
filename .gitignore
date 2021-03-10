@@ -129,3 +129,4 @@ mprofile*
 benchmark-outputs/
 working-dir/
 scripts/secrets-mgr-exploration.py
+*.nbconvert.*
