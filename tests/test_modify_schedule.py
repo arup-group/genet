@@ -1,5 +1,6 @@
+import pytest
 from pyproj import Transformer
-from genet import Stop, Route
+from genet import Stop, Route, Service, Schedule, Network
 from genet.modify import schedule
 from tests.fixtures import assert_semantically_equal
 
@@ -15,5 +16,8 @@ def test_reproj_stops():
     reprojected = schedule.reproj_stops(stops, 'epsg:4326')
     assert_semantically_equal(reprojected,
                               {'26997928P': {'x': -0.14967658860132668, 'y': 51.52393050617373, 'epsg': 'epsg:4326'},
-                               '26997928P.link:1': {'x':-0.14967658860132668, 'y': 51.52393050617373,
+                               '26997928P.link:1': {'x': -0.14967658860132668, 'y': 51.52393050617373,
                                                     'epsg': 'epsg:4326'}})
+
+
+# todo test on real network
