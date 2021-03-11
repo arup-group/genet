@@ -18,5 +18,3 @@ def reproj_stops(schedule_element_nodes: dict, new_epsg):
         x, y = spatial.change_proj(node_attribs['x'], node_attribs['y'], transformers[node_attribs['epsg']])
         reprojected_node_attribs[node_id] = {'x': x, 'y': y, 'epsg': new_epsg}
     return reprojected_node_attribs
-
-

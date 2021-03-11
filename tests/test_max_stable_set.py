@@ -264,3 +264,45 @@ def test_problem_with_isolated_catchment_is_partially_viable(mocker, network):
                        step_size=10)
 
     assert mss.is_partially_viable()
+
+
+def test_solving_problem_with_isolated_catchments(mocker, network, network_spatial_tree):
+    mocker.patch.object(spatial.SpatialTree, 'closest_links',
+                        return_value=DataFrame({
+                            'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1',
+                                   6: 'stop_1'},
+                            'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
+                                        4: 'link_1_2_car', 5: 'link_1_2_bus', 6: 'link_2_3_car'},
+                        }))
+
+    mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
+                       network_spatial_tree=network_spatial_tree,
+                       modes={'car', 'bus'})
+    mss.solve()
+    assert mss.solution == {'stop_3': {'linkRefId': 'link_7_8_car'},
+                            'stop_1': {'linkRefId': 'link_1_2_bus'},
+                            'stop_2': {'linkRefId': 'link_4_5_car'}}
+
+
+def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(mocker, network):
+    mocker.patch.object(spatial.SpatialTree, 'closest_links',
+                        return_value=DataFrame({
+                            'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1'},
+                            'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
+                                        4: 'isolated_link_1', 5: 'isolated_link_2'},
+                        }))
+    network.add_nodes({'node_iso_1': {'id': 'node_iso_1', 'x': 10, 'y': 20, 'lat': 49.8, 'lon': -7.5,
+                                      's2_id': 5205973754090365183},
+                       'node_iso_2': {'id': 'node_iso_2', 'x': 10, 'y': 30, 'lat': 49.9, 'lon': -7.6,
+                                      's2_id': 5205973754090333257}})
+    network.add_link('isolated_link_1', u='node_iso_1', v='node_iso_2', attribs={'modes': {'car', 'bus'}})
+    network.add_link('isolated_link_2', u='node_iso_2', v='node_iso_1', attribs={'modes': {'car', 'bus'}})
+
+    mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
+                       network_spatial_tree=spatial.SpatialTree(network),
+                       modes={'car', 'bus'},
+                       distance_threshold=30,
+                       step_size=10)
+    mss.solve()
+    assert mss.solution == {'stop_3': {'linkRefId': 'link_7_8_car'},
+                            'stop_2': {'linkRefId': 'link_5_6_car'}}
