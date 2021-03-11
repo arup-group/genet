@@ -1,4 +1,5 @@
 import itertools
+import logging
 import pandas as pd
 import networkx as nx
 import genet.outputs_handler.geojson as gngeojson
@@ -15,6 +16,7 @@ class MaxStableSet:
         self.distance_threshold = distance_threshold
         self.step_size = step_size
         self.network_spatial_tree = network_spatial_tree
+        self.pt_graph = pt_graph
         self.stops = set(pt_graph.nodes())
         self.stops, self.edges = gngeojson.generate_geodataframes(pt_graph)
         self.nodes = self.stops[['id', 'geometry']].copy()
@@ -41,7 +43,7 @@ class MaxStableSet:
         return not bool(self.stops_missing_nearest_links())
 
     def stops_missing_nearest_links(self):
-        return set(self.stops['id']) - set(self.nodes['id'])
+        return set(self.stops['id']) - {stop for problem_node, stop in self.problem_graph.nodes(data='id')}
 
     def generate_problem_graph(self):
         # build the problem graph
@@ -91,3 +93,38 @@ class MaxStableSet:
                                                    conditions={'coeff': exists}))
         problem_graph.remove_nodes_from(nodes_without_paths)
         return problem_graph
+
+    def in_out_degree(self, node):
+        try:
+            return self.problem_graph.out_degree(node) + self.problem_graph.in_degree(node)
+        except TypeError:
+            _out = self.problem_graph.out_degree(node)
+            _in = self.problem_graph.in_degree(node)
+            if not isinstance(_out, int):
+                _out = 0
+            if not isinstance(_in, int):
+                _in = 0
+            return _in + _out
+
+    def has_a_completely_connected_catchment(self):
+        stop_id_groups = self.nodes.groupby('id')
+        for u, v in self.pt_graph.edges():
+            node_degrees = [self.in_out_degree(n) for n in stop_id_groups.get_group(u)['problem_nodes']]
+            node_degrees = node_degrees + [self.in_out_degree(n) for n in stop_id_groups.get_group(v)['problem_nodes']]
+            total_nodes = len(stop_id_groups.get_group(u)) + len(stop_id_groups.get_group(v))
+            if all([node_degree >= total_nodes - 1 for node_degree in node_degrees]):
+                logging.warning(
+                    f'Two stops: {u} and {v} are completely connected, suggesting that one or more stops has found no '
+                    f'viable network links within the specified threshold')
+                return True
+        return False
+
+    def is_viable(self):
+        # all stops have closest links to snap to (catchments)
+        # and the catchments are not all completely connected to one another
+        return self.all_stops_have_nearest_links() and (not self.has_a_completely_connected_catchment())
+
+    def is_partially_viable(self):
+        # just the catchments are not all completely connected to one another
+        return not self.has_a_completely_connected_catchment()
+
