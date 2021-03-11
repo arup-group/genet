@@ -25,6 +25,31 @@ def parse_args(cmd_args):
     return vars(arg_parser.parse_args(cmd_args))
 
 
+def print_banner():
+    banner = '''
+ a,  8a
+ `8, `8)                            ,adPPRg,
+  8)  ]8                        ,ad888888888b
+ ,8' ,8'                    ,gPPR888888888888
+,8' ,8'                 ,ad8""   `Y888888888P
+8)  8)              ,ad8""        (8888888""
+8,  8,          ,ad8""            d888""
+`8, `8,     ,ad8""            ,ad8""
+ `8, `" ,ad8""            ,ad8""
+    ,gPPR8b           ,ad8""
+   dP:::::Yb      ,ad8""
+   8):::::(8  ,ad8""
+   Yb:;;;:d888""
+    "8ggg8P"
+ _   _ ____    ____  __  __  ___  _  _______   _____ _____ ____ _____
+| \ | | __ )  / ___||  \/  |/ _ \| |/ / ____| |_   _| ____/ ___|_   _|
+|  \| |  _ \  \___ \| |\/| | | | | ' /|  _|     | | |  _| \___ \ | |
+| |\  | |_) |  ___) | |  | | |_| | . \| |___    | | | |___ ___) || |
+|_| \_|____/  |____/|_|  |_|\___/|_|\_\_____|   |_| |_____|____/ |_|
+    '''
+    print("{}{}{}".format(Fore.CYAN, banner, Style.RESET_ALL))
+
+
 def install_jupyter_kernel(kernel_name):
     print("Making sure we have a Jupyter kernel called {}{}{} installed...".format(Fore.YELLOW,
                                                                                    kernel_name,
@@ -72,6 +97,7 @@ def print_summary(notebook_results_dict):
 
 
 if __name__ == '__main__':
+    print_banner()
     start = datetime.now()
     command_args = parse_args(sys.argv[1:])
     print("Smoke testing Jupyter notebooks in {}'{}'{} directory".format(Fore.YELLOW,
@@ -104,3 +130,4 @@ if __name__ == '__main__':
     print('------------------------------------------------------')
     print("\nFinished the smoke test in {}{}{}".format(Fore.YELLOW, datetime.now() - start, Style.RESET_ALL))
     print_summary(notebook_results)
+    sys.exit(sum(notebook_results.values()))
