@@ -37,6 +37,12 @@ class MaxStableSet:
         # todo increase area within which to snap to a stop by step size until distance threshold reached
         pass
 
+    def all_stops_have_nearest_links(self):
+        return not bool(self.stops_missing_nearest_links())
+
+    def stops_missing_nearest_links(self):
+        return set(self.stops['id']) - set(self.nodes['id'])
+
     def generate_problem_graph(self):
         # build the problem graph
         # build up the nodes, edges and shortest path lengths (will be used to compute weight coefficient later on)

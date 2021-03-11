@@ -102,6 +102,30 @@ def network_spatial_tree(network):
     return spatial.SpatialTree(network)
 
 
+def test_all_stops_have_nearest_links_returns_False_with_missing_closest_links(mocker, network, network_spatial_tree):
+    mocker.patch.object(spatial.SpatialTree, 'closest_links',
+                        return_value=DataFrame({
+                            'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3'},
+                            'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car'},
+                        }))
+    mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
+                       network_spatial_tree=network_spatial_tree,
+                       modes={'car', 'bus'})
+    assert not mss.all_stops_have_nearest_links()
+
+
+def test_stops_missing_nearest_links_identifies_stops_with_missing_closest_links(mocker, network, network_spatial_tree):
+    mocker.patch.object(spatial.SpatialTree, 'closest_links',
+                        return_value=DataFrame({
+                            'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3'},
+                            'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car'},
+                        }))
+    mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
+                       network_spatial_tree=network_spatial_tree,
+                       modes={'car', 'bus'})
+    assert mss.stops_missing_nearest_links() == {'stop_1'}
+
+
 def test_build_graph_for_maximum_stable_set_problem_with_non_trivial_closest_link_selection_pool(mocker, network,
                                                                                                  network_spatial_tree):
     mocker.patch.object(spatial.SpatialTree, 'closest_links',
