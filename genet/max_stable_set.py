@@ -4,6 +4,7 @@ import logging
 import networkx as nx
 import genet.outputs_handler.geojson as gngeojson
 import genet.utils.graph_operations as graph_operations
+import matplotlib.pyplot as plt
 
 
 def exists(coeff_attrib):
@@ -129,6 +130,36 @@ class MaxStableSet:
     def is_partially_viable(self):
         # just the catchments are not all completely connected to one another
         return not self.has_a_completely_connected_catchment()
+
+    def plot(self):
+        minx, miny, maxx, maxy = self.nodes.geometry.total_bounds
+
+        fig, ax = plt.subplots(figsize=(8, 8))
+        self.network_spatial_tree.links.plot(ax=ax, color='#BFBFBF', alpha=0.8)
+        self.network_spatial_tree.links[self.network_spatial_tree.links['link_id'].isin(self.nodes['link_id'])].plot(
+            ax=ax, color='#FFD710')
+        self.nodes.plot(ax=ax, color='#F9CACA', alpha=0.7)
+        self.stops.plot(ax=ax, marker='x', color='#F76363')
+
+        ax.set_xlim(minx - 0.001, maxx + 0.001)
+        ax.set_ylim(miny - 0.001, maxy + 0.001)
+        ax.set_title('Stops, their catchments and underlying network for the Max Stable Set Problem')
+        return fig, ax
+
+    def plot_routes(self):
+        minx, miny, maxx, maxy = self.nodes.geometry.total_bounds
+
+        fig, ax = plt.subplots(figsize=(8, 8))
+        self.network_spatial_tree.links.plot(ax=ax, color='#BFBFBF', alpha=0.8)
+        self.network_spatial_tree.links[self.network_spatial_tree.links['link_id'].isin(
+            [item for sublist in self.pt_edges['shortest_path'] for item in sublist])].plot(ax=ax, color='#E5AF00')
+        self.nodes.plot(ax=ax, color='#F9CACA', alpha=0.7)
+        self.stops.plot(ax=ax, marker='x', color='#F76363')
+
+        ax.set_xlim(minx - 0.001, maxx + 0.001)
+        ax.set_ylim(miny - 0.001, maxy + 0.001)
+        ax.set_title('Stops, their catchments, the underlying network and route')
+        return fig, ax
 
     def solve(self, solver='glpk'):
         # --------------------------------------------------------
