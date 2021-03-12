@@ -18,13 +18,14 @@ class MaxStableSet:
         self.network_spatial_tree = network_spatial_tree
         self.pt_graph = pt_graph
         self.stops = set(pt_graph.nodes())
-        self.stops, self.edges = gngeojson.generate_geodataframes(pt_graph)
+        self.stops, self.pt_edges = gngeojson.generate_geodataframes(pt_graph)
         self.nodes = self.stops[['id', 'geometry']].copy()
-        self.edges = self.edges[['u', 'v', 'geometry']]
+        self.edges = self.pt_edges[['u', 'v', 'geometry']].copy()
         # todo increase distance by step size until all stops have closest links or reached threshold
         self.nodes = self.find_closest_links(distance=step_size)
         self.problem_graph = self.generate_problem_graph()
         self.solution = None
+        self.artificial_stops = {}
 
     def find_closest_links(self, distance, stops: set = None):
         if stops is not None:
@@ -193,8 +194,25 @@ class MaxStableSet:
 
         selected = [str(v).strip('x[]') for v in model.component_data_objects(Var) if  # noqa: F405
                     float(v.value) == 1.0]
-        self.solution = {self.problem_graph.nodes[node]['id']: {'linkRefId': node.split(':')[-1]}
-                         for node in selected}
+        # solution maps Stop IDs to Link IDs
+        self.solution = {self.problem_graph.nodes[node]['id']: node.split(':')[-1] for node in selected}
+        self.artificial_stops = {
+            node: {'linkRefId': node.split(':')[-1],
+                   'stop_id': self.problem_graph.nodes[node]['id']} for node in selected}
 
-    def solution(self):
-        return self.solution
+    def unsolved_stops(self):
+        return set(self.stops['id']) - set(self.solution.keys())
+
+    def all_stops_solved(self):
+        return not bool(self.unsolved_stops())
+
+    def route_edges(self):
+        self.pt_edges['linkRefId_u'] = self.pt_edges['u'].map(self.solution)
+        self.pt_edges['linkRefId_v'] = self.pt_edges['v'].map(self.solution)
+        self.pt_edges = self.network_spatial_tree.shortest_paths(
+            df_pt_edges=self.pt_edges,
+            modes=self.modes,
+            from_col='linkRefId_u',
+            to_col='linkRefId_v',
+            weight='length'
+        )

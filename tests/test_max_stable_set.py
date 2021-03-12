@@ -279,9 +279,9 @@ def test_solving_problem_with_isolated_catchments(mocker, network, network_spati
                        network_spatial_tree=network_spatial_tree,
                        modes={'car', 'bus'})
     mss.solve()
-    assert mss.solution == {'stop_3': {'linkRefId': 'link_7_8_car'},
-                            'stop_1': {'linkRefId': 'link_1_2_bus'},
-                            'stop_2': {'linkRefId': 'link_4_5_car'}}
+    assert mss.solution == {'stop_3.link:link_7_8_car': {'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'},
+                            'stop_1.link:link_1_2_bus': {'linkRefId': 'link_1_2_bus', 'stop_id': 'stop_1'},
+                            'stop_2.link:link_4_5_car': {'linkRefId': 'link_4_5_car', 'stop_id': 'stop_2'}}
 
 
 def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(mocker, network):
@@ -304,5 +304,5 @@ def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(mocker,
                        distance_threshold=30,
                        step_size=10)
     mss.solve()
-    assert mss.solution == {'stop_3': {'linkRefId': 'link_7_8_car'},
-                            'stop_2': {'linkRefId': 'link_5_6_car'}}
+    assert mss.solution == {'stop_2.link:link_5_6_car': {'linkRefId': 'link_5_6_car', 'stop_id': 'stop_2'},
+                            'stop_3.link:link_7_8_car': {'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}}
