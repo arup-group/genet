@@ -228,8 +228,11 @@ class MaxStableSet:
         # solution maps Stop IDs to Link IDs
         self.solution = {self.problem_graph.nodes[node]['id']: node.split(':')[-1] for node in selected}
         self.artificial_stops = {
-            node: {'linkRefId': node.split(':')[-1],
-                   'stop_id': self.problem_graph.nodes[node]['id']} for node in selected}
+            node: {
+                **self.pt_graph.nodes[self.problem_graph.nodes[node]['id']],
+                **{'linkRefId': node.split(':')[-1],
+                   'stop_id': self.problem_graph.nodes[node]['id']}}
+            for node in selected}
 
     def unsolved_stops(self):
         return set(self.stops['id']) - set(self.solution.keys())
