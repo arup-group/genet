@@ -168,9 +168,9 @@ class Stop:
 
     Optional Parameters
     ----------
-    :param transformer: pyproj.Transformer.from_crs(epsg, 'epsg:4326') optional but makes things MUCH faster if you're
-    reading through a lot of stops in the same projection, all stops are mapped back to 'epsg:4326' and indexed with
-    s2sphere
+    :param transformer: pyproj.Transformer.from_crs(epsg, 'epsg:4326', always_xy=True) optional but makes things MUCH
+    faster if you're reading through a lot of stops in the same projection, all stops are mapped back to 'epsg:4326'
+    and indexed with s2sphere
     :param name: human readable name for the stop
     :param kwargs: additional attributes
     """
@@ -187,11 +187,11 @@ class Stop:
             self.lat, self.lon = kwargs['lat'], kwargs['lon']
         else:
             if self.epsg == 'epsg:4326':
-                self.lat, self.lon = float(x), float(y)
+                self.lon, self.lat = float(x), float(y)
             else:
                 if transformer is None:
-                    transformer = Transformer.from_crs(self.epsg, 'epsg:4326')
-                self.lat, self.lon = spatial.change_proj(x, y, transformer)
+                    transformer = Transformer.from_crs(self.epsg, 'epsg:4326', always_xy=True)
+                self.lon, self.lat = spatial.change_proj(x, y, transformer)
         if 's2_id' in kwargs:
             self.s2_id = kwargs['s2_id']
         else:
@@ -241,7 +241,7 @@ class Stop:
         :return:
         """
         if transformer is None:
-            transformer = Transformer.from_crs(self.epsg, new_epsg)
+            transformer = Transformer.from_crs(self.epsg, new_epsg, always_xy=True)
         self.x, self.y = spatial.change_proj(self.x, self.y, transformer)
         self.epsg = new_epsg
 
@@ -967,7 +967,7 @@ class Schedule(ScheduleElement):
                 services = []
             self._graph = self._build_graph(services)
         self.init_epsg = epsg
-        self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
+        self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
         self.minimal_transfer_times = {}
         if vehicles is None:
             self.vehicles = {}
@@ -2086,7 +2086,7 @@ class Schedule(ScheduleElement):
                 r = Route(
                     route_short_name=route['route_short_name'],
                     mode=route['mode'],
-                    stops=[Stop(id=id, x=stops_db[id]['stop_lat'], y=stops_db[id]['stop_lon'], epsg='epsg:4326') for id
+                    stops=[Stop(id=id, x=stops_db[id]['stop_lon'], y=stops_db[id]['stop_lat'], epsg='epsg:4326') for id
                            in
                            route['stops']],
                     trips=route['trips'],

@@ -1,3 +1,4 @@
+import pytest
 import genet.utils.dict_support as dict_support
 from tests.fixtures import assert_semantically_equal
 
@@ -24,6 +25,51 @@ def test_set_nested_value_creates_new_nest_in_place_of_single_value():
     return_d = dict_support.set_nested_value(d, value)
 
     assert return_d == {'attributes': {'some_tag': 'bye'}}
+
+
+def test_getting_nested_value_from_dictionary():
+    d = {'1': {'2': {'3': {'4': 'hey'}}}}
+    path = {'1': {'2': {'3': '4'}}}
+    assert dict_support.get_nested_value(d, path) == 'hey'
+
+
+def test_get_nested_value_throws_error_if_passed_incorrect_path():
+    d = {'1': {'2': {'3': {'4': 'hey'}}}}
+    path = {'1': {'2': {'3': '5'}}}
+    with pytest.raises(KeyError) as e:
+        dict_support.get_nested_value(d, path)
+    assert '5' in str(e.value)
+
+
+def test_finding_nested_path_on_condition():
+    d = {'1': {'2': {'3': {'4': 'hey'}, '5': '6'}, '7': '8'}, '9': '10'}
+    value = 'hey'
+    assert dict_support.find_nested_paths_to_value(d, value) == [{'1': {'2': {'3': '4'}}}]
+
+
+def test_finding_nested_path_on_condition_with_list():
+    d = {'1': {'2': {'3': {'4': ['hey']}, '5': '6'}, '7': '8'}, '9': '10'}
+    value = 'hey'
+    assert dict_support.find_nested_paths_to_value(d, value) == [{'1': {'2': {'3': '4'}}}]
+
+
+def test_finding_nested_path_on_set_condition_with_list():
+    d = {'1': {'2': {'3': {'4': ['hey']}, '5': '6'}, '7': '8'}, '9': '10'}
+    value = {'hey'}
+    assert dict_support.find_nested_paths_to_value(d, value) == [{'1': {'2': {'3': '4'}}}]
+
+
+def test_finding_multiple_nested_paths_on_condition():
+    d = {'1': {'2': {'3': {'4': ['hey']}, '5': '6'}, '7': 'hey'}, '9': '10', '11': 'heyo'}
+    value = {'hey', 'heyo'}
+    assert dict_support.find_nested_paths_to_value(d, value) == [{'1': {'2': {'3': '4'}}}, {'1': '7'}, '11']
+
+
+def test_nesting_at_leaf_with_some_value():
+    d = {'1': {'2': {'3': {'4': 'hey'}}}}
+    _d = dict_support.nest_at_leaf(d, 'some')
+    assert d == {'1': {'2': {'3': {'4': {'hey': 'some'}}}}}
+    assert _d == {'1': {'2': {'3': {'4': {'hey': 'some'}}}}}
 
 
 def test_merging_simple_dictionaries():

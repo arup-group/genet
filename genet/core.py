@@ -23,6 +23,7 @@ import genet.utils.plot as plot
 import genet.utils.simplification as simplification
 import genet.schedule_elements as schedule_elements
 import genet.validate.network_validation as network_validation
+import genet.auxiliary_files as auxiliary_files
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -30,11 +31,12 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 class Network:
     def __init__(self, epsg):
         self.epsg = epsg
-        self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
+        self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
         self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg}, simplified=False)
         self.schedule = schedule_elements.Schedule(epsg)
         self.change_log = change_log.ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
+        self.auxiliary_files = {'node': {}, 'link': {}}
         # link_id_mapping maps between (usually string literal) index per edge to the from and to nodes that are
         # connected by the edge
         self.link_id_mapping = {}
@@ -153,7 +155,7 @@ class Network:
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
         if epsg != 'epsg:4326':
-            self.transformer = Transformer.from_crs(epsg, 'epsg:4326')
+            self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
         else:
             self.transformer = None
 
@@ -655,6 +657,7 @@ class Network:
                                old_attributes=self.node(node_id), new_attributes=new_attribs)
         self.apply_attributes_to_node(node_id, new_attribs)
         self.graph = nx.relabel_nodes(self.graph, {node_id: new_node_id})
+        self.update_node_auxiliary_files({node_id: new_node_id})
         if not silent:
             logging.info(f'Changed Node index from {node_id} to {new_node_id}')
 
@@ -669,6 +672,7 @@ class Network:
         self.apply_attributes_to_link(link_id, new_attribs)
         self.link_id_mapping[new_link_id] = self.link_id_mapping[link_id]
         del self.link_id_mapping[link_id]
+        self.update_link_auxiliary_files({link_id: new_link_id})
         if not silent:
             logging.info(f'Changed Link index from {link_id} to {new_link_id}')
 
@@ -942,6 +946,7 @@ class Network:
         """
         self.change_log.remove(object_type='node', object_id=node_id, object_attributes=self.node(node_id))
         self.graph.remove_node(node_id)
+        self.update_node_auxiliary_files({node_id: None})
         if not silent:
             logging.info(f'Removed Node under index: {node_id}')
 
@@ -959,6 +964,7 @@ class Network:
             self.change_log = self.change_log.remove_bunch(
                 object_type='node', id_bunch=nodes, attributes_bunch=[self.node(node_id) for node_id in nodes])
         self.graph.remove_nodes_from(nodes)
+        self.update_node_auxiliary_files(dict(zip(nodes, [None] * len(nodes))))
         if not silent:
             logging.info(f'Removed {len(nodes)} nodes.')
 
@@ -973,6 +979,7 @@ class Network:
         u, v, multi_idx = self.edge_tuple_from_link_id(link_id)
         self.graph.remove_edge(u, v, multi_idx)
         del self.link_id_mapping[link_id]
+        self.update_link_auxiliary_files({link_id: None})
         if not silent:
             logging.info(f'Removed link under index: {link_id}')
 
@@ -992,6 +999,7 @@ class Network:
         self.graph.remove_edges_from([self.edge_tuple_from_link_id(link_id) for link_id in links])
         for link_id in links:
             del self.link_id_mapping[link_id]
+        self.update_link_auxiliary_files(dict(zip(links, [None] * len(links))))
         if not silent:
             logging.info(f'Removed {len(links)} links')
 
@@ -1273,7 +1281,7 @@ class Network:
         logging.info('Checking validity of the Network')
         logging.info('Checking validity of the Network graph')
         report = {}
-        # decribe network connectivity
+        # describe network connectivity
         modes = ['car', 'walk', 'bike']
         report['graph'] = {'graph_connectivity': {}}
         for mode in modes:
@@ -1286,9 +1294,31 @@ class Network:
         def links_over_threshold_length(value):
             return value >= link_length_threshold
 
-        report['graph']['links_over_1km_length'] = self.extract_links_on_edge_attributes(
-            conditions={'length': links_over_threshold_length}
-        )
+        links_over_1km_length = self.extract_links_on_edge_attributes(
+            conditions={'length': links_over_threshold_length})
+
+        report['graph']['link_attributes'] = {
+            'links_over_1km_length': {
+                'number_of': len(links_over_1km_length),
+                'percentage': len(links_over_1km_length) / self.graph.number_of_edges(),
+                'link_ids': links_over_1km_length
+            }
+        }
+
+        def zero_value(value):
+            return (value == 0) or (value == '0') or (value == '0.0')
+
+        report['graph']['link_attributes']['zero_attributes'] = {}
+        for attrib in [d.name for d in graph_operations.get_attribute_schema(self.links()).descendants]:
+            links_with_zero_attrib = self.extract_links_on_edge_attributes(
+                conditions={attrib: zero_value}, mixed_dtypes=False)
+            if links_with_zero_attrib:
+                logging.warning(f'{len(links_with_zero_attrib)} of links have values of 0 for `{attrib}`')
+                report['graph']['link_attributes']['zero_attributes'][attrib] = {
+                    'number_of': len(links_with_zero_attrib),
+                    'percentage': len(links_with_zero_attrib) / self.graph.number_of_edges(),
+                    'link_ids': links_with_zero_attrib
+                }
 
         if self.schedule:
             report['schedule'] = self.schedule.generate_validation_report()
@@ -1385,12 +1415,50 @@ class Network:
     def read_matsim_schedule(self, schedule_path, vehicles_path=''):
         self.schedule.read_matsim_schedule(schedule_path, vehicles_path)
 
+    def read_auxiliary_link_file(self, file_path):
+        aux_file = auxiliary_files.AuxiliaryFile(file_path)
+        aux_file.attach({link_id for link_id, dat in self.links()})
+        if aux_file.is_attached():
+            self.auxiliary_files['link'][aux_file.filename] = aux_file
+        else:
+            logging.warning(f'Auxiliary file {file_path} failed to attach to {self.__name__} links')
+
+    def read_auxiliary_node_file(self, file_path):
+        aux_file = auxiliary_files.AuxiliaryFile(file_path)
+        aux_file.attach({node_id for node_id, dat in self.nodes()})
+        if aux_file.is_attached():
+            self.auxiliary_files['node'][aux_file.filename] = aux_file
+        else:
+            logging.warning(f'Auxiliary file {file_path} failed to attach to {self.__name__} nodes')
+
+    def update_link_auxiliary_files(self, id_map: dict):
+        """
+        :param id_map: dict map between old link ID and new link ID
+        :return:
+        """
+        for name, aux_file in self.auxiliary_files['link'].items():
+            aux_file.apply_map(id_map)
+
+    def update_node_auxiliary_files(self, id_map: dict):
+        """
+        :param id_map: dict map between old node ID and new node ID
+        :return:
+        """
+        for name, aux_file in self.auxiliary_files['node'].items():
+            aux_file.apply_map(id_map)
+
+    def write_auxiliary_files(self, output_dir):
+        for id_type in {'node', 'link'}:
+            for name, aux_file in self.auxiliary_files[id_type].items():
+                aux_file.write_to_file(output_dir)
+
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_matsim_network(output_dir, self)
         if self.schedule:
             self.schedule.write_to_matsim(output_dir)
         self.change_log.export(os.path.join(output_dir, 'network_change_log.csv'))
+        self.write_auxiliary_files(os.path.join(output_dir, 'auxiliary_files'))
 
     def save_network_to_geojson(self, output_dir):
         geojson.save_network_to_geojson(self, output_dir)

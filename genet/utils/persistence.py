@@ -21,6 +21,14 @@ def is_geojson(path):
     return path.lower().endswith(".geojson")
 
 
+def is_csv(path):
+    return path.lower().endswith(".csv")
+
+
+def is_json(path):
+    return path.lower().endswith(".json")
+
+
 def is_zip(path):
     return path.lower().endswith(".zip")
 

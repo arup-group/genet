@@ -18,6 +18,8 @@ pt2matsim_network_with_geometry_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_with_geometry.xml"))
 pt2matsim_network_with_singular_geometry_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_with_singular_geometry.xml"))
+pt2matsim_NZ_network = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "NZ_network.xml"))
 pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
 pt2matsim_vehicles_file = os.path.abspath(
@@ -42,7 +44,7 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
             'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}
         }}}
 
-    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'))
+    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'), always_xy=True)
 
     g, link_id_mapping, duplicated_nodes, duplicated_link_ids = matsim_reader.read_network(pt2matsim_network_test_file,
                                                                                            transformer)
@@ -59,6 +61,22 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
         assert_semantically_equal(data, correct_edges[edge])
 
     assert_semantically_equal(duplicated_link_ids, {})
+
+
+def test_reading_NZ_network():
+    n = Network('epsg:2193')
+    n.read_matsim_network(pt2matsim_NZ_network)
+    assert_semantically_equal(dict(n.nodes()), {
+        '7872447671905026061': {'id': '7872447671905026061', 'x': 1789300.631705982, 'y': 5494320.626099871,
+                                'lon': 175.23998223484716, 'lat': -40.68028521526985, 's2_id': 7872447671905026061},
+        '7858001326813216825': {'id': '7858001326813216825', 'x': 1756643.5667029365, 'y': 5937269.480530882,
+                                'lon': 174.75350860744126, 'lat': -36.697337065329855, 's2_id': 7858001326813216825}})
+    assert_semantically_equal(dict(n.links()), {
+        '1': {'id': '1', 'from': '7858001326813216825', 'to': '7872447671905026061', 'freespeed': 4.166666666666667,
+              'capacity': 600.0, 'permlanes': 1.0, 'oneway': '1', 'modes': {'car', 'walk'},
+              's2_from': 7858001326813216825, 's2_to': 7872447671905026061, 'attributes': {
+                'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}},
+              'length': 52.765151087870265}})
 
 
 def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_nodes_and_edges():
@@ -97,7 +115,7 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
     correct_link_id_map = {'1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 0},
                            '2': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 1}}
 
-    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'))
+    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'), always_xy=True)
 
     g, link_id_mapping, duplicated_nodes, duplicated_link_ids = matsim_reader.read_network(
         pt2matsim_network_multiple_edges_test_file, transformer)
@@ -154,7 +172,7 @@ def test_read_network_builds_graph_with_unique_links_given_matsim_network_with_c
     correct_link_id_map = {'1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 0},
                            '1_1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 1}}
 
-    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'))
+    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'), always_xy=True)
 
     g, link_id_mapping, duplicated_nodes, duplicated_link_ids = matsim_reader.read_network(
         pt2matsim_network_clashing_link_ids_test_file, transformer)
@@ -197,7 +215,7 @@ def test_read_network_rejects_non_unique_nodes():
 
     correct_link_id_map = {'1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 0}}
 
-    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'))
+    transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'), always_xy=True)
 
     g, link_id_mapping, duplicated_nodes, duplicated_link_ids = matsim_reader.read_network(
         pt2matsim_network_clashing_node_ids_test_file, transformer)

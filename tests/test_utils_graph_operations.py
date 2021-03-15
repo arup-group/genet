@@ -467,7 +467,7 @@ def test_consolidating_node_ids_updates_nodes_data_for_overlapping_nodes_of_diff
                                'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:4326'
-    n_right.add_node('101982', {'id': '101982', 'x': 51.52287873323954, 'y': -0.14625948709424305,
+    n_right.add_node('101982', {'id': '101982', 'x': -0.14625948709424305, 'y': 51.52287873323954,
                                 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.reproject('epsg:27700')
 
@@ -485,7 +485,7 @@ def test_consolidating_node_ids_reprojects_non_overlapping_nodes():
                                'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
     n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:4326'
-    n_right.add_node('101990', {'id': '101990', 'x': 51.5205729332399, 'y': -0.14770188709624754,
+    n_right.add_node('101990', {'id': '101990', 'x': -0.14770188709624754, 'y': 51.5205729332399,
                                 'lon': -0.14770188709624754, 'lat': 51.5205729332399, 's2_id': 5221390304444511271})
     n_right.reproject('epsg:27700')
 
@@ -504,7 +504,7 @@ def test_add_reindexes_node_if_clashes_with_spatially_matched_nodes():
                                'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:4326'
-    n_right.add_node('101990', {'id': '101990', 'x': 51.52287873323954, 'y': -0.14625948709424305,
+    n_right.add_node('101990', {'id': '101990', 'x': -0.14625948709424305, 'y': 51.52287873323954,
                                 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.reproject('epsg:27700')
 
@@ -525,7 +525,7 @@ def test_add_reindexes_node_if_clashes_with_spatially_unmatched_nodes():
                                'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right = Network('epsg:27700')
     n_right.epsg = 'epsg:4326'
-    n_right.add_node('101982', {'id': '101982', 'x': 51.5205729332399, 'y': -0.14770188709624754,
+    n_right.add_node('101982', {'id': '101982', 'x': -0.1477018870962475, 'y': 51.5205729332399,
                                 'lon': -0.14770188709624754, 'lat': 51.5205729332399, 's2_id': 5221390304444511271})
     n_right.reproject('epsg:27700')
 

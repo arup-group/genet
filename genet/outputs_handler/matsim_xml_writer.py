@@ -118,8 +118,8 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                         y = stop_facility.y
                     else:
                         x, y = change_proj(
-                            x=stop_facility.lat,
-                            y=stop_facility.lon,
+                            x=stop_facility.lon,
+                            y=stop_facility.lat,
                             crs_transformer=transformer)
                     transit_stop_attrib['x'], transit_stop_attrib['y'] = str(x), str(y)
                     for k in ADDITIONAL_STOP_FACILITY_ATTRIBUTES:
