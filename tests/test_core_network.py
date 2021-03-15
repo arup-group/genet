@@ -10,7 +10,7 @@ import json
 from shapely.geometry import LineString, Polygon
 from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
-    full_fat_default_config_path, correct_schedule
+    full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path
 from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.inputs_handler import matsim_reader
 from genet.core import Network
@@ -1660,12 +1660,12 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
     network = Network('epsg:27700')
     network.read_osm(osm_test_file, full_fat_default_config_path, 1)
     assert_semantically_equal(dict(network.nodes()), {
-        '0': {'id': '0', 'x': 623528.0918284899, 'y': -5527136.199112928, 'lat': -0.0006545205888310243,
-              'lon': 0.008554364250688652, 's2_id': 1152921492875543713},
-        '1': {'id': '1', 'x': 625278.7312853877, 'y': -5527136.1998170335, 'lat': -0.0006545205888310243,
-              'lon': 0.024278505899735615, 's2_id': 1152921335974974453},
-        '2': {'id': '2', 'x': 621777.4693340246, 'y': -5527136.198414324, 'lat': -0.0006545205888310243,
-              'lon': -0.00716977739835831, 's2_id': 384307157539499829}})
+        '0': {'id': '0', 'x': 622502.8306679451, 'y': -5526117.781903352, 'lat': 0.008554364250688652,
+              'lon': -0.0006545205888310243, 's2_id': 1152921492875543713},
+        '1': {'id': '1', 'x': 622502.8132744529, 'y': -5524378.838447345, 'lat': 0.024278505899735615,
+              'lon': -0.0006545205888310243, 's2_id': 1152921335974974453},
+        '2': {'id': '2', 'x': 622502.8314014417, 'y': -5527856.725358106, 'lat': -0.00716977739835831,
+              'lon': -0.0006545205888310243, 's2_id': 384307157539499829}})
     assert len(list(network.links())) == 11
 
     number_of_0_multi_idx = 0
@@ -1835,9 +1835,9 @@ def test_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_epsg_from
     mocker.patch.object(Schedule, 'read_matsim_schedule')
     network = Network('epsg:27700')
     network.read_matsim_network(pt2matsim_network_test_file)
-    network.read_matsim_schedule(pt2matsim_schedule_file)
+    network.read_matsim_schedule(pt2matsim_schedule_file, vehicles_path='')
 
-    Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file)
+    Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file, '')
 
 
 def test_has_node_when_node_is_in_the_graph():
@@ -2127,7 +2127,8 @@ def test_has_schedule_with_valid_network_routes_with_some_valid_routes(route):
     n.add_link('1', 1, 2)
     n.add_link('2', 2, 3)
     route.route = ['1', '2']
-    route_2 = Route(route_short_name='', mode='', stops=[], trips={},
+    route_2 = Route(route_short_name='', mode='bus', stops=[],
+                    trips={'trip_id': ['1'], 'trip_departure_time': ['13:00:00'], 'vehicle_id': ['veh_1_bus']},
                     arrival_offsets=[], departure_offsets=[], route=['10000'])
     n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route, route_2])])
     assert not n.has_schedule_with_valid_network_routes()

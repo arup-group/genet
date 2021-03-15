@@ -60,3 +60,10 @@ class StopIndexError(Exception):
     Raised in case of Stop indexing inconsistency
     """
     pass
+
+
+class InconsistentVehicleModeError(Exception):
+    """
+    Raised when vehicles are shared between Routes with different modes
+    """
+    pass

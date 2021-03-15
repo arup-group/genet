@@ -1412,8 +1412,8 @@ class Network:
                     new_attributes=self.link(duplicated_link)
                 )
 
-    def read_matsim_schedule(self, path):
-        self.schedule.read_matsim_schedule(path)
+    def read_matsim_schedule(self, schedule_path, vehicles_path=''):
+        self.schedule.read_matsim_schedule(schedule_path, vehicles_path)
 
     def read_auxiliary_link_file(self, file_path):
         aux_file = auxiliary_files.AuxiliaryFile(file_path)

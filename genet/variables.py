@@ -1,5 +1,3 @@
-
-
 # NETWORK LINK ATTRIBUTES for use when saving genet.Network to matsim's network.xml
 NECESSARY_NETWORK_LINK_ATTRIBUTES = ['id', 'from', 'to', 'length', 'freespeed', 'capacity', 'permlanes', 'modes']
 OPTIONAL_NETWORK_LINK_ATTRIBUTES = ['oneway']

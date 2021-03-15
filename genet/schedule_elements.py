@@ -5,8 +5,11 @@ import networkx as nx
 import numpy as np
 import logging
 import os
+import io
+import yaml
+import pkgutil
 from datetime import datetime
-from pandas import DataFrame
+from pandas import DataFrame, Series
 from copy import deepcopy
 import dictdiffer
 from s2sphere import CellId
@@ -25,7 +28,8 @@ import genet.use.schedule as use_schedule
 import genet.validate.schedule_validation as schedule_validation
 import genet.outputs_handler.geojson as gngeojson
 from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisationError, ServiceInitialisationError, \
-    UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData
+    UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData, \
+    InconsistentVehicleModeError
 
 # number of decimal places to consider when comparing lat lons
 SPATIAL_TOLERANCE = 8
@@ -291,7 +295,11 @@ class Route(ScheduleElement):
     ----------
     :param route_short_name: route's short name
     :param mode: mode
-    :param trips: dictionary {'trip_id' : 'HH:MM:SS' - departure time from first stop}
+    :param trips: dictionary with keys: 'trip_id', 'trip_departure_time', 'vehicle_id'. Each value is a list
+        e.g. : {'trip_id': ['trip_1', 'trip_2'],  - IDs of trips, unique within the Route
+                'trip_departure_time': ['HH:MM:SS', 'HH:MM:SS'],  - departure time from first stop for each trip_id
+                'vehicle_id': [veh_1, veh_2]} - vehicle IDs for each trip_id, don't need to be unique
+                    (i.e. vehicles can be shared between trips, but it's up to you to make this physically possible)
     :param arrival_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
     :param departure_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
 
@@ -306,7 +314,7 @@ class Route(ScheduleElement):
     :param kwargs: additional attributes
     """
 
-    def __init__(self, route_short_name: str, mode: str, trips: Dict[str, str], arrival_offsets: List[str],
+    def __init__(self, route_short_name: str, mode: str, trips: Dict[str, List[str]], arrival_offsets: List[str],
                  departure_offsets: List[str], route: list = None, route_long_name: str = '', id: str = '',
                  await_departure: list = None, stops: List[Union[Stop, str]] = None, **kwargs):
         self.route_short_name = route_short_name
@@ -368,7 +376,7 @@ class Route(ScheduleElement):
             self.__class__.__name__,
             id(self),
             len(self.ordered_stops),
-            len(self.trips))
+            len(self.trips['trip_id']))
 
     def __str__(self):
         return self.info()
@@ -450,7 +458,8 @@ class Route(ScheduleElement):
 
     def info(self):
         return '{} ID: {}\nName: {}\nNumber of stops: {}\nNumber of trips: {}'.format(
-            self.__class__.__name__, self.id, self.route_short_name, len(self.ordered_stops), len(self.trips))
+            self.__class__.__name__, self.id, self.route_short_name, len(self.ordered_stops),
+            len(self.trips['trip_id']))
 
     def plot(self, show=True, save=False, output_dir=''):
         if self.ordered_stops:
@@ -488,7 +497,13 @@ class Route(ScheduleElement):
         """
         yield self
 
-    def generate_trips_dataframe(self, gtfs_day='19700101'):
+    def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
         df = None
         _df = DataFrame({
             'departure_time':
@@ -498,9 +513,11 @@ class Route(ScheduleElement):
             'from_stop': self.ordered_stops[:-1],
             'to_stop': self.ordered_stops[1:]
         })
-        for trip_id, trip_dep_time in self.trips.items():
+        for trip_id, trip_dep_time, veh_id in zip(self.trips['trip_id'], self.trips['trip_departure_time'],
+                                                  self.trips['vehicle_id']):
             trip_df = _df.copy()
             trip_df['trip'] = trip_id
+            trip_df['vehicle_id'] = veh_id
             trip_dep_time = use_schedule.sanitise_time(trip_dep_time, gtfs_day=gtfs_day)
             trip_df['departure_time'] = trip_dep_time + trip_df['departure_time']
             trip_df['arrival_time'] = trip_dep_time + trip_df['arrival_time']
@@ -794,10 +811,16 @@ class Service(ScheduleElement):
                 e_c='#EC7063'
             )
 
-    def generate_trips_dataframe(self, gtfs_day='19700101'):
+    def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
         df = None
         for route in self.routes():
-            _df = route.generate_trips_dataframe(gtfs_day=gtfs_day)
+            _df = route.route_trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
             if df is None:
                 df = _df
             else:
@@ -880,9 +903,32 @@ class Schedule(ScheduleElement):
     :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     :param services: list of Service class objects
     :param _graph: Schedule graph, used for re-instantiating the object, passed without `services`
+    :param vehicles: dictionary of vehicle IDs from Route objects, mapping them to vehicle types in vehicle_types.
+        Looks like this: {veh_id : {'type': 'bus'}}
+        Defaults to None and generates itself from the vehicles IDs in Routes, maps to the mode of the Route.
+        Checks if those modes are defined in the vehicle_types.
+    :param vehicle_types: yml file based on `genet/configs/vehicles/vehicle_definitions.yml` or dictionary of vehicle
+        types and their specification. Indexed by the vehicle type that vehicles in the `vehicles` attribute are
+         referring to.
+            {'bus' : {
+                'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}},
+                'length': {'meter': '18.0'},
+                'width': {'meter': '2.5'},
+                'accessTime': {'secondsPerPerson': '0.5'},
+                'egressTime': {'secondsPerPerson': '0.5'},
+                'doorOperation': {'mode': 'serial'},
+                'passengerCarEquivalents': {'pce': '2.8'}}}
+        Defaults to reading `genet/configs/vehicles/vehicle_definitions.yml`
     """
 
-    def __init__(self, epsg: str = '', services: List[Service] = None, _graph: nx.DiGraph = None):
+    def __init__(self, epsg: str = '', services: List[Service] = None, _graph: nx.DiGraph = None, vehicles=None,
+                 vehicle_types: Union[str, dict] = pkgutil.get_data(__name__, os.path.join("configs", "vehicles",
+                                                                                           "vehicle_definitions.yml"))):
+        if isinstance(vehicle_types, dict):
+            self.vehicle_types = vehicle_types
+        else:
+            self.vehicle_types = read_vehicle_types(vehicle_types)
+
         if _graph is not None:
             # check graph type and schema
             verify_graph_schema(_graph)
@@ -923,10 +969,16 @@ class Schedule(ScheduleElement):
         self.init_epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
         self.minimal_transfer_times = {}
+        if vehicles is None:
+            self.vehicles = {}
+            self.generate_vehicles()
+        else:
+            self.vehicles = vehicles
+        self.validate_vehicle_definitions()
         super().__init__()
 
     def __nonzero__(self):
-        return self.services
+        return self.services()
 
     def __getitem__(self, service_id):
         return self._get_service_from_graph(service_id)
@@ -978,6 +1030,139 @@ class Schedule(ScheduleElement):
         schedule_graph.graph['services'] = graph_services
         return schedule_graph
 
+    def generate_vehicles(self, overwrite=False):
+        """
+        Generate vehicles for the Schedule. Returns dictionary of vehicle IDs from Route objects, mapping them to
+        vehicle types in vehicle_types. Looks like this:
+            {veh_id : {'type': 'bus'}}
+        Generates itself from the vehicles IDs which exist in Routes, maps to the mode of the Route.
+        :param overwrite: False by default. If False, does not overwrite the types of vehicles currently in the schedule
+            If True, generates completely new vehicle types for all vehicles in the schedule based on Route modes
+        :return:
+        """
+        if self:
+            # generate vehicles using Services and Routes upon init
+            df = self.route_trips_to_dataframe()[['route_id', 'vehicle_id']]
+            df['type'] = df.apply(
+                lambda x: self._graph.graph['routes'][x['route_id']]['mode'], axis=1)
+            df = df.drop(columns='route_id')
+            # check mode consistency
+            vehicles_to_modes = df.groupby('vehicle_id').apply(lambda x: list(x['type'].unique()))
+            if (vehicles_to_modes.str.len() > 1).any():
+                # there are vehicles which are shared across routes with different modes
+                raise InconsistentVehicleModeError('Modal inconsistencies found while generating vehicles for Schedule.'
+                                                   ' Vehicles and modes in question: '
+                                                   f'{vehicles_to_modes[(vehicles_to_modes.str.len() > 1)].to_dict()}')
+            df = df.set_index('vehicle_id')
+            if overwrite:
+                self.vehicles = df.T.to_dict()
+                self.validate_vehicle_definitions()
+            else:
+                self.vehicles = {**df.T.to_dict(), **self.vehicles}
+
+    def route_trips_to_dataframe(self, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        Check out also `route_trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
+        over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
+        df = self.route_attribute_data(
+            keys=[{'trips': 'trip_id'}, {'trips': 'trip_departure_time'}, {'trips': 'vehicle_id'}],
+            index_name='route_id')
+        df = df.reset_index()
+        df['service_id'] = df['route_id'].apply(lambda x: self._graph.graph['route_to_service_map'][x])
+        df = df.rename(columns={'trips::trip_id': 'trip_id', 'trips::trip_departure_time': 'trip_departure_time',
+                                'trips::vehicle_id': 'vehicle_id'})
+        df = DataFrame({
+            col: np.repeat(df[col].values, df['trip_id'].str.len())
+            for col in set(df.columns) - {'trip_id', 'trip_departure_time', 'vehicle_id'}}
+        ).assign(trip_id=np.concatenate(df['trip_id'].values),
+                 trip_departure_time=np.concatenate(df['trip_departure_time'].values),
+                 vehicle_id=np.concatenate(df['vehicle_id'].values))
+        df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
+        return df
+
+    def set_route_trips_dataframe(self, df):
+        """
+        Option to replace trips data currently stored under routes by an updated `route_trips_to_dataframe`.
+        Need not be exhaustive in terms of routes. I.e. trips for some of the routes can be omitted if no changes are
+        required. Needs to be exhaustive in terms of trips. I.e. if there are changes to a route, all of the trips
+        required to be in that trip need to be present, it overwrites route.trips attribute.
+        :param df: DataFrame generated by `route_trips_to_dataframe` (or of the same format)
+        :return:
+        """
+        # convert route trips dataframe to apply dictionary shape and give to apply to routes method
+        df['trip_departure_time'] = df['trip_departure_time'].dt.strftime('%H:%M:%S')
+        df = df.groupby('route_id').apply(
+            lambda x: Series({'trips': {k: x[k].to_list() for k in ['trip_id', 'trip_departure_time', 'vehicle_id']}}))
+        self.apply_attributes_to_routes(df.T.to_dict())
+
+    def overlapping_vehicle_ids(self, vehicles):
+        return set(self.vehicles.keys()) & set(vehicles.keys())
+
+    def overlapping_vehicle_types(self, vehicle_types):
+        return set(self.vehicle_types.keys()) & set(vehicle_types.keys())
+
+    def update_vehicles(self, vehicles, vehicle_types, overwrite=True):
+        """
+        Updates vehicles and vehicle types
+        :param vehicles: vehicles to add
+        :param vehicle_types: vehicle types to add
+        :param overwrite: defaults to True
+            If True: overwrites overlapping vehicle types data currently in the Schedule, adds vehicles as they are,
+                overwriting in case of clash
+            If False: adds vehicles and vehicle types that do not clash with those already stored in the Schedule
+        :return:
+        """
+        # check for vehicle ID overlap
+        clashing_vehicles = self.overlapping_vehicle_ids(vehicles=vehicles)
+        if clashing_vehicles:
+            logging.warning(f'The following vehicles clash: {clashing_vehicles}')
+            if overwrite:
+                logging.warning('Overwrite is on. Vehicles listed above will be overwritten.')
+            else:
+                logging.warning('Overwrite is off. Clashing vehicles will remain as they are. '
+                                'All others will be added.')
+        # check for vehicle type overlap
+        clashing_vehicle_types = self.overlapping_vehicle_types(vehicle_types=vehicle_types)
+        if clashing_vehicle_types:
+            logging.warning(f'The following vehicle types clash: {clashing_vehicle_types}')
+            if overwrite:
+                logging.warning('Overwrite is on. Vehicle types listed above will be overwritten.')
+            else:
+                logging.warning('Overwrite is off. Clashing vehicle types will remain as they are. '
+                                'All others will be added.')
+
+        if overwrite:
+            self.vehicles = {**self.vehicles, **vehicles}
+            self.vehicle_types = {**self.vehicle_types, **vehicle_types}
+        else:
+            self.vehicles = {**vehicles, **self.vehicles}
+            self.vehicle_types = {**vehicle_types, **self.vehicle_types}
+
+        self.validate_vehicle_definitions()
+        return clashing_vehicles, clashing_vehicle_types
+
+    def validate_vehicle_definitions(self):
+        """
+        Checks if modes mapped to vehicle IDs in vehicles attribute of Schedule are defined in the vehicle_types.
+        :return: returns True if the vehicle types in the `vehicles` attribute exist in the `vehicle_types` attribute.
+            But useful even just for the logging messages.
+        """
+        df_vehicles = graph_operations.build_attribute_dataframe(iterator=self.vehicles.items(), keys=['type'])
+        if set(df_vehicles['type']).issubset(set(self.vehicle_types.keys())):
+            return True
+        else:
+            missing_vehicle_types = set(df_vehicles['type']) - set(self.vehicle_types.keys())
+            logging.warning('The following vehicle types are missing from the `vehicle_types` attribute: '
+                            f'{missing_vehicle_types}')
+            logging.warning('Vehicles affected by missing vehicle types: '
+                            f"{df_vehicles[df_vehicles['type'].isin(missing_vehicle_types)].T.to_dict()}")
+        return False
+
     def reference_nodes(self):
         return set(self._graph.nodes())
 
@@ -1004,11 +1189,16 @@ class Schedule(ScheduleElement):
         if isinstance(self, Schedule):
             raise NotImplementedError('Schedule is not currently an indexed object')
 
-    def add(self, other):
+    def add(self, other, overwrite=True):
         """
         Adds another Schedule. They have to be separable! I.e. the keys in services cannot overlap with the ones
         already present (TODO: add merging complicated schedules, parallels to the merging gtfs work)
         :param other: the other Schedule object to add
+        :param overwrite: defaults to True
+            If True: overwrites overlapping vehicle types data currently in the Schedule, adds vehicles as they are,
+                overwriting in case of clash
+            If False: adds vehicles and vehicle types from other that do not clash with those already stored in the
+            Schedule
         :return:
         """
         if not self.is_separable_from(other):
@@ -1031,6 +1221,9 @@ class Schedule(ScheduleElement):
 
         # merge change_log DataFrames
         self._graph.graph['change_log'] = self.change_log().merge_logs(other.change_log())
+
+        # merge vehicles
+        self.update_vehicles(other.vehicles, other.vehicle_types, overwrite=overwrite)
 
     def is_separable_from(self, other):
         unique_service_ids = set(other.service_ids()) & set(self.service_ids()) == set()
@@ -1072,7 +1265,15 @@ class Schedule(ScheduleElement):
             e_c='#EC7063'
         )
 
-    def generate_trips_dataframe(self, gtfs_day='19700101'):
+    def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        Check out also `route_trips_to_dataframe` for a simplified version (trips, their departure times and vehicles
+        only)
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
         df = self.route_attribute_data(
             keys=['route_short_name', 'mode', 'trips', 'arrival_offsets', 'departure_offsets', 'ordered_stops', 'id'])
         df = df.rename(columns={'id': 'route', 'route_short_name': 'route_name'})
@@ -1104,12 +1305,15 @@ class Schedule(ScheduleElement):
         # expand the frame on all the trips each route makes
         trips = np.concatenate(
             df['trips'].apply(
-                lambda x: [(k, use_schedule.sanitise_time(time, gtfs_day)) for k, time in x.items()]).values)
+                lambda x: [(trip_id, use_schedule.sanitise_time(trip_dep_time, gtfs_day), veh_id) for
+                           trip_id, trip_dep_time, veh_id in
+                           zip(x['trip_id'], x['trip_departure_time'], x['vehicle_id'])]).values)
         df = DataFrame({
-            col: np.repeat(df[col].values, df['trips'].str.len())
+            col: np.repeat(df[col].values, df['trips'].str['trip_id'].str.len())
             for col in set(df.columns) - {'trips'}}
         ).assign(trip=trips[:, 0],
-                 trip_dep_time=trips[:, 1]).sort_values(by=['route', 'trip', 'departure_time']).reset_index(drop=True)
+                 trip_dep_time=trips[:, 1],
+                 vehicle_id=trips[:, 2]).sort_values(by=['route', 'trip', 'departure_time']).reset_index(drop=True)
 
         df['departure_time'] = df['trip_dep_time'] + df['departure_time']
         df['arrival_time'] = df['trip_dep_time'] + df['arrival_time']
@@ -1852,11 +2056,20 @@ class Schedule(ScheduleElement):
         logging.info('Finished generating standard outputs. Zipping folder.')
         persistence.zip_folder(output_dir)
 
-    def read_matsim_schedule(self, path):
-        services, minimal_transfer_times = matsim_reader.read_schedule(path, self.epsg)
-        matsim_schedule = self.__class__(services=services, epsg=self.epsg)
+    def read_matsim_schedule(self, path_to_schedule, path_to_vehicles=''):
+        services, minimal_transfer_times = matsim_reader.read_schedule(path_to_schedule, self.epsg)
+        if path_to_vehicles:
+            vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
+            matsim_schedule = self.__class__(
+                services=services, epsg=self.epsg, vehicles=vehicles, vehicle_types=vehicle_types)
+        else:
+            matsim_schedule = self.__class__(services=services, epsg=self.epsg)
         matsim_schedule.minimal_transfer_times = minimal_transfer_times
         self.add(matsim_schedule)
+
+    def read_matsim_vehicles(self, path_to_vehicles):
+        vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
+        self.update_vehicles(vehicles, vehicle_types)
 
     def read_gtfs_schedule(self, path, day):
         """
@@ -1889,8 +2102,8 @@ class Schedule(ScheduleElement):
 
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)
-        vehicles = matsim_xml_writer.write_matsim_schedule(output_dir, self)
-        matsim_xml_writer.write_vehicles(output_dir, vehicles)
+        matsim_xml_writer.write_matsim_schedule(output_dir, self)
+        matsim_xml_writer.write_vehicles(output_dir, self.vehicles, self.vehicle_types)
         self.change_log().export(os.path.join(output_dir, 'schedule_change_log.csv'))
 
 
@@ -1927,3 +2140,14 @@ def verify_graph_schema(graph):
                 missing_attribs = required_service_attributes - set(service_dict.keys())
                 raise ScheduleElementGraphSchemaError(f'Service {service_id} is missing the following attributes: '
                                                       f'{missing_attribs}')
+
+
+def read_vehicle_types(yml):
+    """
+    :param yml: path to .yml file based on example vehicles config in `genet/configs/vehicles/vehicle_definitions.yml`
+        or a bytes stream of that file
+    :return:
+    """
+    if persistence.is_yml(yml):
+        yml = io.open(yml, mode='r')
+    return yaml.load(yml, Loader=yaml.FullLoader)['VEHICLE_TYPES']

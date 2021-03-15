@@ -18,6 +18,12 @@ if __name__ == '__main__':
                             required=False,
                             default='')
 
+    arg_parser.add_argument('-v',
+                            '--vehicles',
+                            help='Location of the vehicles.xml file',
+                            required=False,
+                            default='')
+
     arg_parser.add_argument('-cp',
                             '--current_projection',
                             help='The projection network is currently in, eg. "epsg:27700"',
@@ -43,6 +49,7 @@ if __name__ == '__main__':
     args = vars(arg_parser.parse_args())
     network = args['network']
     schedule = args['schedule']
+    vehicles = args['vehicles']
     current_projection = args['current_projection']
     new_projection = args['new_projection']
     processes = args['processes']
@@ -54,8 +61,12 @@ if __name__ == '__main__':
     logging.info('Reading in network at {}'.format(network))
     n.read_matsim_network(network)
     if schedule:
-        logging.info('Reading in schedule at {}'.format(schedule))
-        n.read_matsim_schedule(schedule)
+        logging.info(f'Reading in schedule at {schedule}')
+        if vehicles:
+            logging.info(f'Reading in vehicles at {vehicles}')
+        else:
+            logging.info('No vehicles file given with the Schedule, vehicle types will be based on the default.')
+        n.read_matsim_schedule(schedule, vehicles)
     else:
         logging.info('You have not passed the schedule.xml file. If your network is road only, that is fine, otherwise'
                      'if you mix and match them, you will have a bad time.')
