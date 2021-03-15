@@ -1,4 +1,5 @@
 import s2sphere
+from pyproj import Geod
 from genet.utils import spatial
 from tests.fixtures import *
 from shapely.geometry import LineString, Polygon, Point
@@ -6,6 +7,24 @@ from shapely.geometry import LineString, Polygon, Point
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 test_geojson = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "test_geojson.geojson"))
+
+
+def test_azimuth_to_name_with_east():
+    geodesic = Geod(ellps='WGS84')
+    # lon = x, lat = y
+    assert 'East Bound' == spatial.map_azimuth_to_name(geodesic.inv(lons1=0, lats1=0, lons2=1, lats2=0)[0])
+
+
+def test_azimuth_to_name_with_south():
+    geodesic = Geod(ellps='WGS84')
+    # lon = x, lat = y
+    assert 'South Bound' == spatial.map_azimuth_to_name(geodesic.inv(lons1=0, lats1=0, lons2=0, lats2=-1)[0])
+
+
+def test_azimuth_to_name_with_south_west():
+    geodesic = Geod(ellps='WGS84')
+    # lon = x, lat = y
+    assert 'South-West Bound' == spatial.map_azimuth_to_name(geodesic.inv(lons1=0, lats1=0, lons2=-1, lats2=-1)[0])
 
 
 def test_decode_polyline_to_s2_points():

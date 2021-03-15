@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from typing import Union, Dict, List
-from pyproj import Transformer
+from pyproj import Transformer, Geod
 import networkx as nx
 import numpy as np
 import logging
@@ -11,6 +11,8 @@ import pkgutil
 from datetime import datetime
 from pandas import DataFrame, Series
 from copy import deepcopy
+from collections import defaultdict
+import itertools
 import dictdiffer
 from s2sphere import CellId
 import genet.utils.plot as plot
@@ -80,9 +82,41 @@ class ScheduleElement:
     def reference_nodes(self):
         pass
 
+    def route_reference_nodes(self, route_id):
+        """
+        Method to extract nodes for a route straight from the graph, equivalent to route_object.reference_nodes() but
+        faster if used from a higher order object like Service or Schedule
+        :return: graph nodes for the route with ID: route_id - not ordered
+        """
+        return {node for node, node_routes in self._graph.nodes(data='routes') if route_id in node_routes}
+
+    def service_reference_nodes(self, service_id):
+        """
+        Method to extract nodes for a service straight from the graph, equivalent to service_object.reference_nodes()
+        but faster if used from a higher order object: Schedule
+        :return: graph nodes for the service with ID: service_id - not ordered
+        """
+        return {node for node, node_services in self._graph.nodes(data='services') if service_id in node_services}
+
     @abstractmethod
     def reference_edges(self):
         pass
+
+    def route_reference_edges(self, route_id):
+        """
+        Method to extract edges for a route straight from the graph, equivalent to route_object.reference_edges() but
+        faster if used from a higher order object like Service or Schedule
+        :return: graph edges for the route with ID: route_id
+        """
+        return {(u, v) for u, v, edge_routes in self._graph.edges(data='routes') if route_id in edge_routes}
+
+    def service_reference_edges(self, service_id):
+        """
+        Method to extract nodes for a service straight from the graph, equivalent to service_object.reference_edges()
+        but faster if used from a higher order object: Schedule
+        :return: graph edges for the service with ID: service_id
+        """
+        return {(u, v) for u, v, edge_services in self._graph.edges(data='services') if service_id in edge_services}
 
     def stop(self, stop_id):
         stop_data = {k: v for k, v in dict(self._graph.nodes[stop_id]).items() if k not in {'routes', 'services'}}
@@ -407,10 +441,10 @@ class Route(ScheduleElement):
                 setattr(self, k, v)
 
     def reference_nodes(self):
-        return {node for node, node_routes in self._graph.nodes(data='routes') if self.id in node_routes}
+        return self.route_reference_nodes(self.id)
 
     def reference_edges(self):
-        return {(u, v) for u, v, edge_routes in self._graph.edges(data='routes') if self.id in edge_routes}
+        return self.route_reference_edges(self.id)
 
     def modes(self):
         return {self.mode}
@@ -749,10 +783,101 @@ class Service(ScheduleElement):
         return unique_routes
 
     def reference_nodes(self):
-        return {node for node, node_services in self._graph.nodes(data='services') if self.id in node_services}
+        return self.service_reference_nodes(self.id)
 
     def reference_edges(self):
-        return {(u, v) for u, v, edge_services in self._graph.edges(data='services') if self.id in edge_services}
+        return self.service_reference_edges(self.id)
+
+    def split_by_direction(self):
+        """
+        Divide the routes of the Service by direction e.g. North- and Southbound. Depending on the mode,
+        typically a Service will have either 1 or 2 directions. Some Services will have more, especially ones that
+        are loops.
+        :return: Dictionary with directions as keys and lists of routes which head in that direction as values. E.g.:
+        {
+            North-East Bound: ['route_1', 'route_2'],
+            South-West Bound: ['route_3', 'route_4']
+        }
+        """
+        geodesic = Geod(ellps='WGS84')
+        route_direction_map = {}
+        for route_id in self.route_ids():
+            ordered_stops = self._graph.graph['routes'][route_id]['ordered_stops']
+            start_stop = self.stop(ordered_stops[0])
+            end_stop = self.stop(ordered_stops[-1])
+            if start_stop == end_stop:
+                # just check which way it's heading
+                end_stop = self.stop(ordered_stops[1])
+            azimuth = geodesic.inv(
+                lats1=start_stop.lat,
+                lons1=start_stop.lon,
+                lats2=end_stop.lat,
+                lons2=end_stop.lon)[0]
+            route_direction_map[route_id] = spatial.map_azimuth_to_name(azimuth)
+        res = defaultdict(list)
+        for key, val in sorted(route_direction_map.items()):
+            res[val].append(key)
+        return dict(res)
+
+    def split_graph(self):
+        """
+        Divide the routes and the graph of the Service by share of Service's graph. Most services with have one or two
+        outputs, but some will have more. The results of this method may vary from `split_by_direction`. The output
+        graph edges in the list will be independent of each other (the edges will be independent, but they may share
+        nodes), sometimes producing more than two sets.
+        The method is not symmetric, if the Routes in a Service are listed in a different order this may lead to some
+        graph groups merging (in a desired way).
+        :return: tuple (routes, graph_groups) where routes is a list of sets with grouped route IDs and graph_groups
+            is a list of the same length as routes, each item is a set of graph edges and corresponds to the item in
+            routes list in that same index
+        """
+        def route_overlap_condition(graph_edge_group):
+            edges_in_common = bool(graph_edge_group & route_edges)
+            if edges_in_common:
+                return edges_in_common
+            else:
+                from_nodes = {i[0] for i in route_edges}
+                to_nodes = {i[1] for i in route_edges}
+                shares_from_node = (from_nodes - to_nodes) & {i[0] for i in graph_edge_group}
+                shares_to_node = (to_nodes - from_nodes) & {i[1] for i in graph_edge_group}
+                return bool(shares_from_node) & bool(shares_to_node)
+
+        def route_overlap_mask():
+            return [route_overlap_condition(graph_edge_group) for graph_edge_group in graph_edges]
+
+        def merge_multiple_overlaps():
+            merged_route_group = {route_id}
+            merged_graph_edges = route_edges
+            overlap_routes = list(itertools.compress(routes, overlap_mask))
+            overlap_graph_edges = list(itertools.compress(graph_edges, overlap_mask))
+            for r, e in zip(overlap_routes, overlap_graph_edges):
+                merged_route_group |= r
+                merged_graph_edges |= e
+                routes.remove(r)
+                graph_edges.remove(e)
+            routes.append(merged_route_group)
+            graph_edges.append(merged_graph_edges)
+
+        routes = []
+        graph_edges = []
+        for route_id in self.route_ids():
+            route_edges = set(self.route_reference_edges(route_id))
+            overlap_mask = route_overlap_mask()
+            route_overlap = sum(overlap_mask)
+            if route_overlap == 0:
+                routes.append({route_id})
+                graph_edges.append(route_edges)
+            elif route_overlap == 1:
+                for routes_group, graph_edge_group in zip(list(itertools.compress(routes, overlap_mask)),
+                                                          list(itertools.compress(graph_edges, overlap_mask))):
+                    routes_group.add(route_id)
+                    graph_edge_group |= route_edges
+            else:
+                logging.warning(f'Graph of route: `{route_id}` overlaps with multiple current graph groups. This will '
+                                f'result in merging of those groups. This is usually desirable but check results to '
+                                f'ensure expected behaviour.')
+                merge_multiple_overlaps()
+        return routes, graph_edges
 
     def modes(self):
         return {r.mode for r in self.routes()}

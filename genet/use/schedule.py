@@ -111,8 +111,7 @@ def aggregate_trips_per_day_per_route_by_end_stop_pairs(schedule, trips_per_day_
         end_points = set()
         for route in schedule.routes():
             if route.mode == mode:
-                end_points |= {stop.id for stop in route.stops() if
-                               (route.graph().out_degree(stop.id) == 0) or (route.graph().in_degree(stop.id) == 0)}
+                end_points |= {route.ordered_stops[0], route.ordered_stops[-1]}
         df_stops = pd.DataFrame.from_records(
             list(itertools.combinations({schedule.stop(pt).id for pt in end_points}, 2)),
             columns=['station_A', 'station_B']
