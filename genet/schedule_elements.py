@@ -873,6 +873,9 @@ class Service(ScheduleElement):
                     routes_group.add(route_id)
                     graph_edge_group |= route_edges
             else:
+                logging.warning(f'Graph of route: `{route_id}` overlaps with multiple current graph groups. This will '
+                                f'result in merging of those groups. This is usually desirable but check results to '
+                                f'ensure expected behaviour.')
                 merge_multiple_overlaps()
         return routes, graph_edges
 
