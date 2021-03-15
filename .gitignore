@@ -129,3 +129,6 @@ mprofile*
 benchmark-outputs/
 working-dir/
 scripts/secrets-mgr-exploration.py
+*.nbconvert.*
+example_data/pt2matsim_network/genet_output/*
+genet_output/*

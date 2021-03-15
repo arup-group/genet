@@ -33,18 +33,16 @@ def generate_edge_vph_geodataframe(df, gdf_links):
     :return:
     """
     df.loc[:, 'hour'] = df['departure_time'].dt.round("H")
-    df = df.groupby(['hour', 'trip', 'from_stop', 'to_stop']).count().reset_index()
+    groupby_cols = ['hour', 'trip', 'from_stop', 'from_stop_name', 'to_stop', 'to_stop_name']
+    df = df.groupby(groupby_cols).count().reset_index()
     df.loc[:, 'vph'] = 1
-    df = df.groupby(['hour', 'from_stop', 'to_stop']).sum().reset_index()
+    groupby_cols.remove('trip')
+    df = df.groupby(groupby_cols).sum().reset_index()
 
-    cols_to_delete = ['departure_time', 'arrival_time']
-    for col in ['route', 'service', 'mode']:
-        if col in df.columns:
-            cols_to_delete.append(col)
-
-    df = pd.merge(gpd.GeoDataFrame(df), gdf_links[['u', 'v', 'geometry']], left_on=['from_stop', 'to_stop'],
+    cols_to_delete = list(set(df.columns) - (set(groupby_cols) | {'vph'}))
+    df = pd.merge(gpd.GeoDataFrame(df), gdf_links, left_on=['from_stop', 'to_stop'],
                   right_on=['u', 'v'])
-    cols_to_delete.extend(['u', 'v'])
+    cols_to_delete.extend(['u', 'v', 'key', 'routes', 'services'])
 
     df = df.drop(cols_to_delete, axis=1)
     return df

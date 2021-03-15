@@ -22,6 +22,8 @@ pt2matsim_NZ_network = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "NZ_network.xml"))
 pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
+pt2matsim_vehicles_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml"))
 
 
 def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
@@ -328,3 +330,17 @@ def test_read_schedule_reads_the_data_correctly(correct_services_from_test_pt2ma
 
     assert correct_services_from_test_pt2matsim_schedule == services
     assert_semantically_equal(minimalTransferTimes, correct_minimalTransferTimes)
+
+
+def test_reading_pt2matsim_vehicles():
+    vehicles, vehicle_types = matsim_reader.read_vehicles(pt2matsim_vehicles_file)
+
+    assert_semantically_equal(vehicles, {'veh_0_bus': {'type': 'bus'}})
+    assert_semantically_equal(vehicle_types, {
+        'bus': {'capacity': {'seats': {'persons': '71'}, 'standingRoom': {'persons': '1'}},
+                'length': {'meter': '18.0'},
+                'width': {'meter': '2.5'},
+                'accessTime': {'secondsPerPerson': '0.5'},
+                'egressTime': {'secondsPerPerson': '0.5'},
+                'doorOperation': {'mode': 'serial'},
+                'passengerCarEquivalents': {'pce': '2.8'}}})
