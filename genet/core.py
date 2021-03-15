@@ -1339,7 +1339,7 @@ class Network:
 
     def generate_standard_outputs(self, output_dir, gtfs_day='19700101'):
         """
-        Generates geojsons that can be used for generating standard kepler visualisations and png plots.
+        Generates geojsons that can be used for generating standard kepler visualisations.
         These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
         the shape of modal subgraphs.
         :param output_dir: path to folder where to save resulting geojsons

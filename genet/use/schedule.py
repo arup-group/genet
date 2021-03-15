@@ -43,7 +43,6 @@ def generate_edge_vph_geodataframe(df, gdf_links):
     df = pd.merge(gpd.GeoDataFrame(df), gdf_links, left_on=['from_stop', 'to_stop'],
                   right_on=['u', 'v'])
     cols_to_delete.extend(['u', 'v', 'key', 'routes', 'services'])
-
     df = df.drop(cols_to_delete, axis=1)
     return df
 
