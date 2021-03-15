@@ -72,7 +72,9 @@ def test_reading_geojson_to_shapely():
 
 
 def test_s2_hex_to_cell_union():
-    hex_area = '48761ad71,48761ad723,48761ad724c,48761ad73c,48761ad744,48761ad75d3,48761ad75d5,48761ad765,48761ad767,48761ad76c,48761ad774,48761ad779,48761ad77b,48761ad783,48761ad784c,48761ad7854,48761ad794,48761ad79c,48761ad7a4,48761ad7ac,48761ad7b1,48761ad7bc'
+    hex_area = '48761ad71,48761ad723,48761ad724c,48761ad73c,48761ad744,48761ad75d3,48761ad75d5,48761ad765,48761ad767,' \
+               '48761ad76c,48761ad774,48761ad779,48761ad77b,48761ad783,48761ad784c,48761ad7854,48761ad794,48761ad79c,' \
+               '48761ad7a4,48761ad7ac,48761ad7b1,48761ad7bc'
     cell_union = spatial.s2_hex_to_cell_union(hex_area)
     assert {cell.id() for cell in cell_union.cell_ids()} == {
         5221390329319522304, 5221390329709592576, 5221390328971395072, 5221390329290162176, 5221390329843810304,
@@ -186,7 +188,7 @@ def test_SpatialTree_adds_links(network):
                               {'link_1': {}, 'link_2': {}, 'link_3': {}, 'link_4': {}})
 
 
-def test_SpatialTree_closest_links_in_london(network):
+def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(network):
     spatial_tree = spatial.SpatialTree(network)
     stops = GeoDataFrame({
         'id': {0: 'stop_10m_to_link_1', 1: 'stop_15m_to_link_2', 2: 'stop_20m_to_link_1'},
@@ -200,6 +202,21 @@ def test_SpatialTree_closest_links_in_london(network):
                               {'stop_10m_to_link_1': ['link_1'],
                                'stop_20m_to_link_1': ['link_1'],
                                'stop_15m_to_link_2': ['link_2', 'link_4']})
+
+
+def test_SpatialTree_closest_links_in_london_finds_a_link_within_13_metres(network):
+    spatial_tree = spatial.SpatialTree(network)
+    stops = GeoDataFrame({
+        'id': {0: 'stop_10m_to_link_1', 1: 'stop_15m_to_link_2', 2: 'stop_20m_to_link_1'},
+        'geometry': {0: Point(-0.15186089346604492, 51.51950409732838),
+                     1: Point(-0.15164747576623197, 51.520660715220636),
+                     2: Point(-0.1520233977548685, 51.51952913606585)}})
+    stops.crs = {'init': 'epsg:4326'}
+
+    closest_links = spatial_tree.closest_links(stops, 13, modes='car')
+    closest_links = closest_links.dropna()
+    assert_semantically_equal(closest_links.reset_index().groupby('id')['link_id'].apply(list).to_dict(),
+                              {'stop_10m_to_link_1': ['link_1']})
 
 
 def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
@@ -218,6 +235,7 @@ def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
     stops.crs = {'init': 'epsg:4326'}
 
     closest_links = spatial_tree.closest_links(stops, 20, modes='car')
+    closest_links = closest_links.dropna()
     assert_semantically_equal(closest_links.reset_index().groupby('index')['link_id'].apply(list).to_dict(),
                               {'stop_15m_to_link_1': ['link_1']})
 
@@ -242,7 +260,7 @@ def test_SpatialTree_closest_links_in_indonesia_doesnt_find_link_within_10_metre
     assert closest_links.empty
 
 
-def test_SpatialTree_closest_links_in_north_canada_finds_link_within_20_metres():
+def test_SpatialTree_closest_links_in_north_canada_finds_link_within_30_metres():
     # (out in the boonies)
     n = Network('epsg:4326')
     n.add_nodes({'1': {'x': -93.25129666354827, 'y': 73.66401680598872},
