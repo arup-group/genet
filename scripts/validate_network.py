@@ -22,6 +22,12 @@ if __name__ == '__main__':
                             required=False,
                             default='')
 
+    arg_parser.add_argument('-v',
+                            '--vehicles',
+                            help='Location of the vehicles.xml file',
+                            required=False,
+                            default='')
+
     arg_parser.add_argument('-p',
                             '--projection',
                             help='The projection network is in, eg. "epsg:27700"',
@@ -35,6 +41,7 @@ if __name__ == '__main__':
     args = vars(arg_parser.parse_args())
     network = args['network']
     schedule = args['schedule']
+    vehicles = args['vehicles']
     projection = args['projection']
     output_dir = args['output_dir']
     ensure_dir(output_dir)
@@ -45,8 +52,12 @@ if __name__ == '__main__':
     logging.info('Reading in network at {}'.format(network))
     n.read_matsim_network(network)
     if schedule:
-        logging.info('Reading in schedule at {}'.format(schedule))
-        n.read_matsim_schedule(schedule)
+        logging.info(f'Reading in schedule at {schedule}')
+        if vehicles:
+            logging.info(f'Reading in vehicles at {vehicles}')
+        else:
+            logging.info('No vehicles file given with the Schedule, vehicle types will be based on the default.')
+        n.read_matsim_schedule(schedule, vehicles)
 
     logging.info('Generating validation report')
     report = n.generate_validation_report()

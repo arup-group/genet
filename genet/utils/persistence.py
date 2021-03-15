@@ -11,6 +11,12 @@ def ensure_dir(direc):
             logging.warning(e)
 
 
+def is_yml(path):
+    if isinstance(path, str):
+        return path.lower().endswith(".yml") or path.lower().endswith(".yaml")
+    return False
+
+
 def is_geojson(path):
     return path.lower().endswith(".geojson")
 

@@ -141,6 +141,7 @@ def parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, route_db, servi
 
     schedule = {}
 
+    v_id = 0  # generating some ids for vehicles
     for trip_id, trip_val in trips_db.items():
         route_id = trip_val['route_id']
         if trip_val['service_id'] in services:
@@ -151,31 +152,38 @@ def parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, route_db, servi
             stops = [stop_time['stop_id'] for stop_time in stop_times]
             s2_stops = [spatial.generate_index_s2(
                 lat=float(stops_db[stop]['stop_lat']), lng=float(stops_db[stop]['stop_lon'])) for stop in stops]
+            mode = get_mode(route_val['route_type'])
 
             if len(stops) > 1:
                 # get the route
                 i = get_the_route(route_id, stops)
+                vehicle_id = 'veh_{}_{}'.format(v_id, mode)
                 if i is not None:
                     # add this trip and it's departure time to already existing route
-                    schedule[route_id][i]['trips'][trip_id] = stop_times[0]['arrival_time']
+                    schedule[route_id][i]['trips']['trip_id'].append(trip_id)
+                    schedule[route_id][i]['trips']['trip_departure_time'].append(stop_times[0]['arrival_time'])
+                    schedule[route_id][i]['trips']['vehicle_id'].append(vehicle_id)
                 if i is None:
                     # fresh route
                     schedule[route_id].append({
                         # route info
                         'route_short_name': route_val['route_short_name'],
                         'route_long_name': route_val['route_long_name'],
-                        'mode': get_mode(route_val['route_type']),
+                        'mode': mode,
                         'route_color': '#{}'.format(route_val['route_color']),
-                        # trip ids and their own departure times
-                        'trips': {trip_id: stop_times[0]['arrival_time']},
+                        # trip ids, their own departure times and vehicles
+                        'trips': {
+                            'trip_id': [trip_id],
+                            'trip_departure_time': [stop_times[0]['arrival_time']],
+                            'vehicle_id': [vehicle_id]},
                         # stops and time offsets for each stop along the route
                         'stops': [],
                         'arrival_offsets': [],
                         'departure_offsets': []
                     })
-                    i = len(schedule[route_id]) - 1
-                    departure_time = get_time(schedule[route_id][i]['trips'][trip_id])
-                    update_route_info(route_id, departure_time, i)
+                    departure_time = get_time(stop_times[0]['arrival_time'])
+                    update_route_info(route_id, departure_time, len(schedule[route_id]) - 1)
+                v_id += 1
             elif len(schedule[route_id]) == 0:
                 del schedule[route_id]
 

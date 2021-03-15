@@ -8,15 +8,17 @@ from tests.fixtures import *
 from tests.test_core_components_route import self_looping_route, route
 from tests.test_core_components_service import service
 from genet.inputs_handler import matsim_reader, gtfs_reader
-from genet.schedule_elements import Schedule, Service, Route, Stop
+from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation
 from genet.exceptions import ServiceIndexError, RouteIndexError, StopIndexError, UndefinedCoordinateSystemError, \
-    ConflictingStopData
+    ConflictingStopData, InconsistentVehicleModeError
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
+pt2matsim_vehicles_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml"))
 gtfs_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs"))
 
 
@@ -26,14 +28,18 @@ def schedule():
                     mode='bus', id='1',
                     stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
                            Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '13:00:00', '2': '13:30:00'},
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['13:00:00', '13:30:00'],
+                           'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     route_2 = Route(route_short_name='name_2',
                     mode='bus', id='2',
                     stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
                            Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '11:00:00', '2': '13:00:00'},
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['11:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     service = Service(id='service', routes=[route_1, route_2])
@@ -49,7 +55,9 @@ def strongly_connected_schedule():
                            Stop(id='3', x=3, y=3, epsg='epsg:27700', name='Stop_3'),
                            Stop(id='4', x=7, y=5, epsg='epsg:27700', name='Stop_4'),
                            Stop(id='1', x=4, y=2, epsg='epsg:27700', name='Stop_1')],
-                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
+                    trips={'trip_id': ['1', '2'], 'trip_departure_time': ['11:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
+                    arrival_offsets=['1', '2'], departure_offsets=['1', '2'],
                     id='1')
     route_2 = Route(route_short_name='name_2',
                     mode='bus',
@@ -58,7 +66,9 @@ def strongly_connected_schedule():
                            Stop(id='7', x=3, y=3, epsg='epsg:27700', name='Stop_7'),
                            Stop(id='8', x=7, y=5, epsg='epsg:27700', name='Stop_8'),
                            Stop(id='5', x=4, y=2, epsg='epsg:27700', name='Stop_5')],
-                    trips={'1': '1', '2': '2'}, arrival_offsets=['1', '2', '3', '4', '5'],
+                    trips={'trip_id': ['1', '2'], 'trip_departure_time': ['11:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
+                    arrival_offsets=['1', '2', '3', '4', '5'],
                     departure_offsets=['1', '2', '3', '4', '5'],
                     id='2')
     service = Service(id='service', routes=[route_1, route_2])
@@ -104,7 +114,9 @@ def test_initiating_schedule(schedule):
     assert_semantically_equal(s._graph.graph,
                               {'name': 'Schedule graph',
                                'routes': {'2': {'route_short_name': 'name_2', 'mode': 'bus',
-                                                'trips': {'1': '11:00:00', '2': '13:00:00'},
+                                                'trips': {'trip_id': ['1', '2'],
+                                                          'trip_departure_time': ['11:00:00', '13:00:00'],
+                                                          'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
                                                 'arrival_offsets': ['00:00:00', '00:03:00',
                                                                     '00:07:00', '00:13:00'],
                                                 'departure_offsets': ['00:00:00', '00:05:00',
@@ -113,7 +125,9 @@ def test_initiating_schedule(schedule):
                                                 'await_departure': [],
                                                 'ordered_stops': ['5', '6', '7', '8']},
                                           '1': {'route_short_name': 'name', 'mode': 'bus',
-                                                'trips': {'1': '13:00:00', '2': '13:30:00'},
+                                                'trips': {'trip_id': ['1', '2'],
+                                                          'trip_departure_time': ['13:00:00', '13:30:00'],
+                                                          'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                                                 'arrival_offsets': ['00:00:00', '00:03:00',
                                                                     '00:07:00', '00:13:00'],
                                                 'departure_offsets': ['00:00:00', '00:05:00',
@@ -132,14 +146,18 @@ def test_initiating_schedule_with_non_uniquely_indexed_objects():
                     mode='bus', id='',
                     stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
                            Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '13:00:00', '2': '13:30:00'},
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['13:00:00', '13:30:00'],
+                           'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     route_2 = Route(route_short_name='name_2',
                     mode='bus', id='',
                     stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
                            Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '11:00:00', '2': '13:00:00'},
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['11:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_2_bus', 'veh_3_bus']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     service1 = Service(id='service', routes=[route_1, route_2])
@@ -162,18 +180,20 @@ def test_accessing_route(schedule):
                                                Stop(id='2', x=1, y=2, epsg='epsg:27700'),
                                                Stop(id='3', x=3, y=3, epsg='epsg:27700'),
                                                Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                                        trips={'1': '1', '2': '2'},
+                                        trips={'trip_id': ['1', '2'],
+                                               'trip_departure_time': ['1', '2'],
+                                               'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                                         arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                                         departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
 
 
 def test__repr__shows_number_of_services(mocker):
-    mocker.patch.object(Schedule, '__len__')
+    mocker.patch.object(Schedule, '__len__', return_value=0)
     schedule = Schedule('epsg:27700')
     s = schedule.__repr__()
     assert 'instance at' in s
     assert 'services' in s
-    Schedule.__len__.assert_called_once()
+    Schedule.__len__.assert_called()
 
 
 def test__str__shows_info():
@@ -196,11 +216,11 @@ def test_print_shows_info(mocker):
 
 
 def test_info_shows_number_of_services_and_routes(mocker):
-    mocker.patch.object(Schedule, '__len__')
+    mocker.patch.object(Schedule, '__len__', return_value=0)
     mocker.patch.object(Schedule, 'number_of_routes')
     schedule = Schedule('epsg:27700')
     schedule.print()
-    Schedule.__len__.assert_called_once()
+    Schedule.__len__.assert_called()
     Schedule.number_of_routes.assert_called_once()
 
 
@@ -221,7 +241,9 @@ def test_reproject_changes_projection_for_all_stops_in_route():
                 stops=[Stop(id='26997928P', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700'),
                        Stop(id='26997928P.link:1', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700')],
                 route=['1'],
-                trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+                trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+                       'trip_departure_time': ['04:40:00'],
+                       'vehicle_id': ['veh_1_bus']},
                 arrival_offsets=['00:00:00', '00:02:00'],
                 departure_offsets=['00:00:00', '00:02:00']
             )
@@ -247,7 +269,9 @@ def test_adding_merges_separable_schedules(route):
             route_short_name='name',
             mode='bus',
             stops=[a, b, c, d],
-            trips={'1': '1', '2': '2'},
+            trips={'trip_id': ['1', '2'],
+                   'trip_departure_time': ['04:40:00', '05:40:00'],
+                   'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
             arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
             departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'],
             route=['1', '2', '3', '4'], id='2')
@@ -567,15 +591,18 @@ def test_adding_service_with_clashing_id_throws_error(schedule, service):
 
 def test_adding_service_with_clashing_stops_data_does_not_overwrite_existing_stops(schedule):
     expected_stops_data = {
-        '5': {'services': ['service', 'some_id'], 'routes': ['2', '3'], 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '5': {'services': ['service', 'some_id'], 'routes': ['2', '3'], 'id': '5', 'x': 4.0, 'y': 2.0,
+              'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '1': {'services': ['service', 'some_id'], 'routes': ['1', '3'], 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '1': {'services': ['service', 'some_id'], 'routes': ['1', '3'], 'id': '1', 'x': 4.0, 'y': 2.0,
+              'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '2': {'services': ['service', 'some_id'], 'routes': ['1', '3'], 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '2': {'services': ['service', 'some_id'], 'routes': ['1', '3'], 'id': '2', 'x': 1.0, 'y': 2.0,
+              'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
               'additional_attributes': set()}}
@@ -894,8 +921,8 @@ def test_iter_stops_returns_stops_objects(test_service, different_test_service):
     assert all([isinstance(stop, Stop) for stop in schedule.stops()])
 
 
-def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker):
-    mocker.patch.object(matsim_reader, 'read_schedule', return_value=([Service(id='1', routes=[])], {}))
+def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker, route):
+    mocker.patch.object(matsim_reader, 'read_schedule', return_value=([Service(id='1', routes=[route])], {}))
 
     schedule = Schedule('epsg:27700')
     schedule.read_matsim_schedule(pt2matsim_schedule_file)
@@ -914,12 +941,13 @@ def test_read_matsim_schedule_returns_expected_schedule():
             stops=[Stop(id='26997928P', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700'),
                    Stop(id='26997928P.link:1', x='528464.1342843144', y='182179.7435136598', epsg='epsg:27700')],
             route=['1'],
-            trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+            trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+                   'trip_departure_time': ['04:40:00'],
+                   'vehicle_id': ['veh_0_bus']},
             arrival_offsets=['00:00:00', '00:02:00'],
             departure_offsets=['00:00:00', '00:02:00']
         )
     ])
-
     for val in schedule.services():
         assert val == correct_services
     assert_semantically_equal(schedule.stop_to_service_ids_map(),
@@ -927,6 +955,40 @@ def test_read_matsim_schedule_returns_expected_schedule():
     assert_semantically_equal(schedule.stop_to_route_ids_map(),
                               {'26997928P': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
                                '26997928P.link:1': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']})
+    assert_semantically_equal(schedule.route('VJbd8660f05fe6f744e58a66ae12bd66acbca88b98').trips,
+                              {'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+                               'trip_departure_time': ['04:40:00'], 'vehicle_id': ['veh_0_bus']})
+
+
+def test_reading_vehicles_with_a_schedule():
+    schedule = Schedule('epsg:27700')
+    schedule.read_matsim_schedule(pt2matsim_schedule_file, pt2matsim_vehicles_file)
+
+    assert_semantically_equal(schedule.vehicles, {'veh_0_bus': {'type': 'bus'}})
+    assert_semantically_equal(schedule.vehicle_types['bus'], {
+        'capacity': {'seats': {'persons': '71'}, 'standingRoom': {'persons': '1'}},
+        'length': {'meter': '18.0'},
+        'width': {'meter': '2.5'},
+        'accessTime': {'secondsPerPerson': '0.5'},
+        'egressTime': {'secondsPerPerson': '0.5'},
+        'doorOperation': {'mode': 'serial'},
+        'passengerCarEquivalents': {'pce': '2.8'}})
+
+
+def test_reading_vehicles_after_reading_schedule():
+    schedule = Schedule('epsg:27700')
+    schedule.read_matsim_schedule(pt2matsim_schedule_file)
+    schedule.read_matsim_vehicles(pt2matsim_vehicles_file)
+
+    assert_semantically_equal(schedule.vehicles, {'veh_0_bus': {'type': 'bus'}})
+    assert_semantically_equal(schedule.vehicle_types['bus'], {
+        'capacity': {'seats': {'persons': '71'}, 'standingRoom': {'persons': '1'}},
+        'length': {'meter': '18.0'},
+        'width': {'meter': '2.5'},
+        'accessTime': {'secondsPerPerson': '0.5'},
+        'egressTime': {'secondsPerPerson': '0.5'},
+        'doorOperation': {'mode': 'serial'},
+        'passengerCarEquivalents': {'pce': '2.8'}})
 
 
 def test_read_gtfs_returns_expected_schedule(correct_stops_to_service_mapping_from_test_gtfs,
@@ -941,7 +1003,7 @@ def test_read_gtfs_returns_expected_schedule(correct_stops_to_service_mapping_fr
             mode='bus',
             stops=[Stop(id='BSE', x=-0.1413621, y=51.5226864, epsg='epsg:4326'),
                    Stop(id='BSN', x=-0.140053, y=51.5216199, epsg='epsg:4326')],
-            trips={'BT1': '03:21:00'},
+            trips={'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_0_bus']},
             arrival_offsets=['0:00:00', '0:02:00'],
             departure_offsets=['0:00:00', '0:02:00']
         )])
@@ -952,7 +1014,7 @@ def test_read_gtfs_returns_expected_schedule(correct_stops_to_service_mapping_fr
             mode='rail',
             stops=[Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326'),
                    Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
-            trips={'RT1': '03:21:00'},
+            trips={'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_1_rail']},
             arrival_offsets=['0:00:00', '0:02:00'],
             departure_offsets=['0:00:00', '0:02:00']
         )])
@@ -1055,7 +1117,7 @@ def test_build_graph_builds_correct_graph(strongly_connected_schedule):
 
 
 def test_building_trips_dataframe(schedule):
-    df = schedule.generate_trips_dataframe()
+    df = schedule.route_trips_with_stops_to_dataframe()
 
     correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 13:00:00'), 1: Timestamp('1970-01-01 13:05:00'),
                                                2: Timestamp('1970-01-01 13:09:00'), 3: Timestamp('1970-01-01 13:30:00'),
@@ -1077,6 +1139,9 @@ def test_building_trips_dataframe(schedule):
                                         10: '7', 11: '8'},
                             'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2', 6: '1', 7: '1', 8: '1', 9: '2',
                                      10: '2', 11: '2'},
+                            'vehicle_id': {0: 'veh_1_bus', 1: 'veh_1_bus', 2: 'veh_1_bus', 3: 'veh_2_bus',
+                                           4: 'veh_2_bus', 5: 'veh_2_bus', 6: 'veh_3_bus', 7: 'veh_3_bus',
+                                           8: 'veh_3_bus', 9: 'veh_4_bus', 10: 'veh_4_bus', 11: 'veh_4_bus'},
                             'route': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '2', 7: '2', 8: '2', 9: '2',
                                       10: '2', 11: '2'},
                             'route_name': {0: 'name', 1: 'name', 2: 'name', 3: 'name', 4: 'name', 5: 'name',
@@ -1097,3 +1162,262 @@ def test_building_trips_dataframe(schedule):
         by=['route', 'trip', 'departure_time']).reset_index(drop=True)
 
     assert_frame_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1))
+
+
+def test_generating_vehicles(schedule):
+    schedule.generate_vehicles()
+    assert_semantically_equal(schedule.vehicles, {'veh_3_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'},
+                                         'veh_1_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'}})
+
+
+def test_generating_vehicles_with_shared_vehicles_and_consistent_modes(mocker, schedule):
+    schedule.vehicles = {}
+    mocker.patch.object(DataFrame, 'drop',
+                        return_value=DataFrame({'vehicle_id': ['v_1', 'v_2', 'v_1', 'v_2', 'v_3'],
+                                                'type': ['bus', 'bus', 'bus', 'bus', 'rail']}))
+    schedule.generate_vehicles()
+    assert_semantically_equal(schedule.vehicles, {'v_1': {'type': 'bus'}, 'v_2': {'type': 'bus'},
+                                                  'v_3': {'type': 'rail'}})
+
+
+def test_generating_additional_vehicles_by_default(schedule):
+    r = Route(
+        route_short_name='N55',
+        mode='bus',
+        trips={'trip_id': ['some_trip_1'],
+               'trip_departure_time': ['16:23:00'],
+               'vehicle_id': ['some_bus_2']},
+        arrival_offsets=['00:00:00', '00:06:00'],
+        departure_offsets=['00:00:00', '00:06:00'],
+        id='new',
+        stops=[schedule.stop('1'),
+               schedule.stop('3')]
+    )
+    schedule.add_route('service', r)
+    # change existing vehicle types to be different from mode to test whether they are regenerated with default
+    # mode type
+    schedule.vehicles = {'veh_3_bus': {'type': '_bus'}, 'veh_4_bus': {'type': '_bus'}, 'veh_1_bus': {'type': '_bus'},
+                         'veh_2_bus': {'type': '_bus'}}
+    schedule.generate_vehicles()
+    assert_semantically_equal(schedule.vehicles, {'veh_3_bus': {'type': '_bus'}, 'veh_4_bus': {'type': '_bus'},
+                                         'veh_1_bus': {'type': '_bus'}, 'veh_2_bus': {'type': '_bus'},
+                                         'some_bus_2': {'type': 'bus'}})
+
+
+def test_generating_new_vehicles_with_overwite_True(schedule):
+    # change existing vehicle types to be different from mode to test whether they are regenerated with default
+    # mode type
+    schedule.vehicles = {'veh_3_bus': {'type': '_bus'}, 'veh_4_bus': {'type': '_bus'}, 'veh_1_bus': {'type': '_bus'},
+                         'veh_2_bus': {'type': '_bus'}}
+    schedule.generate_vehicles(overwrite=True)
+    assert_semantically_equal(schedule.vehicles, {'veh_3_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'},
+                                         'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'}})
+
+
+def test_rejects_inconsistent_modes_when_generating_vehicles(mocker, schedule):
+    mocker.patch.object(DataFrame, 'drop',
+                        return_value=DataFrame({'vehicle_id': ['v_1', 'v_2', 'v_1', 'v_3', 'v_3'],
+                                                'type': ['bus', 'bus', 'rail', 'rail', 'rail']}))
+    with pytest.raises(InconsistentVehicleModeError) as e:
+        schedule.generate_vehicles()
+    assert "{'v_1': ['bus', 'rail']}" in str(e.value)
+
+
+def test_generating_route_trips_dataframe(schedule):
+    df = schedule.route_trips_to_dataframe(gtfs_day='19700102')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service'},
+         'route_id': {0: '2', 1: '2', 2: '1', 3: '1'}, 'trip_id': {0: '1', 1: '2', 2: '1', 3: '2'},
+         'trip_departure_time': {0: Timestamp('1970-01-02 11:00:00'), 1: Timestamp('1970-01-02 13:00:00'),
+                                 2: Timestamp('1970-01-02 13:00:00'), 3: Timestamp('1970-01-02 13:30:00')},
+         'vehicle_id': {0: 'veh_3_bus', 1: 'veh_4_bus', 2: 'veh_1_bus', 3: 'veh_2_bus'}}
+    ).sort_index(axis=1))
+
+
+def test_applying_route_trips_dataframe(schedule):
+    df_to_change = DataFrame(
+        {'service_id': {0: 'service', 1: 'service', 2: 'service'},
+         'route_id': {0: '2', 1: '2', 2: '1'}, 'trip_id': {0: '2-1', 1: '2-2', 2: '1-1'},
+         'trip_departure_time': {0: Timestamp('1970-01-01 10:00:00'), 1: Timestamp('1970-01-01 16:00:00'),
+                                 2: Timestamp('1970-01-01 13:23:00')},
+         'vehicle_id': {0: 'veh_3_bus', 1: 'veh_1_bus', 2: 'veh_1_bus'}}
+    )
+    schedule.set_route_trips_dataframe(df_to_change.copy())
+
+    assert_frame_equal(
+        df_to_change.sort_values(by=['route_id', 'trip_id']).sort_index(axis=1),
+        schedule.route_trips_to_dataframe(gtfs_day='19700101').sort_values(by=['route_id', 'trip_id']).sort_index(
+            axis=1))
+
+
+def test_overlapping_vehicles(schedule):
+    overlapping_vehs = schedule.overlapping_vehicle_ids(vehicles={'veh_2_bus': {'type': 'bus'}})
+    assert set(overlapping_vehs) == {'veh_2_bus'}
+
+
+def test_overlapping_vehicle_types(schedule):
+    overlapping_vehs = schedule.overlapping_vehicle_types(vehicle_types={'rail': {
+        'capacity': {'seats': {'persons': '500'}, 'standingRoom': {'persons': '500'}},
+        'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+        'accessTime': {'secondsPerPerson': '0.25'},
+        'egressTime': {'secondsPerPerson': '0.25'},
+        'doorOperation': {'mode': 'serial'},
+        'passengerCarEquivalents': {'pce': '5.2'}}})
+    assert set(overlapping_vehs) == {'rail'}
+
+
+def test_updating_vehicles_with_no_overlap(schedule):
+    schedule.update_vehicles(vehicles={'v_1': {'type': 'deathstar'}},
+                             vehicle_types={'deathstar': {
+                                 'capacity': {'seats': {'persons': '5'},
+                                              'standingRoom': {'persons': '1000'}},
+                                 'length': {'meter': '20000.0'},
+                                 'width': {'meter': '20000'},
+                                 'accessTime': {'secondsPerPerson': '0.25'},
+                                 'egressTime': {'secondsPerPerson': '0.25'},
+                                 'doorOperation': {'mode': 'serial'},
+                                 'passengerCarEquivalents': {'pce': '1000'}}})
+    assert_semantically_equal(schedule.vehicles, {'v_1': {'type': 'deathstar'},
+                                                  'veh_4_bus': {'type': 'bus'},
+                                                  'veh_3_bus': {'type': 'bus'},
+                                                  'veh_2_bus': {'type': 'bus'},
+                                                  'veh_1_bus': {'type': 'bus'}})
+    assert_semantically_equal(schedule.vehicle_types, {
+        'deathstar': {
+            'capacity': {'seats': {'persons': '5'},
+                         'standingRoom': {'persons': '1000'}},
+            'length': {'meter': '20000.0'},
+            'width': {'meter': '20000'},
+            'accessTime': {'secondsPerPerson': '0.25'},
+            'egressTime': {'secondsPerPerson': '0.25'},
+            'doorOperation': {'mode': 'serial'},
+            'passengerCarEquivalents': {'pce': '1000'}},
+        'bus': {'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}}, 'length': {'meter': '18.0'},
+                'width': {'meter': '2.5'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                'passengerCarEquivalents': {'pce': '2.8'}},
+        'rail': {'capacity': {'seats': {'persons': '1000'}, 'standingRoom': {'persons': '0'}},
+                 'length': {'meter': '200.0'}, 'width': {'meter': '2.8'}, 'accessTime': {'secondsPerPerson': '0.25'},
+                 'egressTime': {'secondsPerPerson': '0.25'}, 'doorOperation': {'mode': 'serial'},
+                 'passengerCarEquivalents': {'pce': '27.1'}},
+        'subway': {'capacity': {'seats': {'persons': '1000'}, 'standingRoom': {'persons': '0'}},
+                   'length': {'meter': '30.0'}, 'width': {'meter': '2.45'}, 'accessTime': {'secondsPerPerson': '0.1'},
+                   'egressTime': {'secondsPerPerson': '0.1'}, 'doorOperation': {'mode': 'serial'},
+                   'passengerCarEquivalents': {'pce': '4.4'}},
+        'ferry': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                  'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                  'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                  'passengerCarEquivalents': {'pce': '7.1'}},
+        'tram': {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
+                 'length': {'meter': '36.0'}, 'width': {'meter': '2.4'}, 'accessTime': {'secondsPerPerson': '0.25'},
+                 'egressTime': {'secondsPerPerson': '0.25'}, 'doorOperation': {'mode': 'serial'},
+                 'passengerCarEquivalents': {'pce': '5.2'}},
+        'funicular': {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
+                      'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                      'accessTime': {'secondsPerPerson': '0.25'}, 'egressTime': {'secondsPerPerson': '0.25'},
+                      'doorOperation': {'mode': 'serial'}, 'passengerCarEquivalents': {'pce': '5.2'}},
+        'gondola': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                    'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                    'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                    'passengerCarEquivalents': {'pce': '7.1'}},
+        'cablecar': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                     'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                     'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                     'passengerCarEquivalents': {'pce': '7.1'}}})
+
+
+def test_updating_vehicles_with_clashes_and_overwrite_on(schedule):
+    schedule.update_vehicles(vehicles={'veh_2_bus': {'type': 'tram'}},
+                             vehicle_types={'tram': {
+                                 'capacity': {'seats': {'persons': '5000'}, 'standingRoom': {'persons': '5000'}},
+                                 'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                                 'accessTime': {'secondsPerPerson': '0.25'},
+                                 'egressTime': {'secondsPerPerson': '0.25'},
+                                 'doorOperation': {'mode': 'serial'},
+                                 'passengerCarEquivalents': {'pce': '5.2'}}})
+    assert_semantically_equal(schedule.vehicles, {'veh_4_bus': {'type': 'bus'},
+                                                  'veh_3_bus': {'type': 'bus'},
+                                                  'veh_2_bus': {'type': 'tram'},
+                                                  'veh_1_bus': {'type': 'bus'}})
+    assert_semantically_equal(schedule.vehicle_types['tram'],
+                              {
+                                  'capacity': {'seats': {'persons': '5000'}, 'standingRoom': {'persons': '5000'}},
+                                  'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                                  'accessTime': {'secondsPerPerson': '0.25'},
+                                  'egressTime': {'secondsPerPerson': '0.25'},
+                                  'doorOperation': {'mode': 'serial'},
+                                  'passengerCarEquivalents': {'pce': '5.2'}})
+
+
+def test_updating_vehicles_with_clashes_and_overwrite_off(schedule):
+    schedule.update_vehicles(vehicles={'veh_2_bus': {'type': 'tram'}},
+                             vehicle_types={'tram': {
+                                 'capacity': {'seats': {'persons': '5000'}, 'standingRoom': {'persons': '5000'}},
+                                 'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                                 'accessTime': {'secondsPerPerson': '0.25'},
+                                 'egressTime': {'secondsPerPerson': '0.25'},
+                                 'doorOperation': {'mode': 'serial'},
+                                 'passengerCarEquivalents': {'pce': '5.2'}}},
+                             overwrite=False)
+    assert_semantically_equal(schedule.vehicles, {'veh_4_bus': {'type': 'bus'},
+                                                  'veh_3_bus': {'type': 'bus'},
+                                                  'veh_2_bus': {'type': 'bus'},
+                                                  'veh_1_bus': {'type': 'bus'}})
+    assert_semantically_equal(schedule.vehicle_types['tram'],
+                              {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
+                               'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                               'accessTime': {'secondsPerPerson': '0.25'},
+                               'egressTime': {'secondsPerPerson': '0.25'}, 'doorOperation': {'mode': 'serial'},
+                               'passengerCarEquivalents': {'pce': '5.2'}})
+
+
+def test_validating_vehicle_definitions(schedule):
+    assert schedule.validate_vehicle_definitions()
+
+
+def test_validate_vehicle_definitions_warns_of_missing_vehicle_types(schedule, caplog):
+    del schedule.vehicle_types['bus']
+    schedule.validate_vehicle_definitions()
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'bus' in caplog.records[0].message
+    assert caplog.records[1].levelname == 'WARNING'
+    for veh in {'veh_4_bus', 'veh_3_bus', 'veh_2_bus', 'veh_1_bus'}:
+        assert veh in caplog.records[1].message
+    assert "{'type': 'bus'}" in caplog.records[1].message
+
+
+def test_reading_vehicle_types_from_a_yml_config(vehicle_definitions_config_path):
+    vehicle_types = read_vehicle_types(vehicle_definitions_config_path)
+    assert_semantically_equal(vehicle_types, {
+        'bus': {'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}}, 'length': {'meter': '18.0'},
+                'width': {'meter': '2.5'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                'passengerCarEquivalents': {'pce': '2.8'}},
+        'rail': {'capacity': {'seats': {'persons': '1000'}, 'standingRoom': {'persons': '0'}},
+                 'length': {'meter': '200.0'}, 'width': {'meter': '2.8'}, 'accessTime': {'secondsPerPerson': '0.25'},
+                 'egressTime': {'secondsPerPerson': '0.25'}, 'doorOperation': {'mode': 'serial'},
+                 'passengerCarEquivalents': {'pce': '27.1'}},
+        'subway': {'capacity': {'seats': {'persons': '1000'}, 'standingRoom': {'persons': '0'}},
+                   'length': {'meter': '30.0'}, 'width': {'meter': '2.45'}, 'accessTime': {'secondsPerPerson': '0.1'},
+                   'egressTime': {'secondsPerPerson': '0.1'}, 'doorOperation': {'mode': 'serial'},
+                   'passengerCarEquivalents': {'pce': '4.4'}},
+        'ferry': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                  'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                  'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                  'passengerCarEquivalents': {'pce': '7.1'}},
+        'tram': {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
+                 'length': {'meter': '36.0'}, 'width': {'meter': '2.4'}, 'accessTime': {'secondsPerPerson': '0.25'},
+                 'egressTime': {'secondsPerPerson': '0.25'}, 'doorOperation': {'mode': 'serial'},
+                 'passengerCarEquivalents': {'pce': '5.2'}},
+        'funicular': {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
+                      'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                      'accessTime': {'secondsPerPerson': '0.25'}, 'egressTime': {'secondsPerPerson': '0.25'},
+                      'doorOperation': {'mode': 'serial'}, 'passengerCarEquivalents': {'pce': '5.2'}},
+        'gondola': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                    'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                    'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                    'passengerCarEquivalents': {'pce': '7.1'}},
+        'cablecar': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                     'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                     'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                     'passengerCarEquivalents': {'pce': '7.1'}}})

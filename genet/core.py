@@ -964,7 +964,7 @@ class Network:
             self.change_log = self.change_log.remove_bunch(
                 object_type='node', id_bunch=nodes, attributes_bunch=[self.node(node_id) for node_id in nodes])
         self.graph.remove_nodes_from(nodes)
-        self.update_node_auxiliary_files(dict(zip(nodes, [None]*len(nodes))))
+        self.update_node_auxiliary_files(dict(zip(nodes, [None] * len(nodes))))
         if not silent:
             logging.info(f'Removed {len(nodes)} nodes.')
 
@@ -999,7 +999,7 @@ class Network:
         self.graph.remove_edges_from([self.edge_tuple_from_link_id(link_id) for link_id in links])
         for link_id in links:
             del self.link_id_mapping[link_id]
-        self.update_link_auxiliary_files(dict(zip(links, [None]*len(links))))
+        self.update_link_auxiliary_files(dict(zip(links, [None] * len(links))))
         if not silent:
             logging.info(f'Removed {len(links)} links')
 
@@ -1281,7 +1281,7 @@ class Network:
         logging.info('Checking validity of the Network')
         logging.info('Checking validity of the Network graph')
         report = {}
-        # decribe network connectivity
+        # describe network connectivity
         modes = ['car', 'walk', 'bike']
         report['graph'] = {'graph_connectivity': {}}
         for mode in modes:
@@ -1294,9 +1294,31 @@ class Network:
         def links_over_threshold_length(value):
             return value >= link_length_threshold
 
-        report['graph']['links_over_1km_length'] = self.extract_links_on_edge_attributes(
-            conditions={'length': links_over_threshold_length}
-        )
+        links_over_1km_length = self.extract_links_on_edge_attributes(
+            conditions={'length': links_over_threshold_length})
+
+        report['graph']['link_attributes'] = {
+            'links_over_1km_length': {
+                'number_of': len(links_over_1km_length),
+                'percentage': len(links_over_1km_length) / self.graph.number_of_edges(),
+                'link_ids': links_over_1km_length
+            }
+        }
+
+        def zero_value(value):
+            return (value == 0) or (value == '0') or (value == '0.0')
+
+        report['graph']['link_attributes']['zero_attributes'] = {}
+        for attrib in [d.name for d in graph_operations.get_attribute_schema(self.links()).descendants]:
+            links_with_zero_attrib = self.extract_links_on_edge_attributes(
+                conditions={attrib: zero_value}, mixed_dtypes=False)
+            if links_with_zero_attrib:
+                logging.warning(f'{len(links_with_zero_attrib)} of links have values of 0 for `{attrib}`')
+                report['graph']['link_attributes']['zero_attributes'][attrib] = {
+                    'number_of': len(links_with_zero_attrib),
+                    'percentage': len(links_with_zero_attrib) / self.graph.number_of_edges(),
+                    'link_ids': links_with_zero_attrib
+                }
 
         if self.schedule:
             report['schedule'] = self.schedule.generate_validation_report()
@@ -1390,8 +1412,8 @@ class Network:
                     new_attributes=self.link(duplicated_link)
                 )
 
-    def read_matsim_schedule(self, path):
-        self.schedule.read_matsim_schedule(path)
+    def read_matsim_schedule(self, schedule_path, vehicles_path=''):
+        self.schedule.read_matsim_schedule(schedule_path, vehicles_path)
 
     def read_auxiliary_link_file(self, file_path):
         aux_file = auxiliary_files.AuxiliaryFile(file_path)

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <vehicleDefinitions xmlns="http://www.matsim.org/files/dtd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.matsim.org/files/dtd http://www.matsim.org/files/dtd/vehicleDefinitions_v1.0.xsd">
-	<vehicleType id="Bus">
+	<vehicleType id="bus">
 		<capacity>
-			<seats persons="70"/>
-			<standingRoom persons="0"/>
+			<seats persons="71"/>
+			<standingRoom persons="1"/>
 		</capacity>
 		<length meter="18.0"/>
 		<width meter="2.5"/>
@@ -13,5 +13,5 @@
 		<doorOperation mode="serial"/>
 		<passengerCarEquivalents pce="2.8"/>
 	</vehicleType>
-	<vehicle id="veh_0_bus" type="Bus"/>
+	<vehicle id="veh_0_bus" type="bus"/>
 </vehicleDefinitions>

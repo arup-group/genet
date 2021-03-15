@@ -10,7 +10,7 @@ import json
 from shapely.geometry import LineString, Polygon
 from pandas.testing import assert_frame_equal, assert_series_equal
 from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
-    full_fat_default_config_path, correct_schedule
+    full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path
 from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.inputs_handler import matsim_reader
 from genet.core import Network
@@ -1660,12 +1660,12 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
     network = Network('epsg:27700')
     network.read_osm(osm_test_file, full_fat_default_config_path, 1)
     assert_semantically_equal(dict(network.nodes()), {
-        '0': {'id': '0', 'x': 623528.0918284899, 'y': -5527136.199112928, 'lat': -0.0006545205888310243,
-              'lon': 0.008554364250688652, 's2_id': 1152921492875543713},
-        '1': {'id': '1', 'x': 625278.7312853877, 'y': -5527136.1998170335, 'lat': -0.0006545205888310243,
-              'lon': 0.024278505899735615, 's2_id': 1152921335974974453},
-        '2': {'id': '2', 'x': 621777.4693340246, 'y': -5527136.198414324, 'lat': -0.0006545205888310243,
-              'lon': -0.00716977739835831, 's2_id': 384307157539499829}})
+        '0': {'id': '0', 'x': 622502.8306679451, 'y': -5526117.781903352, 'lat': 0.008554364250688652,
+              'lon': -0.0006545205888310243, 's2_id': 1152921492875543713},
+        '1': {'id': '1', 'x': 622502.8132744529, 'y': -5524378.838447345, 'lat': 0.024278505899735615,
+              'lon': -0.0006545205888310243, 's2_id': 1152921335974974453},
+        '2': {'id': '2', 'x': 622502.8314014417, 'y': -5527856.725358106, 'lat': -0.00716977739835831,
+              'lon': -0.0006545205888310243, 's2_id': 384307157539499829}})
     assert len(list(network.links())) == 11
 
     number_of_0_multi_idx = 0
@@ -1835,9 +1835,9 @@ def test_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_epsg_from
     mocker.patch.object(Schedule, 'read_matsim_schedule')
     network = Network('epsg:27700')
     network.read_matsim_network(pt2matsim_network_test_file)
-    network.read_matsim_schedule(pt2matsim_schedule_file)
+    network.read_matsim_schedule(pt2matsim_schedule_file, vehicles_path='')
 
-    Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file)
+    Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file, '')
 
 
 def test_has_node_when_node_is_in_the_graph():
@@ -2127,7 +2127,8 @@ def test_has_schedule_with_valid_network_routes_with_some_valid_routes(route):
     n.add_link('1', 1, 2)
     n.add_link('2', 2, 3)
     route.route = ['1', '2']
-    route_2 = Route(route_short_name='', mode='', stops=[], trips={},
+    route_2 = Route(route_short_name='', mode='bus', stops=[],
+                    trips={'trip_id': ['1'], 'trip_departure_time': ['13:00:00'], 'vehicle_id': ['veh_1_bus']},
                     arrival_offsets=[], departure_offsets=[], route=['10000'])
     n.schedule = Schedule(n.epsg, [Service(id='service', routes=[route, route_2])])
     assert not n.has_schedule_with_valid_network_routes()
@@ -2193,7 +2194,9 @@ def test_generate_validation_report_with_pt2matsim_network(network_object_from_t
                          'number_of_connected_subgraphs': 2},
                 'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
                          'number_of_connected_subgraphs': 0}},
-            'links_over_1km_length': []},
+            'link_attributes': {
+                'links_over_1km_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
+                'zero_attributes': {}}},
         'schedule': {
             'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
                                'has_valid_services': False, 'invalid_services': ['10314']},
@@ -2219,14 +2222,14 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
     report = n.generate_validation_report()
     correct_report = {
         'graph': {
-            'graph_connectivity': {
-                'car': {'problem_nodes': {'dead_ends': [3], 'unreachable_node': [1]},
-                        'number_of_connected_subgraphs': 3},
-                'walk': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
-                         'number_of_connected_subgraphs': 0},
-                'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
-                         'number_of_connected_subgraphs': 0}},
-            'links_over_1km_length': []},
+            'graph_connectivity': {'car': {'problem_nodes': {'dead_ends': [3], 'unreachable_node': [1]},
+                                           'number_of_connected_subgraphs': 3},
+                                   'walk': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
+                                            'number_of_connected_subgraphs': 0},
+                                   'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
+                                            'number_of_connected_subgraphs': 0}},
+            'link_attributes': {'links_over_1km_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
+                                'zero_attributes': {}}},
         'schedule': {'schedule_level': {'is_valid_schedule': True, 'invalid_stages': [], 'has_valid_services': True,
                                         'invalid_services': []}, 'service_level': {
             'service': {'is_valid_service': True, 'invalid_stages': [], 'has_valid_routes': True,
@@ -2235,6 +2238,26 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
                         '2': {'is_valid_route': True, 'invalid_stages': []}}}},
         'routing': {'services_have_routes_in_the_graph': True, 'service_routes_with_invalid_network_route': [],
                     'route_to_crow_fly_ratio': {'service': {'1': 0.037918141839160244, '2': 0.037918141839160244}}}}
+    assert_semantically_equal(report, correct_report)
+
+
+def test_zero_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': 0, 'capacity': 0.0, 'freespeed': '0.0', "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+    correct_report = {'graph': {
+        'graph_connectivity': {
+            'car': {'problem_nodes': {'dead_ends': [3], 'unreachable_node': [1]}, 'number_of_connected_subgraphs': 3},
+            'walk': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0},
+            'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0}},
+        'link_attributes': {
+            'links_over_1km_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
+            'zero_attributes': {
+                'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+                'capacity': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+                'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}}}}}
     assert_semantically_equal(report, correct_report)
 
 
@@ -2288,15 +2311,18 @@ benchmark_path_json = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "links_benchmark.json"))
 benchmark_path_csv = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "links_benchmark.csv"))
+
+
 @pytest.fixture()
 def aux_network():
     n = Network('epsg:27700')
     n.add_nodes({'1': {'x': 1, 'y': 2, 's2_id': 0}, '2': {'x': 1, 'y': 2, 's2_id': 0},
                  '3': {'x': 1, 'y': 2, 's2_id': 0}, '4': {'x': 1, 'y': 2, 's2_id': 0}})
-    n.add_links({'1': {'from': '1', 'to': '2', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1, 'modes': {'car'}},
-                 '2': {'from': '1', 'to': '3', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1, 'modes': {'car'}},
-                 '3': {'from': '2', 'to': '4', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1, 'modes': {'car'}},
-                 '4': {'from': '3', 'to': '4', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1, 'modes': {'car'}}})
+    n.add_links(
+        {'1': {'from': '1', 'to': '2', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1, 'modes': {'car'}},
+         '2': {'from': '1', 'to': '3', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1, 'modes': {'car'}},
+         '3': {'from': '2', 'to': '4', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1, 'modes': {'car'}},
+         '4': {'from': '3', 'to': '4', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1, 'modes': {'car'}}})
     n.read_auxiliary_link_file(benchmark_path_json)
     n.read_auxiliary_node_file(benchmark_path_csv)
     return n
@@ -2325,7 +2351,8 @@ def test_removing_network_link_with_auxiliary_files(aux_network):
     aux_network.remove_links(['1', '2'])
     aux_network.remove_link('3')
     assert aux_network.auxiliary_files['node']['links_benchmark.csv'].map == {'2': '2', '3': '3', '4': '4', '1': '1'}
-    assert aux_network.auxiliary_files['link']['links_benchmark.json'].map == {'2': None, '1': None, '3': None, '4': '4'}
+    assert aux_network.auxiliary_files['link']['links_benchmark.json'].map == {'2': None, '1': None, '3': None,
+                                                                               '4': '4'}
 
 
 def test_simplifying_network_with_auxiliary_files(aux_network):

@@ -130,6 +130,30 @@ def grow_point(x, distance):
     return x.buffer(distance)
 
 
+def map_azimuth_to_name(azimuth):
+    """
+    assumes -180 =< azimuth =< 180
+    degrees from North (0)
+    """
+    azimuth_to_name = {
+        (-22.5, 22.5): 'North Bound',
+        (22.5, 67.5): 'North-East Bound',
+        (67.5, 112.5): 'East Bound',
+        (112.5, 157.5): 'South-East Bound',
+        (-157.5, -112.5): 'South-West Bound',
+        (-112.5, -67.5): 'West Bound',
+        (-67.5, -22.5): 'North-West Bound',
+    }
+    if azimuth > 180 or azimuth < -180:
+        raise NotImplementedError(f'Azimuth value of {azimuth} given. Only implemented for -180 =< azimuth =< 180')
+    for (lower_bound, upper_bound), name in azimuth_to_name.items():
+        if lower_bound < azimuth <= upper_bound:
+            return name
+    # (-157.5, -180 | 180, 157.5): 'South Bound'
+    if azimuth > 157.5 or azimuth <= -157.5:
+        return 'South Bound'
+
+
 def approximate_metres_distance_in_4326_degrees(distance, lat):
     # https://gis.stackexchange.com/questions/2951/algorithm-for-offsetting-a-latitude-longitude-by-some-amount-of-meters
     return ((float(distance) / 111111) + float(distance) / (111111 * np.cos(np.radians(float(lat))))) / 2
