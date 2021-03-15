@@ -36,7 +36,7 @@ class MaxStableSet:
         return self.network_spatial_tree.closest_links(
             gdf_points=_df,
             distance_radius=distance,
-            modes=self.modes)
+            modes=self.modes).dropna()
 
     def grow_catchment(self, stop_ids):
         # todo increase area within which to snap to a stop by step size until distance threshold reached
