@@ -1,0 +1,155 @@
+# form basis for vehicle modes in the schedule, used when reading in GTFS and present in the schedule
+# unless replaced by reading vehicles.xml file
+VEHICLE_TYPES:
+
+  'bus':
+    'capacity':
+      'seats':
+        'persons': '70'
+      'standingRoom':
+        'persons': '0'
+    'length':
+      'meter': '18.0'
+    'width':
+      'meter': '2.5'
+    'accessTime':
+      'secondsPerPerson': '0.5'
+    'egressTime':
+      'secondsPerPerson': '0.5'
+    'doorOperation':
+      'mode': 'serial'
+    'passengerCarEquivalents':
+      'pce': '2.8'
+
+  'rail':
+    'capacity':
+      'seats':
+        'persons': '1000'
+      'standingRoom':
+        'persons': '0'
+    'length':
+      'meter': '200.0'
+    'width':
+      'meter': '2.8'
+    'accessTime':
+      'secondsPerPerson': '0.25'
+    'egressTime':
+      'secondsPerPerson': '0.25'
+    'doorOperation':
+      'mode': 'serial'
+    'passengerCarEquivalents':
+      'pce': '27.1'
+
+  'subway':
+    'capacity':
+      'seats':
+        'persons': '1000'
+      'standingRoom':
+        'persons': '0'
+    'length':
+      'meter': '30.0'
+    'width':
+      'meter': '2.45'
+    'accessTime':
+      'secondsPerPerson': '0.1'
+    'egressTime':
+      'secondsPerPerson': '0.1'
+    'doorOperation':
+      'mode': 'serial'
+    'passengerCarEquivalents':
+      'pce': '4.4'
+
+  'ferry':
+    'capacity':
+      'seats':
+        'persons': '250'
+      'standingRoom':
+        'persons': '0'
+    'length':
+      'meter': '50.0'
+    'width':
+      'meter': '6.0'
+    'accessTime':
+      'secondsPerPerson': '0.5'
+    'egressTime':
+      'secondsPerPerson': '0.5'
+    'doorOperation':
+      'mode': 'serial'
+    'passengerCarEquivalents':
+      'pce': '7.1'
+
+  'tram':
+    'capacity':
+      'seats':
+        'persons': '180'
+      'standingRoom':
+        'persons': '0'
+    'length':
+      'meter': '36.0'
+    'width':
+      'meter': '2.4'
+    'accessTime':
+      'secondsPerPerson': '0.25'
+    'egressTime':
+      'secondsPerPerson': '0.25'
+    'doorOperation':
+      'mode': 'serial'
+    'passengerCarEquivalents':
+      'pce': '5.2'
+
+  'funicular':
+    'capacity':
+      'seats':
+        'persons': '180'
+      'standingRoom':
+        'persons': '0'
+    'length':
+      'meter': '36.0'
+    'width':
+      'meter': '2.4'
+    'accessTime':
+      'secondsPerPerson': '0.25'
+    'egressTime':
+      'secondsPerPerson': '0.25'
+    'doorOperation':
+      'mode': 'serial'
+    'passengerCarEquivalents':
+      'pce': '5.2'
+
+  'gondola':
+    'capacity':
+      'seats':
+        'persons': '250'
+      'standingRoom':
+        'persons': '0'
+    'length':
+      'meter': '50.0'
+    'width':
+      'meter': '6.0'
+    'accessTime':
+      'secondsPerPerson': '0.5'
+    'egressTime':
+      'secondsPerPerson': '0.5'
+    'doorOperation':
+      'mode': 'serial'
+    'passengerCarEquivalents':
+      'pce': '7.1'
+
+  'cablecar':
+    'capacity':
+      'seats':
+        'persons': '250'
+      'standingRoom':
+        'persons': '0'
+    'length':
+      'meter': '50.0'
+    'width':
+      'meter': '6.0'
+    'accessTime':
+      'secondsPerPerson': '0.5'
+    'egressTime':
+      'secondsPerPerson': '0.5'
+    'doorOperation':
+      'mode': 'serial'
+    'passengerCarEquivalents':
+      'pce': '7.1'

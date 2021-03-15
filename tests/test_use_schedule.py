@@ -19,7 +19,9 @@ def schedule():
                            Stop(id='2', x=1, y=2, epsg='epsg:27700', name='Stop_2'),
                            Stop(id='3', x=3, y=3, epsg='epsg:27700', name='Stop_3'),
                            Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '17:00:00', '2': '18:30:00'},
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['17:00:00', '18:30:00'],
+                           'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     route_2 = Route(route_short_name='name_2',
@@ -28,7 +30,9 @@ def schedule():
                            Stop(id='3', x=3, y=3, epsg='epsg:27700', name='Stop_3'),
                            Stop(id='2', x=1, y=2, epsg='epsg:27700', name='Stop_2'),
                            Stop(id='1', x=4, y=2, epsg='epsg:27700', name='Stop_1')],
-                    trips={'1': '17:00:00', '2': '18:30:00'},
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['17:00:00', '18:30:00'],
+                           'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     service = Service(id='service', routes=[route_1, route_2])
@@ -62,7 +66,7 @@ def test_offsets_going_over_24_hrs_why_not():
 
 def test_generating_edge_vph_geodataframe(schedule):
     nodes, links = gngeojson.generate_geodataframes(schedule.graph())
-    df = schedule.generate_trips_dataframe()
+    df = schedule.route_trips_with_stops_to_dataframe()
     df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 18:00:00'),
@@ -73,16 +77,14 @@ def test_generating_edge_vph_geodataframe(schedule):
                                         10: Timestamp('1970-01-01 17:00:00'), 11: Timestamp('1970-01-01 18:00:00')},
                                'from_stop': {0: '1', 1: '1', 2: '2', 3: '2', 4: '2', 5: '2', 6: '3', 7: '3', 8: '3',
                                              9: '3', 10: '4', 11: '4'},
+                               'from_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2', 4: 'Stop_2',
+                                                  5: 'Stop_2', 6: 'Stop_3', 7: 'Stop_3', 8: 'Stop_3', 9: 'Stop_3',
+                                                  10: '', 11: ''},
                                'to_stop': {0: '2', 1: '2', 2: '1', 3: '1', 4: '3', 5: '3', 6: '2', 7: '2', 8: '4',
-                                           9: '4',
-                                           10: '3', 11: '3'},
-                               'route_name': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1},
-                               'from_stop_name': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1,
-                                                  11: 1},
-                               'to_stop_name': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1,
-                                                11: 1},
-                               'service_name': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1,
-                                                11: 1},
+                                           9: '4', 10: '3', 11: '3'},
+                               'to_stop_name': {0: 'Stop_2', 1: 'Stop_2', 2: 'Stop_1', 3: 'Stop_1', 4: 'Stop_3',
+                                                5: 'Stop_3', 6: 'Stop_2', 7: 'Stop_2', 8: '', 9: '', 10: 'Stop_3',
+                                                11: 'Stop_3'},
                                'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1},
                                'geometry': {
                                    0: LineString([(-7.557106577683727, 49.76682779861249),
@@ -115,7 +117,7 @@ def test_generating_edge_vph_geodataframe(schedule):
 
 def test_generating_edge_vph_geodataframe_for_service(schedule):
     nodes, links = gngeojson.generate_geodataframes(schedule['service'].graph())
-    df = schedule['service'].generate_trips_dataframe()
+    df = schedule['service'].route_trips_with_stops_to_dataframe()
     df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 18:00:00'),
@@ -126,16 +128,14 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
                                         10: Timestamp('1970-01-01 17:00:00'), 11: Timestamp('1970-01-01 18:00:00')},
                                'from_stop': {0: '1', 1: '1', 2: '2', 3: '2', 4: '2', 5: '2', 6: '3', 7: '3', 8: '3',
                                              9: '3', 10: '4', 11: '4'},
+                               'from_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2', 4: 'Stop_2',
+                                                  5: 'Stop_2', 6: 'Stop_3', 7: 'Stop_3', 8: 'Stop_3', 9: 'Stop_3',
+                                                  10: '', 11: ''},
                                'to_stop': {0: '2', 1: '2', 2: '1', 3: '1', 4: '3', 5: '3', 6: '2', 7: '2', 8: '4',
-                                           9: '4',
-                                           10: '3', 11: '3'},
-                               'route_name': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1},
-                               'from_stop_name': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1,
-                                                  11: 1},
-                               'to_stop_name': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1,
-                                                11: 1},
-                               'service_name': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1,
-                                                11: 1},
+                                           9: '4', 10: '3', 11: '3'},
+                               'to_stop_name': {0: 'Stop_2', 1: 'Stop_2', 2: 'Stop_1', 3: 'Stop_1', 4: 'Stop_3',
+                                                5: 'Stop_3', 6: 'Stop_2', 7: 'Stop_2', 8: '', 9: '', 10: 'Stop_3',
+                                                11: 'Stop_3'},
                                'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1},
                                'geometry': {
                                    0: LineString([(-7.557106577683727, 49.76682779861249),
@@ -168,17 +168,17 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
 
 def test_generating_edge_vph_geodataframe_for_route(schedule):
     nodes, links = gngeojson.generate_geodataframes(schedule.route('2').graph())
-    df = schedule.route('2').generate_trips_dataframe()
+    df = schedule.route('2').route_trips_with_stops_to_dataframe()
     df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
     correct_df = GeoDataFrame({'hour': {0: Timestamp('1970-01-01 17:00:00'), 1: Timestamp('1970-01-01 19:00:00'),
                                         2: Timestamp('1970-01-01 17:00:00'), 3: Timestamp('1970-01-01 19:00:00'),
                                         4: Timestamp('1970-01-01 17:00:00'), 5: Timestamp('1970-01-01 18:00:00')},
                                'from_stop': {0: '2', 1: '2', 2: '3', 3: '3', 4: '4', 5: '4'},
+                               'from_stop_name': {0: 'Stop_2', 1: 'Stop_2', 2: 'Stop_3', 3: 'Stop_3', 4: '', 5: ''},
                                'to_stop': {0: '1', 1: '1', 2: '2', 3: '2', 4: '3', 5: '3'},
-                               'route_name': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1},
-                               'from_stop_name': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1},
-                               'to_stop_name': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1},
+                               'to_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2', 4: 'Stop_3',
+                                                5: 'Stop_3'},
                                'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1},
                                'geometry': {0: LineString([(-7.557148039524952, 49.766825803756994),
                                                            (-7.557106577683727, 49.76682779861249)]),
@@ -197,7 +197,7 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
 
 
 def test_generating_trips_per_day_per_service(schedule):
-    df_trips = use_schedule.trips_per_day_per_service(schedule.generate_trips_dataframe())
+    df_trips = use_schedule.trips_per_day_per_service(schedule.route_trips_with_stops_to_dataframe())
 
     correct_df = DataFrame(
         {'service': {0: 'service'},
@@ -209,7 +209,7 @@ def test_generating_trips_per_day_per_service(schedule):
 
 
 def test_generating_trips_per_day_per_route(schedule):
-    df_trips = use_schedule.trips_per_day_per_route(schedule.generate_trips_dataframe())
+    df_trips = use_schedule.trips_per_day_per_route(schedule.route_trips_with_stops_to_dataframe())
 
     correct_df = DataFrame(
         {'route': {0: '1', 1: '2'},
@@ -228,7 +228,9 @@ def schedule_with_a_couple_services_that_overlap_stations():
                            Stop(id='2', x=1, y=2, epsg='epsg:27700', name='Stop_2'),
                            Stop(id='3', x=3, y=3, epsg='epsg:27700', name='Stop_3'),
                            Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                    trips={'1': '17:00:00', '2': '18:30:00'},
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['17:00:00', '18:30:00'],
+                           'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     route_2 = Route(route_short_name='name_2',
@@ -237,7 +239,9 @@ def schedule_with_a_couple_services_that_overlap_stations():
                            Stop(id='03', x=3, y=3, epsg='epsg:27700', name='Stop_3'),
                            Stop(id='02', x=1, y=2, epsg='epsg:27700', name='Stop_2'),
                            Stop(id='01', x=4, y=2, epsg='epsg:27700', name='Stop_1')],
-                    trips={'1': '17:00:00', '2': '18:30:00'},
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['17:00:00', '18:30:00'],
+                           'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     service = Service(id='service', routes=[route_1, route_2])
@@ -248,7 +252,9 @@ def schedule_with_a_couple_services_that_overlap_stations():
                             Stop(id='2', x=1, y=2, epsg='epsg:27700', name='Stop_2'),
                             Stop(id='3', x=3, y=3, epsg='epsg:27700', name='Stop_3'),
                             Stop(id='4', x=7, y=5, epsg='epsg:27700')],
-                     trips={'1': '17:00:00'},
+                     trips={'trip_id': ['1'],
+                            'trip_departure_time': ['17:00:00'],
+                            'vehicle_id': ['veh_5_bus']},
                      arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                      departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     route_12 = Route(route_short_name='name_2',
@@ -257,7 +263,9 @@ def schedule_with_a_couple_services_that_overlap_stations():
                             Stop(id='03', x=3, y=3, epsg='epsg:27700', name='Stop_3'),
                             Stop(id='02', x=1, y=2, epsg='epsg:27700', name='Stop_2'),
                             Stop(id='01', x=4, y=2, epsg='epsg:27700', name='Stop_1')],
-                     trips={'1': '17:00:00'},
+                     trips={'trip_id': ['1'],
+                            'trip_departure_time': ['17:00:00'],
+                            'vehicle_id': ['veh_6_bus']},
                      arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                      departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     service_2 = Service(id='service_2', routes=[route_11, route_12])
@@ -271,7 +279,7 @@ def test_aggregating_trips_per_day_per_route_by_end_stop_pairs(schedule_with_a_c
                         return_value=[('01', '4'), ('01', '04'), ('01', '1'), ('4', '04'), ('4', '1'), ('04', '1')])
 
     trips_per_day_per_route = use_schedule.trips_per_day_per_route(
-        schedule_with_a_couple_services_that_overlap_stations.generate_trips_dataframe())
+        schedule_with_a_couple_services_that_overlap_stations.route_trips_with_stops_to_dataframe())
 
     df = use_schedule.aggregate_trips_per_day_per_route_by_end_stop_pairs(
         schedule_with_a_couple_services_that_overlap_stations, trips_per_day_per_route)

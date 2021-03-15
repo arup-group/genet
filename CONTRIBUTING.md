@@ -53,22 +53,24 @@ issue.
 [`bash_scripts/code-coverage.sh`](https://github.com/arup-group/genet/blob/master/bash_scripts/code-coverage.sh)
  will help both in checking that the coverage level is satisfied and investigating places in code that have not been 
  covered by the tests (via an output file `reports/coverage/index.html` which can be viewed in a browser).
-3. Provide [docstrings](https://www.python.org/dev/peps/pep-0257/) for new methods 
-4. Perform linting locally using ```flake8 . --max-line-length 120 --count  --show-source --statistics --exclude=scripts,tests```
-5. Add or update dependencies in `requirements.txt` if applicable
-6. Ensure the CI build pipeline (Actions tab in GitHub) completes successfully for your branch. The pipeline performs 
+3. Ensure the sample notebooks execute without error by running `./bash_scripts/notebooks-smoke-test.sh`. Problems in
+the core GeNet APIs or in the notebooks themselves can both cause notebook failures.
+4. Provide [docstrings](https://www.python.org/dev/peps/pep-0257/) for new methods
+5. Perform linting locally using ```flake8 . --max-line-length 120 --count  --show-source --statistics --exclude=scripts,tests```
+6. Add or update dependencies in `requirements.txt` if applicable
+7. Ensure the CI build pipeline (Actions tab in GitHub) completes successfully for your branch. The pipeline performs
 automated `PEP8` checks and runs unit tests in a fresh environment, as well as installation of all dependencies.
-7. Update/add to or generate a new jupyter notebook in `notebooks` directory which takes the user through your new feature or
+8. Update/add to or generate a new jupyter notebook in `notebooks` directory which takes the user through your new feature or
 change. You may use example data already in `example_data` directory of this repo, or add more (small amount of) data to
 it to show off your new features.
-8. Add section in the `README.md` which shows usage of your new feature. This can be paraphrased from the jupyter
+9. Add section in the `README.md` which shows usage of your new feature. This can be paraphrased from the jupyter
 notebook in point above.
-9. If the feature is to be used in an automated workflow through the docker image, create n example script in the 
+10. If the feature is to be used in an automated workflow through the docker image, create n example script in the 
 `scripts` directory. Please use existing scripts as templates.
-10. Submit your Pull Request (see [GitHub Docs on Creating a Pull Request](https://docs.github.com/en/free-pro-team@latest/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request)),
+11. Submit your Pull Request (see [GitHub Docs on Creating a Pull Request](https://docs.github.com/en/free-pro-team@latest/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request)),
  describing the feature, linking to any relevant GitHub issues and request review from at 
 least two developers. (Please take a look at latest commits to find out which developers you should request review from)
-11. You may merge the Pull Request in once you have the sign-off of two other developers, or if you 
+12. You may merge the Pull Request in once you have the sign-off of two other developers, or if you 
 do not have permission to do that, please request one of the reviewers to merge it for you.
 
 ## Attribution
