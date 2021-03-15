@@ -119,9 +119,9 @@ def test_generate_osm_graph_edges_from_file(full_fat_default_config):
     nodes, edges = osm_reader.generate_osm_graph_edges_from_file(osm_test_file, full_fat_default_config, 1)
 
     assert_semantically_equal(nodes, {
-        0: {'osmid': 0, 's2id': 1152921492875543713, 'x': 0.008554364250688652, 'y': -0.0006545205888310243},
-        1: {'osmid': 1, 's2id': 1152921335974974453, 'x': 0.024278505899735615, 'y': -0.0006545205888310243},
-        2: {'osmid': 2, 's2id': 384307157539499829, 'x': -0.00716977739835831, 'y': -0.0006545205888310243}})
+        0: {'osmid': 0, 's2id': 1152921492875543713, 'y': 0.008554364250688652, 'x': -0.0006545205888310243},
+        1: {'osmid': 1, 's2id': 1152921335974974453, 'y': 0.024278505899735615, 'x': -0.0006545205888310243},
+        2: {'osmid': 2, 's2id': 384307157539499829, 'y': -0.00716977739835831, 'x': -0.0006545205888310243}})
 
     assert len(edges) == 11
     correct_edge_data = {
