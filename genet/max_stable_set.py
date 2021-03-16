@@ -247,10 +247,16 @@ class MaxStableSet:
     def route_edges(self):
         self.pt_edges['linkRefId_u'] = self.pt_edges['u'].map(self.solution)
         self.pt_edges['linkRefId_v'] = self.pt_edges['v'].map(self.solution)
-        self.pt_edges = self.network_spatial_tree.shortest_paths(
-            df_pt_edges=self.pt_edges,
+        pt_edges = self.network_spatial_tree.shortest_paths(
+            df_pt_edges=self.pt_edges[['linkRefId_u', 'linkRefId_v']].dropna(),
             modes=self.modes,
             from_col='linkRefId_u',
             to_col='linkRefId_v',
             weight='length'
         )
+        self.pt_edges = self.pt_edges.merge(
+            pt_edges,
+            left_on=['linkRefId_u', 'linkRefId_v'], right_on=['linkRefId_u', 'linkRefId_v'],
+            how='left'
+        )
+        return self.pt_edges
