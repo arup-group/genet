@@ -79,7 +79,9 @@ def network():
                                                 stops=[Stop(epsg='epsg:27700', id='stop_1', x=1, y=2.5),
                                                        Stop(epsg='epsg:27700', id='stop_2', x=2, y=2.5),
                                                        Stop(epsg='epsg:27700', id='stop_3', x=5.5, y=2)],
-                                                trips={'trip_1': '15:30:00'},
+                                                trips={'trip_id': ['trip_1'],
+                                                       'trip_departure_time': ['15:30:00'],
+                                                       'vehicle_id': ['veh_bus_0']},
                                                 arrival_offsets=['00:00:00', '00:02:00', '00:05:00'],
                                                 departure_offsets=['00:00:00', '00:03:00', '00:07:00']
                                                 ),
@@ -89,7 +91,9 @@ def network():
                                                 stops=[Stop(epsg='epsg:27700', id='stop_3', x=5.5, y=2),
                                                        Stop(epsg='epsg:27700', id='stop_2', x=2, y=2.5),
                                                        Stop(epsg='epsg:27700', id='stop_1', x=1, y=2.5)],
-                                                trips={'trip_1': '16:30:00'},
+                                                trips={'trip_id': ['trip_2'],
+                                                       'trip_departure_time': ['16:30:00'],
+                                                       'vehicle_id': ['veh_bus_1']},
                                                 arrival_offsets=['00:00:00', '00:02:00', '00:05:00'],
                                                 departure_offsets=['00:00:00', '00:03:00', '00:07:00']
                                                 )
@@ -103,14 +107,20 @@ def network_spatial_tree(network):
 
 
 def test_all_stops_have_nearest_links_returns_False_with_missing_closest_links(mocker, network, network_spatial_tree):
+    closest_links = DataFrame({
+        'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3'},
+        'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car'},
+    }).set_index('id', drop=False)
+    closest_links.index.rename(name='index', inplace=True)
     mocker.patch.object(spatial.SpatialTree, 'closest_links',
-                        return_value=DataFrame({
-                            'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3'},
-                            'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car'},
-                        }))
+                        return_value=closest_links)
+
     mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
                        network_spatial_tree=network_spatial_tree,
-                       modes={'car', 'bus'})
+                       modes={'car', 'bus'},
+                       step_size=10,
+                       distance_threshold=10
+                       )
     assert not mss.all_stops_have_nearest_links()
 
 
@@ -128,33 +138,35 @@ def test_stops_missing_nearest_links_identifies_stops_with_missing_closest_links
 
 def test_build_graph_for_maximum_stable_set_problem_with_non_trivial_closest_link_selection_pool(mocker, network,
                                                                                                  network_spatial_tree):
+    closest_links = DataFrame({
+        'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1',
+               6: 'stop_1'},
+        'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
+                    4: 'link_1_2_car', 5: 'link_1_2_bus', 6: 'link_2_3_car'},
+    }).set_index('id', drop=False)
+    closest_links.index.rename(name='index', inplace=True)
     mocker.patch.object(spatial.SpatialTree, 'closest_links',
-                        return_value=DataFrame({
-                            'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1',
-                                   6: 'stop_1'},
-                            'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
-                                        4: 'link_1_2_car', 5: 'link_1_2_bus', 6: 'link_2_3_car'},
-                        }))
+                        return_value=closest_links)
 
     mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
                        network_spatial_tree=network_spatial_tree,
                        modes={'car', 'bus'},
-                       distance_threshold=30,
+                       distance_threshold=10,
                        step_size=10)
     assert_semantically_equal(dict(mss.problem_graph.nodes()),
-                              {'stop_2.link:link_4_5_car': {'id': 'stop_2', 'link_id': 'link_4_5_car',
+                              {'stop_2.link:link_4_5_car': {'id': 'stop_2', 'link_id': 'link_4_5_car', 'catchment': 10,
                                                             'coeff': 0.2777777777777778},
-                               'stop_2.link:link_5_6_car': {'id': 'stop_2', 'link_id': 'link_5_6_car',
+                               'stop_2.link:link_5_6_car': {'id': 'stop_2', 'link_id': 'link_5_6_car', 'catchment': 10,
                                                             'coeff': 0.2631578947368421},
-                               'stop_3.link:link_7_8_car': {'id': 'stop_3', 'link_id': 'link_7_8_car',
+                               'stop_3.link:link_7_8_car': {'id': 'stop_3', 'link_id': 'link_7_8_car', 'catchment': 10,
                                                             'coeff': 0.2857142857142857},
-                               'stop_3.link:link_8_9_car': {'id': 'stop_3', 'link_id': 'link_8_9_car',
+                               'stop_3.link:link_8_9_car': {'id': 'stop_3', 'link_id': 'link_8_9_car', 'catchment': 10,
                                                             'coeff': 0.2222222222222222},
-                               'stop_1.link:link_1_2_car': {'id': 'stop_1', 'link_id': 'link_1_2_car',
+                               'stop_1.link:link_1_2_car': {'id': 'stop_1', 'link_id': 'link_1_2_car', 'catchment': 10,
                                                             'coeff': 0.2857142857142857},
-                               'stop_1.link:link_1_2_bus': {'id': 'stop_1', 'link_id': 'link_1_2_bus',
+                               'stop_1.link:link_1_2_bus': {'id': 'stop_1', 'link_id': 'link_1_2_bus', 'catchment': 10,
                                                             'coeff': 0.2857142857142857},
-                               'stop_1.link:link_2_3_car': {'id': 'stop_1', 'link_id': 'link_2_3_car',
+                               'stop_1.link:link_2_3_car': {'id': 'stop_1', 'link_id': 'link_2_3_car', 'catchment': 10,
                                                             'coeff': 0.2857142857142857}})
     assert_semantically_equal(list(mss.problem_graph.edges()),
                               [('stop_2.link:link_4_5_car', 'stop_2.link:link_5_6_car'),
@@ -165,13 +177,16 @@ def test_build_graph_for_maximum_stable_set_problem_with_non_trivial_closest_lin
 
 
 def test_build_graph_for_maximum_stable_set_problem_with_no_path_between_isolated_node(mocker, network):
+    closest_links = DataFrame({
+        'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1',
+               6: 'stop_1'},
+        'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
+                    4: 'isolated_link', 5: 'link_1_2_bus', 6: 'link_2_3_car'},
+    }).set_index('id', drop=False)
+    closest_links.index.rename(name='index', inplace=True)
     mocker.patch.object(spatial.SpatialTree, 'closest_links',
-                        return_value=DataFrame({
-                            'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1',
-                                   6: 'stop_1'},
-                            'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
-                                        4: 'isolated_link', 5: 'link_1_2_bus', 6: 'link_2_3_car'},
-                        }))
+                        return_value=closest_links)
+
     network.add_nodes({'node_iso_1': {'id': 'node_iso_1', 'x': 10, 'y': 20, 'lat': 49.8, 'lon': -7.5,
                                       's2_id': 5205973754090365183},
                        'node_iso_2': {'id': 'node_iso_2', 'x': 10, 'y': 30, 'lat': 49.9, 'lon': -7.6,
@@ -181,20 +196,20 @@ def test_build_graph_for_maximum_stable_set_problem_with_no_path_between_isolate
     mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
                        network_spatial_tree=spatial.SpatialTree(network),
                        modes={'car', 'bus'},
-                       distance_threshold=30,
+                       distance_threshold=10,
                        step_size=10)
     assert_semantically_equal(dict(mss.problem_graph.nodes()),
-                              {'stop_2.link:link_4_5_car': {'id': 'stop_2', 'link_id': 'link_4_5_car',
+                              {'stop_2.link:link_4_5_car': {'id': 'stop_2', 'link_id': 'link_4_5_car', 'catchment': 10,
                                                             'coeff': 0.26666666666666666},
-                               'stop_2.link:link_5_6_car': {'id': 'stop_2', 'link_id': 'link_5_6_car',
+                               'stop_2.link:link_5_6_car': {'id': 'stop_2', 'link_id': 'link_5_6_car', 'catchment': 10,
                                                             'coeff': 0.26666666666666666},
-                               'stop_3.link:link_7_8_car': {'id': 'stop_3', 'link_id': 'link_7_8_car',
+                               'stop_3.link:link_7_8_car': {'id': 'stop_3', 'link_id': 'link_7_8_car', 'catchment': 10,
                                                             'coeff': 0.2857142857142857},
-                               'stop_3.link:link_8_9_car': {'id': 'stop_3', 'link_id': 'link_8_9_car',
+                               'stop_3.link:link_8_9_car': {'id': 'stop_3', 'link_id': 'link_8_9_car', 'catchment': 10,
                                                             'coeff': 0.2222222222222222},
-                               'stop_1.link:link_1_2_bus': {'id': 'stop_1', 'link_id': 'link_1_2_bus',
+                               'stop_1.link:link_1_2_bus': {'id': 'stop_1', 'link_id': 'link_1_2_bus', 'catchment': 10,
                                                             'coeff': 0.2857142857142857},
-                               'stop_1.link:link_2_3_car': {'id': 'stop_1', 'link_id': 'link_2_3_car',
+                               'stop_1.link:link_2_3_car': {'id': 'stop_1', 'link_id': 'link_2_3_car', 'catchment': 10,
                                                             'coeff': 0.2857142857142857}})
     assert_semantically_equal(list(mss.problem_graph.edges()),
                               [('stop_2.link:link_4_5_car', 'stop_2.link:link_5_6_car'),
@@ -203,30 +218,35 @@ def test_build_graph_for_maximum_stable_set_problem_with_no_path_between_isolate
 
 
 def test_problem_with_distinct_catchments_is_viable(mocker, network, network_spatial_tree):
+    closest_links = DataFrame({
+        'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1',
+               6: 'stop_1'},
+        'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
+                    4: 'link_1_2_car', 5: 'link_1_2_bus', 6: 'link_2_3_car'},
+    }).set_index('id', drop=False)
+    closest_links.index.rename(name='index', inplace=True)
     mocker.patch.object(spatial.SpatialTree, 'closest_links',
-                        return_value=DataFrame({
-                            'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1',
-                                   6: 'stop_1'},
-                            'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
-                                        4: 'link_1_2_car', 5: 'link_1_2_bus', 6: 'link_2_3_car'},
-                        }))
+                        return_value=closest_links)
 
     mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
                        network_spatial_tree=network_spatial_tree,
                        modes={'car', 'bus'},
-                       distance_threshold=30,
+                       distance_threshold=10,
                        step_size=10)
 
     assert mss.is_viable()
 
 
 def test_problem_with_isolated_catchment_is_not_viable(mocker, network):
+    closest_links = DataFrame({
+        'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1'},
+        'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
+                    4: 'isolated_link_1', 5: 'isolated_link_2'},
+    }).set_index('id', drop=False)
+    closest_links.index.rename(name='index', inplace=True)
     mocker.patch.object(spatial.SpatialTree, 'closest_links',
-                        return_value=DataFrame({
-                            'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1'},
-                            'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
-                                        4: 'isolated_link_1', 5: 'isolated_link_2'},
-                        }))
+                        return_value=closest_links)
+
     network.add_nodes({'node_iso_1': {'id': 'node_iso_1', 'x': 10, 'y': 20, 'lat': 49.8, 'lon': -7.5,
                                       's2_id': 5205973754090365183},
                        'node_iso_2': {'id': 'node_iso_2', 'x': 10, 'y': 30, 'lat': 49.9, 'lon': -7.6,
@@ -237,19 +257,22 @@ def test_problem_with_isolated_catchment_is_not_viable(mocker, network):
     mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
                        network_spatial_tree=spatial.SpatialTree(network),
                        modes={'car', 'bus'},
-                       distance_threshold=30,
+                       distance_threshold=10,
                        step_size=10)
 
     assert not mss.is_viable()
 
 
 def test_problem_with_isolated_catchment_is_partially_viable(mocker, network):
+    closest_links = DataFrame({
+        'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1'},
+        'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
+                    4: 'isolated_link_1', 5: 'isolated_link_2'},
+    }).set_index('id', drop=False)
+    closest_links.index.rename(name='index', inplace=True)
     mocker.patch.object(spatial.SpatialTree, 'closest_links',
-                        return_value=DataFrame({
-                            'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1'},
-                            'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
-                                        4: 'isolated_link_1', 5: 'isolated_link_2'},
-                        }))
+                        return_value=closest_links)
+
     network.add_nodes({'node_iso_1': {'id': 'node_iso_1', 'x': 10, 'y': 20, 'lat': 49.8, 'lon': -7.5,
                                       's2_id': 5205973754090365183},
                        'node_iso_2': {'id': 'node_iso_2', 'x': 10, 'y': 30, 'lat': 49.9, 'lon': -7.6,
@@ -260,37 +283,52 @@ def test_problem_with_isolated_catchment_is_partially_viable(mocker, network):
     mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
                        network_spatial_tree=spatial.SpatialTree(network),
                        modes={'car', 'bus'},
-                       distance_threshold=30,
+                       distance_threshold=10,
                        step_size=10)
 
     assert mss.is_partially_viable()
 
 
 def test_solving_problem_with_isolated_catchments(mocker, network, network_spatial_tree):
+    closest_links = DataFrame({
+        'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1', 6: 'stop_1'},
+        'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car', 4: 'link_1_2_car',
+                    5: 'link_1_2_bus', 6: 'link_2_3_car'}
+    }).set_index('id', drop=False)
+    closest_links.index.rename(name='index', inplace=True)
     mocker.patch.object(spatial.SpatialTree, 'closest_links',
-                        return_value=DataFrame({
-                            'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1',
-                                   6: 'stop_1'},
-                            'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
-                                        4: 'link_1_2_car', 5: 'link_1_2_bus', 6: 'link_2_3_car'},
-                        }))
+                        return_value=closest_links)
 
     mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
                        network_spatial_tree=network_spatial_tree,
                        modes={'car', 'bus'})
     mss.solve()
-    assert mss.solution == {'stop_3.link:link_7_8_car': {'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'},
-                            'stop_1.link:link_1_2_bus': {'linkRefId': 'link_1_2_bus', 'stop_id': 'stop_1'},
-                            'stop_2.link:link_4_5_car': {'linkRefId': 'link_4_5_car', 'stop_id': 'stop_2'}}
+    assert mss.solution == {'stop_1': 'link_1_2_bus', 'stop_2': 'link_4_5_car', 'stop_3': 'link_7_8_car'}
+    assert mss.artificial_stops == {
+        'stop_1.link:link_1_2_bus': {'services': ['bus_service'], 'routes': ['service_1_route_2', 'service_1_route_1'],
+                                     'id': 'stop_1', 'x': 1.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
+                                     'lon': -7.557148552832129, 'lat': 49.76683027967191, 's2_id': 5205973754090340691,
+                                     'additional_attributes': set(), 'linkRefId': 'link_1_2_bus', 'stop_id': 'stop_1'},
+        'stop_2.link:link_4_5_car': {'services': ['bus_service'], 'routes': ['service_1_route_2', 'service_1_route_1'],
+                                     'id': 'stop_2', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
+                                     'lon': -7.557134732217642, 'lat': 49.76683094462549, 's2_id': 5205973754090230267,
+                                     'additional_attributes': set(), 'linkRefId': 'link_4_5_car', 'stop_id': 'stop_2'},
+        'stop_3.link:link_7_8_car': {'services': ['bus_service'], 'routes': ['service_1_route_2', 'service_1_route_1'],
+                                     'id': 'stop_3', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+                                     'lon': -7.55708584676138, 'lat': 49.76682879603468, 's2_id': 5205973754096513977,
+                                     'additional_attributes': set(), 'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}}
 
 
 def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(mocker, network):
+    closest_links = DataFrame({
+        'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1'},
+        'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
+                    4: 'isolated_link_1', 5: 'isolated_link_2'},
+    }).set_index('id', drop=False)
+    closest_links.index.rename(name='index', inplace=True)
     mocker.patch.object(spatial.SpatialTree, 'closest_links',
-                        return_value=DataFrame({
-                            'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3', 4: 'stop_1', 5: 'stop_1'},
-                            'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car',
-                                        4: 'isolated_link_1', 5: 'isolated_link_2'},
-                        }))
+                        return_value=closest_links)
+
     network.add_nodes({'node_iso_1': {'id': 'node_iso_1', 'x': 10, 'y': 20, 'lat': 49.8, 'lon': -7.5,
                                       's2_id': 5205973754090365183},
                        'node_iso_2': {'id': 'node_iso_2', 'x': 10, 'y': 30, 'lat': 49.9, 'lon': -7.6,
@@ -301,8 +339,16 @@ def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(mocker,
     mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
                        network_spatial_tree=spatial.SpatialTree(network),
                        modes={'car', 'bus'},
-                       distance_threshold=30,
+                       distance_threshold=10,
                        step_size=10)
     mss.solve()
-    assert mss.solution == {'stop_2.link:link_5_6_car': {'linkRefId': 'link_5_6_car', 'stop_id': 'stop_2'},
-                            'stop_3.link:link_7_8_car': {'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}}
+    assert mss.solution == {'stop_2': 'link_5_6_car', 'stop_3': 'link_7_8_car'}
+    assert mss.artificial_stops == {
+        'stop_2.link:link_5_6_car': {'services': ['bus_service'], 'routes': ['service_1_route_2', 'service_1_route_1'],
+                                     'id': 'stop_2', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
+                                     'lon': -7.557134732217642, 'lat': 49.76683094462549, 's2_id': 5205973754090230267,
+                                     'additional_attributes': set(), 'linkRefId': 'link_5_6_car', 'stop_id': 'stop_2'},
+        'stop_3.link:link_7_8_car': {'services': ['bus_service'], 'routes': ['service_1_route_2', 'service_1_route_1'],
+                                     'id': 'stop_3', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+                                     'lon': -7.55708584676138, 'lat': 49.76682879603468, 's2_id': 5205973754096513977,
+                                     'additional_attributes': set(), 'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}}

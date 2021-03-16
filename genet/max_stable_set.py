@@ -18,29 +18,33 @@ class MaxStableSet:
         self.step_size = step_size
         self.network_spatial_tree = network_spatial_tree
         self.pt_graph = pt_graph
-        self.stops = set(pt_graph.nodes())
         self.stops, self.pt_edges = gngeojson.generate_geodataframes(pt_graph)
-        self.nodes = self.stops[['id', 'geometry']].copy()
         self.edges = self.pt_edges[['u', 'v', 'geometry']].copy()
-        # todo increase distance by step size until all stops have closest links or reached threshold
-        self.nodes = self.find_closest_links(distance=step_size)
+        self.nodes = self.find_closest_links()
         self.problem_graph = self.generate_problem_graph()
         self.solution = None
         self.artificial_stops = {}
 
-    def find_closest_links(self, distance, stops: set = None):
-        if stops is not None:
-            _df = self.stops[self.stops['id'].isin(stops)][['id', 'geometry']].copy()
-        else:
-            _df = self.stops[['id', 'geometry']].copy()
+    def find_closest_links(self):
+        # increase distance by step size until all stops have closest links or reached threshold
+        distance = self.step_size
+        nodes = self.cast_catchment(df_stops=self.stops[['id', 'geometry']].copy(), distance=distance)
+        nodes['catchment'] = distance
+        stops = set(self.stops['id'])
+        while (set(nodes.index) != stops) and (distance < self.distance_threshold):
+            distance += self.step_size
+            _df = self.cast_catchment(
+                df_stops=self.stops[self.stops['id'].isin(stops - set(nodes.index))][['id', 'geometry']].copy(),
+                distance=distance)
+            _df['catchment'] = distance
+            nodes = nodes.append(_df)
+        return nodes
+
+    def cast_catchment(self, df_stops, distance):
         return self.network_spatial_tree.closest_links(
-            gdf_points=_df,
+            gdf_points=df_stops,
             distance_radius=distance,
             modes=self.modes).dropna()
-
-    def grow_catchment(self, stop_ids):
-        # todo increase area within which to snap to a stop by step size until distance threshold reached
-        pass
 
     def all_stops_have_nearest_links(self):
         return not bool(self.stops_missing_nearest_links())
