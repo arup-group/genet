@@ -28,7 +28,8 @@ if __name__ == '__main__':
                             '--requests_threshold',
                             help='Max number of API requests you are happy to send. If exceeded, will fail without '
                                  'sending any',
-                            required=True)
+                            required=True,
+                            type=int)
 
     arg_parser.add_argument('-k',
                             '--api_key',
@@ -60,7 +61,7 @@ if __name__ == '__main__':
     if subset_conditions:
         subset_conditions = subset_conditions.split(',')
     requests_threshold = args['requests_threshold']
-    key = args['key']
+    key = args['api_key']
     secret_name = args['secret_name']
     region_name = args['region_name']
     output_dir = args['output_dir']
@@ -83,8 +84,8 @@ if __name__ == '__main__':
         n=n,
         request_number_threshold=requests_threshold,
         output_dir=output_dir,
-        traffic=False,
-        key=None,
-        secret_name=None,
-        region_name=None
+        traffic=True,
+        key=key,
+        secret_name=secret_name,
+        region_name=region_name
     )
