@@ -265,12 +265,11 @@ def read_schedule(schedule_path, epsg):
                 is_minimalTransferTimes = not is_minimalTransferTimes
             if elem.tag == 'relation':
                 if is_minimalTransferTimes:
-                    if not elem.attrib['toStop'] in minimalTransferTimes:
-                        attribs = elem.attrib
-                        minimalTransferTimes[attribs['fromStop']] = {
-                            'stop': attribs['toStop'],
-                            'transferTime': float(attribs['transferTime'])
-                        }
+                    attribs = elem.attrib
+                    minimalTransferTimes[attribs['fromStop']] = {
+                        'stop': attribs['toStop'],
+                        'transferTime': float(attribs['transferTime'])
+                    }
             if elem.tag == 'transitLine':
                 if transitLine:
                     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
