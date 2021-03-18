@@ -366,7 +366,7 @@ class ChangeSet():
         self.new_nodes = self.new_network_nodes(max_stable_set)
         self.df_route_data = self.update_df_route_data(df_route_data, max_stable_set)
         self.new_stops, self.old_stops = self.new_schedule_stops(max_stable_set)
-        self.minimal_transfer_times = self.make_minimal_transfer_times(max_stable_set, max_stable_set)
+        self.minimal_transfer_times = self.make_minimal_transfer_times(max_stable_set)
 
     def new_network_links(self, max_stable_set):
         # generate data needed for the network to add artificial links following a partially viable max stable set

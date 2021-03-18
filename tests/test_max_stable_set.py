@@ -463,4 +463,13 @@ def test_generating_changeset_from_partial_mss_problem(partial_mss):
          'stop_1': {'services': [], 'routes': [], 'id': 'stop_1', 'x': 1.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
                     'lon': -7.557148552832129, 'lat': 49.76683027967191, 's2_id': 5205973754090340691,
                     'additional_attributes': set()}})
+    assert_semantically_equal(
+        changeset.minimal_transfer_times,
+        {'stop_1': {'stop': 'stop_1.link:artificial_link===from:stop_1===to:stop_1', 'transferTime': 0.0},
+         'stop_2': {'stop': 'stop_2.link:link_5_6_car', 'transferTime': 0.0},
+         'stop_3': {'stop': 'stop_3.link:link_7_8_car', 'transferTime': 0.0},
+         'stop_1.link:artificial_link===from:stop_1===to:stop_1': {'stop': 'stop_1', 'transferTime': 0.0},
+         'stop_2.link:link_5_6_car': {'stop': 'stop_2', 'transferTime': 0.0},
+         'stop_3.link:link_7_8_car': {'stop': 'stop_3', 'transferTime': 0.0}}
+    )
 
