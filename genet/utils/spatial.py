@@ -178,6 +178,7 @@ class SpatialTree(nx.DiGraph):
 
         nodes = self.links.set_index('link_id').T.to_dict()
         self.add_nodes_from(nodes)
+        nx.set_node_attributes(self, nodes)
 
         cols = ['from', 'to', 'link_id']
         edge_data_cols = list(set(self.links.columns) - set(cols + ['modes', 'geometry', 'u', 'v', 'key']))

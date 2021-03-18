@@ -24,6 +24,7 @@ class MaxStableSet:
         self.problem_graph = self.generate_problem_graph()
         self.solution = None
         self.artificial_stops = {}
+        self.unsolved_stops = set()
 
     def find_closest_links(self):
         # increase distance by step size until all stops have closest links or reached threshold
@@ -235,14 +236,18 @@ class MaxStableSet:
             node: {
                 **self.pt_graph.nodes[self.problem_graph.nodes[node]['id']],
                 **{'linkRefId': node.split(':')[-1],
-                   'stop_id': self.problem_graph.nodes[node]['id']}}
+                   'stop_id': self.problem_graph.nodes[node]['id'],
+                   'id': node}
+            }
             for node in selected}
-
-    def unsolved_stops(self):
-        return set(self.stops['id']) - set(self.solution.keys())
+        self.unsolved_stops = set(self.stops['id']) - set(self.solution.keys())
 
     def all_stops_solved(self):
-        return not bool(self.unsolved_stops())
+        return not bool(self.unsolved_stops)
+
+    def stops_to_artificial_stops_map(self):
+        return {**{s: s for s in self.unsolved_stops},
+                **{data['stop_id']: a_s for a_s, data in self.artificial_stops.items()}}
 
     def route_edges(self):
         self.pt_edges['linkRefId_u'] = self.pt_edges['u'].map(self.solution)
@@ -260,3 +265,66 @@ class MaxStableSet:
             how='left'
         )
         return self.pt_edges
+
+    def _generate_artificial_link(self, from_node, to_node):
+        return f'artificial_link===from:{from_node}===to:{to_node}'
+
+    def _access_link_data(self, link_id):
+        try:
+            link_data = self.network_spatial_tree.nodes[link_id]
+        except KeyError:
+            # that link must be artificial
+            if 'artificial_link' in link_id:
+                link_data = link_id.split('===')
+                link_data = {'from': link_data[1].split(':')[1], 'to': link_data[2].split(':')[1]}
+            else:
+                raise RuntimeError(f'A stop has snapped to an identified link {link_data}')
+        return link_data
+
+    def _generate_artificial_path(self, from_link, to_link):
+        return [from_link, self._generate_artificial_link(self._access_link_data(from_link)['to'],
+                                                          self._access_link_data(to_link)['from']), to_link]
+
+    def fill_in_solution_artificially(self):
+        # generate unsnapped stops
+        self.solution = {**self.solution, **{s: self._generate_artificial_link(s, s) for s in self.unsolved_stops}}
+        self.artificial_stops = {
+            **self.artificial_stops,
+            **{f'{s}.link:{self._generate_artificial_link(s,s)}': {
+                **self.pt_graph.nodes[s],
+                **{'linkRefId': self._generate_artificial_link(s, s), 'stop_id': s,
+                   'id': f'{s}.link:{self._generate_artificial_link(s,s)}'}} for s in self.unsolved_stops}}
+
+        # fill in the blanks with generated stop-links and
+        if 'shortest_path' in self.pt_edges.columns:
+            missing_linkref_u_mask = self.pt_edges['linkRefId_u'].isna()
+            self.pt_edges.loc[missing_linkref_u_mask, 'linkRefId_u'] = self.pt_edges.loc[
+                missing_linkref_u_mask, 'u'].map(self.solution)
+            missing_linkref_v_mask = self.pt_edges['linkRefId_v'].isna()
+            self.pt_edges.loc[missing_linkref_v_mask, 'linkRefId_v'] = self.pt_edges.loc[
+                missing_linkref_v_mask, 'v'].map(self.solution)
+            missing_shortest_path_mask = self.pt_edges['shortest_path'].isna()
+            self.pt_edges.loc[missing_shortest_path_mask, 'shortest_path'] = self.pt_edges.loc[
+                missing_shortest_path_mask].apply(
+                lambda x: self._generate_artificial_path(from_link=x['linkRefId_u'], to_link=x['linkRefId_v']), axis=1)
+        else:
+            logging.warning('Solution is being artificially filled in before the edges were routed. If your problem is'
+                            'partial, this will result in gaps in routed paths.')
+
+    def routed_path(self, ordered_stops):
+        """
+        :param ordered_stops: list of stops in the route (not artificial/snapped stops)
+        :return:
+        """
+        path = []
+        for u, v in zip(ordered_stops[:-1], ordered_stops[1:]):
+            pairwise_path = \
+            self.pt_edges.loc[(self.pt_edges['u'] == u) & (self.pt_edges['v'] == v), 'shortest_path'].tolist()[0]
+            if path:
+                if path[-1] == pairwise_path[0]:
+                    path += pairwise_path[1:]
+                else:
+                    path += pairwise_path
+            else:
+                path.extend(pairwise_path)
+        return path
