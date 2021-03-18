@@ -1,9 +1,11 @@
 from pyomo.environ import *  # noqa: F403
 import itertools
 import logging
+from copy import deepcopy
 import networkx as nx
 import genet.outputs_handler.geojson as gngeojson
 import genet.utils.graph_operations as graph_operations
+from genet.exceptions import InvalidMaxStableSetProblem
 import matplotlib.pyplot as plt
 
 
@@ -21,9 +23,19 @@ class MaxStableSet:
         self.stops, self.pt_edges = gngeojson.generate_geodataframes(pt_graph)
         self.edges = self.pt_edges[['u', 'v', 'geometry']].copy()
         self.nodes = self.find_closest_links()
+        self.is_partial = False
         self.problem_graph = self.generate_problem_graph()
+        if not self.is_viable():
+            self.is_partial = self.is_partially_viable()
+            if self.is_partial:
+                logging.warning('This Maximum Stable Set Problem is partially viable.')
+            else:
+                raise InvalidMaxStableSetProblem('This Maximum Stable Set Problem has at least one completely connected'
+                                                 'catchment and cannot proceed to the solver.')
+
         self.solution = None
         self.artificial_stops = {}
+        self.artificial_links = {}
         self.unsolved_stops = set()
 
     def find_closest_links(self):
@@ -117,14 +129,23 @@ class MaxStableSet:
     def has_a_completely_connected_catchment(self):
         stop_id_groups = self.nodes.groupby('id')
         for u, v in self.pt_graph.edges():
-            node_degrees = [self.in_out_degree(n) for n in stop_id_groups.get_group(u)['problem_nodes']]
-            node_degrees = node_degrees + [self.in_out_degree(n) for n in stop_id_groups.get_group(v)['problem_nodes']]
-            total_nodes = len(stop_id_groups.get_group(u)) + len(stop_id_groups.get_group(v))
-            if all([node_degree >= total_nodes - 1 for node_degree in node_degrees]):
-                logging.warning(
-                    f'Two stops: {u} and {v} are completely connected, suggesting that one or more stops has found no '
-                    f'viable network links within the specified threshold')
-                return True
+            try:
+                u_group = stop_id_groups.get_group(u)
+            except KeyError:
+                u_group = None
+            try:
+                v_group = stop_id_groups.get_group(v)
+            except KeyError:
+                v_group = None
+            if (u_group is not None) and (v_group is not None):
+                node_degrees = [self.in_out_degree(n) for n in u_group['problem_nodes']]
+                node_degrees += [self.in_out_degree(n) for n in v_group['problem_nodes']]
+                total_nodes = len(u_group) + len(v_group)
+                if all([node_degree >= total_nodes - 1 for node_degree in node_degrees]):
+                    logging.warning(
+                        f'Two stops: {u} and {v} are completely connected, suggesting that one or more stops has '
+                        f'found no viable network links within the specified threshold')
+                    return True
         return False
 
     def is_viable(self):
@@ -267,7 +288,9 @@ class MaxStableSet:
         return self.pt_edges
 
     def _generate_artificial_link(self, from_node, to_node):
-        return f'artificial_link===from:{from_node}===to:{to_node}'
+        link_id = f'artificial_link===from:{from_node}===to:{to_node}'
+        self.artificial_links[link_id] = {'from': from_node, 'to': to_node}
+        return link_id
 
     def _access_link_data(self, link_id):
         try:
@@ -319,7 +342,7 @@ class MaxStableSet:
         path = []
         for u, v in zip(ordered_stops[:-1], ordered_stops[1:]):
             pairwise_path = \
-            self.pt_edges.loc[(self.pt_edges['u'] == u) & (self.pt_edges['v'] == v), 'shortest_path'].tolist()[0]
+                self.pt_edges.loc[(self.pt_edges['u'] == u) & (self.pt_edges['v'] == v), 'shortest_path'].tolist()[0]
             if path:
                 if path[-1] == pairwise_path[0]:
                     path += pairwise_path[1:]
@@ -328,3 +351,61 @@ class MaxStableSet:
             else:
                 path.extend(pairwise_path)
         return path
+
+    def to_changeset(self, routes_df):
+        return ChangeSet(self, routes_df)
+
+
+class ChangeSet():
+    """
+    Record of network and schedule changes needed for a solved max stable set
+    """
+
+    def __init__(self, max_stable_set, df_route_data):
+        self.new_links = self.new_network_links(max_stable_set)
+        self.new_nodes = self.new_network_nodes(max_stable_set)
+        self.df_route_data = self.update_df_route_data(df_route_data, max_stable_set)
+        self.new_stops, self.old_stops = self.new_schedule_stops(max_stable_set)
+
+    def new_network_links(self, max_stable_set):
+        # generate data needed for the network to add artificial links following a partially viable max stable set
+        return max_stable_set.artificial_links
+
+    def new_network_nodes(self, max_stable_set):
+        # generate data needed for the network to add artificial nodes following a partially viable max stable set
+        return {s: {k: v for k, v in max_stable_set.pt_graph.nodes[s].items() if
+                    k not in ['routes', 'services', 'additional_attributes', 'epsg']} for s in
+                max_stable_set.unsolved_stops}
+
+    def update_df_route_data(self, df_route_data, max_stable_set):
+        # update stops and generate routed paths
+        df_route_data['route'] = df_route_data['ordered_stops'].apply(
+            lambda x: max_stable_set.routed_path(x))
+        map = max_stable_set.stops_to_artificial_stops_map()
+        df_route_data['ordered_stops'] = df_route_data['ordered_stops'].map(
+            lambda x: [map[stop] for stop in x])
+        return df_route_data
+
+    def new_schedule_stops(self, max_stable_set):
+        # generate data needed for the network to add artificial stops and
+        new_stops = deepcopy(max_stable_set.artificial_stops)
+        routes = list(self.df_route_data.index)
+        services = list({max_stable_set.pt_graph.graph['route_to_service_map'][r_id] for r_id in routes})
+        for stop, data in new_stops.items():
+            data['routes'] = routes
+            data['services'] = services
+
+        # generate old nodes with updated data
+        old_stops = deepcopy(dict(max_stable_set.pt_graph.nodes(data=True)))
+        for stop, data in old_stops.items():
+            data['routes'] = list(set(data['routes']) - set(routes))
+            data['services'] = list(set(data['services']) - set(services))
+        return new_stops, old_stops
+
+    def minimum_transfer_times(self):
+        # TODO
+        pass
+
+    def __add__(self, other):
+        # combine several changesets
+        pass

@@ -250,10 +250,6 @@ def test_artificially_filling_in_solution_for_partial_pt_routing_problem_results
                '5221390688502743083_5221390698590575489', '5221390698590575489_5221390721979501095']
 
 
-def test_routing_service(test_service, test_spatialtree):
-    mod_schedule.route_service(test_service, test_spatialtree, distance_threshold=20, step_size=20)
-
-
 def test_routing_service_with_network(test_network, test_service):
     test_network.schedule = Schedule(epsg='epsg:27700', services=[test_service])
     test_network.route_service('service_bus')
