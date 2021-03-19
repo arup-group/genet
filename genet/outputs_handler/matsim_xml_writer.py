@@ -130,11 +130,11 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
             # minimalTransferTimes, if present
             if schedule.minimal_transfer_times:
                 with xf.element("minimalTransferTimes"):
-                    for from_stop, val in schedule.minimal_transfer_times.items():
+                    for (from_stop, to_stop), val in schedule.minimal_transfer_times.items():
                         minimal_transfer_times_attribs = {
                             'fromStop': str(from_stop),
-                            'toStop': str(val['stop']),
-                            'transferTime': str(val['transferTime'])
+                            'toStop': str(to_stop),
+                            'transferTime': str(val)
                         }
                         xf.write(etree.Element("relation", minimal_transfer_times_attribs))
 

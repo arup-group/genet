@@ -473,3 +473,102 @@ def test_generating_changeset_from_partial_mss_problem(partial_mss):
          'stop_3.link:link_7_8_car': {'stop': 'stop_3', 'transferTime': 0.0}}
     )
 
+def test_combining_two_changesets_with_overlap(partial_mss):
+    service_1_route_1_pt_edges = partial_mss.pt_edges[partial_mss.pt_edges['routes'].apply(lambda x: 'service_1_route_1' in x)]
+    service_1_route_2_pt_edges = partial_mss.pt_edges[partial_mss.pt_edges['routes'].apply(lambda x: 'service_1_route_2' in x)]
+
+    partial_mss.pt_edges = service_1_route_2_pt_edges
+    changeset = partial_mss.to_changeset(
+        DataFrame({'ordered_stops': {'service_1_route_2': ['stop_3', 'stop_2', 'stop_1']}}))
+
+    partial_mss.solution['stop_2'] = 'link_6_5_car'
+    del partial_mss.artificial_stops['stop_2.link:link_5_6_car']
+    partial_mss.artificial_stops['stop_2.link:link_6_5_car'] = {
+        'services': ['bus_service'], 'routes': ['service_1_route_1'],
+        'id': 'stop_2.link:link_6_5_car', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700',
+        'name': '', 'lon': -7.557134732217642, 'lat': 49.76683094462549,
+        's2_id': 5205973754090230267, 'additional_attributes': set(),
+        'linkRefId': 'link_6_5_car', 'stop_id': 'stop_2'}
+    partial_mss.artificial_links = {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1'},
+                            'artificial_link===from:node_5===to:stop_1': {'from': 'node_5', 'to': 'stop_1'},
+                            'artificial_link===from:stop_1===to:node_6': {'from': 'stop_1', 'to': 'node_6'}}
+    partial_mss.pt_edges = service_1_route_1_pt_edges
+
+    changeset += partial_mss.to_changeset(
+        DataFrame({'ordered_stops': {'service_1_route_1': ['stop_1', 'stop_2', 'stop_3']}}))
+
+    assert_semantically_equal(
+        changeset.df_route_data.to_dict(),
+        {'ordered_stops': {'service_1_route_2': ['stop_3.link:link_7_8_car', 'stop_2.link:link_5_6_car',
+                                                 'stop_1.link:artificial_link===from:stop_1===to:stop_1'],
+                           'service_1_route_1': ['stop_1.link:artificial_link===from:stop_1===to:stop_1',
+                                                 'stop_2.link:link_6_5_car', 'stop_3.link:link_7_8_car']}, 'route': {
+            'service_1_route_2': ['link_7_8_car', 'link_8_7_car', 'link_7_6_car', 'link_6_5_car', 'link_5_6_car',
+                                  'artificial_link===from:node_6===to:stop_1',
+                                  'artificial_link===from:stop_1===to:stop_1'],
+            'service_1_route_1': ['artificial_link===from:stop_1===to:stop_1',
+                                  'artificial_link===from:stop_1===to:node_5', 'link_5_6_car', 'link_6_7_car',
+                                  'link_7_8_car']}})
+    assert_semantically_equal(
+        changeset.new_links,
+        {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1'},
+         'artificial_link===from:node_6===to:stop_1': {'from': 'node_6', 'to': 'stop_1'},
+         'artificial_link===from:stop_1===to:node_5': {'from': 'stop_1', 'to': 'node_5'},
+         'artificial_link===from:node_5===to:stop_1': {'from': 'node_5', 'to': 'stop_1'},
+         'artificial_link===from:stop_1===to:node_6': {'from': 'stop_1', 'to': 'node_6'}}
+    )
+    assert_semantically_equal(
+        changeset.new_nodes,
+        {'stop_1': {'id': 'stop_1', 'x': 1.0, 'y': 2.5, 'name': '', 'lon': -7.557148552832129, 'lat': 49.76683027967191,
+                    's2_id': 5205973754090340691}}
+    )
+    assert_semantically_equal(
+        changeset.new_stops,
+        {'stop_2.link:link_5_6_car': {'services': ['bus_service'], 'routes': ['service_1_route_2'],
+                                      'id': 'stop_2.link:link_5_6_car', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700',
+                                      'name': '', 'lon': -7.557134732217642, 'lat': 49.76683094462549,
+                                      's2_id': 5205973754090230267, 'additional_attributes': set(),
+                                      'linkRefId': 'link_5_6_car', 'stop_id': 'stop_2'},
+         'stop_3.link:link_7_8_car': {'services': ['bus_service'], 'routes': ['service_1_route_2', 'service_1_route_1'],
+                                      'id': 'stop_3.link:link_7_8_car', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700',
+                                      'name': '', 'lon': -7.55708584676138, 'lat': 49.76682879603468,
+                                      's2_id': 5205973754096513977, 'additional_attributes': set(),
+                                      'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'},
+         'stop_1.link:artificial_link===from:stop_1===to:stop_1': {'services': ['bus_service'],
+                                                                   'routes': ['service_1_route_2', 'service_1_route_1'],
+                                                                   'id': 'stop_1.link:artificial_link===from:stop_1===to:stop_1',
+                                                                   'x': 1.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
+                                                                   'lon': -7.557148552832129, 'lat': 49.76683027967191,
+                                                                   's2_id': 5205973754090340691,
+                                                                   'additional_attributes': set(),
+                                                                   'linkRefId': 'artificial_link===from:stop_1===to:stop_1',
+                                                                   'stop_id': 'stop_1'},
+         'stop_2.link:link_6_5_car': {'services': ['bus_service'], 'routes': ['service_1_route_1'],
+                                      'id': 'stop_2.link:link_6_5_car', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700',
+                                      'name': '', 'lon': -7.557134732217642, 'lat': 49.76683094462549,
+                                      's2_id': 5205973754090230267, 'additional_attributes': set(),
+                                      'linkRefId': 'link_6_5_car', 'stop_id': 'stop_2'}}
+    )
+    assert_semantically_equal(
+        changeset.old_stops,
+        {'stop_3': {'services': [], 'routes': [], 'id': 'stop_3', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+                    'lon': -7.55708584676138, 'lat': 49.76682879603468, 's2_id': 5205973754096513977,
+                    'additional_attributes': set()},
+         'stop_2': {'services': [], 'routes': [], 'id': 'stop_2', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
+                    'lon': -7.557134732217642, 'lat': 49.76683094462549, 's2_id': 5205973754090230267,
+                    'additional_attributes': set()},
+         'stop_1': {'services': [], 'routes': [], 'id': 'stop_1', 'x': 1.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
+                    'lon': -7.557148552832129, 'lat': 49.76683027967191, 's2_id': 5205973754090340691,
+                    'additional_attributes': set()}}
+    )
+    assert_semantically_equal(
+        changeset.minimal_transfer_times,
+        {('stop_1', 'stop_1.link:artificial_link===from:stop_1===to:stop_1'): 0.0,
+         ('stop_2', 'stop_2.link:link_5_6_car'): 0.0,
+         ('stop_3', 'stop_3.link:link_7_8_car'): 0.0,
+         ('stop_1.link:artificial_link===from:stop_1===to:stop_1', 'stop_1'): 0.0,
+         ('stop_2.link:link_5_6_car', 'stop_2'): 0.0,
+         ('stop_3.link:link_7_8_car', 'stop_3'): 0.0,
+         ('stop_2', 'stop_2.link:link_6_5_car'): 0.0,
+         ('stop_2.link:link_6_5_car', 'stop_2'): 0.0}
+    )

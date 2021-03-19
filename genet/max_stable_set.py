@@ -5,6 +5,7 @@ from copy import deepcopy
 import networkx as nx
 import genet.outputs_handler.geojson as gngeojson
 import genet.utils.graph_operations as graph_operations
+import genet.utils.dict_support as dict_support
 from genet.exceptions import InvalidMaxStableSetProblem
 import matplotlib.pyplot as plt
 
@@ -289,7 +290,7 @@ class MaxStableSet:
 
     def _generate_artificial_link(self, from_node, to_node):
         link_id = f'artificial_link===from:{from_node}===to:{to_node}'
-        self.artificial_links[link_id] = {'from': from_node, 'to': to_node}
+        self.artificial_links[link_id] = {'from': from_node, 'to': to_node, 'modes': self.modes}
         return link_id
 
     def _access_link_data(self, link_id):
@@ -362,10 +363,15 @@ class ChangeSet():
     """
 
     def __init__(self, max_stable_set, df_route_data):
+        self.routes = list(df_route_data.index)
+        self.services = list({max_stable_set.pt_graph.graph['route_to_service_map'][r_id] for r_id in self.routes})
+        self.other_routes_in_service = {r_id for s_id in self.services for r_id in
+                                        max_stable_set.pt_graph.graph['service_to_route_map'][s_id]} - set(self.routes)
+
         self.new_links = self.new_network_links(max_stable_set)
         self.new_nodes = self.new_network_nodes(max_stable_set)
         self.df_route_data = self.update_df_route_data(df_route_data, max_stable_set)
-        self.new_stops, self.old_stops = self.new_schedule_stops(max_stable_set)
+        self.new_stops, self.old_stops = self.schedule_stops(max_stable_set)
         self.minimal_transfer_times = self.make_minimal_transfer_times(max_stable_set)
 
     def new_network_links(self, max_stable_set):
@@ -387,32 +393,50 @@ class ChangeSet():
             lambda x: [map[stop] for stop in x])
         return df_route_data
 
-    def new_schedule_stops(self, max_stable_set):
+    def schedule_stops(self, max_stable_set):
         # generate data needed for the network to add artificial stops and
         new_stops = deepcopy(max_stable_set.artificial_stops)
-        routes = list(self.df_route_data.index)
-        services = list({max_stable_set.pt_graph.graph['route_to_service_map'][r_id] for r_id in routes})
         for stop, data in new_stops.items():
-            data['routes'] = routes
-            data['services'] = services
+            data['routes'] = self.routes
+            data['services'] = self.services
 
         # generate old nodes with updated data
         old_stops = deepcopy(dict(max_stable_set.pt_graph.nodes(data=True)))
         for stop, data in old_stops.items():
-            data['routes'] = list(set(data['routes']) - set(routes))
-            data['services'] = list(set(data['services']) - set(services))
+            data['routes'] = list(set(data['routes']) - set(self.routes))
+            if not set(data['routes']) & self.other_routes_in_service:
+                data['services'] = list(set(data['services']) - set(self.services))
         return new_stops, old_stops
 
     def make_minimal_transfer_times(self, max_stable_set):
         map = max_stable_set.stops_to_artificial_stops_map()
-        minimal_transfer_times = {
-            from_stop: {'stop': to_stop, 'transferTime': 0.0} for from_stop, to_stop in map.items()}
+        minimal_transfer_times = {(from_stop, to_stop): 0.0 for from_stop, to_stop in map.items()}
         minimal_transfer_times = {
             **minimal_transfer_times,
-            **{to_stop: {'stop': from_stop, 'transferTime': 0.0} for from_stop, to_stop in map.items()}
+            **{(to_stop, from_stop): 0.0 for from_stop, to_stop in map.items()}
         }
         return minimal_transfer_times
 
     def __add__(self, other):
-        # combine several changesets
-        pass
+        # combine two changesets
+        self.new_links = {**self.new_links, **other.new_links}
+        self.new_nodes = {**self.new_nodes, **other.new_nodes}
+        self.df_route_data = self.df_route_data.append(other.df_route_data)
+        self.new_stops = dict_support.merge_complex_dictionaries(self.new_stops, other.new_stops)
+        self.old_stops = self.combine_old_stops(other)
+        self.minimal_transfer_times = {**self.minimal_transfer_times, **other.minimal_transfer_times}
+        return self
+
+    def combine_old_stops(self, other):
+        overlapping_stops = set(self.old_stops.keys()) & set(other.old_stops.keys())
+        self.old_stops = dict_support.merge_complex_dictionaries(self.old_stops, other.old_stops)
+        for k in overlapping_stops:
+            self.old_stops[k]['routes'] = list(
+                (set(self.old_stops[k]['routes']) & set(other.old_stops[k]['routes'])) - (
+                        set(self.routes) | set(other.routes)))
+            self.old_stops[k]['services'] = list(
+                set(self.old_stops[k]['services']) & set(other.old_stops[k]['services']))
+            if not set(self.old_stops[k]['routes']) & (self.other_routes_in_service | other.other_routes_in_service):
+                self.old_stops[k]['services'] = list(
+                    set(self.old_stops[k]['services']) - (set(self.services) | set(other.services)))
+        return self.old_stops

@@ -250,7 +250,7 @@ def read_schedule(schedule_path, epsg):
     transitStops = {}
     transit_stop_id_mapping = {}
     is_minimalTransferTimes = False
-    minimalTransferTimes = {}  # {'stop_id_1': {stop: 'stop_id_2', transfer_time: 0.0}}
+    minimalTransferTimes = {}  # {('stop_id_1': 'stop_id_2'): 0.0} -- (from_Stop,to_Stop): seconds_to_transfer
 
     # transitLines
     for event, elem in ET.iterparse(schedule_path, events=('start', 'end')):
@@ -266,10 +266,7 @@ def read_schedule(schedule_path, epsg):
             if elem.tag == 'relation':
                 if is_minimalTransferTimes:
                     attribs = elem.attrib
-                    minimalTransferTimes[attribs['fromStop']] = {
-                        'stop': attribs['toStop'],
-                        'transferTime': float(attribs['transferTime'])
-                    }
+                    minimalTransferTimes[(attribs['fromStop'], attribs['toStop'])] = float(attribs['transferTime'])
             if elem.tag == 'transitLine':
                 if transitLine:
                     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
