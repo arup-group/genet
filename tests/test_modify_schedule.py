@@ -253,3 +253,8 @@ def test_artificially_filling_in_solution_for_partial_pt_routing_problem_results
 def test_routing_service_with_network(test_network, test_service):
     test_network.schedule = Schedule(epsg='epsg:27700', services=[test_service])
     test_network.route_service('service_bus')
+
+    rep = test_network.generate_validation_report()
+    assert rep['graph']['graph_connectivity']['car']['number_of_connected_subgraphs'] == 1
+    assert rep['schedule']['schedule_level']['is_valid_schedule']
+    assert rep['routing']['services_have_routes_in_the_graph']

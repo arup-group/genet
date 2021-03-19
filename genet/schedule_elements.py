@@ -576,7 +576,7 @@ class Route(ScheduleElement):
         same_departure_offsets = self.departure_offsets == other.departure_offsets
 
         statement = same_route_name and same_mode and same_stops and same_trips and same_arrival_offsets \
-            and same_departure_offsets
+                    and same_departure_offsets
         return statement
 
     def isin_exact(self, routes: list):
@@ -619,6 +619,9 @@ class Route(ScheduleElement):
             if len(stops_linkrefids) != len(self.ordered_stops):
                 logging.warning('Not all stops reference network link ids.')
                 return False
+            # consecutive stops can snap to the same link but it only needs to be mentioned once
+            stops_linkrefids = [stops_linkrefids[0]] + [stops_linkrefids[i] for i in range(1, len(stops_linkrefids)) if
+                                                        stops_linkrefids[i - 1] != stops_linkrefids[i]]
             for link_id in self.route:
                 if link_id == stops_linkrefids[0]:
                     stops_linkrefids = stops_linkrefids[1:]
@@ -831,6 +834,7 @@ class Service(ScheduleElement):
             is a list of the same length as routes, each item is a set of graph edges and corresponds to the item in
             routes list in that same index
         """
+
         def route_overlap_condition(graph_edge_group):
             edges_in_common = bool(graph_edge_group & route_edges)
             if edges_in_common:

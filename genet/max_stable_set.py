@@ -371,6 +371,7 @@ class ChangeSet():
         self.new_links = self.new_network_links(max_stable_set)
         self.new_nodes = self.new_network_nodes(max_stable_set)
         self.df_route_data = self.update_df_route_data(df_route_data, max_stable_set)
+        self.additional_links_modes = self.generate_additional_links_modes(max_stable_set)
         self.new_stops, self.old_stops = self.schedule_stops(max_stable_set)
         self.minimal_transfer_times = self.make_minimal_transfer_times(max_stable_set)
 
@@ -392,6 +393,13 @@ class ChangeSet():
         df_route_data['ordered_stops'] = df_route_data['ordered_stops'].map(
             lambda x: [map[stop] for stop in x])
         return df_route_data
+
+    def generate_additional_links_modes(self, max_stable_set):
+        link_ids = {link_id for route_list in self.df_route_data['route'].values for link_id in route_list}
+        links = max_stable_set.network_spatial_tree.links.copy()
+        links = links[links['link_id'].isin(link_ids)][['link_id', 'modes']]
+        links['modes'] = links['modes'].apply(lambda x: x.__class__(set(x) | max_stable_set.modes))
+        return links.set_index('link_id').T.to_dict()
 
     def schedule_stops(self, max_stable_set):
         # generate data needed for the network to add artificial stops and
@@ -422,6 +430,8 @@ class ChangeSet():
         self.new_links = {**self.new_links, **other.new_links}
         self.new_nodes = {**self.new_nodes, **other.new_nodes}
         self.df_route_data = self.df_route_data.append(other.df_route_data)
+        self.additional_links_modes = dict_support.merge_complex_dictionaries(
+            self.additional_links_modes, other.additional_links_modes)
         self.new_stops = dict_support.merge_complex_dictionaries(self.new_stops, other.new_stops)
         self.old_stops = self.combine_old_stops(other)
         self.minimal_transfer_times = {**self.minimal_transfer_times, **other.minimal_transfer_times}

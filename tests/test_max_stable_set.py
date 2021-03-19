@@ -384,9 +384,9 @@ def partial_mss(network):
                                                                   'additional_attributes': set(),
                                                                   'linkRefId': 'artificial_link===from:stop_1===to:stop_1',
                                                                   'stop_id': 'stop_1'}}
-    mss.artificial_links = {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1'},
-                            'artificial_link===from:node_6===to:stop_1': {'from': 'node_6', 'to': 'stop_1'},
-                            'artificial_link===from:stop_1===to:node_5': {'from': 'stop_1', 'to': 'node_5'}}
+    mss.artificial_links = {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1', 'modes': {'bus'}},
+                            'artificial_link===from:node_6===to:stop_1': {'from': 'node_6', 'to': 'stop_1', 'modes': {'bus'}},
+                            'artificial_link===from:stop_1===to:node_5': {'from': 'stop_1', 'to': 'node_5', 'modes': {'bus'}}}
     mss.pt_edges = DataFrame(
         {'services': {0: ['bus_service'], 1: ['bus_service'], 2: ['bus_service'], 3: ['bus_service']},
          'routes': {0: ['service_1_route_2'], 1: ['service_1_route_2'], 2: ['service_1_route_1'],
@@ -423,10 +423,16 @@ def test_generating_changeset_from_partial_mss_problem(partial_mss):
                                   'artificial_link===from:node_6===to:stop_1',
                                   'artificial_link===from:stop_1===to:stop_1']}})
     assert_semantically_equal(
+        changeset.additional_links_modes,
+        {'link_5_6_car': {'modes': ['bus', 'car']}, 'link_6_5_car': {'modes': ['bus', 'car']},
+         'link_6_7_car': {'modes': ['bus', 'car']}, 'link_7_6_car': {'modes': ['bus', 'car']},
+         'link_7_8_car': {'modes': ['bus', 'car']}, 'link_8_7_car': {'modes': ['bus', 'car']}}
+    )
+    assert_semantically_equal(
         changeset.new_links,
-        {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1'},
-         'artificial_link===from:node_6===to:stop_1': {'from': 'node_6', 'to': 'stop_1'},
-         'artificial_link===from:stop_1===to:node_5': {'from': 'stop_1', 'to': 'node_5'}})
+        {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1', 'modes': {'bus'}},
+         'artificial_link===from:node_6===to:stop_1': {'from': 'node_6', 'to': 'stop_1', 'modes': {'bus'}},
+         'artificial_link===from:stop_1===to:node_5': {'from': 'stop_1', 'to': 'node_5', 'modes': {'bus'}}})
     assert_semantically_equal(
         changeset.new_nodes,
         {'stop_1': {'id': 'stop_1', 'x': 1.0, 'y': 2.5, 'name': '', 'lon': -7.557148552832129, 'lat': 49.76683027967191,
@@ -465,12 +471,10 @@ def test_generating_changeset_from_partial_mss_problem(partial_mss):
                     'additional_attributes': set()}})
     assert_semantically_equal(
         changeset.minimal_transfer_times,
-        {'stop_1': {'stop': 'stop_1.link:artificial_link===from:stop_1===to:stop_1', 'transferTime': 0.0},
-         'stop_2': {'stop': 'stop_2.link:link_5_6_car', 'transferTime': 0.0},
-         'stop_3': {'stop': 'stop_3.link:link_7_8_car', 'transferTime': 0.0},
-         'stop_1.link:artificial_link===from:stop_1===to:stop_1': {'stop': 'stop_1', 'transferTime': 0.0},
-         'stop_2.link:link_5_6_car': {'stop': 'stop_2', 'transferTime': 0.0},
-         'stop_3.link:link_7_8_car': {'stop': 'stop_3', 'transferTime': 0.0}}
+        {('stop_1', 'stop_1.link:artificial_link===from:stop_1===to:stop_1'): 0.0,
+         ('stop_2', 'stop_2.link:link_5_6_car'): 0.0, ('stop_3', 'stop_3.link:link_7_8_car'): 0.0,
+         ('stop_1.link:artificial_link===from:stop_1===to:stop_1', 'stop_1'): 0.0,
+         ('stop_2.link:link_5_6_car', 'stop_2'): 0.0, ('stop_3.link:link_7_8_car', 'stop_3'): 0.0}
     )
 
 def test_combining_two_changesets_with_overlap(partial_mss):
@@ -489,9 +493,9 @@ def test_combining_two_changesets_with_overlap(partial_mss):
         'name': '', 'lon': -7.557134732217642, 'lat': 49.76683094462549,
         's2_id': 5205973754090230267, 'additional_attributes': set(),
         'linkRefId': 'link_6_5_car', 'stop_id': 'stop_2'}
-    partial_mss.artificial_links = {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1'},
-                            'artificial_link===from:node_5===to:stop_1': {'from': 'node_5', 'to': 'stop_1'},
-                            'artificial_link===from:stop_1===to:node_6': {'from': 'stop_1', 'to': 'node_6'}}
+    partial_mss.artificial_links = {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1', 'modes': {'bus'}},
+                            'artificial_link===from:node_5===to:stop_1': {'from': 'node_5', 'to': 'stop_1', 'modes': {'bus'}},
+                            'artificial_link===from:stop_1===to:node_6': {'from': 'stop_1', 'to': 'node_6', 'modes': {'bus'}}}
     partial_mss.pt_edges = service_1_route_1_pt_edges
 
     changeset += partial_mss.to_changeset(
@@ -510,12 +514,18 @@ def test_combining_two_changesets_with_overlap(partial_mss):
                                   'artificial_link===from:stop_1===to:node_5', 'link_5_6_car', 'link_6_7_car',
                                   'link_7_8_car']}})
     assert_semantically_equal(
+        changeset.additional_links_modes,
+        {'link_5_6_car': {'modes': ['bus', 'car']}, 'link_6_5_car': {'modes': ['bus', 'car']},
+         'link_6_7_car': {'modes': ['bus', 'car']}, 'link_7_6_car': {'modes': ['bus', 'car']},
+         'link_7_8_car': {'modes': ['bus', 'car']}, 'link_8_7_car': {'modes': ['bus', 'car']}}
+    )
+    assert_semantically_equal(
         changeset.new_links,
-        {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1'},
-         'artificial_link===from:node_6===to:stop_1': {'from': 'node_6', 'to': 'stop_1'},
-         'artificial_link===from:stop_1===to:node_5': {'from': 'stop_1', 'to': 'node_5'},
-         'artificial_link===from:node_5===to:stop_1': {'from': 'node_5', 'to': 'stop_1'},
-         'artificial_link===from:stop_1===to:node_6': {'from': 'stop_1', 'to': 'node_6'}}
+        {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1', 'modes': {'bus'}},
+         'artificial_link===from:node_6===to:stop_1': {'from': 'node_6', 'to': 'stop_1', 'modes': {'bus'}},
+         'artificial_link===from:stop_1===to:node_5': {'from': 'stop_1', 'to': 'node_5', 'modes': {'bus'}},
+         'artificial_link===from:node_5===to:stop_1': {'from': 'node_5', 'to': 'stop_1', 'modes': {'bus'}},
+         'artificial_link===from:stop_1===to:node_6': {'from': 'stop_1', 'to': 'node_6', 'modes': {'bus'}}}
     )
     assert_semantically_equal(
         changeset.new_nodes,

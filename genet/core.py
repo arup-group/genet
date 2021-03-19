@@ -14,6 +14,7 @@ import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.geojson as geojson
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
+import genet.modify.schedule as modify_schedule
 import genet.utils.spatial as spatial
 import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
@@ -35,7 +36,6 @@ class Network:
         self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg}, simplified=False)
         self.schedule = schedule_elements.Schedule(epsg)
         self.change_log = change_log.ChangeLog()
-        self.spatial_tree = spatial.SpatialTree()
         self.auxiliary_files = {'node': {}, 'link': {}}
         # link_id_mapping maps between (usually string literal) index per edge to the from and to nodes that are
         # connected by the edge
@@ -1062,6 +1062,112 @@ class Network:
         """
         u, v, multi_idx = self.edge_tuple_from_link_id(link_id)
         return dict(self.graph[u][v][multi_idx])
+
+    def route_schedule(self, solver='glpk', allow_partial=True, distance_threshold=30, step_size=10,
+                       additional_modes=None):
+        """
+
+        :param solver:
+        :param allow_partial:
+        :param distance_threshold:
+        :param step_size:
+        :param additional_modes: {'tram': {'car', 'rail'}, 'bus': 'car'}
+        :return:
+        """
+        if self.schedule:
+            spatial_tree = spatial.SpatialTree(self)
+            if additional_modes is None:
+                additional_modes = {}
+            else:
+                for k, v in additional_modes.items():
+                    if isinstance(v, str):
+                        additional_modes[k] = {v}
+                    elif isinstance(v, list):
+                        additional_modes[k] = set(v)
+
+            changeset = None
+            route_data = self.schedule.route_attribute_data(keys=['ordered_stops'])
+
+            for service in self.schedule.services():
+                logging.info(f'Routing Service {service.id}')
+                logging.info('Splitting Service graph')
+                routes, graph_groups = service.split_graph()
+                service_g = service.graph()
+                modes = service.modes()
+                for m in modes & set(additional_modes.keys()):
+                    modes |= additional_modes[m]
+
+                for route_group, graph_group in zip(routes, graph_groups):
+                    mss = modify_schedule.route_pt_graph(
+                        pt_graph=nx.edge_subgraph(service_g, graph_group),
+                        network_spatial_tree=spatial_tree,
+                        modes=modes,
+                        solver=solver,
+                        allow_partial=allow_partial,
+                        distance_threshold=distance_threshold,
+                        step_size=step_size)
+                    if changeset is None:
+                        changeset = mss.to_changeset(route_data[route_data.index.isin(route_group)])
+                    else:
+                        changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
+            self._apply_max_stable_changes(changeset)
+        else:
+            logging.warning('Schedule object not found')
+
+    def route_service(self, service_id, spatial_tree=None, solver='glpk', allow_partial=True, distance_threshold=30,
+                      step_size=10, additional_modes=None):
+        """
+
+        :param service_id:
+        :param spatial_tree:
+        :param solver:
+        :param allow_partial:
+        :param distance_threshold:
+        :param step_size:
+        :param additional_modes:
+        :return:
+        """
+        if spatial_tree is None:
+            spatial_tree = spatial.SpatialTree(self)
+        if additional_modes is None:
+            additional_modes = set()
+        elif isinstance(additional_modes, str):
+            additional_modes = {additional_modes}
+
+        service = self.schedule[service_id]
+        routes, graph_groups = service.split_graph()
+        logging.info(f'Splitting Problem into {len(routes)}')
+        service_g = service.graph()
+        changeset = None
+        route_data = self.schedule.route_attribute_data(keys=['ordered_stops'])
+
+        for route_group, graph_group in zip(routes, graph_groups):
+            mss = modify_schedule.route_pt_graph(
+                pt_graph=nx.edge_subgraph(service_g, graph_group),
+                network_spatial_tree=spatial_tree,
+                modes=service.modes() | additional_modes,
+                solver=solver,
+                allow_partial=allow_partial,
+                distance_threshold=distance_threshold,
+                step_size=step_size)
+            if changeset is None:
+                changeset = mss.to_changeset(route_data[route_data.index.isin(route_group)])
+            else:
+                changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
+        self._apply_max_stable_changes(changeset)
+
+    def _apply_max_stable_changes(self, max_stable_set_changeset):
+        self.schedule.apply_attributes_to_routes(max_stable_set_changeset.df_route_data.T.to_dict())
+        self.schedule.minimal_transfer_times = {**self.schedule.minimal_transfer_times,
+                                                **max_stable_set_changeset.minimal_transfer_times}
+        if max_stable_set_changeset.new_nodes:
+            self.add_nodes(max_stable_set_changeset.new_nodes)
+        if max_stable_set_changeset.new_links:
+            self.add_links(max_stable_set_changeset.new_links)
+        self.apply_attributes_to_links(max_stable_set_changeset.additional_links_modes)
+        self.schedule._graph.add_nodes_from(max_stable_set_changeset.new_stops.items())
+        self.schedule.apply_attributes_to_stops(max_stable_set_changeset.old_stops)
+        # todo update schedule graph edges
 
     def services(self):
         """
