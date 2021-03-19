@@ -34,9 +34,9 @@ def route_pt_graph(pt_graph, network_spatial_tree, modes, solver='glpk', allow_p
     )
     if mss.is_partial:
         if allow_partial:
-            logging.warning(f'Maximum Stable Set problem to snap the PT graph to the network is partially '
-                            f'viable, meaning not all stops have found a link to snap to within the distance_threshold.'
-                            f'Partial snapping is ON, this problem will proceed to the solver.')
+            logging.warning('Maximum Stable Set problem to snap the PT graph to the network is partially '
+                            'viable, meaning not all stops have found a link to snap to within the distance_threshold.'
+                            'Partial snapping is ON, this problem will proceed to the solver.')
         else:
             # TODO throw error
             return None
