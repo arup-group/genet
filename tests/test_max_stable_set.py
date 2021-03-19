@@ -306,15 +306,15 @@ def test_solving_problem_with_isolated_catchments(mocker, network, network_spati
     assert mss.solution == {'stop_1': 'link_1_2_bus', 'stop_2': 'link_4_5_car', 'stop_3': 'link_7_8_car'}
     assert mss.artificial_stops == {
         'stop_1.link:link_1_2_bus': {'services': ['bus_service'], 'routes': ['service_1_route_2', 'service_1_route_1'],
-                                     'id': 'stop_1', 'x': 1.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
+                                     'id': 'stop_1.link:link_1_2_bus', 'x': 1.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
                                      'lon': -7.557148552832129, 'lat': 49.76683027967191, 's2_id': 5205973754090340691,
                                      'additional_attributes': set(), 'linkRefId': 'link_1_2_bus', 'stop_id': 'stop_1'},
         'stop_2.link:link_4_5_car': {'services': ['bus_service'], 'routes': ['service_1_route_2', 'service_1_route_1'],
-                                     'id': 'stop_2', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
+                                     'id': 'stop_2.link:link_4_5_car', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
                                      'lon': -7.557134732217642, 'lat': 49.76683094462549, 's2_id': 5205973754090230267,
                                      'additional_attributes': set(), 'linkRefId': 'link_4_5_car', 'stop_id': 'stop_2'},
         'stop_3.link:link_7_8_car': {'services': ['bus_service'], 'routes': ['service_1_route_2', 'service_1_route_1'],
-                                     'id': 'stop_3', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+                                     'id': 'stop_3.link:link_7_8_car', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
                                      'lon': -7.55708584676138, 'lat': 49.76682879603468, 's2_id': 5205973754096513977,
                                      'additional_attributes': set(), 'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}}
 
@@ -345,11 +345,11 @@ def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(mocker,
     assert mss.solution == {'stop_2': 'link_5_6_car', 'stop_3': 'link_7_8_car'}
     assert mss.artificial_stops == {
         'stop_2.link:link_5_6_car': {'services': ['bus_service'], 'routes': ['service_1_route_2', 'service_1_route_1'],
-                                     'id': 'stop_2', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
+                                     'id': 'stop_2.link:link_5_6_car', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
                                      'lon': -7.557134732217642, 'lat': 49.76683094462549, 's2_id': 5205973754090230267,
                                      'additional_attributes': set(), 'linkRefId': 'link_5_6_car', 'stop_id': 'stop_2'},
         'stop_3.link:link_7_8_car': {'services': ['bus_service'], 'routes': ['service_1_route_2', 'service_1_route_1'],
-                                     'id': 'stop_3', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+                                     'id': 'stop_3.link:link_7_8_car', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
                                      'lon': -7.55708584676138, 'lat': 49.76682879603468, 's2_id': 5205973754096513977,
                                      'additional_attributes': set(), 'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}}
 
@@ -384,9 +384,10 @@ def partial_mss(network):
                                                                   'additional_attributes': set(),
                                                                   'linkRefId': 'artificial_link===from:stop_1===to:stop_1',
                                                                   'stop_id': 'stop_1'}}
-    mss.artificial_links = {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1', 'modes': {'bus'}},
-                            'artificial_link===from:node_6===to:stop_1': {'from': 'node_6', 'to': 'stop_1', 'modes': {'bus'}},
-                            'artificial_link===from:stop_1===to:node_5': {'from': 'stop_1', 'to': 'node_5', 'modes': {'bus'}}}
+    mss.artificial_links = {
+        'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1', 'modes': {'bus'}},
+        'artificial_link===from:node_6===to:stop_1': {'from': 'node_6', 'to': 'stop_1', 'modes': {'bus'}},
+        'artificial_link===from:stop_1===to:node_5': {'from': 'stop_1', 'to': 'node_5', 'modes': {'bus'}}}
     mss.pt_edges = DataFrame(
         {'services': {0: ['bus_service'], 1: ['bus_service'], 2: ['bus_service'], 3: ['bus_service']},
          'routes': {0: ['service_1_route_2'], 1: ['service_1_route_2'], 2: ['service_1_route_1'],
@@ -394,12 +395,16 @@ def partial_mss(network):
          'u': {0: 'stop_3', 1: 'stop_2', 2: 'stop_2', 3: 'stop_1'},
          'v': {0: 'stop_2', 1: 'stop_1', 2: 'stop_3', 3: 'stop_2'},
          'key': {0: 0, 1: 0, 2: 0, 3: 0},
-         'linkRefId_u': {0: 'link_7_8_car', 1: 'link_5_6_car', 2: 'link_5_6_car', 3: 'artificial_link===from:stop_1===to:stop_1'},
-         'linkRefId_v': {0: 'link_5_6_car', 1: 'artificial_link===from:stop_1===to:stop_1', 2: 'link_7_8_car', 3: 'link_5_6_car'},
+         'linkRefId_u': {0: 'link_7_8_car', 1: 'link_5_6_car', 2: 'link_5_6_car',
+                         3: 'artificial_link===from:stop_1===to:stop_1'},
+         'linkRefId_v': {0: 'link_5_6_car', 1: 'artificial_link===from:stop_1===to:stop_1', 2: 'link_7_8_car',
+                         3: 'link_5_6_car'},
          'shortest_path': {0: ['link_7_8_car', 'link_8_7_car', 'link_7_6_car', 'link_6_5_car', 'link_5_6_car'],
-                           1: ['link_5_6_car', 'artificial_link===from:node_6===to:stop_1', 'artificial_link===from:stop_1===to:stop_1'],
+                           1: ['link_5_6_car', 'artificial_link===from:node_6===to:stop_1',
+                               'artificial_link===from:stop_1===to:stop_1'],
                            2: ['link_5_6_car', 'link_6_7_car', 'link_7_8_car'],
-                           3: ['artificial_link===from:stop_1===to:stop_1', 'artificial_link===from:stop_1===to:node_5', 'link_5_6_car']}})
+                           3: ['artificial_link===from:stop_1===to:stop_1', 'artificial_link===from:stop_1===to:node_5',
+                               'link_5_6_car']}})
     mss.unsolved_stops = {'stop_1'}
     return mss
 
@@ -477,9 +482,12 @@ def test_generating_changeset_from_partial_mss_problem(partial_mss):
          ('stop_2.link:link_5_6_car', 'stop_2'): 0.0, ('stop_3.link:link_7_8_car', 'stop_3'): 0.0}
     )
 
+
 def test_combining_two_changesets_with_overlap(partial_mss):
-    service_1_route_1_pt_edges = partial_mss.pt_edges[partial_mss.pt_edges['routes'].apply(lambda x: 'service_1_route_1' in x)]
-    service_1_route_2_pt_edges = partial_mss.pt_edges[partial_mss.pt_edges['routes'].apply(lambda x: 'service_1_route_2' in x)]
+    service_1_route_1_pt_edges = partial_mss.pt_edges[
+        partial_mss.pt_edges['routes'].apply(lambda x: 'service_1_route_1' in x)]
+    service_1_route_2_pt_edges = partial_mss.pt_edges[
+        partial_mss.pt_edges['routes'].apply(lambda x: 'service_1_route_2' in x)]
 
     partial_mss.pt_edges = service_1_route_2_pt_edges
     changeset = partial_mss.to_changeset(
@@ -493,9 +501,10 @@ def test_combining_two_changesets_with_overlap(partial_mss):
         'name': '', 'lon': -7.557134732217642, 'lat': 49.76683094462549,
         's2_id': 5205973754090230267, 'additional_attributes': set(),
         'linkRefId': 'link_6_5_car', 'stop_id': 'stop_2'}
-    partial_mss.artificial_links = {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1', 'modes': {'bus'}},
-                            'artificial_link===from:node_5===to:stop_1': {'from': 'node_5', 'to': 'stop_1', 'modes': {'bus'}},
-                            'artificial_link===from:stop_1===to:node_6': {'from': 'stop_1', 'to': 'node_6', 'modes': {'bus'}}}
+    partial_mss.artificial_links = {
+        'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1', 'modes': {'bus'}},
+        'artificial_link===from:node_5===to:stop_1': {'from': 'node_5', 'to': 'stop_1', 'modes': {'bus'}},
+        'artificial_link===from:stop_1===to:node_6': {'from': 'stop_1', 'to': 'node_6', 'modes': {'bus'}}}
     partial_mss.pt_edges = service_1_route_1_pt_edges
 
     changeset += partial_mss.to_changeset(

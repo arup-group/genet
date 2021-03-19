@@ -959,8 +959,8 @@ def test_read_matsim_schedule_returns_expected_schedule():
                               {'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
                                'trip_departure_time': ['04:40:00'], 'vehicle_id': ['veh_0_bus']})
     assert_semantically_equal(schedule.minimal_transfer_times,
-                              {'26997928P': {'stop': '26997928P.link:1', 'transferTime': 0.0},
-                               '26997928P.link:1': {'stop': '26997928P', 'transferTime': 0.0}})
+                              {('26997928P',  '26997928P.link:1'): 0.0,
+                              ('26997928P.link:1', '26997928P'): 0.0})
 
 
 def test_reading_vehicles_with_a_schedule():
