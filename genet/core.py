@@ -1157,6 +1157,9 @@ class Network:
         self._apply_max_stable_changes(changeset)
 
     def _apply_max_stable_changes(self, max_stable_set_changeset):
+        self.schedule._graph.add_nodes_from(max_stable_set_changeset.new_stops.items())
+        self.schedule._graph.add_edges_from(max_stable_set_changeset.new_pt_edges)
+
         self.schedule.apply_attributes_to_routes(max_stable_set_changeset.df_route_data.T.to_dict())
         self.schedule.minimal_transfer_times = {**self.schedule.minimal_transfer_times,
                                                 **max_stable_set_changeset.minimal_transfer_times}
@@ -1165,9 +1168,6 @@ class Network:
         if max_stable_set_changeset.new_links:
             self.add_links(max_stable_set_changeset.new_links)
         self.apply_attributes_to_links(max_stable_set_changeset.additional_links_modes)
-        self.schedule._graph.add_nodes_from(max_stable_set_changeset.new_stops.items())
-        self.schedule.apply_attributes_to_stops(max_stable_set_changeset.old_stops)
-        # todo update schedule graph edges
 
     def services(self):
         """

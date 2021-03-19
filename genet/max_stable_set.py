@@ -372,7 +372,8 @@ class ChangeSet():
         self.new_nodes = self.new_network_nodes(max_stable_set)
         self.df_route_data = self.update_df_route_data(df_route_data, max_stable_set)
         self.additional_links_modes = self.generate_additional_links_modes(max_stable_set)
-        self.new_stops, self.old_stops = self.schedule_stops(max_stable_set)
+        self.new_stops = self.schedule_stops(max_stable_set)
+        self.new_pt_edges = self.schedule_edges(max_stable_set)
         self.minimal_transfer_times = self.make_minimal_transfer_times(max_stable_set)
 
     def new_network_links(self, max_stable_set):
@@ -407,14 +408,12 @@ class ChangeSet():
         for stop, data in new_stops.items():
             data['routes'] = self.routes
             data['services'] = self.services
+        return new_stops
 
-        # generate old nodes with updated data
-        old_stops = deepcopy(dict(max_stable_set.pt_graph.nodes(data=True)))
-        for stop, data in old_stops.items():
-            data['routes'] = list(set(data['routes']) - set(self.routes))
-            if not set(data['routes']) & self.other_routes_in_service:
-                data['services'] = list(set(data['services']) - set(self.services))
-        return new_stops, old_stops
+    def schedule_edges(self, max_stable_set):
+        map = max_stable_set.stops_to_artificial_stops_map()
+        new_pt_edges = [(map[u], map[v], data) for u, v, data in list(max_stable_set.pt_graph.edges(data=True))]
+        return new_pt_edges
 
     def make_minimal_transfer_times(self, max_stable_set):
         map = max_stable_set.stops_to_artificial_stops_map()
@@ -433,20 +432,6 @@ class ChangeSet():
         self.additional_links_modes = dict_support.merge_complex_dictionaries(
             self.additional_links_modes, other.additional_links_modes)
         self.new_stops = dict_support.merge_complex_dictionaries(self.new_stops, other.new_stops)
-        self.old_stops = self.combine_old_stops(other)
+        self.new_pt_edges = dict_support.combine_edge_data_lists(self.new_pt_edges, other.new_pt_edges)
         self.minimal_transfer_times = {**self.minimal_transfer_times, **other.minimal_transfer_times}
         return self
-
-    def combine_old_stops(self, other):
-        overlapping_stops = set(self.old_stops.keys()) & set(other.old_stops.keys())
-        self.old_stops = dict_support.merge_complex_dictionaries(self.old_stops, other.old_stops)
-        for k in overlapping_stops:
-            self.old_stops[k]['routes'] = list(
-                (set(self.old_stops[k]['routes']) & set(other.old_stops[k]['routes'])) - (
-                        set(self.routes) | set(other.routes)))
-            self.old_stops[k]['services'] = list(
-                set(self.old_stops[k]['services']) & set(other.old_stops[k]['services']))
-            if not set(self.old_stops[k]['routes']) & (self.other_routes_in_service | other.other_routes_in_service):
-                self.old_stops[k]['services'] = list(
-                    set(self.old_stops[k]['services']) - (set(self.services) | set(other.services)))
-        return self.old_stops

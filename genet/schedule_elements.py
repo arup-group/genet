@@ -122,7 +122,7 @@ class ScheduleElement:
         for node in nodes:
             self._graph.nodes[node]['routes'] = list(set(self._graph.nodes[node]['routes']) - route_ids)
 
-    def _remove_routes_from_edges(self, edges: Set[Tuple[str,str]], route_ids: Set[str]):
+    def _remove_routes_from_edges(self, edges: Set[Tuple[str, str]], route_ids: Set[str]):
         for u, v in edges:
             self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) - route_ids)
 
@@ -130,7 +130,7 @@ class ScheduleElement:
         for node in nodes:
             self._graph.nodes[node]['routes'] = list((set(self._graph.nodes[node]['routes']) | route_ids))
 
-    def _add_routes_to_edges(self, edges: Set[Tuple[str,str]], route_ids: Set[str]):
+    def _add_routes_to_edges(self, edges: Set[Tuple[str, str]], route_ids: Set[str]):
         for u, v in edges:
             self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) | route_ids)
 
@@ -138,7 +138,7 @@ class ScheduleElement:
         for node in nodes:
             self._graph.nodes[node]['services'] = list(set(self._graph.nodes[node]['services']) - service_ids)
 
-    def _remove_services_from_edges(self, edges: Set[Tuple[str,str]], service_ids: Set[str]):
+    def _remove_services_from_edges(self, edges: Set[Tuple[str, str]], service_ids: Set[str]):
         for u, v in edges:
             self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) - service_ids)
 
@@ -146,9 +146,19 @@ class ScheduleElement:
         for node in nodes:
             self._graph.nodes[node]['services'] = list((set(self._graph.nodes[node]['services']) | service_ids))
 
-    def _add_services_to_edges(self, edges: Set[Tuple[str,str]], service_ids: Set[str]):
+    def _add_services_to_edges(self, edges: Set[Tuple[str, str]], service_ids: Set[str]):
         for u, v in edges:
             self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) | service_ids)
+
+    def _generate_services_on_nodes(self, nodes: Set[str]):
+        for node in nodes:
+            self._graph.nodes[node]['services'] = list(
+                {self._graph.graph['route_to_service_map'][r_id] for r_id in self._graph.nodes[node]['routes']})
+
+    def _generate_services_on_edges(self, edges: Set[Tuple[str, str]]):
+        for u, v in edges:
+            self._graph[u][v]['services'] = list(
+                {self._graph.graph['route_to_service_map'][r_id] for r_id in self._graph[u][v]['routes']})
 
     def stop(self, stop_id):
         stop_data = {k: v for k, v in dict(self._graph.nodes[stop_id]).items() if k not in {'routes', 'services'}}
@@ -1881,6 +1891,30 @@ class Schedule(ScheduleElement):
         :return:
         """
         self._verify_no_id_change(new_attributes)
+        # check for stop changes
+        stop_changes = {id for id, change_dict in new_attributes.items() if ('ordered_stops' in change_dict) and (
+                change_dict['ordered_stops'] != self._graph.graph['routes'][id]['ordered_stops'])}
+        if stop_changes:
+            logging.warning(f'Stop ID changes detected for Routes: {stop_changes}')
+            nodes = {n for id in stop_changes for n in self.route_reference_nodes(id)}
+            edges = {e for id in stop_changes for e in self.route_reference_edges(id)}
+            self._remove_routes_from_nodes(nodes=nodes, route_ids=stop_changes)
+            self._remove_routes_from_edges(edges=edges, route_ids=stop_changes)
+            all_new_nodes = set()
+            all_new_edges = set()
+            for id in stop_changes:
+                new_nodes = set(new_attributes[id]['ordered_stops'])
+                all_new_nodes |= new_nodes
+                new_edges = {(u, v) for u, v in
+                             zip(new_attributes[id]['ordered_stops'][:-1], new_attributes[id]['ordered_stops'][1:])}
+                all_new_edges |= new_edges
+                self._add_routes_to_nodes(nodes=new_nodes, route_ids={id})
+                self._add_routes_to_edges(
+                    edges=new_edges,
+                    route_ids={id})
+            self._generate_services_on_nodes(all_new_nodes | nodes)
+            self._generate_services_on_edges(all_new_edges | edges)
+
         routes = list(new_attributes.keys())
         old_attribs = [deepcopy(self._graph.graph['routes'][route]) for route in routes]
         new_attribs = [{**self._graph.graph['routes'][route], **new_attributes[route]} for route in routes]

@@ -464,16 +464,16 @@ def test_generating_changeset_from_partial_mss_problem(partial_mss):
                                                                    'linkRefId': 'artificial_link===from:stop_1===to:stop_1',
                                                                    'stop_id': 'stop_1'}})
     assert_semantically_equal(
-        changeset.old_stops,
-        {'stop_3': {'services': [], 'routes': [], 'id': 'stop_3', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
-                    'lon': -7.55708584676138, 'lat': 49.76682879603468, 's2_id': 5205973754096513977,
-                    'additional_attributes': set()},
-         'stop_2': {'services': [], 'routes': [], 'id': 'stop_2', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
-                    'lon': -7.557134732217642, 'lat': 49.76683094462549, 's2_id': 5205973754090230267,
-                    'additional_attributes': set()},
-         'stop_1': {'services': [], 'routes': [], 'id': 'stop_1', 'x': 1.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
-                    'lon': -7.557148552832129, 'lat': 49.76683027967191, 's2_id': 5205973754090340691,
-                    'additional_attributes': set()}})
+        changeset.new_pt_edges,
+        [('stop_3.link:link_7_8_car', 'stop_2.link:link_5_6_car',
+         {'services': ['bus_service'], 'routes': ['service_1_route_2']}), (
+        'stop_2.link:link_5_6_car', 'stop_1.link:artificial_link===from:stop_1===to:stop_1',
+        {'services': ['bus_service'], 'routes': ['service_1_route_2']}), (
+        'stop_2.link:link_5_6_car', 'stop_3.link:link_7_8_car',
+        {'services': ['bus_service'], 'routes': ['service_1_route_1']}), (
+        'stop_1.link:artificial_link===from:stop_1===to:stop_1', 'stop_2.link:link_5_6_car',
+        {'services': ['bus_service'], 'routes': ['service_1_route_1']})]
+    )
     assert_semantically_equal(
         changeset.minimal_transfer_times,
         {('stop_1', 'stop_1.link:artificial_link===from:stop_1===to:stop_1'): 0.0,
@@ -569,16 +569,23 @@ def test_combining_two_changesets_with_overlap(partial_mss):
                                       'linkRefId': 'link_6_5_car', 'stop_id': 'stop_2'}}
     )
     assert_semantically_equal(
-        changeset.old_stops,
-        {'stop_3': {'services': [], 'routes': [], 'id': 'stop_3', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
-                    'lon': -7.55708584676138, 'lat': 49.76682879603468, 's2_id': 5205973754096513977,
-                    'additional_attributes': set()},
-         'stop_2': {'services': [], 'routes': [], 'id': 'stop_2', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
-                    'lon': -7.557134732217642, 'lat': 49.76683094462549, 's2_id': 5205973754090230267,
-                    'additional_attributes': set()},
-         'stop_1': {'services': [], 'routes': [], 'id': 'stop_1', 'x': 1.0, 'y': 2.5, 'epsg': 'epsg:27700', 'name': '',
-                    'lon': -7.557148552832129, 'lat': 49.76683027967191, 's2_id': 5205973754090340691,
-                    'additional_attributes': set()}}
+        changeset.new_pt_edges,
+        [('stop_3.link:link_7_8_car', 'stop_2.link:link_5_6_car',
+         {'services': ['bus_service'], 'routes': ['service_1_route_2']}), (
+        'stop_2.link:link_5_6_car', 'stop_1.link:artificial_link===from:stop_1===to:stop_1',
+        {'services': ['bus_service'], 'routes': ['service_1_route_2']}), (
+        'stop_2.link:link_5_6_car', 'stop_3.link:link_7_8_car',
+        {'services': ['bus_service'], 'routes': ['service_1_route_1']}), (
+        'stop_1.link:artificial_link===from:stop_1===to:stop_1', 'stop_2.link:link_5_6_car',
+        {'services': ['bus_service'], 'routes': ['service_1_route_1']}), (
+        'stop_1.link:artificial_link===from:stop_1===to:stop_1', 'stop_2.link:link_6_5_car',
+        {'services': ['bus_service'], 'routes': ['service_1_route_1']}), (
+        'stop_2.link:link_6_5_car', 'stop_3.link:link_7_8_car',
+        {'services': ['bus_service'], 'routes': ['service_1_route_1']}), (
+        'stop_2.link:link_6_5_car', 'stop_1.link:artificial_link===from:stop_1===to:stop_1',
+        {'services': ['bus_service'], 'routes': ['service_1_route_2']}), (
+        'stop_3.link:link_7_8_car', 'stop_2.link:link_6_5_car',
+        {'services': ['bus_service'], 'routes': ['service_1_route_2']})]
     )
     assert_semantically_equal(
         changeset.minimal_transfer_times,

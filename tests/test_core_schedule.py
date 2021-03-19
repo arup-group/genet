@@ -509,6 +509,54 @@ def test_applying_attributes_changing_id_to_route_throws_error(schedule):
     assert 'Changing id can only be done via the `reindex` method' in str(e.value)
 
 
+def test_applying_attributes_changing_stop_ids_to_route_changes_node_and_edge_indexing(schedule):
+    assert schedule._graph.graph['routes']['1']['ordered_stops'] == ['1', '2', '3', '4']
+    schedule.apply_attributes_to_routes({'1': {'ordered_stops': ['5', '6', '7', '8']}})
+
+    assert schedule.route('1').ordered_stops == ['5', '6', '7', '8']
+
+    assert_semantically_equal(dict(schedule.graph().nodes(data=True)),
+                              {'5': {'services': ['service'], 'routes': ['1', '2'], 'id': '5', 'x': 4.0, 'y': 2.0,
+                                     'epsg': 'epsg:27700', 'name': '', 'lon': -7.557106577683727,
+                                     'lat': 49.76682779861249, 's2_id': 5205973754090531959,
+                                     'additional_attributes': set()},
+                               '6': {'services': ['service'], 'routes': ['1', '2'], 'id': '6', 'x': 1.0, 'y': 2.0,
+                                     'epsg': 'epsg:27700', 'name': '', 'lon': -7.557148039524952,
+                                     'lat': 49.766825803756994, 's2_id': 5205973754090365183,
+                                     'additional_attributes': set()},
+                               '7': {'services': ['service'], 'routes': ['1', '2'], 'id': '7', 'x': 3.0, 'y': 3.0,
+                                     'epsg': 'epsg:27700', 'name': '', 'lon': -7.557121424907424,
+                                     'lat': 49.76683608549253, 's2_id': 5205973754090203369,
+                                     'additional_attributes': set()},
+                               '8': {'services': ['service'], 'routes': ['1', '2'], 'id': '8', 'x': 7.0, 'y': 5.0,
+                                     'epsg': 'epsg:27700', 'name': '', 'lon': -7.5570681956375,
+                                     'lat': 49.766856648946295, 's2_id': 5205973754097123809,
+                                     'additional_attributes': set()},
+                               '4': {'services': [], 'routes': [], 'id': '4', 'x': 7.0, 'y': 5.0,
+                                     'epsg': 'epsg:27700', 'name': '', 'lon': -7.5570681956375,
+                                     'lat': 49.766856648946295, 's2_id': 5205973754097123809,
+                                     'additional_attributes': set()},
+                               '1': {'services': [], 'routes': [], 'id': '1', 'x': 4.0, 'y': 2.0,
+                                     'epsg': 'epsg:27700', 'name': '', 'lon': -7.557106577683727,
+                                     'lat': 49.76682779861249, 's2_id': 5205973754090531959,
+                                     'additional_attributes': set()},
+                               '2': {'services': [], 'routes': [], 'id': '2', 'x': 1.0, 'y': 2.0,
+                                     'epsg': 'epsg:27700', 'name': '', 'lon': -7.557148039524952,
+                                     'lat': 49.766825803756994, 's2_id': 5205973754090365183,
+                                     'additional_attributes': set()},
+                               '3': {'services': [], 'routes': [], 'id': '3', 'x': 3.0, 'y': 3.0,
+                                     'epsg': 'epsg:27700', 'name': '', 'lon': -7.557121424907424,
+                                     'lat': 49.76683608549253, 's2_id': 5205973754090203369,
+                                     'additional_attributes': set()}})
+    assert_semantically_equal(list(schedule.graph().edges(data=True)),
+                              [('5', '6', {'services': ['service'], 'routes': ['1', '2']}),
+                               ('6', '7', {'services': ['service'], 'routes': ['1', '2']}),
+                               ('7', '8', {'services': ['service'], 'routes': ['1', '2']}),
+                               ('1', '2', {'services': [], 'routes': []}),
+                               ('2', '3', {'services': [], 'routes': []}),
+                               ('3', '4', {'services': [], 'routes': []})])
+
+
 def test_applying_attributes_to_stop(schedule):
     assert schedule._graph.nodes['5']['name'] == ''
     assert schedule.stop('5').name == ''
@@ -525,7 +573,7 @@ def test_applying_attributes_changing_id_to_stop_throws_error(schedule):
     assert schedule.stop('5').id == '5'
 
     with pytest.raises(NotImplementedError) as e:
-        schedule.apply_attributes_to_routes({'5': {'id': 'new_id'}})
+        schedule.apply_attributes_to_stops({'5': {'id': 'new_id'}})
     assert 'Changing id can only be done via the `reindex` method' in str(e.value)
 
 
@@ -959,8 +1007,8 @@ def test_read_matsim_schedule_returns_expected_schedule():
                               {'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
                                'trip_departure_time': ['04:40:00'], 'vehicle_id': ['veh_0_bus']})
     assert_semantically_equal(schedule.minimal_transfer_times,
-                              {('26997928P',  '26997928P.link:1'): 0.0,
-                              ('26997928P.link:1', '26997928P'): 0.0})
+                              {('26997928P', '26997928P.link:1'): 0.0,
+                               ('26997928P.link:1', '26997928P'): 0.0})
 
 
 def test_reading_vehicles_with_a_schedule():
@@ -1170,7 +1218,7 @@ def test_building_trips_dataframe(schedule):
 def test_generating_vehicles(schedule):
     schedule.generate_vehicles()
     assert_semantically_equal(schedule.vehicles, {'veh_3_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'},
-                                         'veh_1_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'}})
+                                                  'veh_1_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'}})
 
 
 def test_generating_vehicles_with_shared_vehicles_and_consistent_modes(mocker, schedule):
@@ -1203,8 +1251,8 @@ def test_generating_additional_vehicles_by_default(schedule):
                          'veh_2_bus': {'type': '_bus'}}
     schedule.generate_vehicles()
     assert_semantically_equal(schedule.vehicles, {'veh_3_bus': {'type': '_bus'}, 'veh_4_bus': {'type': '_bus'},
-                                         'veh_1_bus': {'type': '_bus'}, 'veh_2_bus': {'type': '_bus'},
-                                         'some_bus_2': {'type': 'bus'}})
+                                                  'veh_1_bus': {'type': '_bus'}, 'veh_2_bus': {'type': '_bus'},
+                                                  'some_bus_2': {'type': 'bus'}})
 
 
 def test_generating_new_vehicles_with_overwite_True(schedule):
@@ -1214,7 +1262,7 @@ def test_generating_new_vehicles_with_overwite_True(schedule):
                          'veh_2_bus': {'type': '_bus'}}
     schedule.generate_vehicles(overwrite=True)
     assert_semantically_equal(schedule.vehicles, {'veh_3_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'},
-                                         'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'}})
+                                                  'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'}})
 
 
 def test_rejects_inconsistent_modes_when_generating_vehicles(mocker, schedule):
