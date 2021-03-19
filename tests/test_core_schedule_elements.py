@@ -140,6 +140,67 @@ def test_all_elements_in_schedule_share_the_same_graph(schedule):
     assert_all_elements_share_graph(schedule)
 
 
+def test_removing_routes_from_nodes(schedule):
+    schedule._remove_routes_from_nodes(nodes={'1'}, route_ids={'2'})
+    assert_semantically_equal(dict(schedule._graph.nodes(data='routes')),
+                              {'4': ['3', '4'], '5': ['4'], '3': ['3'], '2': ['2'], '1': ['1'], '0': ['1']})
+
+
+def test_removing_routes_from_edges(schedule):
+    schedule._remove_routes_from_edges(edges={('1', '2')}, route_ids={'2'})
+    assert_semantically_equal(list(schedule._graph.edges(data='routes')),
+                              [('4', '5', ['4']), ('3', '4', ['3']), ('1', '2', []), ('0', '1', ['1'])])
+
+
+def test_adding_routes_to_nodes(schedule):
+    schedule._add_routes_to_nodes(nodes={'1'}, route_ids={'new_route'})
+    assert schedule._graph.nodes['0']['routes'] == ['1']
+    assert set(schedule._graph.nodes['1']['routes']) == {'2', '1', 'new_route'}
+    assert schedule._graph.nodes['2']['routes'] == ['2']
+    assert schedule._graph.nodes['3']['routes'] == ['3']
+    assert set(schedule._graph.nodes['4']['routes']) == {'4', '3'}
+    assert schedule._graph.nodes['5']['routes'] == ['4']
+
+
+def test_adding_routes_to_edges(schedule):
+    schedule._add_routes_to_edges(edges={('1', '2')}, route_ids={'new_route'})
+    assert schedule._graph['0']['1']['routes'] == ['1']
+    assert set(schedule._graph['1']['2']['routes']) == {'2', 'new_route'}
+    assert schedule._graph['3']['4']['routes'] == ['3']
+    assert schedule._graph['4']['5']['routes'] == ['4']
+
+
+def test_removing_services_from_nodes(schedule):
+    schedule._remove_services_from_nodes(nodes={'2'}, service_ids={'service1'})
+    assert_semantically_equal(dict(schedule._graph.nodes(data='services')),
+                              {'4': ['service2'], '5': ['service2'], '3': ['service2'], '1': ['service1'],
+                               '2': [], '0': ['service1']})
+
+
+def test_removing_services_from_edges(schedule):
+    schedule._remove_services_from_edges(edges={('1', '2')}, service_ids={'service1'})
+    assert_semantically_equal(list(schedule._graph.edges(data='services')),
+                              [('4', '5', ['service2']), ('3', '4', ['service2']), ('1', '2', []), ('0', '1', ['service1'])])
+
+
+def test_adding_services_to_nodes(schedule):
+    schedule._add_services_to_nodes(nodes={'2'}, service_ids={'new_service'})
+    assert schedule._graph.nodes['0']['services'] == ['service1']
+    assert schedule._graph.nodes['1']['services'] == ['service1']
+    assert set(schedule._graph.nodes['2']['services']) == {'service1', 'new_service'}
+    assert schedule._graph.nodes['3']['services'] == ['service2']
+    assert schedule._graph.nodes['4']['services'] == ['service2']
+    assert schedule._graph.nodes['5']['services'] == ['service2']
+
+
+def test_adding_services_to_edges(schedule):
+    schedule._add_services_to_edges(edges={('1', '2')}, service_ids={'new_service'})
+    assert schedule._graph['0']['1']['services'] == ['service1']
+    assert set(schedule._graph['1']['2']['services']) == {'service1', 'new_service'}
+    assert schedule._graph['3']['4']['services'] == ['service2']
+    assert schedule._graph['4']['5']['services'] == ['service2']
+
+
 def test_generating_reference_nodes_for_route(schedule):
     reference_nodes_from_graph = schedule.route_reference_nodes(route_id='1')
     reference_nodes_from_object = schedule.route('1').reference_nodes()
@@ -171,46 +232,46 @@ def test_generating_reference_edges_for_service(schedule):
 @pytest.fixture()
 def basic_service():
     return Service(id='service1',
-                      routes=[
-                          Route(id='1', route_short_name='route1', mode='bus',
-                                stops=[
-                                    Stop('0', x=1, y=1, epsg='epsg:4326'),
-                                    Stop('1', x=2, y=2, epsg='epsg:4326'),
-                                    Stop('2', x=3, y=3, epsg='epsg:4326')
-                                ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['00:00:00', '00:02:00'],
-                                departure_offsets=['00:00:00', '00:02:00'],
-                                route=[]),
-                          Route(id='2', route_short_name='route2', mode='bus',
-                                stops=[
-                                    Stop('1', x=2, y=2, epsg='epsg:4326'),
-                                    Stop('2', x=3, y=3, epsg='epsg:4326')
-                                ],
-                                trips={'route2_05:40:00': '05:40:00'},
-                                arrival_offsets=['00:00:00', '00:03:00'],
-                                departure_offsets=['00:00:00', '00:05:00'],
-                                route=[]),
-                          Route(id='3', route_short_name='route3', mode='bus',
-                                stops=[
-                                    Stop('0', x=1, y=1, epsg='epsg:4326'),
-                                    Stop('1', x=2, y=2, epsg='epsg:4326'),
-                                ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['00:00:00', '00:02:00'],
-                                departure_offsets=['00:00:00', '00:02:00'],
-                                route=[]),
-                          Route(id='4', route_short_name='route4', mode='bus',
-                                stops=[
-                                    Stop('2', x=3, y=3, epsg='epsg:4326'),
-                                    Stop('1', x=2, y=2, epsg='epsg:4326'),
-                                    Stop('0', x=1, y=1, epsg='epsg:4326')
-                                ],
-                                trips={'route2_05:40:00': '05:40:00'},
-                                arrival_offsets=['00:00:00', '00:03:00'],
-                                departure_offsets=['00:00:00', '00:05:00'],
-                                route=[])
-                      ])
+                   routes=[
+                       Route(id='1', route_short_name='route1', mode='bus',
+                             stops=[
+                                 Stop('0', x=1, y=1, epsg='epsg:4326'),
+                                 Stop('1', x=2, y=2, epsg='epsg:4326'),
+                                 Stop('2', x=3, y=3, epsg='epsg:4326')
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['00:00:00', '00:02:00'],
+                             departure_offsets=['00:00:00', '00:02:00'],
+                             route=[]),
+                       Route(id='2', route_short_name='route2', mode='bus',
+                             stops=[
+                                 Stop('1', x=2, y=2, epsg='epsg:4326'),
+                                 Stop('2', x=3, y=3, epsg='epsg:4326')
+                             ],
+                             trips={'route2_05:40:00': '05:40:00'},
+                             arrival_offsets=['00:00:00', '00:03:00'],
+                             departure_offsets=['00:00:00', '00:05:00'],
+                             route=[]),
+                       Route(id='3', route_short_name='route3', mode='bus',
+                             stops=[
+                                 Stop('0', x=1, y=1, epsg='epsg:4326'),
+                                 Stop('1', x=2, y=2, epsg='epsg:4326'),
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['00:00:00', '00:02:00'],
+                             departure_offsets=['00:00:00', '00:02:00'],
+                             route=[]),
+                       Route(id='4', route_short_name='route4', mode='bus',
+                             stops=[
+                                 Stop('2', x=3, y=3, epsg='epsg:4326'),
+                                 Stop('1', x=2, y=2, epsg='epsg:4326'),
+                                 Stop('0', x=1, y=1, epsg='epsg:4326')
+                             ],
+                             trips={'route2_05:40:00': '05:40:00'},
+                             arrival_offsets=['00:00:00', '00:03:00'],
+                             departure_offsets=['00:00:00', '00:05:00'],
+                             route=[])
+                   ])
 
 
 def test_splitting_service_on_direction_finds_two_distinct_directions(basic_service):
@@ -229,37 +290,37 @@ def test_splitting_service_graph_finds_two_distinct_directions(basic_service):
 @pytest.fixture()
 def service_with_separated_routes():
     return Service(id='service1',
-                      routes=[
-                          Route(id='1', route_short_name='route1', mode='bus',
-                                stops=[
-                                    Stop('0', x=0, y=0, epsg='epsg:4326'),
-                                    Stop('1', x=0, y=1, epsg='epsg:4326'),
-                                ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['00:00:00', '00:02:00'],
-                                departure_offsets=['00:00:00', '00:02:00'],
-                                route=[]),
-                          Route(id='2', route_short_name='route2', mode='bus',
-                                stops=[
-                                    Stop('2', x=0, y=2, epsg='epsg:4326'),
-                                    Stop('3', x=0, y=3, epsg='epsg:4326'),
-                                ],
-                                trips={'route2_05:40:00': '05:40:00'},
-                                arrival_offsets=['00:00:00', '00:03:00'],
-                                departure_offsets=['00:00:00', '00:05:00'],
-                                route=[]),
-                          Route(id='3', route_short_name='route3', mode='bus',
-                                stops=[
-                                    Stop('0', x=0, y=0, epsg='epsg:4326'),
-                                    Stop('1', x=0, y=1, epsg='epsg:4326'),
-                                    Stop('2', x=0, y=2, epsg='epsg:4326'),
-                                    Stop('3', x=0, y=3, epsg='epsg:4326')
-                                ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['00:00:00', '00:02:00'],
-                                departure_offsets=['00:00:00', '00:02:00'],
-                                route=['0', '1', '2', '3'])
-                      ])
+                   routes=[
+                       Route(id='1', route_short_name='route1', mode='bus',
+                             stops=[
+                                 Stop('0', x=0, y=0, epsg='epsg:4326'),
+                                 Stop('1', x=0, y=1, epsg='epsg:4326'),
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['00:00:00', '00:02:00'],
+                             departure_offsets=['00:00:00', '00:02:00'],
+                             route=[]),
+                       Route(id='2', route_short_name='route2', mode='bus',
+                             stops=[
+                                 Stop('2', x=0, y=2, epsg='epsg:4326'),
+                                 Stop('3', x=0, y=3, epsg='epsg:4326'),
+                             ],
+                             trips={'route2_05:40:00': '05:40:00'},
+                             arrival_offsets=['00:00:00', '00:03:00'],
+                             departure_offsets=['00:00:00', '00:05:00'],
+                             route=[]),
+                       Route(id='3', route_short_name='route3', mode='bus',
+                             stops=[
+                                 Stop('0', x=0, y=0, epsg='epsg:4326'),
+                                 Stop('1', x=0, y=1, epsg='epsg:4326'),
+                                 Stop('2', x=0, y=2, epsg='epsg:4326'),
+                                 Stop('3', x=0, y=3, epsg='epsg:4326')
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['00:00:00', '00:02:00'],
+                             departure_offsets=['00:00:00', '00:02:00'],
+                             route=['0', '1', '2', '3'])
+                   ])
 
 
 def test_splitting_service_on_direction_combines_separated_routes(service_with_separated_routes):
@@ -276,50 +337,51 @@ def test_splitting_service_graph_combines_separated_routes(service_with_separate
 @pytest.fixture()
 def service_with_loopy_routes():
     return Service(id='service1',
-                      routes=[
-                          Route(id='1_dir_1', route_short_name='route1', mode='bus',
-                                stops=[
-                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
-                                    Stop('B', x=0, y=-1, epsg='epsg:4326'),
-                                    Stop('C', x=-1, y=0, epsg='epsg:4326'),
-                                    Stop('D', x=0, y=1, epsg='epsg:4326'),
-                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
-                                    ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['', '', ''],
-                                departure_offsets=['', '', '']),
-                          Route(id='2_dir_1', route_short_name='route2', mode='bus',
-                                stops=[
-                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
-                                    Stop('C', x=-1, y=0, epsg='epsg:4326'),
-                                    Stop('D', x=0, y=1, epsg='epsg:4326'),
-                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
-                                ],
-                                trips={'route2_05:40:00': '05:40:00'},
-                                arrival_offsets=['', '', ''],
-                                departure_offsets=['', '', '']),
-                          Route(id='3_dir_2', route_short_name='route3', mode='bus',
-                                stops=[
-                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
-                                    Stop('D', x=0, y=1, epsg='epsg:4326'),
-                                    Stop('C', x=-1, y=0, epsg='epsg:4326'),
-                                    Stop('B', x=0, y=-1, epsg='epsg:4326'),
-                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
-                                ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['', '', ''],
-                                departure_offsets=['', '', '']),
-                          Route(id='4_dir_2', route_short_name='route4', mode='bus',
-                                stops=[
-                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
-                                    Stop('D', x=0, y=1, epsg='epsg:4326'),
-                                    Stop('C', x=-1, y=0, epsg='epsg:4326'),
-                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
-                                ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['', '', ''],
-                                departure_offsets=['', '', '']),
-                      ])
+                   routes=[
+                       Route(id='1_dir_1', route_short_name='route1', mode='bus',
+                             stops=[
+                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
+                                 Stop('B', x=0, y=-1, epsg='epsg:4326'),
+                                 Stop('C', x=-1, y=0, epsg='epsg:4326'),
+                                 Stop('D', x=0, y=1, epsg='epsg:4326'),
+                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['', '', ''],
+                             departure_offsets=['', '', '']),
+                       Route(id='2_dir_1', route_short_name='route2', mode='bus',
+                             stops=[
+                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
+                                 Stop('C', x=-1, y=0, epsg='epsg:4326'),
+                                 Stop('D', x=0, y=1, epsg='epsg:4326'),
+                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
+                             ],
+                             trips={'route2_05:40:00': '05:40:00'},
+                             arrival_offsets=['', '', ''],
+                             departure_offsets=['', '', '']),
+                       Route(id='3_dir_2', route_short_name='route3', mode='bus',
+                             stops=[
+                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
+                                 Stop('D', x=0, y=1, epsg='epsg:4326'),
+                                 Stop('C', x=-1, y=0, epsg='epsg:4326'),
+                                 Stop('B', x=0, y=-1, epsg='epsg:4326'),
+                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['', '', ''],
+                             departure_offsets=['', '', '']),
+                       Route(id='4_dir_2', route_short_name='route4', mode='bus',
+                             stops=[
+                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
+                                 Stop('D', x=0, y=1, epsg='epsg:4326'),
+                                 Stop('C', x=-1, y=0, epsg='epsg:4326'),
+                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['', '', ''],
+                             departure_offsets=['', '', '']),
+                   ])
+
 
 def test_splitting_service_on_direction_with_loopy_routes(service_with_loopy_routes):
     service_split = service_with_loopy_routes.split_by_direction()
@@ -340,52 +402,55 @@ def test_splitting_service_graph_with_loopy_routes(service_with_loopy_routes):
 @pytest.fixture()
 def service_with_routes_that_have_non_overlapping_graph_edges():
     return Service(id='service1',
-                      routes=[
-                          Route(id='1_dir_1', route_short_name='route1', mode='rail',
-                                stops=[
-                                    Stop('A', x=0, y=1, epsg='epsg:4326'),
-                                    Stop('B', x=0, y=2, epsg='epsg:4326'),
-                                    Stop('C', x=0, y=3, epsg='epsg:4326'),
-                                    Stop('D', x=0, y=4, epsg='epsg:4326')
-                                    ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['', '', ''],
-                                departure_offsets=['', '', '']),
-                          Route(id='2_dir_1', route_short_name='route2', mode='rail',
-                                stops=[
-                                    Stop('A', x=0, y=1, epsg='epsg:4326'),
-                                    Stop('C', x=0, y=3, epsg='epsg:4326')
-                                ],
-                                trips={'route2_05:40:00': '05:40:00'},
-                                arrival_offsets=['', '', ''],
-                                departure_offsets=['', '', '']),
-                          Route(id='3_dir_2', route_short_name='route3', mode='rail',
-                                stops=[
-                                    Stop('C', x=0, y=3, epsg='epsg:4326'),
-                                    Stop('B', x=0, y=2, epsg='epsg:4326'),
-                                    Stop('A', x=0, y=1, epsg='epsg:4326')
-                                ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['', '', ''],
-                                departure_offsets=['', '', '']),
-                          Route(id='4_dir_2', route_short_name='route4', mode='rail',
-                                stops=[
-                                    Stop('C', x=0, y=3, epsg='epsg:4326'),
-                                    Stop('A', x=0, y=1, epsg='epsg:4326')
-                                ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['', '', ''],
-                                departure_offsets=['', '', '']),
-                      ])
+                   routes=[
+                       Route(id='1_dir_1', route_short_name='route1', mode='rail',
+                             stops=[
+                                 Stop('A', x=0, y=1, epsg='epsg:4326'),
+                                 Stop('B', x=0, y=2, epsg='epsg:4326'),
+                                 Stop('C', x=0, y=3, epsg='epsg:4326'),
+                                 Stop('D', x=0, y=4, epsg='epsg:4326')
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['', '', ''],
+                             departure_offsets=['', '', '']),
+                       Route(id='2_dir_1', route_short_name='route2', mode='rail',
+                             stops=[
+                                 Stop('A', x=0, y=1, epsg='epsg:4326'),
+                                 Stop('C', x=0, y=3, epsg='epsg:4326')
+                             ],
+                             trips={'route2_05:40:00': '05:40:00'},
+                             arrival_offsets=['', '', ''],
+                             departure_offsets=['', '', '']),
+                       Route(id='3_dir_2', route_short_name='route3', mode='rail',
+                             stops=[
+                                 Stop('C', x=0, y=3, epsg='epsg:4326'),
+                                 Stop('B', x=0, y=2, epsg='epsg:4326'),
+                                 Stop('A', x=0, y=1, epsg='epsg:4326')
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['', '', ''],
+                             departure_offsets=['', '', '']),
+                       Route(id='4_dir_2', route_short_name='route4', mode='rail',
+                             stops=[
+                                 Stop('C', x=0, y=3, epsg='epsg:4326'),
+                                 Stop('A', x=0, y=1, epsg='epsg:4326')
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['', '', ''],
+                             departure_offsets=['', '', '']),
+                   ])
 
-def test_splitting_service_on_direction_with_non_overlapping_graph_edges_produces_two_directions(service_with_routes_that_have_non_overlapping_graph_edges):
+
+def test_splitting_service_on_direction_with_non_overlapping_graph_edges_produces_two_directions(
+        service_with_routes_that_have_non_overlapping_graph_edges):
     service_split = service_with_routes_that_have_non_overlapping_graph_edges.split_by_direction()
     assert_semantically_equal(service_split,
                               {'North Bound': ['1_dir_1', '2_dir_1'],
                                'South Bound': ['3_dir_2', '4_dir_2']})
 
 
-def test_splitting_service_graph_with_non_overlapping_graph_edges_produces_two_directions(service_with_routes_that_have_non_overlapping_graph_edges):
+def test_splitting_service_graph_with_non_overlapping_graph_edges_produces_two_directions(
+        service_with_routes_that_have_non_overlapping_graph_edges):
     routes, graph_groups = service_with_routes_that_have_non_overlapping_graph_edges.split_graph()
     assert routes == [{'1_dir_1', '2_dir_1'}, {'3_dir_2', '4_dir_2'}]
     assert graph_groups == [{('A', 'C'), ('C', 'D'), ('B', 'C'), ('A', 'B')},
@@ -396,45 +461,47 @@ def test_splitting_service_graph_with_non_overlapping_graph_edges_produces_two_d
 def service_edge_case_loopy_and_non_overlapping_graph():
     # inspired by district and circle LU lines
     return Service(id='service1',
-                      routes=[
-                          Route(id='1_dir_1', route_short_name='route1', mode='rail',
-                                stops=[
-                                    Stop('A', x=-1, y=0, epsg='epsg:4326'),
-                                    Stop('C', x=-3, y=0, epsg='epsg:4326')
-                                ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['', '', ''],
-                                departure_offsets=['', '', '']),
-                          Route(id='2_dir_2', route_short_name='route2', mode='rail',
-                                stops=[
-                                    Stop('F', x=-6, y=0, epsg='epsg:4326'),
-                                    Stop('A', x=-1, y=0, epsg='epsg:4326')
-                                ],
-                                trips={'route2_05:40:00': '05:40:00'},
-                                arrival_offsets=['', '', ''],
-                                departure_offsets=['', '', '']),
-                          Route(id='3_dir_1', route_short_name='route3', mode='rail',
-                                stops=[
-                                    Stop('E', x=-5, y=0, epsg='epsg:4326'),
-                                    Stop('F', x=-6, y=0, epsg='epsg:4326')
-                                ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['', '', ''],
-                                departure_offsets=['', '', '']),
-                          Route(id='4_dir_1', route_short_name='route4', mode='rail',
-                                stops=[
-                                    Stop('A', x=-1, y=0, epsg='epsg:4326'),
-                                    Stop('B', x=-2, y=0, epsg='epsg:4326'),
-                                    Stop('C', x=-3, y=0, epsg='epsg:4326'),
-                                    Stop('D', x=-4, y=0, epsg='epsg:4326'),
-                                    Stop('E', x=-5, y=0, epsg='epsg:4326')
-                                ],
-                                trips={'route1_04:40:00': '04:40:00'},
-                                arrival_offsets=['', '', ''],
-                                departure_offsets=['', '', '']),
-                      ])
+                   routes=[
+                       Route(id='1_dir_1', route_short_name='route1', mode='rail',
+                             stops=[
+                                 Stop('A', x=-1, y=0, epsg='epsg:4326'),
+                                 Stop('C', x=-3, y=0, epsg='epsg:4326')
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['', '', ''],
+                             departure_offsets=['', '', '']),
+                       Route(id='2_dir_2', route_short_name='route2', mode='rail',
+                             stops=[
+                                 Stop('F', x=-6, y=0, epsg='epsg:4326'),
+                                 Stop('A', x=-1, y=0, epsg='epsg:4326')
+                             ],
+                             trips={'route2_05:40:00': '05:40:00'},
+                             arrival_offsets=['', '', ''],
+                             departure_offsets=['', '', '']),
+                       Route(id='3_dir_1', route_short_name='route3', mode='rail',
+                             stops=[
+                                 Stop('E', x=-5, y=0, epsg='epsg:4326'),
+                                 Stop('F', x=-6, y=0, epsg='epsg:4326')
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['', '', ''],
+                             departure_offsets=['', '', '']),
+                       Route(id='4_dir_1', route_short_name='route4', mode='rail',
+                             stops=[
+                                 Stop('A', x=-1, y=0, epsg='epsg:4326'),
+                                 Stop('B', x=-2, y=0, epsg='epsg:4326'),
+                                 Stop('C', x=-3, y=0, epsg='epsg:4326'),
+                                 Stop('D', x=-4, y=0, epsg='epsg:4326'),
+                                 Stop('E', x=-5, y=0, epsg='epsg:4326')
+                             ],
+                             trips={'route1_04:40:00': '04:40:00'},
+                             arrival_offsets=['', '', ''],
+                             departure_offsets=['', '', '']),
+                   ])
 
-def test_splitting_service_edge_case_on_direction_results_in_two_directions(service_edge_case_loopy_and_non_overlapping_graph):
+
+def test_splitting_service_edge_case_on_direction_results_in_two_directions(
+        service_edge_case_loopy_and_non_overlapping_graph):
     service_split = service_edge_case_loopy_and_non_overlapping_graph.split_by_direction()
     assert_semantically_equal(service_split,
                               {'West Bound': ['1_dir_1', '3_dir_1', '4_dir_1'],
@@ -443,7 +510,8 @@ def test_splitting_service_edge_case_on_direction_results_in_two_directions(serv
 
 # this one is a right mess, result varies based on order in with routes are specified.
 @pytest.mark.xfail()
-def test_splitting_service_edge_case_on_direction_results_in_two_directions(service_edge_case_loopy_and_non_overlapping_graph):
+def test_splitting_service_edge_case_on_direction_results_in_two_directions(
+        service_edge_case_loopy_and_non_overlapping_graph):
     routes, graph_groups = service_edge_case_loopy_and_non_overlapping_graph.split_graph()
     assert routes == [{'1_dir_1', '3_dir_1', '4_dir_1'}, {'2_dir_2'}]
     assert graph_groups == [{('A', 'C'), ('E', 'F'), ('C', 'D'), ('B', 'C'), ('D', 'E'), ('A', 'B')},

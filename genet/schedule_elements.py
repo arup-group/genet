@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Union, Dict, List
+from typing import Union, Dict, List, Set, Tuple
 from pyproj import Transformer, Geod
 import networkx as nx
 import numpy as np
@@ -117,6 +117,38 @@ class ScheduleElement:
         :return: graph edges for the service with ID: service_id
         """
         return {(u, v) for u, v, edge_services in self._graph.edges(data='services') if service_id in edge_services}
+
+    def _remove_routes_from_nodes(self, nodes: Set[str], route_ids: Set[str]):
+        for node in nodes:
+            self._graph.nodes[node]['routes'] = list(set(self._graph.nodes[node]['routes']) - route_ids)
+
+    def _remove_routes_from_edges(self, edges: Set[Tuple[str,str]], route_ids: Set[str]):
+        for u, v in edges:
+            self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) - route_ids)
+
+    def _add_routes_to_nodes(self, nodes: Set[str], route_ids: Set[str]):
+        for node in nodes:
+            self._graph.nodes[node]['routes'] = list((set(self._graph.nodes[node]['routes']) | route_ids))
+
+    def _add_routes_to_edges(self, edges: Set[Tuple[str,str]], route_ids: Set[str]):
+        for u, v in edges:
+            self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) | route_ids)
+
+    def _remove_services_from_nodes(self, nodes: Set[str], service_ids: Set[str]):
+        for node in nodes:
+            self._graph.nodes[node]['services'] = list(set(self._graph.nodes[node]['services']) - service_ids)
+
+    def _remove_services_from_edges(self, edges: Set[Tuple[str,str]], service_ids: Set[str]):
+        for u, v in edges:
+            self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) - service_ids)
+
+    def _add_services_to_nodes(self, nodes: Set[str], service_ids: Set[str]):
+        for node in nodes:
+            self._graph.nodes[node]['services'] = list((set(self._graph.nodes[node]['services']) | service_ids))
+
+    def _add_services_to_edges(self, edges: Set[Tuple[str,str]], service_ids: Set[str]):
+        for u, v in edges:
+            self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) | service_ids)
 
     def stop(self, stop_id):
         stop_data = {k: v for k, v in dict(self._graph.nodes[stop_id]).items() if k not in {'routes', 'services'}}
@@ -462,12 +494,12 @@ class Route(ScheduleElement):
             raise RouteIndexError(f'Route of index {new_id} already exists')
         if self.id != new_id:
             # change data on graph
-            g = self.graph()
-            for stop in self.reference_nodes():
-                g.nodes[stop]['routes'] = list((set(g.nodes[stop]['routes']) - {self.id}) | {new_id})
-            for u, v in self.reference_edges():
-                g[u][v]['routes'] = list((set(g[u][v]['routes']) - {self.id}) | {new_id})
-            self._graph.update(g)
+            nodes = self.reference_nodes()
+            self._remove_routes_from_nodes(nodes=nodes, route_ids={self.id})
+            self._add_routes_to_nodes(nodes=nodes, route_ids={new_id})
+            edges = self.reference_edges()
+            self._remove_routes_from_edges(edges=edges, route_ids={self.id})
+            self._add_routes_to_edges(edges=edges, route_ids={new_id})
             self._graph.graph['routes'][new_id] = self._graph.graph['routes'][self.id]
             self._graph.graph['routes'][new_id]['id'] = new_id
             del self._graph.graph['routes'][self.id]
@@ -899,12 +931,12 @@ class Service(ScheduleElement):
             raise ServiceIndexError(f'Service of index {new_id} already exists')
         if self.id != new_id:
             # change data on graph
-            g = self.graph()
-            for stop in self.reference_nodes():
-                g.nodes[stop]['services'] = list((set(g.nodes[stop]['services']) - {self.id}) | {new_id})
-            for u, v in self.reference_edges():
-                g[u][v]['services'] = list((set(g[u][v]['services']) - {self.id}) | {new_id})
-            self._graph.update(g)
+            nodes = self.reference_nodes()
+            self._remove_services_from_nodes(nodes=nodes, service_ids={self.id})
+            self._add_services_to_nodes(nodes=nodes, service_ids={new_id})
+            edges = self.reference_edges()
+            self._remove_services_from_edges(edges=edges, service_ids={self.id})
+            self._add_services_to_edges(edges=edges, service_ids={new_id})
             self._graph.graph['services'][new_id] = self._graph.graph['services'][self.id]
             self._graph.graph['services'][new_id]['id'] = new_id
             del self._graph.graph['services'][self.id]
