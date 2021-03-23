@@ -15,8 +15,12 @@ def exists(coeff_attrib):
 
 
 class MaxStableSet:
-    def __init__(self, pt_graph, network_spatial_tree, modes, distance_threshold=30, step_size=10):
-        self.modes = modes
+    def __init__(self, pt_graph, network_spatial_tree, modes, distance_threshold=30, step_size=10,
+                 additional_modes=None):
+        self.service_modes = modes
+        if additional_modes is None:
+            additional_modes = set()
+        self.modes = modes | additional_modes
         self.distance_threshold = distance_threshold
         self.step_size = step_size
         self.network_spatial_tree = network_spatial_tree
@@ -300,7 +304,11 @@ class MaxStableSet:
 
     def _generate_artificial_link(self, from_node, to_node):
         link_id = f'artificial_link===from:{from_node}===to:{to_node}'
-        self.artificial_links[link_id] = {'from': from_node, 'to': to_node, 'modes': self.modes}
+        self.artificial_links[link_id] = {
+            'from': from_node,
+            'to': to_node,
+            'modes': self.service_modes
+        }
         return link_id
 
     def _access_link_data(self, link_id):
@@ -367,7 +375,7 @@ class MaxStableSet:
         return ChangeSet(self, routes_df)
 
 
-class ChangeSet():
+class ChangeSet:
     """
     Record of network and schedule changes needed for a solved max stable set
     """

@@ -1145,7 +1145,8 @@ class Network:
             mss = modify_schedule.route_pt_graph(
                 pt_graph=nx.edge_subgraph(service_g, graph_group),
                 network_spatial_tree=spatial_tree,
-                modes=service.modes() | additional_modes,
+                modes=service.modes(),
+                additional_modes=additional_modes,
                 solver=solver,
                 allow_partial=allow_partial,
                 distance_threshold=distance_threshold,
@@ -1166,6 +1167,16 @@ class Network:
         if max_stable_set_changeset.new_nodes:
             self.add_nodes(max_stable_set_changeset.new_nodes)
         if max_stable_set_changeset.new_links:
+            # generate some basic data
+            for link, data in max_stable_set_changeset.new_links.items():
+                _from = self.node(data['from'])
+                _to = self.node(data['to'])
+                data['length'] = spatial.distance_between_s2cellids(_from['s2_id'], _to['s2_id'])
+                if data['length'] == 0:
+                    data['length'] = 1
+                data['freespeed'] = 44.44
+                data['capacity'] = 9999.0
+                data['permlanes'] = 1
             self.add_links(max_stable_set_changeset.new_links)
         self.apply_attributes_to_links(max_stable_set_changeset.additional_links_modes)
 
