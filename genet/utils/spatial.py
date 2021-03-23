@@ -245,13 +245,16 @@ class SpatialTree(nx.DiGraph):
         :param weight: weight for routing, defaults ot length
         :return: df_pt_edges with an extra column 'shortest_path'
         """
-        try:
-            links = self.modal_links_geodataframe(modes)['link_id']
-            df_pt_edges['shortest_path'] = df_pt_edges.apply(
-                lambda x: self.path(G=self.subgraph(links), source=x[from_col], target=x[to_col], weight=weight),
-                axis=1)
-        except EmptySpatialTree:
-            df_pt_edges['shortest_path'] = float('nan')
+        if df_pt_edges.empty:
+            df_pt_edges['shortest_path'] = None
+        else:
+            try:
+                links = self.modal_links_geodataframe(modes)['link_id']
+                df_pt_edges['shortest_path'] = df_pt_edges.apply(
+                    lambda x: self.path(G=self.subgraph(links), source=x[from_col], target=x[to_col], weight=weight),
+                    axis=1)
+            except EmptySpatialTree:
+                df_pt_edges['shortest_path'] = None
         return df_pt_edges
 
     def path_length(self, G, source, target, weight=None):
@@ -270,11 +273,14 @@ class SpatialTree(nx.DiGraph):
         :param weight: weight for routing, defaults ot length
         :return: df_pt_edges with an extra column 'shortest_path'
         """
-        try:
-            links = self.modal_links_geodataframe(modes)['link_id']
-            df_pt_edges['path_lengths'] = df_pt_edges.apply(
-                lambda x: self.path_length(G=self.subgraph(links), source=x[from_col], target=x[to_col], weight=weight),
-                axis=1)
-        except EmptySpatialTree:
-            df_pt_edges['path_lengths'] = float('nan')
+        if df_pt_edges.empty:
+            df_pt_edges['path_lengths'] = None
+        else:
+            try:
+                links = self.modal_links_geodataframe(modes)['link_id']
+                df_pt_edges['path_lengths'] = df_pt_edges.apply(
+                    lambda x: self.path_length(G=self.subgraph(links), source=x[from_col], target=x[to_col], weight=weight),
+                    axis=1)
+            except EmptySpatialTree:
+                df_pt_edges['path_lengths'] = None
         return df_pt_edges

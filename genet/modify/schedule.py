@@ -46,6 +46,6 @@ def route_pt_graph(pt_graph, network_spatial_tree, modes, solver='glpk', allow_p
     if allow_partial and mss.is_partial:
         logging.info(f'Successfully snapped {pt_graph.number_of_nodes() - len(mss.unsolved_stops)} stops to network '
                      'links.')
-        if mss.unsolved_stops:
-            mss.fill_in_solution_artificially()
+    if mss.unsolved_stops:
+        mss.fill_in_solution_artificially()
     return mss

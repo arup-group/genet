@@ -24,8 +24,14 @@ class MaxStableSet:
         self.stops, self.pt_edges = gngeojson.generate_geodataframes(pt_graph)
         self.edges = self.pt_edges[['u', 'v', 'geometry']].copy()
         self.nodes = self.find_closest_links()
-        self.is_partial = False
-        self.problem_graph = self.generate_problem_graph()
+        if self.nodes.empty or len(set(self.nodes['id'])) == 1:
+            logging.info('The problem did not find closest links for enough stops. If partial solution is allowed,'
+                         'the stops will not be snapped and the routes will be entirely artificial.')
+            self.is_partial = True
+            self.problem_graph = nx.DiGraph()
+        else:
+            self.is_partial = False
+            self.problem_graph = self.generate_problem_graph()
         if not self.is_viable():
             self.is_partial = self.is_partially_viable()
             if self.is_partial:
@@ -34,7 +40,7 @@ class MaxStableSet:
                 raise InvalidMaxStableSetProblem('This Maximum Stable Set Problem has at least one completely connected'
                                                  'catchment and cannot proceed to the solver.')
 
-        self.solution = None
+        self.solution = {}
         self.artificial_stops = {}
         self.artificial_links = {}
         self.unsolved_stops = set()
@@ -189,80 +195,84 @@ class MaxStableSet:
         return fig, ax
 
     def solve(self, solver='glpk'):
-        # --------------------------------------------------------
-        # Model
-        # --------------------------------------------------------
+        if nx.is_empty(self.problem_graph):
+            logging.info('Empty problem graph passed to the solver. No stops will find a solution.')
+            self.unsolved_stops = set(self.stops['id'])
+        else:
+            # --------------------------------------------------------
+            # Model
+            # --------------------------------------------------------
 
-        model = ConcreteModel()  # noqa: F405
+            model = ConcreteModel()  # noqa: F405
 
-        # --------------------------------------------------------
-        # Sets/Params
-        # --------------------------------------------------------
+            # --------------------------------------------------------
+            # Sets/Params
+            # --------------------------------------------------------
 
-        # nodes and edge sets
-        # nodes: network's graph nodes that are closest to stops
-        # edges: connections between nodes if they are in the same
-        #    selection pool or there is no path between them
-        vertices = set(self.problem_graph.nodes)
-        edges = set(self.problem_graph.edges)
+            # nodes and edge sets
+            # nodes: network's graph nodes that are closest to stops
+            # edges: connections between nodes if they are in the same
+            #    selection pool or there is no path between them
+            vertices = set(self.problem_graph.nodes)
+            edges = set(self.problem_graph.edges)
 
-        model.vertices = Set(initialize=vertices)  # noqa: F405
+            model.vertices = Set(initialize=vertices)  # noqa: F405
 
-        def spatial_proximity_coefficient_init(model, i):
-            attribs = self.problem_graph.nodes[i]
-            # todo normalise
-            return attribs['coeff']
+            def spatial_proximity_coefficient_init(model, i):
+                attribs = self.problem_graph.nodes[i]
+                # todo normalise
+                return attribs['coeff']
 
-        model.c = Param(model.vertices, initialize=spatial_proximity_coefficient_init)  # noqa: F405
+            model.c = Param(model.vertices, initialize=spatial_proximity_coefficient_init)  # noqa: F405
 
-        # --------------------------------------------------------
-        # Variables
-        # --------------------------------------------------------
+            # --------------------------------------------------------
+            # Variables
+            # --------------------------------------------------------
 
-        model.x = Var(vertices, within=Binary)  # noqa: F405
+            model.x = Var(vertices, within=Binary)  # noqa: F405
 
-        # --------------------------------------------------------
-        # Constraints
-        # --------------------------------------------------------
+            # --------------------------------------------------------
+            # Constraints
+            # --------------------------------------------------------
 
-        model.edge_adjacency = ConstraintList()  # noqa: F405
-        for u, v in edges:
-            model.edge_adjacency.add(model.x[u] + model.x[v] <= 1)
+            model.edge_adjacency = ConstraintList()  # noqa: F405
+            for u, v in edges:
+                model.edge_adjacency.add(model.x[u] + model.x[v] <= 1)
 
-        # --------------------------------------------------------
-        # Objective
-        # --------------------------------------------------------
+            # --------------------------------------------------------
+            # Objective
+            # --------------------------------------------------------
 
-        def total_nodes_rule(model):
-            return sum(model.c[i] * model.x[i] for i in model.vertices)
+            def total_nodes_rule(model):
+                return sum(model.c[i] * model.x[i] for i in model.vertices)
 
-        model.total_nodes = Objective(rule=total_nodes_rule, sense=maximize)  # noqa: F405
+            model.total_nodes = Objective(rule=total_nodes_rule, sense=maximize)  # noqa: F405
 
-        # --------------------------------------------------------
-        # Solver
-        # --------------------------------------------------------
+            # --------------------------------------------------------
+            # Solver
+            # --------------------------------------------------------
 
-        logging.info('Passing problem to solver')
-        _solver = SolverFactory(solver)  # noqa: F405
-        _solver.solve(model)
+            logging.info('Passing problem to solver')
+            _solver = SolverFactory(solver)  # noqa: F405
+            _solver.solve(model)
 
-        # --------------------------------------------------------
-        # Solution parse
-        # --------------------------------------------------------
+            # --------------------------------------------------------
+            # Solution parse
+            # --------------------------------------------------------
 
-        selected = [str(v).strip('x[]') for v in model.component_data_objects(Var) if  # noqa: F405
-                    float(v.value) == 1.0]
-        # solution maps Stop IDs to Link IDs
-        self.solution = {self.problem_graph.nodes[node]['id']: node.split(':')[-1] for node in selected}
-        self.artificial_stops = {
-            node: {
-                **self.pt_graph.nodes[self.problem_graph.nodes[node]['id']],
-                **{'linkRefId': node.split(':')[-1],
-                   'stop_id': self.problem_graph.nodes[node]['id'],
-                   'id': node}
-            }
-            for node in selected}
-        self.unsolved_stops = set(self.stops['id']) - set(self.solution.keys())
+            selected = [str(v).strip('x[]') for v in model.component_data_objects(Var) if  # noqa: F405
+                        float(v.value) == 1.0]
+            # solution maps Stop IDs to Link IDs
+            self.solution = {self.problem_graph.nodes[node]['id']: node.split(':')[-1] for node in selected}
+            self.artificial_stops = {
+                node: {
+                    **self.pt_graph.nodes[self.problem_graph.nodes[node]['id']],
+                    **{'linkRefId': node.split(':')[-1],
+                       'stop_id': self.problem_graph.nodes[node]['id'],
+                       'id': node}
+                }
+                for node in selected}
+            self.unsolved_stops = set(self.stops['id']) - set(self.solution.keys())
 
     def all_stops_solved(self):
         return not bool(self.unsolved_stops)
