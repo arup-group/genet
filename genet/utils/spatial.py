@@ -8,6 +8,7 @@ from shapely.geometry import LineString, shape, GeometryCollection
 import pandas as pd
 import geopandas as gpd
 import genet.outputs_handler.geojson as gngeojson
+from genet.exceptions import EmptySpatialTree
 
 APPROX_EARTH_RADIUS = 6371008.8
 S2_LEVELS_FOR_SPATIAL_INDEXING = [0, 6, 8, 12, 18, 24, 30]
@@ -197,7 +198,10 @@ class SpatialTree(nx.DiGraph):
         """
         if isinstance(modes, str):
             modes = {modes}
-        return self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, modes), axis=1)]
+        _df = self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, modes), axis=1)]
+        if _df.empty:
+            raise EmptySpatialTree(f'No links found satisfying modes: {modes}')
+        return _df
 
     def closest_links(self, gdf_points, distance_radius, modes):
         """

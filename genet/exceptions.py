@@ -69,6 +69,13 @@ class InconsistentVehicleModeError(Exception):
     pass
 
 
+class EmptySpatialTree(Exception):
+    """
+    Raised when there is no (relevant) data in the Spatial Tree
+    """
+    pass
+
+
 class InvalidMaxStableSetProblem(Exception):
     """
     Raised when the maximum stable set to snap PT to the network is not valid and cannot proceed to the solver

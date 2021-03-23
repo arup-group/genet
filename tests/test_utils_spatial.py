@@ -8,6 +8,8 @@ from genet.utils import spatial
 from genet import Network
 from tests.fixtures import *
 from shapely.geometry import LineString, Polygon, Point
+from genet.exceptions import EmptySpatialTree
+
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 test_geojson = os.path.abspath(
@@ -186,6 +188,21 @@ def test_SpatialTree_adds_links(network):
                               )
     assert_semantically_equal(dict(spatial_tree.nodes(data=True)),
                               {'link_1': {}, 'link_2': {}, 'link_3': {}, 'link_4': {}})
+
+
+def test_subsetting_links_df_by_mode(network):
+    spatial_tree = spatial.SpatialTree(network)
+    df = spatial_tree.modal_links_geodataframe(modes={'car'})
+
+    assert set(df['link_id']) == {'link_1', 'link_2', 'link_4'}
+
+
+def test_subsetting_links_df_by_mode_that_isnt_present_throws_error(network):
+    spatial_tree = spatial.SpatialTree(network)
+
+    with pytest.raises(EmptySpatialTree) as e:
+        df = spatial_tree.modal_links_geodataframe(modes={'piggyback'})
+    assert 'No links found' in str(e.value)
 
 
 def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(network):
