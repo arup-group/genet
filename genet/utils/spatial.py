@@ -217,13 +217,17 @@ class SpatialTree(nx.DiGraph):
         approx_lat = (bdds['miny'].mean() + bdds['maxy'].mean()) / 2
         approx_degree_radius = approximate_metres_distance_in_4326_degrees(distance_radius, approx_lat)
         gdf_points['geometry'] = gdf_points['geometry'].apply(lambda x: grow_point(x, approx_degree_radius))
-        closest_links = gpd.sjoin(
-            self.modal_links_geodataframe(modes)[['link_id', 'geometry']],
-            gdf_points,
-            how='right',
-            op='intersects'
-        )
-        return closest_links
+        try:
+            closest_links = gpd.sjoin(
+                self.modal_links_geodataframe(modes)[['link_id', 'geometry']],
+                gdf_points,
+                how='right',
+                op='intersects'
+            )
+            return closest_links
+        except EmptySpatialTree:
+            return gpd.GeoDataFrame(
+                columns=set(gdf_points.columns) | {'index_left', 'link_id', 'geometry'}, crs='epsg:4326')
 
     def path(self, G, source, target, weight=None):
         try:
@@ -241,10 +245,13 @@ class SpatialTree(nx.DiGraph):
         :param weight: weight for routing, defaults ot length
         :return: df_pt_edges with an extra column 'shortest_path'
         """
-        links = self.modal_links_geodataframe(modes)['link_id']
-        df_pt_edges['shortest_path'] = df_pt_edges.apply(
-            lambda x: self.path(G=self.subgraph(links), source=x[from_col], target=x[to_col], weight=weight),
-            axis=1)
+        try:
+            links = self.modal_links_geodataframe(modes)['link_id']
+            df_pt_edges['shortest_path'] = df_pt_edges.apply(
+                lambda x: self.path(G=self.subgraph(links), source=x[from_col], target=x[to_col], weight=weight),
+                axis=1)
+        except EmptySpatialTree:
+            df_pt_edges['shortest_path'] = float('nan')
         return df_pt_edges
 
     def path_length(self, G, source, target, weight=None):
@@ -263,8 +270,11 @@ class SpatialTree(nx.DiGraph):
         :param weight: weight for routing, defaults ot length
         :return: df_pt_edges with an extra column 'shortest_path'
         """
-        links = self.modal_links_geodataframe(modes)['link_id']
-        df_pt_edges['path_lengths'] = df_pt_edges.apply(
-            lambda x: self.path_length(G=self.subgraph(links), source=x[from_col], target=x[to_col], weight=weight),
-            axis=1)
+        try:
+            links = self.modal_links_geodataframe(modes)['link_id']
+            df_pt_edges['path_lengths'] = df_pt_edges.apply(
+                lambda x: self.path_length(G=self.subgraph(links), source=x[from_col], target=x[to_col], weight=weight),
+                axis=1)
+        except EmptySpatialTree:
+            df_pt_edges['path_lengths'] = float('nan')
         return df_pt_edges

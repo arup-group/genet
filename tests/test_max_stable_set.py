@@ -1,8 +1,10 @@
 import pytest
 from pandas import DataFrame
+from networkx import is_empty
 import genet.utils.spatial as spatial
 from genet import MaxStableSet, Network, Schedule, Service, Route, Stop
 from tests.fixtures import assert_semantically_equal
+from genet.exceptions import EmptySpatialTree
 
 
 @pytest.fixture()
@@ -25,7 +27,7 @@ def network():
                  'node_8': {'id': 'node_8', 'x': 6, 'y': 2, 'lat': 49.766829128507936, 'lon': -7.55707893645368,
                             's2_id': 5205973754096518199},
                  'node_9': {'id': 'node_9', 'x': 6, 'y': 2, 'lat': 49.766829128507936, 'lon': -7.55707893645368,
-                            's2_id': 5205973754096518199}})
+                            's2_id': 5205973754096518199}}, silent=True)
     n.add_links(
         {'link_1_2_car': {'length': 1, 'modes': ['car'], 'freespeed': 1, 'from': 'node_1', 'to': 'node_2',
                           'id': 'link_1_2_car'},
@@ -67,7 +69,7 @@ def network():
                           'id': 'link_8_9_car'},
          'link_9_8_car': {'length': 1, 'modes': ['car'], 'freespeed': 1, 'from': 'node_9', 'to': 'node_8',
                           'id': 'link_9_8_car'}
-         })
+         }, silent=True)
 
     n.schedule = Schedule(epsg='epsg:27700',
                           services=[
@@ -134,6 +136,53 @@ def test_stops_missing_nearest_links_identifies_stops_with_missing_closest_links
                        network_spatial_tree=network_spatial_tree,
                        modes={'car', 'bus'})
     assert mss.stops_missing_nearest_links() == {'stop_1'}
+
+
+def test_buidling_mss_with_nothing_to_snap_to(mocker, network, network_spatial_tree):
+    mocker.patch.object(spatial.SpatialTree, 'modal_links_geodataframe', side_effect=EmptySpatialTree(''))
+
+    mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
+                       network_spatial_tree=network_spatial_tree,
+                       modes={'car', 'bus'},
+                       distance_threshold=10,
+                       step_size=10)
+    assert is_empty(mss.problem_graph)
+
+
+def test_empty_mss_produces_completely_artificial_but_sensible_results(mocker, network, network_spatial_tree):
+    mocker.patch.object(spatial.SpatialTree, 'modal_links_geodataframe', side_effect=EmptySpatialTree(''))
+
+    mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
+                       network_spatial_tree=network_spatial_tree,
+                       modes={'car', 'bus'},
+                       distance_threshold=10,
+                       step_size=10)
+    mss.solve()
+    mss.route_edges()
+    mss.fill_in_solution_artificially()
+    assert_semantically_equal(
+        mss.solution,
+        {'stop_3': 'artificial_link===from:stop_3===to:stop_3',
+         'stop_1': 'artificial_link===from:stop_1===to:stop_1',
+         'stop_2': 'artificial_link===from:stop_2===to:stop_2'})
+    assert_semantically_equal(
+        mss.pt_edges[['u', 'v', 'shortest_path']].to_dict(),
+        {'u': {0: 'stop_3', 1: 'stop_2', 2: 'stop_2', 3: 'stop_1'},
+         'v': {0: 'stop_2', 1: 'stop_1', 2: 'stop_3', 3: 'stop_2'},
+         'shortest_path': {
+            0: ['artificial_link===from:stop_3===to:stop_3',
+                'artificial_link===from:stop_3===to:stop_2',
+                'artificial_link===from:stop_2===to:stop_2'],
+            1: ['artificial_link===from:stop_2===to:stop_2',
+                'artificial_link===from:stop_2===to:stop_1',
+                'artificial_link===from:stop_1===to:stop_1'],
+            2: ['artificial_link===from:stop_2===to:stop_2',
+                'artificial_link===from:stop_2===to:stop_3',
+                'artificial_link===from:stop_3===to:stop_3'],
+            3: ['artificial_link===from:stop_1===to:stop_1',
+                'artificial_link===from:stop_1===to:stop_2',
+                'artificial_link===from:stop_2===to:stop_2']}}
+    )
 
 
 def test_build_graph_for_maximum_stable_set_problem_with_non_trivial_closest_link_selection_pool(mocker, network,
