@@ -56,21 +56,21 @@ def self_looping_route():
 def test_initiating_route(route):
     r = route
     assert_semantically_equal(dict(r._graph.nodes(data=True)), {
-        '1': {'routes': ['1'], 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+        '1': {'routes': {'1'}, 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': {'linkRefId'}, 'linkRefId': '1'},
-        '2': {'routes': ['1'], 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+        '2': {'routes': {'1'}, 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
               'additional_attributes': {'linkRefId'}, 'linkRefId': '2'},
-        '3': {'routes': ['1'], 'id': '3', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700', 'name': '',
+        '3': {'routes': {'1'}, 'id': '3', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.76683608549253, 'lon': -7.557121424907424, 's2_id': 5205973754090203369,
               'additional_attributes': {'linkRefId'}, 'linkRefId': '3'},
-        '4': {'routes': ['1'], 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700', 'name': '',
+        '4': {'routes': {'1'}, 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
               'additional_attributes': {'linkRefId'}, 'linkRefId': '4'}})
-    assert_semantically_equal(list(r._graph.edges(data=True)), [('1', '2', {'routes': ['1']}),
-                                                                ('2', '3', {'routes': ['1']}),
-                                                                ('3', '4', {'routes': ['1']})])
+    assert_semantically_equal(r._graph.edges(data=True)._adjdict,
+                              {'1': {'2': {'routes': {'1'}}}, '2': {'3': {'routes': {'1'}}},
+                               '3': {'4': {'routes': {'1'}}}, '4': {}})
     log = r._graph.graph.pop('change_log')
     assert log.empty
     assert_semantically_equal(r._graph.graph, {'name': 'Route graph', 'routes': {
@@ -123,22 +123,21 @@ def test_build_graph_builds_correct_graph():
                   arrival_offsets=['1', '2'], departure_offsets=['1', '2'])
     g = route.graph()
     assert_semantically_equal(dict(g.nodes(data=True)),
-                              {'1': {'routes': [''], 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+                              {'1': {'routes': {''}, 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
                                      'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
                                      'name': '', 'additional_attributes': set()},
-                               '2': {'routes': [''], 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
+                               '2': {'routes': {''}, 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
                                      'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
                                      'name': '', 'additional_attributes': set()},
-                               '3': {'routes': [''], 'id': '3', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700',
+                               '3': {'routes': {''}, 'id': '3', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700',
                                      'lat': 49.76683608549253, 'lon': -7.557121424907424, 's2_id': 5205973754090203369,
                                      'name': '', 'additional_attributes': set()},
-                               '4': {'routes': [''], 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700',
+                               '4': {'routes': {''}, 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700',
                                      'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
                                      'name': '', 'additional_attributes': set()}})
-    assert_semantically_equal(list(g.edges(data=True)),
-                              [('1', '2', {'routes': ['']}),
-                               ('2', '3', {'routes': ['']}),
-                               ('3', '4', {'routes': ['']})])
+    assert_semantically_equal(g.edges(data=True)._adjdict,
+                              {'1': {'2': {'routes': {''}}}, '2': {'3': {'routes': {''}}}, '3': {'4': {'routes': {''}}},
+                               '4': {}})
 
 
 def test_routes_equal(stop_epsg_27700):
