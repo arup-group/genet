@@ -957,10 +957,43 @@ def test_removing_stop(schedule):
     assert {stop.id for stop in schedule.stops()} == {'1', '3', '4', '7', '8', '6', '2'}
 
 
+def test_removing_stop_updates_minimal_tranfer_times(schedule):
+    schedule.minimal_transfer_times = {
+        ('5', '2'): 0.0,
+        ('2', '5'): 0.0,
+        ('3', '2'): 0.0,
+        ('2', '3'): 0.0
+    }
+    schedule.remove_stop('5')
+    assert_semantically_equal(schedule.minimal_transfer_times,
+                              {
+                                  ('3', '2'): 0.0,
+                                  ('2', '3'): 0.0
+                              })
+
 def test_removing_unused_stops(schedule):
     schedule.remove_route('1')
     schedule.remove_unsused_stops()
     assert {stop.id for stop in schedule.stops()} == {'6', '8', '5', '7'}
+
+
+def test_unused_stops_featured_in_minimal_transfer_times_are_kept(schedule):
+    schedule.minimal_transfer_times = {
+        ('5', '2'): 0.0,
+        ('2', '5'): 0.0,
+        ('3', '2'): 0.0,
+        ('2', '3'): 0.0
+    }
+    schedule.remove_route('1')
+    schedule.remove_unsused_stops()
+    assert {stop.id for stop in schedule.stops()} == {'5', '2', '3', '6', '8', '7'}
+    assert_semantically_equal(schedule.minimal_transfer_times,
+                              {
+                                  ('5', '2'): 0.0,
+                                  ('2', '5'): 0.0,
+                                  ('3', '2'): 0.0,
+                                  ('2', '3'): 0.0
+                              })
 
 
 def test_iter_stops_returns_stops_objects(test_service, different_test_service):

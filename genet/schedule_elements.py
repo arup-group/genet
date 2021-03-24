@@ -2192,18 +2192,26 @@ class Schedule(ScheduleElement):
         routes_affected = stop_data.pop('routes')
         services_affected = stop_data.pop('services')
         self._graph.remove_node(stop_id)
+        # remove from minimal transfer times if relevant
+        self.minimal_transfer_times = {(from_s, to_s): time for (from_s, to_s), time in
+                                       self.minimal_transfer_times.items() if
+                                       (stop_id != from_s and stop_id != to_s)}
         self._graph.graph['change_log'].remove(object_type='stop', object_id=stop_id, object_attributes=stop_data)
         logging.info(f'Removed Stop with index `{stop_id}`, data={stop_data}. '
                      f'Routes affected: {routes_affected}. Services affected: {services_affected}.')
 
     def remove_unsused_stops(self):
-        stops_to_remove = []
+        stops_to_remove = set()
         for stop, data in self._graph.nodes(data='routes'):
             if not data:
-                stops_to_remove.append(stop)
+                stops_to_remove.add(stop)
+        # but leave those stops that have transfers
+        stops_to_remove = stops_to_remove - {stop for from_to_tuple in self.minimal_transfer_times.keys() for stop in
+                                             from_to_tuple}
         for stop in stops_to_remove:
             self.remove_stop(stop)
-        logging.info(f'Removed Stops with indecies `{stops_to_remove}` which were not used by any Routes.')
+        logging.info(f'Removed Stops with indecies `{stops_to_remove}` which were not used by any Routes or part of '
+                     f'minimal transfer times.')
 
     def is_strongly_connected(self):
         if nx.number_strongly_connected_components(self.graph()) == 1:

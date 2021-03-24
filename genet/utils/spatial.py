@@ -279,7 +279,8 @@ class SpatialTree(nx.DiGraph):
             try:
                 links = self.modal_links_geodataframe(modes)['link_id']
                 df_pt_edges['path_lengths'] = df_pt_edges.apply(
-                    lambda x: self.path_length(G=self.subgraph(links), source=x[from_col], target=x[to_col], weight=weight),
+                    lambda x: self.path_length(G=self.subgraph(links), source=x[from_col], target=x[to_col],
+                                               weight=weight),
                     axis=1)
             except EmptySpatialTree:
                 df_pt_edges['path_lengths'] = None
