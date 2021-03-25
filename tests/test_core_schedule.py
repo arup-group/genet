@@ -1421,3 +1421,86 @@ def test_reading_vehicle_types_from_a_yml_config(vehicle_definitions_config_path
                      'length': {'meter': '50.0'}, 'width': {'meter': '6.0'}, 'accessTime': {'secondsPerPerson': '0.5'},
                      'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
                      'passengerCarEquivalents': {'pce': '7.1'}}})
+
+
+@pytest.fixture()
+def json_schedule():
+    return {'schedule': {'stops': {
+            '5': {'y': 2.0, 'name': '', 'id': '5', 'x': 4.0, 'lon': -7.557106577683727, 'lat': 49.76682779861249,
+                  's2_id': 5205973754090531959},
+            '6': {'y': 2.0, 'name': '', 'id': '6', 'x': 1.0, 'lon': -7.557148039524952, 'lat': 49.766825803756994,
+                  's2_id': 5205973754090365183},
+            '7': {'y': 3.0, 'name': '', 'id': '7', 'x': 3.0, 'lon': -7.557121424907424, 'lat': 49.76683608549253,
+                  's2_id': 5205973754090203369},
+            '8': {'y': 5.0, 'name': '', 'id': '8', 'x': 7.0, 'lon': -7.5570681956375, 'lat': 49.766856648946295,
+                  's2_id': 5205973754097123809},
+            '3': {'y': 3.0, 'name': '', 'id': '3', 'x': 3.0, 'lon': -7.557121424907424, 'lat': 49.76683608549253,
+                  's2_id': 5205973754090203369},
+            '4': {'y': 5.0, 'name': '', 'id': '4', 'x': 7.0, 'lon': -7.5570681956375, 'lat': 49.766856648946295,
+                  's2_id': 5205973754097123809},
+            '1': {'y': 2.0, 'name': '', 'id': '1', 'x': 4.0, 'lon': -7.557106577683727, 'lat': 49.76682779861249,
+                  's2_id': 5205973754090531959},
+            '2': {'y': 2.0, 'name': '', 'id': '2', 'x': 1.0, 'lon': -7.557148039524952, 'lat': 49.766825803756994,
+                  's2_id': 5205973754090365183}},
+            'services': {'service': {'id': 'service', 'name': 'name', 'routes': {
+                '1': {'route_short_name': 'name', 'mode': 'bus',
+                      'trips': {'trip_id': ['1', '2'], 'trip_departure_time': ['13:00:00', '13:30:00'],
+                                'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
+                      'arrival_offsets': ['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                      'departure_offsets': ['00:00:00', '00:05:00', '00:09:00', '00:15:00'], 'route_long_name': '',
+                      'id': '1', 'route': [], 'await_departure': [], 'ordered_stops': ['1', '2', '3', '4']},
+                '2': {'route_short_name': 'name_2', 'mode': 'bus',
+                      'trips': {'trip_id': ['1', '2'], 'trip_departure_time': ['11:00:00', '13:00:00'],
+                                'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
+                      'arrival_offsets': ['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                      'departure_offsets': ['00:00:00', '00:05:00', '00:09:00', '00:15:00'], 'route_long_name': '',
+                      'id': '2', 'route': [], 'await_departure': [], 'ordered_stops': ['5', '6', '7', '8']}}}}},
+         'vehicles': {'vehicle_types': {
+             'bus': {'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}},
+                     'length': {'meter': '18.0'}, 'width': {'meter': '2.5'}, 'accessTime': {'secondsPerPerson': '0.5'},
+                     'egressTime': {'secondsPerPerson': '0.5'}, 'doorOperation': {'mode': 'serial'},
+                     'passengerCarEquivalents': {'pce': '2.8'}},
+             'rail': {'capacity': {'seats': {'persons': '1000'}, 'standingRoom': {'persons': '0'}},
+                      'length': {'meter': '200.0'}, 'width': {'meter': '2.8'},
+                      'accessTime': {'secondsPerPerson': '0.25'}, 'egressTime': {'secondsPerPerson': '0.25'},
+                      'doorOperation': {'mode': 'serial'}, 'passengerCarEquivalents': {'pce': '27.1'}},
+             'subway': {'capacity': {'seats': {'persons': '1000'}, 'standingRoom': {'persons': '0'}},
+                        'length': {'meter': '30.0'}, 'width': {'meter': '2.45'},
+                        'accessTime': {'secondsPerPerson': '0.1'}, 'egressTime': {'secondsPerPerson': '0.1'},
+                        'doorOperation': {'mode': 'serial'}, 'passengerCarEquivalents': {'pce': '4.4'}},
+             'ferry': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                       'length': {'meter': '50.0'}, 'width': {'meter': '6.0'},
+                       'accessTime': {'secondsPerPerson': '0.5'}, 'egressTime': {'secondsPerPerson': '0.5'},
+                       'doorOperation': {'mode': 'serial'}, 'passengerCarEquivalents': {'pce': '7.1'}},
+             'tram': {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
+                      'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                      'accessTime': {'secondsPerPerson': '0.25'}, 'egressTime': {'secondsPerPerson': '0.25'},
+                      'doorOperation': {'mode': 'serial'}, 'passengerCarEquivalents': {'pce': '5.2'}},
+             'funicular': {'capacity': {'seats': {'persons': '180'}, 'standingRoom': {'persons': '0'}},
+                           'length': {'meter': '36.0'}, 'width': {'meter': '2.4'},
+                           'accessTime': {'secondsPerPerson': '0.25'}, 'egressTime': {'secondsPerPerson': '0.25'},
+                           'doorOperation': {'mode': 'serial'}, 'passengerCarEquivalents': {'pce': '5.2'}},
+             'gondola': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                         'length': {'meter': '50.0'}, 'width': {'meter': '6.0'},
+                         'accessTime': {'secondsPerPerson': '0.5'}, 'egressTime': {'secondsPerPerson': '0.5'},
+                         'doorOperation': {'mode': 'serial'}, 'passengerCarEquivalents': {'pce': '7.1'}},
+             'cablecar': {'capacity': {'seats': {'persons': '250'}, 'standingRoom': {'persons': '0'}},
+                          'length': {'meter': '50.0'}, 'width': {'meter': '6.0'},
+                          'accessTime': {'secondsPerPerson': '0.5'}, 'egressTime': {'secondsPerPerson': '0.5'},
+                          'doorOperation': {'mode': 'serial'}, 'passengerCarEquivalents': {'pce': '7.1'}}},
+                      'vehicles': {'veh_3_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'},
+                                   'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'}}}}
+
+
+def test_transforming_schedule_to_json(schedule, json_schedule):
+    assert_semantically_equal(schedule.to_json(), json_schedule)
+
+
+def test_writing_schedule_to_json(schedule, json_schedule, tmpdir):
+    schedule.write_to_json(tmpdir)
+    expected_schedule_json = os.path.join(tmpdir, 'schedule.json')
+    assert os.path.exists(expected_schedule_json)
+    with open(expected_schedule_json) as json_file:
+        output_json = json.load(json_file)
+    assert_semantically_equal(output_json, json_schedule)
+

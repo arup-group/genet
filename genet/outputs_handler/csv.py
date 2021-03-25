@@ -1,6 +1,5 @@
 
 
-
 def to_csv(path_to_csv: str):
     """
 

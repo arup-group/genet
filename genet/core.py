@@ -4,6 +4,7 @@ import geopandas as gpd
 import uuid
 import logging
 import os
+import json
 from copy import deepcopy
 from typing import Union, List, Dict
 from pyproj import Transformer
@@ -1452,13 +1453,31 @@ class Network:
             for name, aux_file in self.auxiliary_files[id_type].items():
                 aux_file.write_to_file(output_dir)
 
+    def write_extras(self, output_dir):
+        self.change_log.export(os.path.join(output_dir, 'network_change_log.csv'))
+        self.write_auxiliary_files(os.path.join(output_dir, 'auxiliary_files'))
+
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_matsim_network(output_dir, self)
         if self.schedule:
             self.schedule.write_to_matsim(output_dir)
-        self.change_log.export(os.path.join(output_dir, 'network_change_log.csv'))
-        self.write_auxiliary_files(os.path.join(output_dir, 'auxiliary_files'))
+        self.write_extras(output_dir)
+
+    def to_json(self):
+        nodes = self.node_attribute_data_under_keys(
+            keys=[d.name for d in graph_operations.get_attribute_schema(self.nodes()).children])
+        links = self.link_attribute_data_under_keys(
+            keys=[d.name for d in graph_operations.get_attribute_schema(self.links()).children])
+        return {'nodes': nodes.T.to_dict(), 'links': links.T.to_dict()}
+
+    def write_to_json(self, output_dir):
+        persistence.ensure_dir(output_dir)
+        with open(os.path.join(output_dir, 'network.json'), 'w') as outfile:
+            json.dump(self.to_json(), outfile)
+        if self.schedule:
+            self.schedule.write_to_json(output_dir)
+        self.write_extras(output_dir)
 
     def save_network_to_geojson(self, output_dir):
         geojson.save_network_to_geojson(self, output_dir)

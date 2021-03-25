@@ -8,6 +8,7 @@ import os
 import io
 import yaml
 import pkgutil
+import json
 from datetime import datetime
 from pandas import DataFrame, Series
 from copy import deepcopy
@@ -576,7 +577,7 @@ class Route(ScheduleElement):
         same_departure_offsets = self.departure_offsets == other.departure_offsets
 
         statement = same_route_name and same_mode and same_stops and same_trips and same_arrival_offsets \
-            and same_departure_offsets
+                    and same_departure_offsets  # noqa: E127
         return statement
 
     def isin_exact(self, routes: list):
@@ -831,6 +832,7 @@ class Service(ScheduleElement):
             is a list of the same length as routes, each item is a set of graph edges and corresponds to the item in
             routes list in that same index
         """
+
         def route_overlap_condition(graph_edge_group):
             edges_in_common = bool(graph_edge_group & route_edges)
             if edges_in_common:
@@ -2230,6 +2232,24 @@ class Schedule(ScheduleElement):
         matsim_xml_writer.write_matsim_schedule(output_dir, self)
         matsim_xml_writer.write_vehicles(output_dir, self.vehicles, self.vehicle_types)
         self.change_log().export(os.path.join(output_dir, 'schedule_change_log.csv'))
+
+    def to_json(self):
+        stop_keys = {d.name for d in graph_operations.get_attribute_schema(self._graph.nodes(data=True)).children}
+        stop_keys = stop_keys - {'routes', 'services', 'additional_attributes', 'epsg'}
+        stops = self.stop_attribute_data(keys=stop_keys)
+        services = self._graph.graph['services']
+        for service_id, data in services.items():
+            data['routes'] = {route_id: self._graph.graph['routes'][route_id] for route_id in
+                              self._graph.graph['service_to_route_map'][service_id]}
+        d = {'stops': stops.T.to_dict(), 'services': services}
+        if self.minimal_transfer_times:
+            d['minimal_transfer_times'] = self.minimal_transfer_times
+        return {'schedule': d, 'vehicles': {'vehicle_types': self.vehicle_types, 'vehicles': self.vehicles}}
+
+    def write_to_json(self, output_dir):
+        persistence.ensure_dir(output_dir)
+        with open(os.path.join(output_dir, 'schedule.json'), 'w') as outfile:
+            json.dump(self.to_json(), outfile)
 
 
 def verify_graph_schema(graph):
