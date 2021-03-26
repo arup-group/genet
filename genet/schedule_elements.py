@@ -20,7 +20,6 @@ import genet.utils.plot as plot
 import genet.utils.spatial as spatial
 import genet.utils.dict_support as dict_support
 import genet.inputs_handler.matsim_reader as matsim_reader
-import genet.inputs_handler.gtfs_reader as gtfs_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
@@ -2197,35 +2196,6 @@ class Schedule(ScheduleElement):
     def read_matsim_vehicles(self, path_to_vehicles):
         vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
         self.update_vehicles(vehicles, vehicle_types)
-
-    def read_gtfs_schedule(self, path, day):
-        """
-        Reads from GTFS. The resulting services will not have route lists. Assumes to be in lat lon epsg:4326
-        :param path: to GTFS folder or a zip file
-        :param day: 'YYYYMMDD' to use form the gtfs
-        :return:
-        """
-        schedule, stops_db = gtfs_reader.read_to_dict_schedule_and_stopd_db(path, day)
-        services = []
-        for key, routes in schedule.items():
-            routes_list = []
-            for route in routes:
-                r = Route(
-                    route_short_name=route['route_short_name'],
-                    mode=route['mode'],
-                    stops=[Stop(id=id, x=stops_db[id]['stop_lon'], y=stops_db[id]['stop_lat'], epsg='epsg:4326') for id
-                           in
-                           route['stops']],
-                    trips=route['trips'],
-                    arrival_offsets=route['arrival_offsets'],
-                    departure_offsets=route['departure_offsets']
-                )
-                routes_list.append(r)
-            services.append(Service(id=key, routes=routes_list))
-
-        # add services rather than creating new object (in case there are already services present)
-        to_add = self.__class__('epsg:4326', services)
-        self.add(to_add)
 
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)

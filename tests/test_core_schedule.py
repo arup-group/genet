@@ -19,7 +19,6 @@ pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
 pt2matsim_vehicles_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml"))
-gtfs_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs"))
 
 
 @pytest.fixture()
@@ -991,37 +990,6 @@ def test_reading_vehicles_after_reading_schedule():
         'passengerCarEquivalents': {'pce': '2.8'}})
 
 
-def test_read_gtfs_returns_expected_schedule(correct_stops_to_service_mapping_from_test_gtfs,
-                                             correct_stops_to_route_mapping_from_test_gtfs):
-    schedule = Schedule('epsg:4326')
-    schedule.read_gtfs_schedule(gtfs_test_file, '20190604')
-
-    assert schedule['1001'] == Service(
-        '1001',
-        [Route(
-            route_short_name='BTR',
-            mode='bus',
-            stops=[Stop(id='BSE', x=-0.1413621, y=51.5226864, epsg='epsg:4326'),
-                   Stop(id='BSN', x=-0.140053, y=51.5216199, epsg='epsg:4326')],
-            trips={'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_0_bus']},
-            arrival_offsets=['0:00:00', '0:02:00'],
-            departure_offsets=['0:00:00', '0:02:00']
-        )])
-    assert schedule['1002'] == Service(
-        '1002',
-        [Route(
-            route_short_name='RTR',
-            mode='rail',
-            stops=[Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326'),
-                   Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
-            trips={'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_1_rail']},
-            arrival_offsets=['0:00:00', '0:02:00'],
-            departure_offsets=['0:00:00', '0:02:00']
-        )])
-    assert_semantically_equal(schedule.stop_to_service_ids_map(), correct_stops_to_service_mapping_from_test_gtfs)
-    assert_semantically_equal(schedule.stop_to_route_ids_map(), correct_stops_to_route_mapping_from_test_gtfs)
-
-
 def test_is_strongly_connected_with_strongly_connected_schedule(strongly_connected_schedule):
     assert strongly_connected_schedule.is_strongly_connected()
 
@@ -1504,3 +1472,5 @@ def test_writing_schedule_to_json(schedule, json_schedule, tmpdir):
         output_json = json.load(json_file)
     assert_semantically_equal(output_json, json_schedule)
 
+# def test_transforming_schedule_to_gtfs(schedule):
+#     assert_semantically_equal(schedule.to_gtfs(), {})

@@ -2,8 +2,12 @@ import csv
 import logging
 import os
 import shutil
+import pandas as pd
+import numpy as np
+import networkx as nx
 from datetime import datetime, timedelta
 from genet.utils import spatial, persistence
+import genet.modify.change_log as change_log
 from genet import variables
 
 
@@ -51,48 +55,31 @@ def read_services_from_calendar(path, day):
 def read_gtfs_to_db_like_tables(path):
     logging.info("Reading GTFS data into usable format")
 
-    trips_db = {}
-    stops_db = {}
-    routes_db = {}
-    stop_times_db = {}
-    stop_times = []
+    trips_db = None
+    stops_db = None
+    routes_db = None
+    stop_times_db = None
 
     for file_name in os.listdir(path):
         file = os.path.join(path, file_name)
 
         if "stop_times" in file:
             logging.info("Reading stop times")
-            with open(file, mode='r') as infile:
-                reader = csv.DictReader(infile)
-                for row in reader:
-                    stop_times.append(dict(row))
-                    if row['trip_id'] in stop_times_db:
-                        stop_times_db[row['trip_id']].append(dict(row))
-                    else:
-                        stop_times_db[row['trip_id']] = [dict(row)]
+            stop_times_db = pd.read_csv(file)
 
         elif "stops" in file:
             logging.info("Reading stops")
-            with open(file, mode='r') as infile:
-                reader = csv.DictReader(infile)
-                for row in reader:
-                    stops_db[row['stop_id']] = dict(row)
+            stops_db = pd.read_csv(file)
 
         elif "trips" in file:
             logging.info("Reading trips")
-            with open(file, mode='r') as infile:
-                reader = csv.DictReader(infile)
-                for row in reader:
-                    trips_db[row['trip_id']] = dict(row)
+            trips_db = pd.read_csv(file)
 
         elif "routes" in file:
             logging.info("Reading routes")
-            with open(file, mode='r') as infile:
-                reader = csv.DictReader(infile)
-                for row in reader:
-                    routes_db[row['route_id']] = dict(row)
+            routes_db = pd.read_csv(file)
 
-    return stop_times, stop_times_db, stops_db, trips_db, routes_db
+    return stop_times_db, stops_db, trips_db, routes_db
 
 
 def get_mode(route_type):
@@ -105,7 +92,7 @@ def get_mode(route_type):
         return 'other'
 
 
-def parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, route_db, services):
+def gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, services):
     def get_time(time):
         # return time as datetime.datetime, account for 24 in %H
         time_list = time.split(':')
@@ -120,74 +107,101 @@ def parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, route_db, servi
         else:
             return datetime.strptime(time, '%H:%M:%S')
 
-    def get_the_route(route_id, stops):
-        for i in range(len(schedule[route_id])):
-            route = schedule[route_id][i]
-            stops_already_in_schedule = route['stops']
-            if stops == stops_already_in_schedule:
-                return i
-        return None
+    def generate_stop_sequence(group):
+        group = group.sort_values(by='stop_sequence')
+        flattened = group.iloc[0, :][
+            list(set(group.columns) - {'trip_id', 'stop_sequence', 'stop_id', 'arrival_time', 'departure_time'})]
+        departure_time = group.iloc[0, :]['arrival_time']
+        flattened['trip_departure_time'] = departure_time.strftime("%H:%M:%S")
+        flattened['ordered_stops'] = group['stop_id'].to_list()
+        flattened['stops_str'] = ','.join(group['stop_id'].to_list())
+        flattened['arrival_offsets'] = [str(t - departure_time) for t in group['arrival_time']]
+        flattened['departure_offsets'] = [str(t - departure_time) for t in group['departure_time']]
+        return flattened
 
-    def update_route_info(route_id, departure_time, i):
-        # assuming all trips sharing the same route have the same time offsets
-        schedule[route_id][i]['stops'] = stops
-        schedule[route_id][i]['s2_stops'] = s2_stops
+    def generate_trips(group):
+        flattened = group.iloc[0, :][
+            list(set(group.columns) - {'route_id', 'stops_str', 'trip_id', 'vehicle_id', 'trip_departure_time'})]
+        trip_id = group['trip_id'].to_list()
+        trip_departure_time = group['trip_departure_time'].to_list()
+        vehicle_id = group['vehicle_id'].to_list()
+        flattened['trips'] = {
+            'trip_id': trip_id,
+            'trip_departure_time': trip_departure_time,
+            'vehicle_id': vehicle_id
+        }
+        return flattened
 
-        for stop_time in stop_times:
-            stop_arrival = get_time(stop_time['arrival_time'])
-            stop_departure = get_time(stop_time['departure_time'])
-            schedule[route_id][i]['arrival_offsets'].append(str(stop_arrival - departure_time))
-            schedule[route_id][i]['departure_offsets'].append(str(stop_departure - departure_time))
+    def generate_routes(group):
+        service_id = group.iloc[0, :]['service_id']
+        group['route_id'] = [f'{service_id}_{i}' for i in range(len(group))]
+        return group
 
-    schedule = {}
+    trips_db = trips_db[trips_db['service_id'].isin(services)]
+    df = trips_db[['route_id', 'trip_id']].merge(
+        routes_db[['route_id', 'route_type', 'route_short_name', 'route_long_name', 'route_color']], on='route_id',
+        how='left')
+    df['mode'] = df['route_type'].apply(lambda x: get_mode(x))
+    df = df.merge(stop_times_db[['trip_id', 'stop_id', 'arrival_time', 'departure_time', 'stop_sequence']],
+                  on='trip_id', how='left')
+    df['arrival_time'] = df['arrival_time'].apply(lambda x: get_time(x))
+    df['departure_time'] = df['departure_time'].apply(lambda x: get_time(x))
 
-    v_id = 0  # generating some ids for vehicles
-    for trip_id, trip_val in trips_db.items():
-        route_id = trip_val['route_id']
-        if trip_val['service_id'] in services:
-            if route_id not in schedule:
-                schedule[route_id] = []
-            route_val = route_db[route_id]
-            stop_times = stop_times_db[trip_id]
-            stops = [stop_time['stop_id'] for stop_time in stop_times]
-            s2_stops = [spatial.generate_index_s2(
-                lat=float(stops_db[stop]['stop_lat']), lng=float(stops_db[stop]['stop_lon'])) for stop in stops]
-            mode = get_mode(route_val['route_type'])
+    df = df.groupby('trip_id').apply(generate_stop_sequence).reset_index()
+    df['vehicle_id'] = [f'veh_{i}' for i in range(len(df))]
+    df = df.groupby(['route_id', 'stops_str']).apply(generate_trips).reset_index()
+    df = df.drop('stops_str', axis=1)
+    df['service_id'] = df['route_id'].astype(str)
+    df = df.groupby(['service_id']).apply(generate_routes)
 
-            if len(stops) > 1:
-                # get the route
-                i = get_the_route(route_id, stops)
-                vehicle_id = 'veh_{}_{}'.format(v_id, mode)
-                if i is not None:
-                    # add this trip and it's departure time to already existing route
-                    schedule[route_id][i]['trips']['trip_id'].append(trip_id)
-                    schedule[route_id][i]['trips']['trip_departure_time'].append(stop_times[0]['arrival_time'])
-                    schedule[route_id][i]['trips']['vehicle_id'].append(vehicle_id)
-                if i is None:
-                    # fresh route
-                    schedule[route_id].append({
-                        # route info
-                        'route_short_name': route_val['route_short_name'],
-                        'route_long_name': route_val['route_long_name'],
-                        'mode': mode,
-                        'route_color': '#{}'.format(route_val['route_color']),
-                        # trip ids, their own departure times and vehicles
-                        'trips': {
-                            'trip_id': [trip_id],
-                            'trip_departure_time': [stop_times[0]['arrival_time']],
-                            'vehicle_id': [vehicle_id]},
-                        # stops and time offsets for each stop along the route
-                        'stops': [],
-                        'arrival_offsets': [],
-                        'departure_offsets': []
-                    })
-                    departure_time = get_time(stop_times[0]['arrival_time'])
-                    update_route_info(route_id, departure_time, len(schedule[route_id]) - 1)
-                v_id += 1
-            elif len(schedule[route_id]) == 0:
-                del schedule[route_id]
+    g = nx.DiGraph(name='Schedule graph')
+    g.graph['crs'] = {'init': 'epsg:4326'}
+    g.graph['route_to_service_map'] = df.set_index('route_id')['service_id'].T.to_dict()
+    g.graph['service_to_route_map'] = df.groupby('service_id')['route_id'].apply(list).to_dict()
+    g.graph['change_log'] = change_log.ChangeLog()
 
-    return schedule
+    df['id'] = df['route_id']
+    g.graph['routes'] = df.set_index('route_id').T.to_dict()
+    df['id'] = df['service_id']
+    df = df.rename(columns={'route_short_name': 'name'})
+    g.graph['services'] = df[['service_id', 'id', 'name']].groupby('service_id').first().T.to_dict()
+
+    # finally nodes
+    stops = pd.DataFrame({
+        col: np.repeat(df[col].values, df['ordered_stops'].str.len())
+        for col in {'route_id', 'service_id'}}
+    ).assign(stop_id=np.concatenate(df['ordered_stops'].values))
+    stop_groups = stops.groupby('stop_id')
+    stops = set(stop_groups.groups)
+    g.add_nodes_from(stops)
+    stops_db = stops_db.rename(columns={'stop_lat': 'lat', 'stop_lon': 'lon', 'stop_name': 'name'})
+    stops_db['id'] = stops_db['stop_id']
+    stops_db['x'] = stops_db['lon']
+    stops_db['y'] = stops_db['lat']
+    stops_db['epsg'] = 'epsg:4326'
+    stops_db['s2_id'] = stops_db.apply(
+        lambda x: spatial.generate_index_s2(lat=float(x['lat']), lng=float(x['lon'])), axis=1)
+    nx.set_node_attributes(g, stops_db[stops_db['stop_id'].isin(stops)].set_index('stop_id').T.to_dict())
+    nx.set_node_attributes(g, pd.DataFrame(stop_groups['route_id'].apply(list)).rename(
+        columns={'route_id': 'routes'}).T.to_dict())
+    nx.set_node_attributes(g, pd.DataFrame(stop_groups['service_id'].apply(list)).rename(
+        columns={'service_id': 'services'}).T.to_dict())
+
+    # and edges
+    df['ordered_stops'] = df['ordered_stops'].apply(lambda x: list(zip(x[:-1], x[1:])))
+    stop_cols = np.concatenate(df['ordered_stops'].values)
+    edges = pd.DataFrame({
+        col: np.repeat(df[col].values, df['ordered_stops'].str.len())
+        for col in {'route_id', 'service_id'}}
+    ).assign(from_stop=stop_cols[:, 0],
+             to_stop=stop_cols[:, 1])
+    edge_groups = edges.groupby(['from_stop', 'to_stop'])
+    g.add_edges_from(edge_groups.groups)
+    nx.set_edge_attributes(g, pd.DataFrame(edge_groups['route_id'].apply(list)).rename(
+        columns={'route_id': 'routes'}).T.to_dict())
+    nx.set_edge_attributes(g, pd.DataFrame(edge_groups['service_id'].apply(list)).rename(
+        columns={'service_id': 'services'}).T.to_dict())
+    return g
 
 
 def read_to_dict_schedule_and_stopd_db(path: str, day: str):
@@ -203,10 +217,9 @@ def read_to_dict_schedule_and_stopd_db(path: str, day: str):
         gtfs_path = path
 
     services = read_services_from_calendar(gtfs_path, day=day)
-    stop_times, stop_times_db, stops_db, trips_db, routes_db = read_gtfs_to_db_like_tables(gtfs_path)
-    schedule = parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, routes_db, services)
+    stop_times_db, stops_db, trips_db, routes_db = read_gtfs_to_db_like_tables(gtfs_path)
+    schedule_graph = gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, services)
 
     if persistence.is_zip(path):
         shutil.rmtree(os.path.dirname(gtfs_path))
-
-    return schedule, stops_db
+    return schedule_graph
