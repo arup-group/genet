@@ -67,8 +67,8 @@ def test_generating_network_graph_geodataframe(network):
 
 def test_generating_schedule_graph_geodataframe(network):
     nodes, links = gngeojson.generate_geodataframes(network.schedule.graph())
-    correct_nodes = {'services': {'0': ['service'], '1': ['service']},
-                     'routes': {'0': ['1', '2'], '1': ['1', '2']},
+    correct_nodes = {'services': {'0': {'service'}, '1': {'service'}},
+                     'routes': {'0': {'1', '2'}, '1': {'1', '2'}},
                      'id': {'0': '0', '1': '1'}, 'x': {'0': 529455.7452394223, '1': 529350.7866124967},
                      'y': {'0': 182401.37630677427, '1': 182388.0201078112},
                      'epsg': {'0': 'epsg:27700', '1': 'epsg:27700'},
@@ -79,8 +79,8 @@ def test_generating_schedule_graph_geodataframe(network):
                      'linkRefId': {'0': '1', '1': '2'},
                      'name': {'0': '', '1': ''}
                      }
-    correct_links = {'services': {0: ['service']},
-                     'routes': {0: ['1', '2']},
+    correct_links = {'services': {0: {'service'}},
+                     'routes': {0: {'1', '2'}},
                      'u': {0: '0'},
                      'v': {0: '1'},
                      'key': {0: 0}}
