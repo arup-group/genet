@@ -2301,6 +2301,7 @@ class Schedule(ScheduleElement):
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
         :return: None
         """
+        persistence.ensure_dir(output_dir)
         for table, df in self.to_gtfs(gtfs_day).items():
             df.to_csv(os.path.join(output_dir, f'{table}.csv'))
 
@@ -2311,6 +2312,7 @@ class Schedule(ScheduleElement):
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
         :return: None
         """
+        persistence.ensure_dir(output_dir)
         for table, df in self.to_gtfs(gtfs_day).items():
             df.to_csv(os.path.join(output_dir, f'{table}.txt'))
 

@@ -107,6 +107,9 @@ def gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, serv
         else:
             return datetime.strptime(time, '%H:%M:%S')
 
+    def timedelta_to_hms(td):
+        return str(td).split('days')[-1].strip(' ')
+
     def generate_stop_sequence(group):
         group = group.sort_values(by='stop_sequence')
         flattened = group.iloc[0, :][
@@ -115,8 +118,8 @@ def gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, serv
         flattened['trip_departure_time'] = departure_time.strftime("%H:%M:%S")
         flattened['ordered_stops'] = group['stop_id'].to_list()
         flattened['stops_str'] = ','.join(group['stop_id'].to_list())
-        flattened['arrival_offsets'] = [str(t - departure_time) for t in group['arrival_time']]
-        flattened['departure_offsets'] = [str(t - departure_time) for t in group['departure_time']]
+        flattened['arrival_offsets'] = [timedelta_to_hms(t - departure_time) for t in group['arrival_time']]
+        flattened['departure_offsets'] = [timedelta_to_hms(t - departure_time) for t in group['departure_time']]
         return flattened
 
     def generate_trips(group):
