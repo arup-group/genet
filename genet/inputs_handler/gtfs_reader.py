@@ -148,6 +148,8 @@ def gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, serv
     df['departure_time'] = df['departure_time'].apply(lambda x: get_time(x))
 
     df = df.groupby('trip_id').apply(generate_stop_sequence).reset_index()
+    # drop stop sequences that are single stops
+    df = df[df['ordered_stops'].str.len() > 1]
     df['vehicle_id'] = [f'veh_{i}' for i in range(len(df))]
     df = df.groupby(['route_id', 'stops_str']).apply(generate_trips).reset_index()
     df = df.drop('stops_str', axis=1)
