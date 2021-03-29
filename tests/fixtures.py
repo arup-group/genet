@@ -330,8 +330,8 @@ def correct_schedule_graph_data_from_test_gtfs():
                                      'route_long_name': 'Rail Test Route', 'route_short_name': 'RTR',
                                      'trips': {'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'],
                                                'vehicle_id': ['veh_1']}, 'service_id': '1002',
-                                     'id': '1002_0'}}, 'services': {'1001': {'id': '1001', 'name': 'BTR'},
-                                                                    '1002': {'id': '1002', 'name': 'RTR'}}}
+                                     'id': '1002_0'}},
+            'services': {'1001': {'id': '1001', 'name': 'BTR'}, '1002': {'id': '1002', 'name': 'RTR'}}}
 
 @pytest.fixture()
 def correct_stops_to_service_mapping_from_test_gtfs():

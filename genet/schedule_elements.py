@@ -2221,6 +2221,84 @@ class Schedule(ScheduleElement):
         with open(os.path.join(output_dir, 'schedule.json'), 'w') as outfile:
             json.dump(self.to_json(), outfile)
 
+    def to_gtfs(self, gtfs_day, mode_to_route_type: dict = None):
+        """
+        Transforms Schedule in to GTFS-like format. It's not full GTFS as it only represents one day, misses a lot
+         of optional data and does not include `agency.txt` required file.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :param mode_to_route_type: PT modes in Route objects to route type code by default uses
+        https://developers.google.com/transit/gtfs/reference#routestxt
+        {
+            "tram": 0, "subway": 1, "rail": 2, "bus": 3, "ferry": 4, "cablecar": 5, "gondola": 6, "funicular": 7
+        }
+        Reference for extended mode types:
+        https://developers.google.com/transit/gtfs/reference/extended-route-types
+
+        :return: Dictionary, keys are the names of the tables e.g. `stops` for the `stops.txt` file, values are
+            pandas.DataFrame tables.
+        """
+        stops = self.stop_attribute_data(
+            keys=['id', 'name', 'lat', 'lon', 'stop_code', 'stop_desc', 'zone_id', 'stop_url', 'location_type',
+                  'parent_station', 'stop_timezone', 'wheelchair_boarding', 'level_id', 'platform_code'])
+        stops = stops.rename(columns={'id': 'stop_id', 'name': 'stop_name', 'lat': 'stop_lat', 'lon': 'stop_lon'})
+
+        routes = self.route_attribute_data(
+            keys=['id', 'route_short_name', 'route_long_name', 'mode', 'agency_id', 'route_desc', 'route_url',
+                  'route_type', 'route_color', 'route_text_color', 'route_sort_order', 'continuous_pickup',
+                  'continuous_drop_off'])
+        if mode_to_route_type is None:
+            mode_to_route_type = {
+                "tram": 0, "subway": 1, "rail": 2, "bus": 3, "ferry": 4, "cablecar": 5, "gondola": 6, "funicular": 7
+            }
+        routes.loc[routes['route_type'].isna(), 'route_type'] = routes.loc[routes['route_type'].isna(), 'mode'].map(
+            mode_to_route_type)
+        routes['route_id'] = routes['id'].map(self._graph.graph['route_to_service_map'])
+        routes = routes.drop(['mode', 'id'], axis=1)
+        routes = routes.groupby('route_id').first().reset_index()
+
+        trips = self.route_attribute_data(keys=['id', 'ordered_stops', 'arrival_offsets', 'departure_offsets'])
+        trips = trips.merge(self.route_trips_to_dataframe(), left_on='id', right_on='route_id')
+        trips['route_id'] = trips['service_id']
+
+        # expand the frame for stops and offsets to get stop times
+        trips['stop_sequence'] = trips['ordered_stops'].apply(lambda x: list(range(len(x))))
+        trips['departure_offsets'] = trips['departure_offsets'].apply(lambda x: list(map(use_schedule.get_offset, x)))
+        trips['arrival_offsets'] = trips['arrival_offsets'].apply(lambda x: list(map(use_schedule.get_offset, x)))
+        stop_times = DataFrame({
+            col: np.repeat(trips[col].values, trips['ordered_stops'].str.len())
+            for col in {'trip_id', 'trip_departure_time'}}
+        ).assign(stop_id=np.concatenate(trips['ordered_stops'].values),
+                 stop_sequence=np.concatenate(trips['stop_sequence'].values),
+                 departure_time=np.concatenate(trips['departure_offsets'].values),
+                 arrival_time=np.concatenate(trips['arrival_offsets'].values))
+        stop_times['arrival_time'] = (stop_times['trip_departure_time'] + stop_times['arrival_time']).dt.strftime(
+            '%H:%M:%S')
+        stop_times['departure_time'] = (stop_times['trip_departure_time'] + stop_times['departure_time']).dt.strftime(
+            '%H:%M:%S')
+        stop_times = stop_times.drop(['trip_departure_time'], axis=1)
+        for col in ['stop_headsign', 'pickup_type', 'drop_off_type', 'continuous_pickup', 'continuous_drop_off',
+                    'shape_dist_traveled', 'timepoint']:
+            stop_times[col] = float('nan')
+
+        # finish off trips frame
+        trips = trips[['route_id', 'service_id', 'trip_id']]
+        for col in ['trip_headsign', 'trip_short_name', 'direction_id', 'block_id', 'shape_id', 'wheelchair_accessible',
+                    'bikes_allowed']:
+            trips[col] = float('nan')
+
+        calendar = DataFrame(routes['route_id'])
+        for col in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
+            calendar[col] = 1
+        calendar['start_date'] = gtfs_day
+        calendar['end_date'] = gtfs_day
+        return {'stops': stops, 'routes': routes, 'trips': trips, 'stop_times': stop_times, 'calendar': calendar}
+
+    def write_to_csv(self):
+        pass
+
+    def write_to_gtfs(self):
+        pass
+
 
 def verify_graph_schema(graph):
     if not isinstance(graph, nx.DiGraph):
