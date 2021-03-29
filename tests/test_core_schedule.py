@@ -1575,3 +1575,13 @@ def test_transforming_schedule_to_gtfs(schedule):
          'friday': {0: 1}, 'saturday': {0: 1}, 'sunday': {0: 1}, 'start_date': {0: '19700101'},
          'end_date': {0: '19700101'}}
     )
+
+
+def test_writing_schedule_to_csv(schedule, tmpdir):
+    schedule.write_to_csv(tmpdir)
+    assert set(os.listdir(tmpdir)) == {'calendar.csv', 'routes.csv', 'stop_times.csv', 'stops.csv', 'trips.csv'}
+
+
+def test_writing_schedule_to_gtfs(schedule, tmpdir):
+    schedule.write_to_gtfs(tmpdir)
+    assert set(os.listdir(tmpdir)) == {'calendar.txt', 'routes.txt', 'stop_times.txt', 'stops.txt', 'trips.txt'}

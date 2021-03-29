@@ -2224,8 +2224,9 @@ class Schedule(ScheduleElement):
     def to_gtfs(self, gtfs_day, mode_to_route_type: dict = None):
         """
         Transforms Schedule in to GTFS-like format. It's not full GTFS as it only represents one day, misses a lot
-         of optional data and does not include `agency.txt` required file.
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+         of optional data and does not include `agency.txt` required file. Produces 'stops', 'routes', 'trips',
+         'stop_times', 'calendar' tables.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format
         :param mode_to_route_type: PT modes in Route objects to route type code by default uses
         https://developers.google.com/transit/gtfs/reference#routestxt
         {
@@ -2293,11 +2294,25 @@ class Schedule(ScheduleElement):
         calendar['end_date'] = gtfs_day
         return {'stops': stops, 'routes': routes, 'trips': trips, 'stop_times': stop_times, 'calendar': calendar}
 
-    def write_to_csv(self):
-        pass
+    def write_to_csv(self, output_dir, gtfs_day='19700101'):
+        """
+        Writes 'stops', 'routes', 'trips', 'stop_times', 'calendar' tables to CSV files
+        :param output_dir: folder to output CSV files
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return: None
+        """
+        for table, df in self.to_gtfs(gtfs_day).items():
+            df.to_csv(os.path.join(output_dir, f'{table}.csv'))
 
-    def write_to_gtfs(self):
-        pass
+    def write_to_gtfs(self, output_dir, gtfs_day='19700101'):
+        """
+        Writes 'stops', 'routes', 'trips', 'stop_times', 'calendar' tables to CSV files
+        :param output_dir: folder to output CSV files
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return: None
+        """
+        for table, df in self.to_gtfs(gtfs_day).items():
+            df.to_csv(os.path.join(output_dir, f'{table}.txt'))
 
 
 def verify_graph_schema(graph):
