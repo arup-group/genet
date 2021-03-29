@@ -9,6 +9,7 @@ from copy import deepcopy
 from typing import Union, List, Dict
 from pyproj import Transformer
 from s2sphere import CellId
+from shapely.geometry import Point, LineString
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.osm_reader as osm_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
@@ -189,7 +190,7 @@ class Network:
         """
         return pd.Series(graph_operations.get_attribute_data_under_key(self.nodes(), key))
 
-    def node_attribute_data_under_keys(self, keys: list, index_name=None):
+    def node_attribute_data_under_keys(self, keys: Union[list, set], index_name=None):
         """
         Generates a pandas.DataFrame object indexed by link ids, with data stored on the nodes under `key`
         :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
@@ -218,7 +219,7 @@ class Network:
         """
         return pd.Series(graph_operations.get_attribute_data_under_key(self.links(), key))
 
-    def link_attribute_data_under_keys(self, keys: list, index_name=None):
+    def link_attribute_data_under_keys(self, keys: Union[list, set], index_name=None):
         """
         Generates a pandas.DataFrame object indexed by link ids, with data stored on the links under `key`
         :param keys: list of either a string e.g. 'modes', or if accessing nested information, a dictionary
@@ -1481,3 +1482,52 @@ class Network:
 
     def save_network_to_geojson(self, output_dir):
         geojson.save_network_to_geojson(self, output_dir)
+
+    def to_geodataframe(self):
+        """
+        Generates GeoDataFrames of the Network graph in Network's crs
+        :return: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and links
+        """
+
+        def line_geom(link_attribs):
+            from_node = self.node(link_attribs['from'])
+            to_node = self.node(link_attribs['to'])
+            return LineString(
+                [(float(from_node['x']), float(from_node['y'])), (float(to_node['x']), float(to_node['y']))])
+
+        nodes = gpd.GeoDataFrame(self.node_attribute_data_under_keys(
+            keys={d.name for d in graph_operations.get_attribute_schema(self.nodes()).children} | {'geometry'},
+            index_name='index'))
+        nodes['geometry'] = nodes[nodes['geometry'].isna()].apply(
+            lambda row: Point(float(row['x']), float(row['y'])), axis=1)
+        nodes.set_crs(epsg=self.epsg.split(':')[1], inplace=True)
+
+        links = gpd.GeoDataFrame(self.link_attribute_data_under_keys(
+            keys={d.name for d in graph_operations.get_attribute_schema(self.links()).children} | {'geometry'},
+            index_name='index'))
+        links['geometry'] = links[links['geometry'].isna()].apply(lambda row: line_geom(row), axis=1)
+        links.set_crs(epsg=self.epsg.split(':')[1], inplace=True)
+
+        return {'nodes': nodes, 'links': links}
+
+    def write_to_csv(self, output_dir, gtfs_day='19700101'):
+        """
+        Writes nodes and links tables for the Network and if there is a Schedule, exports it to a GTFS-like format.
+        :param output_dir: output directory
+        :param gtfs_day: defaults to 19700101, day which is represented in the Schedule
+        :return:
+        """
+        network_csv_folder = os.path.join(output_dir, 'network')
+        schedule_csv_folder = os.path.join(output_dir, 'schedule')
+        persistence.ensure_dir(network_csv_folder)
+        csv_network = self.to_geodataframe()
+        csv_network['nodes']['geometry'] = csv_network['nodes']['geometry'].apply(
+            lambda x: (x.x, x.y))
+        csv_network['nodes'].to_csv(os.path.join(network_csv_folder, 'nodes.csv'))
+        csv_network['links']['geometry'] = csv_network['links']['geometry'].apply(
+            lambda x: spatial.encode_shapely_linestring_to_polyline(x))
+        csv_network['links'].to_csv(os.path.join(network_csv_folder, 'links.csv'))
+        if self.schedule:
+            persistence.ensure_dir(schedule_csv_folder)
+            self.schedule.write_to_csv(schedule_csv_folder, gtfs_day)
+        self.write_extras(network_csv_folder)

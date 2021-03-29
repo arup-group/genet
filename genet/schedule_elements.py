@@ -2201,6 +2201,9 @@ class Schedule(ScheduleElement):
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_matsim_schedule(output_dir, self)
         matsim_xml_writer.write_vehicles(output_dir, self.vehicles, self.vehicle_types)
+        self.write_extras(output_dir)
+
+    def write_extras(self, output_dir):
         self.change_log().export(os.path.join(output_dir, 'schedule_change_log.csv'))
 
     def to_json(self):
@@ -2304,6 +2307,7 @@ class Schedule(ScheduleElement):
         persistence.ensure_dir(output_dir)
         for table, df in self.to_gtfs(gtfs_day).items():
             df.to_csv(os.path.join(output_dir, f'{table}.csv'))
+        self.write_extras(output_dir)
 
     def write_to_gtfs(self, output_dir, gtfs_day='19700101'):
         """
@@ -2315,6 +2319,7 @@ class Schedule(ScheduleElement):
         persistence.ensure_dir(output_dir)
         for table, df in self.to_gtfs(gtfs_day).items():
             df.to_csv(os.path.join(output_dir, f'{table}.txt'))
+        self.write_extras(output_dir)
 
 
 def verify_graph_schema(graph):
