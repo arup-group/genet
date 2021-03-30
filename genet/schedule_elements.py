@@ -2221,6 +2221,7 @@ class Schedule(ScheduleElement):
 
     def write_to_json(self, output_dir):
         persistence.ensure_dir(output_dir)
+        logging.info(f'Saving Schedule to JSON in {output_dir}')
         with open(os.path.join(output_dir, 'schedule.json'), 'w') as outfile:
             json.dump(self.to_json(), outfile)
 
@@ -2305,8 +2306,11 @@ class Schedule(ScheduleElement):
         :return: None
         """
         persistence.ensure_dir(output_dir)
+        logging.info(f'Saving Schedule to GTFS CSV in {output_dir}')
         for table, df in self.to_gtfs(gtfs_day).items():
-            df.to_csv(os.path.join(output_dir, f'{table}.csv'))
+            file_path = os.path.join(output_dir, f'{table}.csv')
+            logging.info(f'Saving {file_path}')
+            df.to_csv()
         self.write_extras(output_dir)
 
     def write_to_gtfs(self, output_dir, gtfs_day='19700101'):
@@ -2317,8 +2321,11 @@ class Schedule(ScheduleElement):
         :return: None
         """
         persistence.ensure_dir(output_dir)
+        logging.info(f'Saving Schedule to GTFS TXT in {output_dir}')
         for table, df in self.to_gtfs(gtfs_day).items():
-            df.to_csv(os.path.join(output_dir, f'{table}.txt'))
+            file_path = os.path.join(output_dir, f'{table}.txt')
+            logging.info(f'Saving {file_path}')
+            df.to_csv(file_path)
         self.write_extras(output_dir)
 
 

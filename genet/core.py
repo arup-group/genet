@@ -1466,11 +1466,8 @@ class Network:
         self.write_extras(output_dir)
 
     def to_json(self):
-        nodes = self.node_attribute_data_under_keys(
-            keys=[d.name for d in graph_operations.get_attribute_schema(self.nodes()).children])
-        links = self.link_attribute_data_under_keys(
-            keys=[d.name for d in graph_operations.get_attribute_schema(self.links()).children])
-        return {'nodes': nodes.T.to_dict(), 'links': links.T.to_dict()}
+        _network = self.to_encoded_geometry_dataframe()
+        return {'nodes': _network['nodes'].T.to_dict(), 'links': _network['links'].T.to_dict()}
 
     def write_to_json(self, output_dir):
         persistence.ensure_dir(output_dir)
@@ -1510,6 +1507,16 @@ class Network:
 
         return {'nodes': nodes, 'links': links}
 
+    def to_encoded_geometry_dataframe(self):
+        _network = self.to_geodataframe()
+        _network['nodes'] = pd.DataFrame(_network['nodes'])
+        _network['links'] = pd.DataFrame(_network['links'])
+        _network['nodes']['geometry'] = _network['nodes']['geometry'].apply(
+            lambda x: (x.x, x.y))
+        _network['links']['geometry'] = _network['links']['geometry'].apply(
+            lambda x: spatial.encode_shapely_linestring_to_polyline(x))
+        return _network
+
     def write_to_csv(self, output_dir, gtfs_day='19700101'):
         """
         Writes nodes and links tables for the Network and if there is a Schedule, exports it to a GTFS-like format.
@@ -1520,12 +1527,9 @@ class Network:
         network_csv_folder = os.path.join(output_dir, 'network')
         schedule_csv_folder = os.path.join(output_dir, 'schedule')
         persistence.ensure_dir(network_csv_folder)
-        csv_network = self.to_geodataframe()
-        csv_network['nodes']['geometry'] = csv_network['nodes']['geometry'].apply(
-            lambda x: (x.x, x.y))
+        csv_network = self.to_encoded_geometry_dataframe()
+        logging.info(f'Saving Network to CSV in {network_csv_folder}')
         csv_network['nodes'].to_csv(os.path.join(network_csv_folder, 'nodes.csv'))
-        csv_network['links']['geometry'] = csv_network['links']['geometry'].apply(
-            lambda x: spatial.encode_shapely_linestring_to_polyline(x))
         csv_network['links'].to_csv(os.path.join(network_csv_folder, 'links.csv'))
         if self.schedule:
             persistence.ensure_dir(schedule_csv_folder)
