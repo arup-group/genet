@@ -1,5 +1,6 @@
 import ast
 import pandas as pd
+import json
 import logging
 import genet.core as core
 import genet.inputs_handler.gtfs_reader as gtfs_reader
@@ -20,13 +21,84 @@ def read_matsim(path_to_network: str, path_to_schedule: str = None, path_to_vehi
     pass
 
 
-def read_json(path: str):
+def read_json(network_path: str, epsg: str, schedule_path: str = ''):
     """
-
-    :param path: path to json or geojson
+    Reads Network and, if passed, Schedule JSON files in to a genet.Network
+    :param network_path: path to json or geojson network file
+    :param schedule_path: path to json or geojson schedule file
+    :param epsg: projection for the network, e.g. 'epsg:27700'
     :return: genet.Network object
     """
-    pass
+    n = read_json_network(network_path, epsg)
+    if schedule_path:
+        n.schedule = read_json_schedule(schedule_path, epsg)
+    return n
+
+
+def read_json_network(network_path: str, epsg: str):
+    """
+    Reads Network graph from JSON file.
+    :param network_path: path to json or geojson network file
+    :param epsg: projection for the network, e.g. 'epsg:27700'
+    :return: genet.Network object
+    """
+    logging.info(f'Reading Network from {network_path}')
+    with open(network_path) as json_file:
+        json_data = json.load(json_file)
+    for node, data in json_data['nodes'].items():
+        try:
+            del data['geometry']
+        except KeyError:
+            pass
+
+    for link, data in json_data['links'].items():
+        try:
+            data['geometry'] = spatial.decode_polyline_to_shapely_linestring(data['geometry'])
+        except KeyError:
+            pass
+        try:
+            data['modes'] = set(data['modes'].split(','))
+        except KeyError:
+            pass
+
+    n = core.Network(epsg=epsg)
+    n.add_nodes(json_data['nodes'])
+    n.add_links(json_data['links'])
+    n.change_log = change_log.ChangeLog()
+    return n
+
+
+def read_json_schedule(schedule_path: str, epsg: str):
+    """
+    Reads Schedule from a JSON file.
+    :param schedule_path: path to json or geojson schedule file
+    :param epsg: projection for the network, e.g. 'epsg:27700'
+    :return: genet.Schedule object
+    """
+    logging.info(f'Reading Schedule from {schedule_path}')
+    with open(schedule_path) as json_file:
+        json_data = json.load(json_file)
+
+    for service_id, service_data in json_data['schedule']['services'].items():
+        routes = []
+        for route_id, route_data in service_data['routes'].items():
+            stops = route_data.pop('ordered_stops')
+            route_data['stops'] = [schedule_elements.Stop(**json_data['schedule']['stops'][stop], epsg=epsg) for stop in
+                                   stops]
+            routes.append(schedule_elements.Route(**route_data))
+        service_data['routes'] = routes
+
+    services = [schedule_elements.Service(**service_data) for service_id, service_data in
+                json_data['schedule']['services'].items()]
+
+    s = schedule_elements.Schedule(
+        epsg=epsg,
+        services=services,
+        vehicles=json_data['vehicles']['vehicles'],
+        vehicle_types=json_data['vehicles']['vehicle_types'])
+    if 'minimal_transfer_times' in json_data['schedule']:
+        s.minimal_transfer_times = json_data['schedule']['minimal_transfer_times']
+    return s
 
 
 def _literal_eval_col(df_col):

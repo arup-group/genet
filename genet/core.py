@@ -14,6 +14,7 @@ import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.osm_reader as osm_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.geojson as geojson
+import genet.outputs_handler.sanitiser as sanitiser
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
 import genet.utils.spatial as spatial
@@ -1471,8 +1472,9 @@ class Network:
 
     def write_to_json(self, output_dir):
         persistence.ensure_dir(output_dir)
+        logging.info(f'Saving Network to JSON in {output_dir}')
         with open(os.path.join(output_dir, 'network.json'), 'w') as outfile:
-            json.dump(self.to_json(), outfile)
+            json.dump(sanitiser.sanitise_dictionary(self.to_json()), outfile)
         if self.schedule:
             self.schedule.write_to_json(output_dir)
         self.write_extras(output_dir)
