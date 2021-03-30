@@ -1502,7 +1502,8 @@ class Network:
         links = gpd.GeoDataFrame(self.link_attribute_data_under_keys(
             keys={d.name for d in graph_operations.get_attribute_schema(self.links()).children} | {'geometry'},
             index_name='index'))
-        links['geometry'] = links[links['geometry'].isna()].apply(lambda row: line_geom(row), axis=1)
+        links.loc[links['geometry'].isna(), 'geometry'] = links[links['geometry'].isna()].apply(
+            lambda row: line_geom(row), axis=1)
         links.set_crs(epsg=self.epsg.split(':')[1], inplace=True)
 
         return {'nodes': nodes, 'links': links}
@@ -1512,7 +1513,7 @@ class Network:
         _network['nodes'] = pd.DataFrame(_network['nodes'])
         _network['links'] = pd.DataFrame(_network['links'])
         _network['nodes']['geometry'] = _network['nodes']['geometry'].apply(
-            lambda x: (x.x, x.y))
+            lambda row: (row.x, row.y))
         _network['links']['geometry'] = _network['links']['geometry'].apply(
             lambda x: spatial.encode_shapely_linestring_to_polyline(x))
         return _network

@@ -2392,13 +2392,15 @@ def test_saving_network_with_auxiliary_files_with_changes(aux_network, tmpdir):
 def json_network():
     return {'nodes': {
         '101982': {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118', 'lon': -0.14625948709424305,
-                   'lat': 51.52287873323954, 's2_id': 5221390329378179879},
+                   'lat': 51.52287873323954, 's2_id': 5221390329378179879, 'geometry': [528704.1425925883, 182068.78193707118]},
         '101986': {'id': '101986', 'x': '528835.203274008', 'y': '182006.27331298392', 'lon': -0.14439428709377497,
-                   'lat': 51.52228713323965, 's2_id': 5221390328605860387}},
+                   'lat': 51.52228713323965, 's2_id': 5221390328605860387, 'geometry': [528835.203274008, 182006.27331298392]}},
         'links': {
             '0': {'id': '0', 'from': '101982', 'to': '101986', 'freespeed': 4.166666666666667, 'capacity': 600.0,
                   'permlanes': 1.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390329378179879,
-                  's2_to': 5221390328605860387, 'length': 52.765151087870265, 'attributes': {
+                  's2_to': 5221390328605860387, 'length': 52.765151087870265,
+                  'geometry': 'ez~hinaBc~sze|`@gx|~W|uo|J',
+                  'attributes': {
                     'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
                     'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
                     'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
@@ -2410,6 +2412,8 @@ def test_transforming_network_to_json(network1, json_network):
 
 
 def test_saving_network_to_json(network1, json_network, tmpdir):
+    network1.apply_attributes_to_links(
+        {'0': {'geometry': LineString([(528704.1425925883, 182068.78193707118), (528835.203274008, 182006.27331298392)])}})
     network1.write_to_json(tmpdir)
     expected_network_json = os.path.join(tmpdir, 'network.json')
     assert os.path.exists(expected_network_json)
