@@ -28,7 +28,8 @@ def test_sanitising_geodataframes_with_ids_list(tmpdir):
     correct_links = {'length': {0: 123}, 'modes': {0: 'car,walk'}, 'from': {0: '0'}, 'to': {0: '1'},
                      'id': {0: 'link_0'}, 'ids': {0: '1,2'}, 'u': {0: '0'}, 'v': {0: '1'}, 'key': {0: 0}}
 
-    nodes, links = gngeojson.generate_geodataframes(n.graph)
+    gdfs = gngeojson.generate_geodataframes(n.graph)
+    nodes, links = gdfs['nodes'], gdfs['links']
     nodes = sanitiser.sanitise_geodataframe(nodes)
     links = sanitiser.sanitise_geodataframe(links)
 

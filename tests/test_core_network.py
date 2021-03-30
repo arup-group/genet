@@ -2392,19 +2392,23 @@ def test_saving_network_with_auxiliary_files_with_changes(aux_network, tmpdir):
 def json_network():
     return {'nodes': {
         '101982': {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118', 'lon': -0.14625948709424305,
-                   'lat': 51.52287873323954, 's2_id': 5221390329378179879, 'geometry': [528704.1425925883, 182068.78193707118]},
+                   'lat': 51.52287873323954, 's2_id': 5221390329378179879,
+                   'geometry': [528704.1425925883, 182068.78193707118]},
         '101986': {'id': '101986', 'x': '528835.203274008', 'y': '182006.27331298392', 'lon': -0.14439428709377497,
-                   'lat': 51.52228713323965, 's2_id': 5221390328605860387, 'geometry': [528835.203274008, 182006.27331298392]}},
+                   'lat': 51.52228713323965, 's2_id': 5221390328605860387,
+                   'geometry': [528835.203274008, 182006.27331298392]}},
         'links': {
             '0': {'id': '0', 'from': '101982', 'to': '101986', 'freespeed': 4.166666666666667, 'capacity': 600.0,
                   'permlanes': 1.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390329378179879,
                   's2_to': 5221390328605860387, 'length': 52.765151087870265,
                   'geometry': 'ez~hinaBc~sze|`@gx|~W|uo|J',
                   'attributes': {
-                    'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
-                    'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
-                    'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
-                    'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}}}}}
+                      'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
+                      'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                          'text': 'unclassified'},
+                      'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
+                      'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String',
+                                       'text': 'Brunswick Place'}}}}}
 
 
 def test_transforming_network_to_json(network1, json_network):
@@ -2413,38 +2417,43 @@ def test_transforming_network_to_json(network1, json_network):
 
 def test_saving_network_to_json(network1, json_network, tmpdir):
     network1.apply_attributes_to_links(
-        {'0': {'geometry': LineString([(528704.1425925883, 182068.78193707118), (528835.203274008, 182006.27331298392)])}})
+        {'0': {
+            'geometry': LineString([(528704.1425925883, 182068.78193707118), (528835.203274008, 182006.27331298392)])}})
     network1.write_to_json(tmpdir)
     expected_network_json = os.path.join(tmpdir, 'network.json')
     assert os.path.exists(expected_network_json)
     with open(expected_network_json) as json_file:
         output_json = json.load(json_file)
+    json_network['links']['0']['modes'] = 'car'
     assert_semantically_equal(output_json, json_network)
 
 
 @pytest.fixture()
 def gdf_network():
-    return {'nodes': gpd.GeoDataFrame({
+    nodes = gpd.GeoDataFrame({
         '101982': {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118', 'lon': -0.14625948709424305,
                    'lat': 51.52287873323954, 's2_id': 5221390329378179879,
                    'geometry': Point(528704.1425925883, 182068.78193707118)},
         '101986': {'id': '101986', 'x': '528835.203274008', 'y': '182006.27331298392', 'lon': -0.14439428709377497,
                    'lat': 51.52228713323965, 's2_id': 5221390328605860387,
-                   'geometry': Point(528835.203274008, 182006.27331298392)}}).T,
-            'links': gpd.GeoDataFrame({
-                '0': {'id': '0', 'from': '101982', 'to': '101986', 'freespeed': 4.166666666666667, 'capacity': 600.0,
-                      'permlanes': 1.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390329378179879,
-                      's2_to': 5221390328605860387, 'length': 52.765151087870265,
-                      'geometry': LineString(
-                          [(528704.1425925883, 182068.78193707118), (528835.203274008, 182006.27331298392)]),
-                      'attributes': {
-                          'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String',
-                                             'text': 'permissive'},
-                          'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                              'text': 'unclassified'},
-                          'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
-                          'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String',
-                                           'text': 'Brunswick Place'}}}}).T}
+                   'geometry': Point(528835.203274008, 182006.27331298392)}}).T
+    nodes.index = nodes.index.set_names(['index'])
+    links = gpd.GeoDataFrame({
+        '0': {'id': '0', 'from': '101982', 'to': '101986', 'freespeed': 4.166666666666667, 'capacity': 600.0,
+              'permlanes': 1.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390329378179879,
+              's2_to': 5221390328605860387, 'length': 52.765151087870265,
+              'geometry': LineString(
+                  [(528704.1425925883, 182068.78193707118), (528835.203274008, 182006.27331298392)]),
+              'attributes': {
+                  'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String',
+                                     'text': 'permissive'},
+                  'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                      'text': 'unclassified'},
+                  'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
+                  'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String',
+                                   'text': 'Brunswick Place'}}}}).T
+    links.index = links.index.set_names(['index'])
+    return {'nodes': nodes, 'links': links}
 
 
 def test_transforming_network_to_geodataframe(network1, gdf_network):
@@ -2456,6 +2465,16 @@ def test_transforming_network_to_geodataframe(network1, gdf_network):
     assert_frame_equal(_network['nodes'][node_cols], gdf_network['nodes'][node_cols], check_dtype=False)
     assert set(_network['links'].columns) == set(link_cols)
     assert_frame_equal(_network['links'][link_cols], gdf_network['links'][link_cols], check_dtype=False)
+
+
+def test_saving_network_to_geojson(network1, correct_schedule, tmpdir):
+    network1.schedule = correct_schedule
+    network1.write_to_geojson(tmpdir)
+    assert set(os.listdir(tmpdir)) == {'network_nodes_geometry_only.geojson', 'network_nodes.geojson',
+                                       'network_change_log.csv', 'schedule_links_geometry_only.geojson',
+                                       'network_links.geojson', 'network_links_geometry_only.geojson',
+                                       'schedule_nodes_geometry_only.geojson', 'schedule_links.geojson',
+                                       'schedule_nodes.geojson'}
 
 
 def test_saving_network_to_csv(network1, correct_schedule, tmpdir):

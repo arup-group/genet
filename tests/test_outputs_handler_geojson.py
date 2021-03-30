@@ -26,11 +26,12 @@ def test_saving_values_which_result_in_overflow(tmpdir):
     n.add_node('0', attribs={'x': 528704.1425925883, 'y': 182068.78193707118, 's2_id': 7860190995130875979})
     n.add_node('1', attribs={'x': 528804.1425925883, 'y': 182168.78193707118, 's2_id': 12118290696817869383})
     n.add_link('link_0', '0', '1', attribs={'length': 123, 'modes': ['car', 'walk'], 'ids': ['1', '2']})
-    n.save_network_to_geojson(tmpdir)
+    n.write_to_geojson(tmpdir)
 
 
 def test_generating_network_graph_geodataframe(network):
-    nodes, links = gngeojson.generate_geodataframes(network.graph)
+    gdfs = gngeojson.generate_geodataframes(network.graph)
+    nodes, links = gdfs['nodes'], gdfs['links']
     correct_nodes = {
         'x': {'0': 528704.1425925883, '1': 528804.1425925883},
         'y': {'0': 182068.78193707118, '1': 182168.78193707118}}
@@ -66,7 +67,8 @@ def test_generating_network_graph_geodataframe(network):
 
 
 def test_generating_schedule_graph_geodataframe(network):
-    nodes, links = gngeojson.generate_geodataframes(network.schedule.graph())
+    gdfs = gngeojson.generate_geodataframes(network.schedule.graph())
+    nodes, links = gdfs['nodes'], gdfs['links']
     correct_nodes = {'services': {'0': ['service'], '1': ['service']},
                      'routes': {'0': ['1', '2'], '1': ['1', '2']},
                      'id': {'0': '0', '1': '1'}, 'x': {'0': 529455.7452394223, '1': 529350.7866124967},
@@ -104,7 +106,8 @@ def test_generating_schedule_graph_geodataframe(network):
 
 
 def test_modal_subset(network):
-    nodes, links = gngeojson.generate_geodataframes(network.graph)
+    gdfs = gngeojson.generate_geodataframes(network.graph)
+    nodes, links = gdfs['nodes'], gdfs['links']
     car = links[links.apply(lambda x: gngeojson.modal_subset(x, {'car'}), axis=1)]
 
     assert len(car) == 1
@@ -118,7 +121,7 @@ def test_generating_standard_outputs_after_modifying_modes_in_schedule(network, 
 
 def test_save_to_geojson(network, tmpdir):
     assert os.listdir(tmpdir) == []
-    network.save_network_to_geojson(tmpdir)
+    network.write_to_geojson(tmpdir)
     assert set(os.listdir(tmpdir)) == {
         'network_nodes.geojson', 'network_links.geojson', 'network_links_geometry_only.geojson',
         'network_nodes_geometry_only.geojson', 'schedule_nodes.geojson', 'schedule_links.geojson',

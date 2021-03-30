@@ -1804,7 +1804,7 @@ class Schedule(ScheduleElement):
         return self._find_stops_on_shapely_geometry(shapely_input)
 
     def _find_stops_on_shapely_geometry(self, shapely_input):
-        stops_gdf = gngeojson.generate_geodataframes(self._graph)[0]
+        stops_gdf = self.to_geodataframe()['nodes'].to_crs("epsg:4326")
         return list(stops_gdf[stops_gdf.intersects(shapely_input)].index)
 
     def _find_stops_on_s2_geometry(self, s2_input):
@@ -2206,6 +2206,13 @@ class Schedule(ScheduleElement):
     def write_extras(self, output_dir):
         self.change_log().export(os.path.join(output_dir, 'schedule_change_log.csv'))
 
+    def to_geodataframe(self):
+        """
+        Generates GeoDataFrames of the Schedule graph in Schedule's crs
+        :return: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and edges
+        """
+        return gngeojson.generate_geodataframes(self._graph)
+
     def to_json(self):
         stop_keys = {d.name for d in graph_operations.get_attribute_schema(self._graph.nodes(data=True)).children}
         stop_keys = stop_keys - {'routes', 'services', 'additional_attributes', 'epsg'}
@@ -2224,6 +2231,18 @@ class Schedule(ScheduleElement):
         logging.info(f'Saving Schedule to JSON in {output_dir}')
         with open(os.path.join(output_dir, 'schedule.json'), 'w') as outfile:
             json.dump(self.to_json(), outfile)
+
+    def write_to_geojson(self, output_dir, epsg):
+        persistence.ensure_dir(output_dir)
+        _gdfs = self.to_geodataframe()
+        if epsg is not None:
+            _gdfs['nodes'] = _gdfs['nodes'].to_crs(epsg)
+            _gdfs['links'] = _gdfs['links'].to_crs(epsg)
+        logging.info(f'Saving Schedule to GeoJSON in {output_dir}')
+        gngeojson.save_geodataframe(_gdfs['nodes'], 'schedule_nodes', output_dir)
+        gngeojson.save_geodataframe(_gdfs['links'], 'schedule_links', output_dir)
+        gngeojson.save_geodataframe(_gdfs['nodes']['geometry'], 'schedule_nodes_geometry_only', output_dir)
+        gngeojson.save_geodataframe(_gdfs['links']['geometry'], 'schedule_links_geometry_only', output_dir)
 
     def to_gtfs(self, gtfs_day, mode_to_route_type: dict = None):
         """

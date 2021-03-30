@@ -352,10 +352,10 @@ class Network:
         """
         if not isinstance(region_input, str):
             # assumed to be a shapely.geometry input
-            gdf = geojson.generate_geodataframes(self.graph)[0]
+            gdf = self.to_geodataframe()['nodes'].to_crs("epsg:4326")
             return self._find_ids_on_shapely_geometry(gdf, how='intersect', shapely_input=region_input)
         elif persistence.is_geojson(region_input):
-            gdf = geojson.generate_geodataframes(self.graph)[0]
+            gdf = self.to_geodataframe()['nodes'].to_crs("epsg:4326")
             return self._find_ids_on_geojson(gdf, how='intersect', geojson_input=region_input)
         else:
             # is assumed to be hex
@@ -372,7 +372,7 @@ class Network:
             - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
         :return: link IDs
         """
-        gdf = geojson.generate_geodataframes(self.graph)[1]
+        gdf = self.to_geodataframe()['links'].to_crs("epsg:4326")
         if not isinstance(region_input, str):
             # assumed to be a shapely.geometry input
             return self._find_ids_on_shapely_geometry(gdf, how, region_input)
@@ -1479,36 +1479,27 @@ class Network:
             self.schedule.write_to_json(output_dir)
         self.write_extras(output_dir)
 
-    def save_network_to_geojson(self, output_dir):
-        geojson.save_network_to_geojson(self, output_dir)
+    def write_to_geojson(self, output_dir, epsg: str = None):
+        persistence.ensure_dir(output_dir)
+        _network = self.to_geodataframe()
+        if epsg is not None:
+            _network['nodes'] = _network['nodes'].to_crs(epsg)
+            _network['links'] = _network['links'].to_crs(epsg)
+        logging.info(f'Saving Network to GeoJSON in {output_dir}')
+        geojson.save_geodataframe(_network['nodes'], 'network_nodes', output_dir)
+        geojson.save_geodataframe(_network['links'], 'network_links', output_dir)
+        geojson.save_geodataframe(_network['nodes']['geometry'], 'network_nodes_geometry_only', output_dir)
+        geojson.save_geodataframe(_network['links']['geometry'], 'network_links_geometry_only', output_dir)
+        if self.schedule:
+            self.schedule.write_to_geojson(output_dir, epsg)
+        self.write_extras(output_dir)
 
     def to_geodataframe(self):
         """
         Generates GeoDataFrames of the Network graph in Network's crs
         :return: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and links
         """
-
-        def line_geom(link_attribs):
-            from_node = self.node(link_attribs['from'])
-            to_node = self.node(link_attribs['to'])
-            return LineString(
-                [(float(from_node['x']), float(from_node['y'])), (float(to_node['x']), float(to_node['y']))])
-
-        nodes = gpd.GeoDataFrame(self.node_attribute_data_under_keys(
-            keys={d.name for d in graph_operations.get_attribute_schema(self.nodes()).children} | {'geometry'},
-            index_name='index'))
-        nodes['geometry'] = nodes[nodes['geometry'].isna()].apply(
-            lambda row: Point(float(row['x']), float(row['y'])), axis=1)
-        nodes.set_crs(epsg=self.epsg.split(':')[1], inplace=True)
-
-        links = gpd.GeoDataFrame(self.link_attribute_data_under_keys(
-            keys={d.name for d in graph_operations.get_attribute_schema(self.links()).children} | {'geometry'},
-            index_name='index'))
-        links.loc[links['geometry'].isna(), 'geometry'] = links[links['geometry'].isna()].apply(
-            lambda row: line_geom(row), axis=1)
-        links.set_crs(epsg=self.epsg.split(':')[1], inplace=True)
-
-        return {'nodes': nodes, 'links': links}
+        return geojson.generate_geodataframes(self.graph)
 
     def to_encoded_geometry_dataframe(self):
         _network = self.to_geodataframe()
