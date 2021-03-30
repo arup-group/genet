@@ -1579,9 +1579,11 @@ def test_transforming_schedule_to_gtfs(schedule):
 
 def test_writing_schedule_to_csv(schedule, tmpdir):
     schedule.write_to_csv(tmpdir)
-    assert set(os.listdir(tmpdir)) == {'calendar.csv', 'routes.csv', 'stop_times.csv', 'stops.csv', 'trips.csv'}
+    assert set(os.listdir(tmpdir)) == {'calendar.csv', 'routes.csv', 'stop_times.csv', 'stops.csv', 'trips.csv',
+                                       'schedule_change_log.csv'}
 
 
 def test_writing_schedule_to_gtfs(schedule, tmpdir):
     schedule.write_to_gtfs(tmpdir)
-    assert set(os.listdir(tmpdir)) == {'calendar.txt', 'routes.txt', 'stop_times.txt', 'stops.txt', 'trips.txt'}
+    assert set(os.listdir(tmpdir)) == {'calendar.txt', 'routes.txt', 'stop_times.txt', 'stops.txt', 'trips.txt',
+                                       'schedule_change_log.csv'}

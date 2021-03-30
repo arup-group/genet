@@ -2298,35 +2298,30 @@ class Schedule(ScheduleElement):
         calendar['end_date'] = gtfs_day
         return {'stops': stops, 'routes': routes, 'trips': trips, 'stop_times': stop_times, 'calendar': calendar}
 
-    def write_to_csv(self, output_dir, gtfs_day='19700101'):
+    def write_to_csv(self, output_dir, gtfs_day='19700101', file_extention='csv'):
         """
         Writes 'stops', 'routes', 'trips', 'stop_times', 'calendar' tables to CSV files
-        :param output_dir: folder to output CSV files
+        :param output_dir: folder to output csv or txt files
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :param file_extention: csv by default, or txt
         :return: None
         """
         persistence.ensure_dir(output_dir)
-        logging.info(f'Saving Schedule to GTFS CSV in {output_dir}')
+        logging.info(f'Saving Schedule to GTFS {file_extention} in {output_dir}')
         for table, df in self.to_gtfs(gtfs_day).items():
-            file_path = os.path.join(output_dir, f'{table}.csv')
+            file_path = os.path.join(output_dir, f'{table}.{file_extention}')
             logging.info(f'Saving {file_path}')
-            df.to_csv()
+            df.to_csv(file_path)
         self.write_extras(output_dir)
 
     def write_to_gtfs(self, output_dir, gtfs_day='19700101'):
         """
         Writes 'stops', 'routes', 'trips', 'stop_times', 'calendar' tables to CSV files
-        :param output_dir: folder to output CSV files
+        :param output_dir: folder to output txt files
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
         :return: None
         """
-        persistence.ensure_dir(output_dir)
-        logging.info(f'Saving Schedule to GTFS TXT in {output_dir}')
-        for table, df in self.to_gtfs(gtfs_day).items():
-            file_path = os.path.join(output_dir, f'{table}.txt')
-            logging.info(f'Saving {file_path}')
-            df.to_csv(file_path)
-        self.write_extras(output_dir)
+        self.write_to_csv(output_dir, gtfs_day=gtfs_day, file_extention='txt')
 
 
 def verify_graph_schema(graph):
