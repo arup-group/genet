@@ -1,5 +1,6 @@
 import ast
 import pandas as pd
+import logging
 import genet.core as core
 import genet.inputs_handler.gtfs_reader as gtfs_reader
 import genet.schedule_elements as schedule_elements
@@ -38,13 +39,26 @@ def _literal_eval_col(df_col):
 
 def read_csv(path_to_network_nodes: str, path_to_network_links: str, epsg: str):
     """
-
-    :param path_to_network_nodes: can be folder or zip of csv files, containing csv files with correct names and following the
-        expected schema
-    :param path_to_network_links: can be folder or zip of csv files, containing csv files with correct names and following the
-        expected schema
+    Reads CSV data into a genet.Network object
+    :param path_to_network_nodes: CSV file describing nodes. Should at least include columns:
+    - id: unique ID for the node
+    - x: spatial coordinate in given epsg
+    - y: spatial coordinate in given epsg
+    :param path_to_network_links: CSV file describing links.
+    Should at least include columns:
+    - from - source Node ID
+    - to - target Node ID
+    Optional columns, but strongly encouraged
+    - id - unique ID for link
+    - length - link length in metres
+    - freespeed - meter/seconds speed
+    - capacity - vehicles/hour
+    - permlanes - number of lanes
+    - modes - set of modes
+    :param epsg: projection for the network, e.g. 'epsg:27700'
     :return: genet.Network object
     """
+    logging.info(f'Reading nodes from {path_to_network_nodes}')
     df_nodes = pd.read_csv(path_to_network_nodes)
     if {'index', 'id'}.issubset(set(df_nodes.columns)):
         df_nodes = df_nodes.drop('index', axis=1)
@@ -58,6 +72,7 @@ def read_csv(path_to_network_nodes: str, path_to_network_links: str, epsg: str):
     except KeyError:
         pass
 
+    logging.info(f'Reading links from {path_to_network_nodes}')
     df_links = pd.read_csv(path_to_network_links)
     if {'index', 'id'}.issubset(set(df_links.columns)):
         df_links = df_links.drop('index', axis=1)
@@ -98,6 +113,7 @@ def read_gtfs(path, day, epsg=None):
         epsg:4326
     :return:
     """
+    logging.info(f'Reading GTFS from {path}')
     schedule_graph = gtfs_reader.read_to_dict_schedule_and_stopd_db(path, day)
     s = schedule_elements.Schedule(epsg='epsg:4326', _graph=schedule_graph)
     if epsg is not None:
