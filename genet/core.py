@@ -1460,6 +1460,11 @@ class Network:
         self.write_auxiliary_files(os.path.join(output_dir, 'auxiliary_files'))
 
     def write_to_matsim(self, output_dir):
+        """
+        Writes Network and Schedule (if applicable) to MATSim xml format
+        :param output_dir: output directory
+        :return:
+        """
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_matsim_network(output_dir, self)
         if self.schedule:
@@ -1471,6 +1476,11 @@ class Network:
         return {'nodes': _network['nodes'].T.to_dict(), 'links': _network['links'].T.to_dict()}
 
     def write_to_json(self, output_dir):
+        """
+        Writes Network and Schedule (if applicable) to a single JSON file with nodes and links
+        :param output_dir: output directory
+        :return:
+        """
         persistence.ensure_dir(output_dir)
         logging.info(f'Saving Network to JSON in {output_dir}')
         with open(os.path.join(output_dir, 'network.json'), 'w') as outfile:
@@ -1480,6 +1490,12 @@ class Network:
         self.write_extras(output_dir)
 
     def write_to_geojson(self, output_dir, epsg: str = None):
+        """
+        Writes Network graph and Schedule (if applicable) to nodes and links geojson files.
+        :param output_dir: output directory
+        :param epsg: projection if the geometry is to be reprojected, defaults to own projection
+        :return:
+        """
         persistence.ensure_dir(output_dir)
         _network = self.to_geodataframe()
         if epsg is not None:

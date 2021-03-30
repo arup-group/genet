@@ -2227,12 +2227,23 @@ class Schedule(ScheduleElement):
         return {'schedule': d, 'vehicles': {'vehicle_types': self.vehicle_types, 'vehicles': self.vehicles}}
 
     def write_to_json(self, output_dir):
+        """
+        Writes Schedule to a single JSON file with stops, services, vehicles and minimum transfer times (if applicable)
+        :param output_dir: output directory
+        :return:
+        """
         persistence.ensure_dir(output_dir)
         logging.info(f'Saving Schedule to JSON in {output_dir}')
         with open(os.path.join(output_dir, 'schedule.json'), 'w') as outfile:
             json.dump(self.to_json(), outfile)
 
     def write_to_geojson(self, output_dir, epsg):
+        """
+        Writes Schedule graph to nodes and edges geojson files.
+        :param output_dir: output directory
+        :param epsg: projection if the geometry is to be reprojected, defaults to own projection
+        :return:
+        """
         persistence.ensure_dir(output_dir)
         _gdfs = self.to_geodataframe()
         if epsg is not None:
