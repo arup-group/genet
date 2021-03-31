@@ -1,0 +1,126 @@
+{
+  "nodes": {
+    "25508485": {
+      "id": "25508485",
+      "lon": -0.14930198709481451,
+      "y": 182206.20303669578,
+      "x": 528489.467895946,
+      "geometry": [
+        528489.467895946,
+        182206.20303669578
+      ],
+      "lat": 51.524162533239284,
+      "s2_id": 5221390301001263407
+    },
+    "21667818": {
+      "id": "21667818",
+      "lon": -0.14910908709500162,
+      "y": 182155.7435136598,
+      "x": 528504.1342843144,
+      "geometry": [
+        528504.1342843144,
+        182155.7435136598
+      ],
+      "lat": 51.52370573323939,
+      "s2_id": 5221390302696205321
+    },
+    "295927764": {
+      "id": "295927764",
+      "lon": -0.15120468709594614,
+      "y": 182147.6313714285,
+      "x": 528358.873300625,
+      "geometry": [
+        528358.873300625,
+        182147.6313714285
+      ],
+      "lat": 51.52366583323934,
+      "s2_id": 5221390299830573099
+    },
+    "200048": {
+      "id": "200048",
+      "lon": -0.1511413870962065,
+      "y": 182094.16422237462,
+      "x": 528364.6182191424,
+      "geometry": [
+        528364.6182191424,
+        182094.16422237462
+      ],
+      "lat": 51.52318403323943,
+      "s2_id": 5221390299873156021
+    }
+  },
+  "links": {
+    "1": {
+      "id": "1",
+      "attributes": {
+        "osm:way:access": {
+          "name": "osm:way:access",
+          "class": "java.lang.String",
+          "text": "permissive"
+        },
+        "osm:way:highway": {
+          "name": "osm:way:highway",
+          "class": "java.lang.String",
+          "text": "unclassified"
+        },
+        "osm:way:id": {
+          "name": "osm:way:id",
+          "class": "java.lang.Long",
+          "text": "26997928"
+        },
+        "osm:way:name": {
+          "name": "osm:way:name",
+          "class": "java.lang.String",
+          "text": "Brunswick Place"
+        }
+      },
+      "s2_from": 5221390301001263407,
+      "freespeed": 4.166666666666667,
+      "to": "21667818",
+      "permlanes": 1.0,
+      "modes": "car",
+      "geometry": "kevj`maB_`la`}`@{ooxA`k~rH",
+      "oneway": "1",
+      "from": "25508485",
+      "s2_to": 5221390302696205321,
+      "length": 52.765151087870265,
+      "capacity": 600.0
+    },
+    "10": {
+      "id": "10",
+      "attributes": {
+        "osm:way:access": {
+          "name": "osm:way:access",
+          "class": "java.lang.String",
+          "text": "permissive"
+        },
+        "osm:way:highway": {
+          "name": "osm:way:highway",
+          "class": "java.lang.String",
+          "text": "unclassified"
+        },
+        "osm:way:id": {
+          "name": "osm:way:id",
+          "class": "java.lang.Long",
+          "text": "26997927"
+        },
+        "osm:way:name": {
+          "name": "osm:way:name",
+          "class": "java.lang.String",
+          "text": "Macfarren Place"
+        }
+      },
+      "s2_from": 5221390299873156021,
+      "freespeed": 4.166666666666667,
+      "to": "295927764",
+      "permlanes": 1.0,
+      "modes": "car",
+      "geometry": "{nuphlaBkmquj|`@v`ab@uxieI",
+      "oneway": "1",
+      "from": "200048",
+      "s2_to": 5221390299830573099,
+      "length": 53.77508435879174,
+      "capacity": 600.0
+    }
+  }
+}
