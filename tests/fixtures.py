@@ -282,32 +282,32 @@ def correct_schedule_graph_nodes_from_test_gtfs():
                     'wheelchair_boarding': float('nan'), 'stop_timezone': float('nan'), 'location_type': 0.0,
                     'parent_station': '210G432',
                     'platform_code': float('nan'), 'id': 'BSN', 'x': -0.140053, 'y': 51.5216199, 'epsg': 'epsg:4326',
-                    's2_id': 5221390684150342605, 'routes': ['1001_0'], 'services': ['1001']},
+                    's2_id': 5221390684150342605, 'routes': {'1001_0'}, 'services': {'1001'}},
             'RSE': {'stop_code': float('nan'), 'name': 'Rail Stop snap to edge', 'lat': 51.5192615, 'lon': -0.1421595,
                     'wheelchair_boarding': float('nan'), 'stop_timezone': float('nan'), 'location_type': 0.0,
                     'parent_station': '210G431',
                     'platform_code': float('nan'), 'id': 'RSE', 'x': -0.1421595, 'y': 51.5192615, 'epsg': 'epsg:4326',
-                    's2_id': 5221390324026756531, 'routes': ['1002_0'], 'services': ['1002']},
+                    's2_id': 5221390324026756531, 'routes': {'1002_0'}, 'services': {'1002'}},
             'RSN': {'stop_code': float('nan'), 'name': 'Rail Stop snap to node', 'lat': 51.5231335,
                     'lon': -0.14109460000000001,
                     'wheelchair_boarding': float('nan'), 'stop_timezone': float('nan'), 'location_type': 0.0,
                     'parent_station': '210G430',
                     'platform_code': float('nan'), 'id': 'RSN', 'x': -0.14109460000000001, 'y': 51.5231335,
                     'epsg': 'epsg:4326',
-                    's2_id': 5221390332291192399, 'routes': ['1002_0'], 'services': ['1002']},
+                    's2_id': 5221390332291192399, 'routes': {'1002_0'}, 'services': {'1002'}},
             'BSE': {'stop_code': float('nan'), 'name': 'Bus Stop snap to edge', 'lat': 51.5226864,
                     'lon': -0.14136210000000002,
                     'wheelchair_boarding': float('nan'), 'stop_timezone': float('nan'), 'location_type': 0.0,
                     'parent_station': '210G433',
                     'platform_code': float('nan'), 'id': 'BSE', 'x': -0.14136210000000002, 'y': 51.5226864,
                     'epsg': 'epsg:4326',
-                    's2_id': 5221390325135889957, 'routes': ['1001_0'], 'services': ['1001']}}
+                    's2_id': 5221390325135889957, 'routes': {'1001_0'}, 'services': {'1001'}}}
 
 
 @pytest.fixture()
 def correct_schedule_graph_edges_from_test_gtfs():
-    return {'BSN': {}, 'RSE': {}, 'RSN': {'RSE': {'routes': ['1002_0'], 'services': ['1002']}},
-            'BSE': {'BSN': {'routes': ['1001_0'], 'services': ['1001']}}}
+    return {'BSN': {}, 'RSE': {}, 'RSN': {'RSE': {'routes': {'1002_0'}, 'services': {'1002'}}},
+            'BSE': {'BSN': {'routes': {'1001_0'}, 'services': {'1001'}}}}
 
 
 @pytest.fixture()
