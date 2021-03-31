@@ -422,8 +422,8 @@ class Route(ScheduleElement):
         except AttributeError:
             route_nodes = [(stop, {}) for stop in stops]
             stop_edges = [(from_stop, to_stop) for from_stop, to_stop in zip(stops[:-1], stops[1:])]
-        route_graph.add_nodes_from(route_nodes, routes=[self.id])
-        route_graph.add_edges_from(stop_edges, routes=[self.id])
+        route_graph.add_nodes_from(route_nodes, routes={self.id})
+        route_graph.add_edges_from(stop_edges, routes={self.id})
         route_graph.graph['routes'] = {self.id: self._surrender_to_graph()}
         route_graph.graph['services'] = {}
         route_graph.graph['change_log'] = change_log.ChangeLog()
@@ -463,9 +463,9 @@ class Route(ScheduleElement):
             # change data on graph
             g = self.graph()
             for stop in self.reference_nodes():
-                g.nodes[stop]['routes'] = list((set(g.nodes[stop]['routes']) - {self.id}) | {new_id})
+                g.nodes[stop]['routes'] = (g.nodes[stop]['routes'] - {self.id}) | {new_id}
             for u, v in self.reference_edges():
-                g[u][v]['routes'] = list((set(g[u][v]['routes']) - {self.id}) | {new_id})
+                g[u][v]['routes'] = (g[u][v]['routes'] - {self.id}) | {new_id}
             self._graph.update(g)
             self._graph.graph['routes'][new_id] = self._graph.graph['routes'][self.id]
             self._graph.graph['routes'][new_id]['id'] = new_id
@@ -748,8 +748,8 @@ class Service(ScheduleElement):
                 g.graph['change_log']
             )
 
-        service_graph.add_nodes_from(nodes, services=[_id])
-        service_graph.add_edges_from(edges, services=[_id])
+        service_graph.add_nodes_from(nodes, services={_id})
+        service_graph.add_edges_from(edges, services={_id})
         nx.set_node_attributes(service_graph, nodes)
         service_graph.graph['routes'] = deepcopy(graph_routes)
         service_graph.graph['services'] = {_id: self._surrender_to_graph()}
@@ -897,9 +897,9 @@ class Service(ScheduleElement):
             # change data on graph
             g = self.graph()
             for stop in self.reference_nodes():
-                g.nodes[stop]['services'] = list((set(g.nodes[stop]['services']) - {self.id}) | {new_id})
+                g.nodes[stop]['services'] = (g.nodes[stop]['services'] - {self.id}) | {new_id}
             for u, v in self.reference_edges():
-                g[u][v]['services'] = list((set(g[u][v]['services']) - {self.id}) | {new_id})
+                g[u][v]['services'] = (g[u][v]['services'] - {self.id}) | {new_id}
             self._graph.update(g)
             self._graph.graph['services'][new_id] = self._graph.graph['services'][self.id]
             self._graph.graph['services'][new_id]['id'] = new_id
@@ -2054,8 +2054,8 @@ class Schedule(ScheduleElement):
                                           "to continue with this operation in this manner. If you want to change the "
                                           "data for stops use `apply_attributes_to_stops` or "
                                           "`apply_function_to_stops`.")
-        nx.set_edge_attributes(g, {edge: {'services': [service_id]} for edge in set(g.edges())})
-        nx.set_node_attributes(g, {node: {'services': [service_id]} for node in set(g.nodes())})
+        nx.set_edge_attributes(g, {edge: {'services': {service_id}} for edge in set(g.edges())})
+        nx.set_node_attributes(g, {node: {'services': {service_id}} for node in set(g.nodes())})
         nodes = dict_support.merge_complex_dictionaries(
             dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
         edges = dict_support.combine_edge_data_lists(
@@ -2091,15 +2091,15 @@ class Schedule(ScheduleElement):
         service_id = self._graph.graph['route_to_service_map'][route_id]
 
         for stop in route.reference_nodes():
-            self._graph.nodes[stop]['routes'] = list(set(self._graph.nodes[stop]['routes']) - {route_id})
+            self._graph.nodes[stop]['routes'] = self._graph.nodes[stop]['routes'] - {route_id}
             if (not self._graph.nodes[stop]['routes']) or (
-                    set(self._graph.nodes[stop]['routes']) & set(self._graph.graph['service_to_route_map'])):
-                self._graph.nodes[stop]['services'] = list(set(self._graph.nodes[stop]['services']) - {service_id})
+                    self._graph.nodes[stop]['routes'] & set(self._graph.graph['service_to_route_map'])):
+                self._graph.nodes[stop]['services'] = self._graph.nodes[stop]['services'] - {service_id}
         for u, v in route.reference_edges():
-            self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) - {route_id})
+            self._graph[u][v]['routes'] = self._graph[u][v]['routes'] - {route_id}
             if (not self._graph[u][v]['routes']) or (
                     set(self._graph[u][v]['routes']) & set(self._graph.graph['service_to_route_map'])):
-                self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) - {service_id})
+                self._graph[u][v]['services'] = self._graph[u][v]['services'] - {service_id}
 
         self._graph.graph['service_to_route_map'][service_id].remove(route_id)
         del self._graph.graph['route_to_service_map'][route_id]

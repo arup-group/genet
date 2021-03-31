@@ -333,12 +333,12 @@ def correct_schedule_graph_data_from_test_gtfs():
 
 @pytest.fixture()
 def correct_stops_to_service_mapping_from_test_gtfs():
-    return {'BSN': ['1001'], 'BSE': ['1001'], 'RSE': ['1002'], 'RSN': ['1002']}
+    return {'BSN': {'1001'}, 'BSE': {'1001'}, 'RSE': {'1002'}, 'RSN': {'1002'}}
 
 
 @pytest.fixture()
 def correct_stops_to_route_mapping_from_test_gtfs():
-    return {'BSE': ['1001_0'], 'BSN': ['1001_0'], 'RSE': ['1002_0'], 'RSN': ['1002_0']}
+    return {'BSE': {'1001_0'}, 'BSN': {'1001_0'}, 'RSE': {'1002_0'}, 'RSN': {'1002_0'}}
 
 
 @pytest.fixture()
@@ -355,7 +355,11 @@ def correct_services_from_test_pt2matsim_schedule():
             mode='bus',
             stops=stops,
             route=['1'],
-            trips={'VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00': '04:40:00'},
+            trips={
+                'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+                'trip_departure_time': ['04:40:00'],
+                'vehicle_id': ['veh_bus_1']
+            },
             arrival_offsets=['00:00:00', '00:02:00'],
             departure_offsets=['00:00:00', '00:02:00'],
             await_departure=[True, True]

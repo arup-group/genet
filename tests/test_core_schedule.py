@@ -78,37 +78,37 @@ def strongly_connected_schedule():
 def test_initiating_schedule(schedule):
     s = schedule
     assert_semantically_equal(dict(s._graph.nodes(data=True)), {
-        '5': {'services': ['service'], 'routes': ['2'], 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+        '5': {'services': {'service'}, 'routes': {'2'}, 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '6': {'services': ['service'], 'routes': ['2'], 'id': '6', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+        '6': {'services': {'service'}, 'routes': {'2'}, 'id': '6', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
               'additional_attributes': set()},
-        '7': {'services': ['service'], 'routes': ['2'], 'id': '7', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700', 'name': '',
+        '7': {'services': {'service'}, 'routes': {'2'}, 'id': '7', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.76683608549253, 'lon': -7.557121424907424, 's2_id': 5205973754090203369,
               'additional_attributes': set()},
-        '8': {'services': ['service'], 'routes': ['2'], 'id': '8', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700', 'name': '',
+        '8': {'services': {'service'}, 'routes': {'2'}, 'id': '8', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
               'additional_attributes': set()},
-        '1': {'services': ['service'], 'routes': ['1'], 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+        '1': {'services': {'service'}, 'routes': {'1'}, 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '4': {'services': ['service'], 'routes': ['1'], 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700', 'name': '',
+        '4': {'services': {'service'}, 'routes': {'1'}, 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
               'additional_attributes': set()},
-        '2': {'services': ['service'], 'routes': ['1'], 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+        '2': {'services': {'service'}, 'routes': {'1'}, 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
               'additional_attributes': set()},
-        '3': {'services': ['service'], 'routes': ['1'], 'id': '3', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700', 'name': '',
+        '3': {'services': {'service'}, 'routes': {'1'}, 'id': '3', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.76683608549253, 'lon': -7.557121424907424, 's2_id': 5205973754090203369,
               'additional_attributes': set()}})
-    assert_semantically_equal(list(s._graph.edges(data=True)),
-                              [('5', '6', {'services': ['service'], 'routes': ['2']}),
-                               ('6', '7', {'services': ['service'], 'routes': ['2']}),
-                               ('7', '8', {'services': ['service'], 'routes': ['2']}),
-                               ('1', '2', {'services': ['service'], 'routes': ['1']}),
-                               ('2', '3', {'services': ['service'], 'routes': ['1']}),
-                               ('3', '4', {'services': ['service'], 'routes': ['1']})])
+    assert_semantically_equal(s._graph.edges(data=True)._adjdict,
+                              {'5': {'6': {'services': {'service'}, 'routes': {'2'}}},
+                               '6': {'7': {'services': {'service'}, 'routes': {'2'}}},
+                               '7': {'8': {'services': {'service'}, 'routes': {'2'}}}, '8': {}, '4': {},
+                               '1': {'2': {'services': {'service'}, 'routes': {'1'}}},
+                               '3': {'4': {'services': {'service'}, 'routes': {'1'}}},
+                               '2': {'3': {'services': {'service'}, 'routes': {'1'}}}})
     log = s._graph.graph.pop('change_log')
     assert log.empty
     assert_semantically_equal(s._graph.graph,
@@ -591,17 +591,17 @@ def test_adding_service_with_clashing_id_throws_error(schedule, service):
 
 def test_adding_service_with_clashing_stops_data_does_not_overwrite_existing_stops(schedule):
     expected_stops_data = {
-        '5': {'services': ['service', 'some_id'], 'routes': ['2', '3'], 'id': '5', 'x': 4.0, 'y': 2.0,
+        '5': {'services': {'service', 'some_id'}, 'routes': {'2', '3'}, 'id': '5', 'x': 4.0, 'y': 2.0,
               'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '1': {'services': ['service', 'some_id'], 'routes': ['1', '3'], 'id': '1', 'x': 4.0, 'y': 2.0,
+        '1': {'services': {'service', 'some_id'}, 'routes': {'1', '3'}, 'id': '1', 'x': 4.0, 'y': 2.0,
               'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '2': {'services': ['service', 'some_id'], 'routes': ['1', '3'], 'id': '2', 'x': 1.0, 'y': 2.0,
+        '2': {'services': {'service', 'some_id'}, 'routes': {'1', '3'}, 'id': '2', 'x': 1.0, 'y': 2.0,
               'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
@@ -624,8 +624,8 @@ def test_adding_service_with_clashing_stops_data_does_not_overwrite_existing_sto
     schedule.add_service(s, force=True)
 
     assert_semantically_equal(dict(s.graph().nodes(data=True)), expected_stops_data)
-    assert_semantically_equal(s.graph()['1']['2'], {'routes': ['1', '3'], 'services': ['some_id', 'service']})
-    assert_semantically_equal(s.graph()['2']['5'], {'routes': ['3'], 'services': ['some_id']})
+    assert_semantically_equal(s.graph()['1']['2'], {'routes': {'1', '3'}, 'services': {'some_id', 'service'}})
+    assert_semantically_equal(s.graph()['2']['5'], {'routes': {'3'}, 'services': {'some_id'}})
 
 
 def test_adding_service_with_clashing_stops_data_without_force_flag_throws_error(schedule):
@@ -685,15 +685,15 @@ def test_adding_route_to_non_existing_service_throws_error(schedule, route):
 
 def test_creating_a_route_to_add_using_id_references_to_existing_stops_inherits_schedule_stops_data(schedule):
     expected_stops_data = {
-        '5': {'services': ['service'], 'routes': ['2', '3'], 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '5': {'services': {'service'}, 'routes': {'2', '3'}, 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '1': {'services': ['service'], 'routes': ['1', '3'], 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '1': {'services': {'service'}, 'routes': {'1', '3'}, 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '2': {'services': ['service'], 'routes': ['1', '3'], 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '2': {'services': {'service'}, 'routes': {'1', '3'}, 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
               'additional_attributes': set()}}
@@ -709,29 +709,28 @@ def test_creating_a_route_to_add_using_id_references_to_existing_stops_inherits_
     )
     assert r.ordered_stops == ['1', '2', '5']
     assert_semantically_equal(dict(r._graph.nodes(data=True)),
-                              {'1': {'routes': ['3']}, '2': {'routes': ['3']}, '5': {'routes': ['3']}})
-    assert_semantically_equal(list(r._graph.edges(data=True)),
-                              [('1', '2', {'routes': ['3']}),
-                               ('2', '5', {'routes': ['3']})])
+                              {'1': {'routes': {'3'}}, '2': {'routes': {'3'}}, '5': {'routes': {'3'}}})
+    assert_semantically_equal(r._graph.edges(data=True)._adjdict,
+                              {'1': {'2': {'routes': {'3'}}}, '2': {'5': {'routes': {'3'}}}, '5': {}})
 
     schedule.add_route('service', r)
 
     assert_semantically_equal(dict(r.graph().nodes(data=True)), expected_stops_data)
-    assert_semantically_equal(r.graph()['1']['2'], {'routes': ['1', '3'], 'services': ['service']})
-    assert_semantically_equal(r.graph()['2']['5'], {'routes': ['3'], 'services': ['service']})
+    assert_semantically_equal(r.graph()['1']['2'], {'routes': {'1', '3'}, 'services': {'service'}})
+    assert_semantically_equal(r.graph()['2']['5'], {'routes': {'3'}, 'services': {'service'}})
 
 
 def test_creating_a_route_to_add_giving_existing_schedule_stops(schedule):
     expected_stops_data = {
-        '5': {'services': ['service'], 'routes': ['2', '3'], 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '5': {'services': {'service'}, 'routes': {'2', '3'}, 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '1': {'services': ['service'], 'routes': ['1', '3'], 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '1': {'services': {'service'}, 'routes': {'1', '3'}, 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '2': {'services': ['service'], 'routes': ['1', '3'], 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '2': {'services': {'service'}, 'routes': {'1', '3'}, 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
               'additional_attributes': set()}}
@@ -747,37 +746,36 @@ def test_creating_a_route_to_add_giving_existing_schedule_stops(schedule):
     )
     assert r.ordered_stops == ['1', '2', '5']
     assert_semantically_equal(dict(r._graph.nodes(data=True)),
-                              {'1': {'routes': ['3'], 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+                              {'1': {'routes': {'3'}, 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
                                      'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
                                      'additional_attributes': set()},
-                               '2': {'routes': ['3'], 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+                               '2': {'routes': {'3'}, 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
                                      'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
                                      'additional_attributes': set()},
-                               '5': {'routes': ['3'], 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+                               '5': {'routes': {'3'}, 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
                                      'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
                                      'additional_attributes': set()}})
-    assert_semantically_equal(list(r._graph.edges(data=True)),
-                              [('1', '2', {'routes': ['3']}),
-                               ('2', '5', {'routes': ['3']})])
+    assert_semantically_equal(r._graph.edges(data=True)._adjdict,
+                              {'1': {'2': {'routes': {'3'}}}, '2': {'5': {'routes': {'3'}}}, '5': {}})
 
     schedule.add_route('service', r)
 
     assert_semantically_equal(dict(r.graph().nodes(data=True)), expected_stops_data)
-    assert_semantically_equal(r.graph()['1']['2'], {'routes': ['1', '3'], 'services': ['service']})
-    assert_semantically_equal(r.graph()['2']['5'], {'routes': ['3'], 'services': ['service']})
+    assert_semantically_equal(r.graph()['1']['2'], {'routes': {'1', '3'}, 'services': {'service'}})
+    assert_semantically_equal(r.graph()['2']['5'], {'routes': {'3'}, 'services': {'service'}})
 
 
 def test_adding_route_with_clashing_stops_data_does_not_overwrite_existing_stops(schedule):
     expected_stops_data = {
-        '5': {'services': ['service'], 'routes': ['2', '3'], 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '5': {'services': {'service'}, 'routes': {'2', '3'}, 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '1': {'services': ['service'], 'routes': ['1', '3'], 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '1': {'services': {'service'}, 'routes': {'1', '3'}, 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
               'additional_attributes': set()},
-        '2': {'services': ['service'], 'routes': ['1', '3'], 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
+        '2': {'services': {'service'}, 'routes': {'1', '3'}, 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
               'name': '',
               'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
               'additional_attributes': set()}}
@@ -798,8 +796,8 @@ def test_adding_route_with_clashing_stops_data_does_not_overwrite_existing_stops
     schedule.add_route('service', r, force=True)
 
     assert_semantically_equal(dict(r.graph().nodes(data=True)), expected_stops_data)
-    assert_semantically_equal(r.graph()['1']['2'], {'routes': ['1', '3'], 'services': ['service']})
-    assert_semantically_equal(r.graph()['2']['5'], {'routes': ['3'], 'services': ['service']})
+    assert_semantically_equal(r.graph()['1']['2'], {'routes': {'1', '3'}, 'services': {'service'}})
+    assert_semantically_equal(r.graph()['2']['5'], {'routes': {'3'}, 'services': {'service'}})
 
 
 def test_adding_route_with_clashing_stops_data_only_flags_those_that_are_actually_different(schedule):
@@ -867,41 +865,41 @@ def test_removing_route(schedule):
 def test_removing_route_updates_services_on_nodes_and_edges(schedule):
     schedule.remove_route('2')
     assert_semantically_equal(dict(schedule.graph().nodes(data=True)),
-                              {'5': {'services': [], 'routes': [], 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+                              {'5': {'services': set(), 'routes': set(), 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
                                      'name': '', 'lat': 49.76682779861249, 'lon': -7.557106577683727,
                                      's2_id': 5205973754090531959, 'additional_attributes': set()},
-                               '6': {'services': [], 'routes': [], 'id': '6', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
+                               '6': {'services': set(), 'routes': set(), 'id': '6', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
                                      'name': '', 'lat': 49.766825803756994, 'lon': -7.557148039524952,
                                      's2_id': 5205973754090365183, 'additional_attributes': set()},
-                               '7': {'services': [], 'routes': [], 'id': '7', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700',
+                               '7': {'services': set(), 'routes': set(), 'id': '7', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700',
                                      'name': '', 'lat': 49.76683608549253, 'lon': -7.557121424907424,
                                      's2_id': 5205973754090203369, 'additional_attributes': set()},
-                               '8': {'services': [], 'routes': [], 'id': '8', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700',
+                               '8': {'services': set(), 'routes': set(), 'id': '8', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700',
                                      'name': '', 'lat': 49.766856648946295, 'lon': -7.5570681956375,
                                      's2_id': 5205973754097123809, 'additional_attributes': set()},
-                               '3': {'services': ['service'], 'routes': ['1'], 'id': '3', 'x': 3.0, 'y': 3.0,
+                               '3': {'services': {'service'}, 'routes': {'1'}, 'id': '3', 'x': 3.0, 'y': 3.0,
                                      'epsg': 'epsg:27700', 'name': '', 'lat': 49.76683608549253,
                                      'lon': -7.557121424907424, 's2_id': 5205973754090203369,
                                      'additional_attributes': set()},
-                               '1': {'services': ['service'], 'routes': ['1'], 'id': '1', 'x': 4.0, 'y': 2.0,
+                               '1': {'services': {'service'}, 'routes': {'1'}, 'id': '1', 'x': 4.0, 'y': 2.0,
                                      'epsg': 'epsg:27700', 'name': '', 'lat': 49.76682779861249,
                                      'lon': -7.557106577683727, 's2_id': 5205973754090531959,
                                      'additional_attributes': set()},
-                               '2': {'services': ['service'], 'routes': ['1'], 'id': '2', 'x': 1.0, 'y': 2.0,
+                               '2': {'services': {'service'}, 'routes': {'1'}, 'id': '2', 'x': 1.0, 'y': 2.0,
                                      'epsg': 'epsg:27700', 'name': '', 'lat': 49.766825803756994,
                                      'lon': -7.557148039524952, 's2_id': 5205973754090365183,
                                      'additional_attributes': set()},
-                               '4': {'services': ['service'], 'routes': ['1'], 'id': '4', 'x': 7.0, 'y': 5.0,
+                               '4': {'services': {'service'}, 'routes': {'1'}, 'id': '4', 'x': 7.0, 'y': 5.0,
                                      'epsg': 'epsg:27700', 'name': '', 'lat': 49.766856648946295,
                                      'lon': -7.5570681956375, 's2_id': 5205973754097123809,
                                      'additional_attributes': set()}})
-    assert_semantically_equal(list(schedule.graph().edges(data=True)),
-                              [('5', '6', {'services': [], 'routes': []}),
-                               ('6', '7', {'services': [], 'routes': []}),
-                               ('7', '8', {'services': [], 'routes': []}),
-                               ('3', '4', {'services': ['service'], 'routes': ['1']}),
-                               ('1', '2', {'services': ['service'], 'routes': ['1']}),
-                               ('2', '3', {'services': ['service'], 'routes': ['1']})])
+    assert_semantically_equal(schedule.graph().edges(data=True)._adjdict,
+                              {'5': {'6': {'services': set(), 'routes': set()}},
+                               '6': {'7': {'services': set(), 'routes': set()}},
+                               '7': {'8': {'services': set(), 'routes': set()}}, '8': {},
+                               '1': {'2': {'services': {'service'}, 'routes': {'1'}}},
+                               '3': {'4': {'services': {'service'}, 'routes': {'1'}}},
+                               '2': {'3': {'services': {'service'}, 'routes': {'1'}}}, '4': {}})
 
 
 def test_removing_stop(schedule):
@@ -943,10 +941,10 @@ def test_read_matsim_schedule_returns_expected_schedule():
     for val in schedule.services():
         assert val == correct_services
     assert_semantically_equal(schedule.stop_to_service_ids_map(),
-                              {'26997928P.link:1': ['10314'], '26997928P': ['10314']})
+                              {'26997928P.link:1': {'10314'}, '26997928P': {'10314'}})
     assert_semantically_equal(schedule.stop_to_route_ids_map(),
-                              {'26997928P': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
-                               '26997928P.link:1': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']})
+                              {'26997928P': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'},
+                               '26997928P.link:1': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'}})
     assert_semantically_equal(schedule.route('VJbd8660f05fe6f744e58a66ae12bd66acbca88b98').trips,
                               {'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
                                'trip_departure_time': ['04:40:00'], 'vehicle_id': ['veh_0_bus']})
@@ -1048,36 +1046,36 @@ def test_build_graph_builds_correct_graph(strongly_connected_schedule):
     g = strongly_connected_schedule.graph()
 
     assert_semantically_equal(dict(g.nodes(data=True)),
-                              {'5': {'services': ['service'], 'routes': ['2'], 'id': '5', 'x': 4.0, 'y': 2.0,
+                              {'5': {'services': {'service'}, 'routes': {'2'}, 'id': '5', 'x': 4.0, 'y': 2.0,
                                      'epsg': 'epsg:27700', 'lat': 49.76682779861249, 'lon': -7.557106577683727,
                                      's2_id': 5205973754090531959, 'additional_attributes': set(), 'name': 'Stop_5'},
-                               '2': {'services': ['service'], 'routes': ['1', '2'], 'id': '2', 'x': 1.0, 'y': 2.0,
+                               '2': {'services': {'service'}, 'routes': {'1', '2'}, 'id': '2', 'x': 1.0, 'y': 2.0,
                                      'epsg': 'epsg:27700', 'lat': 49.766825803756994, 'lon': -7.557148039524952,
                                      's2_id': 5205973754090365183, 'additional_attributes': set(), 'name': 'Stop_2'},
-                               '7': {'services': ['service'], 'routes': ['2'], 'id': '7', 'x': 3.0, 'y': 3.0,
+                               '7': {'services': {'service'}, 'routes': {'2'}, 'id': '7', 'x': 3.0, 'y': 3.0,
                                      'epsg': 'epsg:27700', 'lat': 49.76683608549253, 'lon': -7.557121424907424,
                                      's2_id': 5205973754090203369, 'additional_attributes': set(), 'name': 'Stop_7'},
-                               '8': {'services': ['service'], 'routes': ['2'], 'id': '8', 'x': 7.0, 'y': 5.0,
+                               '8': {'services': {'service'}, 'routes': {'2'}, 'id': '8', 'x': 7.0, 'y': 5.0,
                                      'epsg': 'epsg:27700', 'lat': 49.766856648946295, 'lon': -7.5570681956375,
                                      's2_id': 5205973754097123809, 'additional_attributes': set(), 'name': 'Stop_8'},
-                               '3': {'services': ['service'], 'routes': ['1'], 'id': '3', 'x': 3.0, 'y': 3.0,
+                               '3': {'services': {'service'}, 'routes': {'1'}, 'id': '3', 'x': 3.0, 'y': 3.0,
                                      'epsg': 'epsg:27700', 'lat': 49.76683608549253, 'lon': -7.557121424907424,
                                      's2_id': 5205973754090203369, 'additional_attributes': set(), 'name': 'Stop_3'},
-                               '1': {'services': ['service'], 'routes': ['1'], 'id': '1', 'x': 4.0, 'y': 2.0,
+                               '1': {'services': {'service'}, 'routes': {'1'}, 'id': '1', 'x': 4.0, 'y': 2.0,
                                      'epsg': 'epsg:27700', 'lat': 49.76682779861249, 'lon': -7.557106577683727,
                                      's2_id': 5205973754090531959, 'additional_attributes': set(), 'name': 'Stop_1'},
-                               '4': {'services': ['service'], 'routes': ['1'], 'id': '4', 'x': 7.0, 'y': 5.0,
+                               '4': {'services': {'service'}, 'routes': {'1'}, 'id': '4', 'x': 7.0, 'y': 5.0,
                                      'epsg': 'epsg:27700', 'lat': 49.766856648946295, 'lon': -7.5570681956375,
                                      's2_id': 5205973754097123809, 'additional_attributes': set(), 'name': 'Stop_4'}})
-    assert_semantically_equal(list(g.edges(data=True)),
-                              [('5', '2', {'services': ['service'], 'routes': ['2']}),
-                               ('2', '7', {'services': ['service'], 'routes': ['2']}),
-                               ('2', '3', {'services': ['service'], 'routes': ['1']}),
-                               ('7', '8', {'services': ['service'], 'routes': ['2']}),
-                               ('8', '5', {'services': ['service'], 'routes': ['2']}),
-                               ('3', '4', {'services': ['service'], 'routes': ['1']}),
-                               ('4', '1', {'services': ['service'], 'routes': ['1']}),
-                               ('1', '2', {'services': ['service'], 'routes': ['1']})])
+    assert_semantically_equal(g.edges(data=True)._adjdict,
+                              {'5': {'2': {'services': {'service'}, 'routes': {'2'}}},
+                               '2': {'7': {'services': {'service'}, 'routes': {'2'}},
+                                     '3': {'services': {'service'}, 'routes': {'1'}}},
+                               '7': {'8': {'services': {'service'}, 'routes': {'2'}}},
+                               '8': {'5': {'services': {'service'}, 'routes': {'2'}}},
+                               '4': {'1': {'services': {'service'}, 'routes': {'1'}}},
+                               '1': {'2': {'services': {'service'}, 'routes': {'1'}}},
+                               '3': {'4': {'services': {'service'}, 'routes': {'1'}}}})
 
 
 def test_building_trips_dataframe(schedule):
