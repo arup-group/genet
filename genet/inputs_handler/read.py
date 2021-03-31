@@ -5,21 +5,81 @@ import json
 import logging
 import genet.core as core
 import genet.inputs_handler.gtfs_reader as gtfs_reader
+import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.schedule_elements as schedule_elements
 import genet.utils.spatial as spatial
 import genet.modify.change_log as change_log
 from genet.exceptions import NetworkSchemaError
 
 
-def read_matsim(path_to_network: str, path_to_schedule: str = None, path_to_vehicles: str = None):
+def read_matsim(path_to_network: str, epsg: str, path_to_schedule: str = None, path_to_vehicles: str = None):
     """
-
+    Reads MATSim's network.xml to genet.Network object and if give, also the schedule.xml and vehicles.xml into
+    genet.Schedule object, part of the genet.Network object.
     :param path_to_network: path to MATSim's network.xml file
     :param path_to_schedule: path to MATSim's schedule.xml file, optional
     :param path_to_vehicles: path to MATSim's vehicles.xml file, optional, expected to be passed with a schedule
+    :param epsg: projection for the network, e.g. 'epsg:27700'
     :return: genet.Network object
     """
-    pass
+    n = read_matsim_network(path_to_network=path_to_network, epsg=epsg)
+    if path_to_schedule:
+        n.schedule = read_matsim_schedule(
+            path_to_schedule=path_to_schedule, path_to_vehicles=path_to_vehicles, epsg=epsg)
+    return n
+
+
+def read_matsim_network(path_to_network: str, epsg: str):
+    """
+    Reads MATSim's network.xml to genet.Network object
+    :param path_to_network: path to MATSim's network.xml file
+    :param epsg: projection for the network, e.g. 'epsg:27700'
+    :return: genet.Network object
+    """
+    n = core.Network(epsg=epsg)
+    n.graph, n.link_id_mapping, duplicated_nodes, duplicated_links = \
+        matsim_reader.read_network(path_to_network, n.transformer)
+    n.graph.graph['name'] = 'Network graph'
+    n.graph.graph['crs'] = {'init': n.epsg}
+    if 'simplified' not in n.graph.graph:
+        n.graph.graph['simplified'] = False
+
+    for node_id, duplicated_node_attribs in duplicated_nodes.items():
+        for duplicated_node_attrib in duplicated_node_attribs:
+            n.change_log.remove(
+                object_type='node',
+                object_id=node_id,
+                object_attributes=duplicated_node_attrib
+            )
+    for link_id, reindexed_duplicated_links in duplicated_links.items():
+        for duplicated_link in reindexed_duplicated_links:
+            n.change_log.modify(
+                object_type='link',
+                old_id=link_id,
+                old_attributes=n.link(duplicated_link),
+                new_id=duplicated_link,
+                new_attributes=n.link(duplicated_link)
+            )
+    return n
+
+
+def read_matsim_schedule(path_to_schedule: str, epsg: str, path_to_vehicles: str = None):
+    """
+    Reads MATSim's schedule.xml (and possibly vehicles.xml) to genet.Schedule object
+    :param path_to_schedule: path to MATSim's schedule.xml file,
+    :param path_to_vehicles: path to MATSim's vehicles.xml file, optional but encouraged
+    :param epsg: projection for the schedule, e.g. 'epsg:27700'
+    :return: genet.Schedule object
+    """
+    services, minimal_transfer_times = matsim_reader.read_schedule(path_to_schedule, epsg)
+    if path_to_vehicles:
+        vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
+        matsim_schedule = schedule_elements.Schedule(
+            services=services, epsg=epsg, vehicles=vehicles, vehicle_types=vehicle_types)
+    else:
+        matsim_schedule = schedule_elements.Schedule(services=services, epsg=epsg)
+    matsim_schedule.minimal_transfer_times = minimal_transfer_times
+    return matsim_schedule
 
 
 def read_json(network_path: str, epsg: str, schedule_path: str = ''):

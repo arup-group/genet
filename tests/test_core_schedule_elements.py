@@ -2,9 +2,7 @@ import pytest
 from networkx import Graph, DiGraph, set_node_attributes
 from genet.schedule_elements import Schedule, Service, Route, Stop, verify_graph_schema
 from genet.exceptions import ServiceIndexError, RouteIndexError, ScheduleElementGraphSchemaError
-from genet.inputs_handler import gtfs_reader
-from tests.fixtures import assert_semantically_equal, correct_schedule_dict_from_test_gtfs, \
-    correct_stopdb_from_test_gtfs
+from tests.fixtures import assert_semantically_equal
 
 
 def assert_all_elements_share_graph(elem):

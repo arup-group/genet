@@ -9,8 +9,6 @@ from copy import deepcopy
 from typing import Union, List, Dict
 from pyproj import Transformer
 from s2sphere import CellId
-from shapely.geometry import Point, LineString
-import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.inputs_handler.osm_reader as osm_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.geojson as geojson
@@ -1390,34 +1388,6 @@ class Network:
         logging.info('Deleting isolated nodes which have no edges.')
         self.remove_nodes(list(nx.isolates(self.graph)))
 
-    def read_matsim_network(self, path):
-        self.graph, self.link_id_mapping, duplicated_nodes, duplicated_links = \
-            matsim_reader.read_network(path, self.transformer)
-        self.graph.graph['name'] = 'Network graph'
-        self.graph.graph['crs'] = {'init': self.epsg}
-        if 'simplified' not in self.graph.graph:
-            self.graph.graph['simplified'] = False
-
-        for node_id, duplicated_node_attribs in duplicated_nodes.items():
-            for duplicated_node_attrib in duplicated_node_attribs:
-                self.change_log.remove(
-                    object_type='node',
-                    object_id=node_id,
-                    object_attributes=duplicated_node_attrib
-                )
-        for link_id, reindexed_duplicated_links in duplicated_links.items():
-            for duplicated_link in reindexed_duplicated_links:
-                self.change_log.modify(
-                    object_type='link',
-                    old_id=link_id,
-                    old_attributes=self.link(duplicated_link),
-                    new_id=duplicated_link,
-                    new_attributes=self.link(duplicated_link)
-                )
-
-    def read_matsim_schedule(self, schedule_path, vehicles_path=''):
-        self.schedule.read_matsim_schedule(schedule_path, vehicles_path)
-
     def read_auxiliary_link_file(self, file_path):
         aux_file = auxiliary_files.AuxiliaryFile(file_path)
         aux_file.attach({link_id for link_id, dat in self.links()})
@@ -1522,7 +1492,7 @@ class Network:
         _network['nodes'] = pd.DataFrame(_network['nodes'])
         _network['links'] = pd.DataFrame(_network['links'])
         _network['nodes']['geometry'] = _network['nodes']['geometry'].apply(
-            lambda row: (row.x, row.y))
+            lambda row: [row.x, row.y])
         _network['links']['geometry'] = _network['links']['geometry'].apply(
             lambda x: spatial.encode_shapely_linestring_to_polyline(x))
         return _network

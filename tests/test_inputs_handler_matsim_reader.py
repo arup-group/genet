@@ -1,6 +1,6 @@
 from pyproj import Proj, Transformer
 from shapely.geometry import LineString
-from genet.inputs_handler import matsim_reader
+from genet.inputs_handler import matsim_reader, read
 from tests.fixtures import *
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -64,8 +64,7 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
 
 
 def test_reading_NZ_network():
-    n = Network('epsg:2193')
-    n.read_matsim_network(pt2matsim_NZ_network)
+    n = read.read_matsim(path_to_network=pt2matsim_NZ_network, epsg='epsg:2193')
     assert_semantically_equal(dict(n.nodes()), {
         '7872447671905026061': {'id': '7872447671905026061', 'x': 1789300.631705982, 'y': 5494320.626099871,
                                 'lon': 175.23998223484716, 'lat': -40.68028521526985, 's2_id': 7872447671905026061},
@@ -241,8 +240,7 @@ def test_read_network_rejects_non_unique_nodes():
 
 
 def test_reading_matsim_output_network():
-    n = Network('epsg:27700')
-    n.read_matsim_network(matsim_output_network)
+    n = read.read_matsim(path_to_network=matsim_output_network, epsg='epsg:27700')
 
     correct_nodes = {
         '21667818': {'id': '21667818', 's2_id': 5221390302696205321, 'x': 528504.1342843144, 'y': 182155.7435136598,
@@ -290,9 +288,7 @@ def test_reading_network_with_geometry_attributes():
                 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}
             }}
     }
-
-    n = Network('epsg:27700')
-    n.read_matsim_network(pt2matsim_network_with_geometry_file)
+    n = read.read_matsim(path_to_network=pt2matsim_network_with_geometry_file, epsg='epsg:27700')
 
     assert_semantically_equal(dict(n.links()), correct_links)
 
@@ -314,9 +310,7 @@ def test_reading_network_with_singular_geometry_attribute_cleans_up_empty_attrib
             'modes': {'car'}
         }
     }
-
-    n = Network('epsg:27700')
-    n.read_matsim_network(pt2matsim_network_with_singular_geometry_file)
+    n = read.read_matsim(path_to_network=pt2matsim_network_with_singular_geometry_file, epsg='epsg:27700')
 
     assert_semantically_equal(dict(n.links()), correct_links)
 

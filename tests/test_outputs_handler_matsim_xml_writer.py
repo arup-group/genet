@@ -8,6 +8,7 @@ from tests import xml_diff
 from genet.outputs_handler import matsim_xml_writer
 from genet.core import Network
 from genet.schedule_elements import read_vehicle_types
+from genet.inputs_handler import read
 import xml.etree.cElementTree as ET
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -87,9 +88,7 @@ def test_network_with_extra_attribs_produces_valid_matsim_network_xml_file(tmpdi
     assert network_dtd.validate(xml_obj), \
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
                                                                         network_dtd.error_log.filter_from_errors())
-
-    _network_from_file = Network(epsg='epsg:27700')
-    _network_from_file.read_matsim_network(generated_network_file_path)
+    _network_from_file = read.read_matsim(path_to_network=generated_network_file_path, epsg='epsg:27700')
     assert_semantically_equal(dict(_network_from_file.nodes()), {
         '0': {'id': '0', 'x': 1.0, 'y': 2.0, 'lon': -7.557148039524952, 'lat': 49.766825803756994,
               's2_id': 5205973754090365183},
@@ -121,8 +120,7 @@ def test_tolerates_networks_with_no_oneway_flag_on_links(tmpdir, network_dtd):
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
                                                                         network_dtd.error_log.filter_from_errors())
 
-    _network_from_file = Network(epsg='epsg:27700')
-    _network_from_file.read_matsim_network(generated_network_file_path)
+    _network_from_file = read.read_matsim(path_to_network=generated_network_file_path, epsg='epsg:27700')
     assert_semantically_equal(dict(_network_from_file.nodes()), {
         '0': {'id': '0', 'x': 1.0, 'y': 2.0, 'lon': -7.557148039524952, 'lat': 49.766825803756994,
               's2_id': 5205973754090365183},

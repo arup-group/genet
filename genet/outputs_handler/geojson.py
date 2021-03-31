@@ -47,6 +47,8 @@ def generate_geodataframes(graph):
             geom = line_geometry()
         geometry.append(geom)
     links = gpd.GeoDataFrame(data, crs=crs, geometry=geometry)
+    links['u'] = u
+    links['v'] = v
     if 'id' in links.columns:
         links = links.set_index('id', drop=False)
     links.index = links.index.set_names(['index'])
@@ -67,7 +69,7 @@ def save_geodataframe(gdf, filename, output_dir, include_shp_files=False):
             gdf.to_file(os.path.join(shp_files, f'{filename}.shp'))
 
 
-def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700101'):
+def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700101', include_shp_files=True):
     logging.info('Generating geojson standard outputs for schedule')
     schedule_links = schedule.to_geodataframe()['links'].to_crs("epsg:4326")
     df = schedule.route_trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
@@ -82,7 +84,9 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
         save_geodataframe(
             df_vph,
             filename=f'vehicles_per_hour_{mode}',
-            output_dir=vph_dir)
+            output_dir=vph_dir,
+            include_shp_files=include_shp_files
+        )
 
         if df_all_modes_vph is None:
             df_vph['mode'] = mode
@@ -97,23 +101,31 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
         save_geodataframe(
             schedule_subgraph['links'].to_crs("epsg:4326"),
             filename=f'schedule_subgraph_links_{mode}',
-            output_dir=subgraph_dir)
+            output_dir=subgraph_dir,
+            include_shp_files=include_shp_files
+        )
         save_geodataframe(
             schedule_subgraph['nodes'].to_crs("epsg:4326"),
             filename=f'schedule_subgraph_nodes_{mode}',
-            output_dir=subgraph_dir)
+            output_dir=subgraph_dir,
+            include_shp_files=include_shp_files
+        )
 
     logging.info('Saving vehicles per hour for all PT modes')
     save_geodataframe(
         df_all_modes_vph,
         filename='vehicles_per_hour_all_modes',
-        output_dir=vph_dir)
+        output_dir=vph_dir,
+        include_shp_files=include_shp_files
+    )
     logging.info('Saving vehicles per hour for all PT modes for selected hour slices')
     for h in [7, 8, 9, 13, 16, 17, 18]:
         save_geodataframe(
             df_all_modes_vph[df_all_modes_vph['hour'].dt.hour == h],
             filename=f'vph_all_modes_within_{h-1}:30-{h}:30',
-            output_dir=vph_dir)
+            output_dir=vph_dir,
+            include_shp_files=include_shp_files
+        )
 
     logging.info('Generating csv for vehicles per hour for each service')
     use_schedule.vehicles_per_hour(
@@ -143,7 +155,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
         os.path.join(output_dir, 'trips_per_day_per_route_aggregated_per_stop_name_pair.csv'))
 
 
-def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
+def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_files=True):
     logging.info(f'Generating geojson outputs for the entire network in {output_dir}')
     n.write_to_geojson(output_dir)
 
@@ -157,7 +169,8 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
             save_geodataframe(
                 gdf_car[[attribute, 'geometry', 'id']],
                 filename=f'car_{attribute}_subgraph',
-                output_dir=graph_output_dir)
+                output_dir=graph_output_dir,
+                include_shp_files=include_shp_files)
         except KeyError:
             logging.warning(f'Your network is missing a vital attribute {attribute}')
 
@@ -171,7 +184,9 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
         save_geodataframe(
             graph_links[graph_links['id'].isin(tag_links)],
             filename=f'car_osm_highway_{tag}',
-            output_dir=graph_output_dir)
+            output_dir=graph_output_dir,
+            include_shp_files=include_shp_files
+        )
 
     for mode in n.modes():
         logging.info(f'Generating geometry-only geojson outputs for {mode} modal subgraph')
@@ -179,7 +194,9 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101'):
         save_geodataframe(
             gdf[['geometry', 'id']],
             filename=f'subgraph_geometry_{mode}',
-            output_dir=os.path.join(graph_output_dir, 'geometry_only_subgraphs'))
+            output_dir=os.path.join(graph_output_dir, 'geometry_only_subgraphs'),
+            include_shp_files=include_shp_files
+        )
 
     # schedule outputs
     if n.schedule:

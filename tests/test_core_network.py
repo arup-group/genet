@@ -17,6 +17,7 @@ from genet.inputs_handler import matsim_reader
 from genet.core import Network
 from genet.schedule_elements import Route, Service, Schedule
 from genet.utils import plot, spatial, graph_operations
+from genet.inputs_handler import read
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -441,9 +442,8 @@ def test_attempt_to_simplify_already_simplified_network_throws_error():
 
 
 def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_expected_graph_data():
-    n = Network('epsg:27700')
-    n.read_matsim_network(puma_network_test_file)
-    n.read_matsim_schedule(puma_schedule_test_file)
+    n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
+                         path_to_schedule=puma_schedule_test_file)
 
     link_ids_pre_simplify = set(dict(n.links()).keys())
 
@@ -467,9 +467,8 @@ def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_
 
 
 def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_dtd):
-    n = Network('epsg:27700')
-    n.read_matsim_network(puma_network_test_file)
-    n.read_matsim_schedule(puma_schedule_test_file)
+    n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
+                         path_to_schedule=puma_schedule_test_file)
 
     n.simplify()
 
@@ -491,9 +490,8 @@ def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_
 def test_reading_back_simplified_network():
     # simplified networks have additional geometry attribute and some of their attributes are composite, e.g. links
     # now refer to a number of osm ways each with a unique id
-    n = Network('epsg:27700')
-    n.read_matsim_network(simplified_network)
-    n.read_matsim_schedule(simplified_schedule)
+    n = read.read_matsim(path_to_network=simplified_network, epsg='epsg:27700',
+                         path_to_schedule=simplified_schedule)
 
     number_of_simplified_links = 659
 
@@ -511,8 +509,7 @@ def test_reading_back_simplified_network():
 
 
 def test_network_with_missing_link_attribute_elem_text_is_read_and_able_to_save_again(tmpdir):
-    n = Network('epsg:27700')
-    n.read_matsim_network(network_link_attrib_text_missing)
+    n = read.read_matsim(path_to_network=network_link_attrib_text_missing, epsg='epsg:27700')
     n.write_to_matsim(tmpdir)
 
 
@@ -1775,22 +1772,12 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
         assert satisfied
 
 
-def test_read_matsim_network_delegates_to_matsim_reader_read_network(mocker):
-    mocker.patch.object(matsim_reader, 'read_network', return_value=(nx.MultiDiGraph(), 2, {}, {}))
-
-    network = Network('epsg:27700')
-    network.read_matsim_network(pt2matsim_network_test_file)
-
-    matsim_reader.read_network.assert_called_once_with(pt2matsim_network_test_file, network.transformer)
-
-
 def test_read_matsim_network_with_duplicated_node_ids_records_removal_in_changelog(mocker):
     dup_nodes = {'21667818': [
         {'id': '21667818', 'x': 528504.1342843144, 'y': 182155.7435136598, 'lon': -0.14910908709500162,
          'lat': 51.52370573323939, 's2_id': 5221390302696205321}]}
     mocker.patch.object(matsim_reader, 'read_network', return_value=(nx.MultiDiGraph(), 2, dup_nodes, {}))
-    network = Network('epsg:27700')
-    network.read_matsim_network(pt2matsim_network_test_file)
+    network = read.read_matsim(path_to_network=pt2matsim_network_test_file, epsg='epsg:27700')
 
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {0: '2020-07-02 11:36:54'}, 'change_event': {0: 'remove'}, 'object_type': {0: 'node'},
@@ -1818,8 +1805,7 @@ def test_read_matsim_network_with_duplicated_link_ids_records_reindexing_in_chan
     mocker.patch.object(matsim_reader, 'read_network',
                         return_value=(nx.MultiDiGraph(), correct_link_id_map, {}, dup_links))
     mocker.patch.object(Network, 'link', return_value={'heyooo': '1'})
-    network = Network('epsg:27700')
-    network.read_matsim_network(pt2matsim_network_test_file)
+    network = read.read_matsim(path_to_network=pt2matsim_network_test_file, epsg='epsg:27700')
 
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {0: '2020-07-02 11:59:00'}, 'change_event': {0: 'modify'}, 'object_type': {0: 'link'},
@@ -1830,15 +1816,6 @@ def test_read_matsim_network_with_duplicated_link_ids_records_reindexing_in_chan
     assert_frame_equal(network.change_log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
                        check_names=False,
                        check_dtype=False)
-
-
-def test_read_matsim_schedule_runs_schedule_read_matsim_schedule_using_epsg_from_earlier_network_run(mocker):
-    mocker.patch.object(Schedule, 'read_matsim_schedule')
-    network = Network('epsg:27700')
-    network.read_matsim_network(pt2matsim_network_test_file)
-    network.read_matsim_schedule(pt2matsim_schedule_file, vehicles_path='')
-
-    Schedule.read_matsim_schedule.assert_called_once_with(pt2matsim_schedule_file, '')
 
 
 def test_has_node_when_node_is_in_the_graph():
@@ -2401,7 +2378,7 @@ def json_network():
             '0': {'id': '0', 'from': '101982', 'to': '101986', 'freespeed': 4.166666666666667, 'capacity': 600.0,
                   'permlanes': 1.0, 'oneway': '1', 'modes': ['car'], 's2_from': 5221390329378179879,
                   's2_to': 5221390328605860387, 'length': 52.765151087870265,
-                  'geometry': 'ez~hinaBc~sze|`@gx|~W|uo|J',
+                  'geometry': 'ez~hinaBc~sze|`@gx|~W|uo|J', 'u': '101982', 'v': '101986',
                   'attributes': {
                       'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
                       'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
@@ -2425,7 +2402,23 @@ def test_saving_network_to_json(network1, json_network, tmpdir):
     with open(expected_network_json) as json_file:
         output_json = json.load(json_file)
     json_network['links']['0']['modes'] = 'car'
-    assert_semantically_equal(output_json, json_network)
+    assert_semantically_equal(
+        output_json,
+        {'nodes': {
+            '101982': {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118', 'lon': -0.14625948709424305,
+                       'lat': 51.52287873323954, 's2_id': 5221390329378179879,
+                       'geometry': '528704.1425925883,182068.78193707118'},
+            '101986': {'id': '101986', 'x': '528835.203274008', 'y': '182006.27331298392', 'lon': -0.14439428709377497,
+                       'lat': 51.52228713323965, 's2_id': 5221390328605860387,
+                       'geometry': '528835.203274008,182006.27331298392'}}, 'links': {
+            '0': {'id': '0', 'from': '101982', 'to': '101986', 'freespeed': 4.166666666666667, 'capacity': 600.0,
+                  'permlanes': 1.0, 'oneway': '1', 'modes': 'car', 's2_from': 5221390329378179879,
+                  's2_to': 5221390328605860387, 'length': 52.765151087870265, 'attributes': {
+                    'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
+                    'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
+                    'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
+                    'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}},
+                  'geometry': 'ez~hinaBc~sze|`@gx|~W|uo|J', 'u': '101982', 'v': '101986'}}})
 
 
 @pytest.fixture()
@@ -2444,6 +2437,7 @@ def gdf_network():
               's2_to': 5221390328605860387, 'length': 52.765151087870265,
               'geometry': LineString(
                   [(528704.1425925883, 182068.78193707118), (528835.203274008, 182006.27331298392)]),
+              'u': '101982', 'v': '101986',
               'attributes': {
                   'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String',
                                      'text': 'permissive'},
@@ -2459,7 +2453,7 @@ def gdf_network():
 def test_transforming_network_to_geodataframe(network1, gdf_network):
     node_cols = ['id', 'x', 'y', 'lon', 'lat', 's2_id', 'geometry']
     link_cols = ['id', 'from', 'to', 'freespeed', 'capacity', 'permlanes', 'oneway', 'modes', 's2_from', 's2_to',
-                 'length', 'geometry', 'attributes']
+                 'length', 'geometry', 'attributes', 'u', 'v']
     _network = network1.to_geodataframe()
     assert set(_network['nodes'].columns) == set(node_cols)
     assert_frame_equal(_network['nodes'][node_cols], gdf_network['nodes'][node_cols], check_dtype=False)
@@ -2474,7 +2468,7 @@ def test_saving_network_to_geojson(network1, correct_schedule, tmpdir):
                                        'network_change_log.csv', 'schedule_links_geometry_only.geojson',
                                        'network_links.geojson', 'network_links_geometry_only.geojson',
                                        'schedule_nodes_geometry_only.geojson', 'schedule_links.geojson',
-                                       'schedule_nodes.geojson'}
+                                       'schedule_nodes.geojson', 'schedule_change_log.csv'}
 
 
 def test_saving_network_to_csv(network1, correct_schedule, tmpdir):
@@ -2491,8 +2485,8 @@ def test_saving_network_to_csv(network1, correct_schedule, tmpdir):
          's2_id': {0: 5221390329378179879, 1: 5221390328605860387},
          'lon': {0: -0.14625948709424305, 1: -0.14439428709377494}, 'id': {0: 101982, 1: 101986},
          'x': {0: 528704.1425925883, 1: 528835.203274008},
-         'geometry': {0: '(528704.1425925883, 182068.78193707118)',
-                      1: '(528835.203274008, 182006.27331298392)'},
+         'geometry': {0: '[528704.1425925883, 182068.78193707118]',
+                      1: '[528835.203274008, 182006.27331298392]'},
          'y': {0: 182068.7819370712, 1: 182006.27331298392}}
     )
     output_links = pd.read_csv(os.path.join(tmpdir, 'network', 'links.csv'))
@@ -2501,6 +2495,8 @@ def test_saving_network_to_csv(network1, correct_schedule, tmpdir):
         {'index': {0: 0}, 'modes': {0: "['car']"}, 'to': {0: 101986}, 's2_from': {0: 5221390329378179879},
          'length': {0: 52.76515108787025}, 'id': {0: 0}, 'from': {0: 101982}, 's2_to': {0: 5221390328605860387},
          'capacity': {0: 600.0},
+         'u': {0: 101982},
+         'v': {0: 101986},
          'geometry': {0: 'ez~hinaBc~sze|`@gx|~W|uo|J'},
          'oneway': {0: 1}, 'freespeed': {0: 4.166666666666667}, 'permlanes': {0: 1.0}, 'attributes': {
             0: "{'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}, 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}}"}}

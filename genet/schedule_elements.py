@@ -19,7 +19,6 @@ from s2sphere import CellId
 import genet.utils.plot as plot
 import genet.utils.spatial as spatial
 import genet.utils.dict_support as dict_support
-import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
@@ -2182,21 +2181,6 @@ class Schedule(ScheduleElement):
         logging.info('Finished generating standard outputs. Zipping folder.')
         persistence.zip_folder(output_dir)
 
-    def read_matsim_schedule(self, path_to_schedule, path_to_vehicles=''):
-        services, minimal_transfer_times = matsim_reader.read_schedule(path_to_schedule, self.epsg)
-        if path_to_vehicles:
-            vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
-            matsim_schedule = self.__class__(
-                services=services, epsg=self.epsg, vehicles=vehicles, vehicle_types=vehicle_types)
-        else:
-            matsim_schedule = self.__class__(services=services, epsg=self.epsg)
-        matsim_schedule.minimal_transfer_times = minimal_transfer_times
-        self.add(matsim_schedule)
-
-    def read_matsim_vehicles(self, path_to_vehicles):
-        vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
-        self.update_vehicles(vehicles, vehicle_types)
-
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_matsim_schedule(output_dir, self)
@@ -2236,6 +2220,7 @@ class Schedule(ScheduleElement):
         logging.info(f'Saving Schedule to JSON in {output_dir}')
         with open(os.path.join(output_dir, 'schedule.json'), 'w') as outfile:
             json.dump(self.to_json(), outfile)
+        self.write_extras(output_dir)
 
     def write_to_geojson(self, output_dir, epsg):
         """
@@ -2254,6 +2239,7 @@ class Schedule(ScheduleElement):
         gngeojson.save_geodataframe(_gdfs['links'], 'schedule_links', output_dir)
         gngeojson.save_geodataframe(_gdfs['nodes']['geometry'], 'schedule_nodes_geometry_only', output_dir)
         gngeojson.save_geodataframe(_gdfs['links']['geometry'], 'schedule_links_geometry_only', output_dir)
+        self.write_extras(output_dir)
 
     def to_gtfs(self, gtfs_day, mode_to_route_type: dict = None):
         """

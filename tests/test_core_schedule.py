@@ -8,6 +8,7 @@ from tests.fixtures import *
 from tests.test_core_components_route import self_looping_route, route
 from tests.test_core_components_service import service
 from genet.inputs_handler import matsim_reader, gtfs_reader
+from genet.inputs_handler import read
 from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation
@@ -920,18 +921,10 @@ def test_iter_stops_returns_stops_objects(test_service, different_test_service):
     assert all([isinstance(stop, Stop) for stop in schedule.stops()])
 
 
-def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker, route):
-    mocker.patch.object(matsim_reader, 'read_schedule', return_value=([Service(id='1', routes=[route])], {}))
-
-    schedule = Schedule('epsg:27700')
-    schedule.read_matsim_schedule(pt2matsim_schedule_file)
-
-    matsim_reader.read_schedule.assert_called_once_with(pt2matsim_schedule_file, schedule.epsg)
-
-
 def test_read_matsim_schedule_returns_expected_schedule():
-    schedule = Schedule('epsg:27700')
-    schedule.read_matsim_schedule(pt2matsim_schedule_file)
+    schedule = read.read_matsim_schedule(
+        path_to_schedule=pt2matsim_schedule_file,
+        epsg='epsg:27700')
 
     correct_services = Service(id='10314', routes=[
         Route(
@@ -960,8 +953,10 @@ def test_read_matsim_schedule_returns_expected_schedule():
 
 
 def test_reading_vehicles_with_a_schedule():
-    schedule = Schedule('epsg:27700')
-    schedule.read_matsim_schedule(pt2matsim_schedule_file, pt2matsim_vehicles_file)
+    schedule = read.read_matsim_schedule(
+        path_to_schedule=pt2matsim_schedule_file,
+        path_to_vehicles=pt2matsim_vehicles_file,
+        epsg='epsg:27700')
 
     assert_semantically_equal(schedule.vehicles, {'veh_0_bus': {'type': 'bus'}})
     assert_semantically_equal(schedule.vehicle_types['bus'], {
@@ -975,9 +970,10 @@ def test_reading_vehicles_with_a_schedule():
 
 
 def test_reading_vehicles_after_reading_schedule():
-    schedule = Schedule('epsg:27700')
-    schedule.read_matsim_schedule(pt2matsim_schedule_file)
-    schedule.read_matsim_vehicles(pt2matsim_vehicles_file)
+    schedule = read.read_matsim_schedule(
+        path_to_schedule=pt2matsim_schedule_file,
+        path_to_vehicles=pt2matsim_vehicles_file,
+        epsg='epsg:27700')
 
     assert_semantically_equal(schedule.vehicles, {'veh_0_bus': {'type': 'bus'}})
     assert_semantically_equal(schedule.vehicle_types['bus'], {

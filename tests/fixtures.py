@@ -5,10 +5,9 @@ import pytest
 import pandas as pd
 from collections import OrderedDict
 from genet.schedule_elements import Stop, Route, Service, Schedule
-from genet.core import Network
 from genet.inputs_handler import osm_reader
 import genet.modify.change_log as change_log
-
+from genet.inputs_handler import read
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -63,10 +62,8 @@ def assert_logging_warning_caught_with_message_containing(clog, message):
 ###########################################################
 @pytest.fixture()
 def network_object_from_test_data():
-    n = Network('epsg:27700')
-    n.read_matsim_network(pt2matsim_network_test_file)
-    n.read_matsim_schedule(pt2matsim_schedule_file, pt2matsim_vehicles_file)
-    return n
+    return read.read_matsim(path_to_network=pt2matsim_network_test_file, path_to_schedule=pt2matsim_schedule_file,
+                            path_to_vehicles=pt2matsim_vehicles_file, epsg='epsg:27700')
 
 
 ###########################################################
@@ -74,9 +71,8 @@ def network_object_from_test_data():
 ###########################################################
 @pytest.fixture()
 def schedule_object_from_test_data():
-    s = Schedule('epsg:27700')
-    s.read_matsim_schedule(pt2matsim_schedule_file, pt2matsim_vehicles_file)
-    return s
+    return read.read_matsim_schedule(path_to_schedule=pt2matsim_schedule_file, path_to_vehicles=pt2matsim_vehicles_file,
+                                     epsg='epsg:27700')
 
 
 @pytest.fixture()
@@ -260,7 +256,8 @@ def correct_routes_db():
     return pd.DataFrame(
         {'route_id': {0: 1001, 1: 1002}, 'agency_id': {0: 'OP550', 1: 'OP550'},
          'route_short_name': {0: 'BTR', 1: 'RTR'}, 'route_long_name': {0: 'Bus Test Route', 1: 'Rail Test Route'},
-         'route_type': {0: 3, 1: 2}, 'route_url': {0: float('nan'), 1: float('nan')}, 'route_color': {0: 'CE312D', 1: 'CE312D'},
+         'route_type': {0: 3, 1: 2}, 'route_url': {0: float('nan'), 1: float('nan')},
+         'route_color': {0: 'CE312D', 1: 'CE312D'},
          'route_text_color': {0: 'FFFFFF', 1: 'FFFFFF'}, 'checkin_duration': {0: float('nan'), 1: float('nan')}}
     )
 
@@ -318,20 +315,21 @@ def correct_schedule_graph_data_from_test_gtfs():
     return {'name': 'Schedule graph', 'crs': {'init': 'epsg:4326'},
             'route_to_service_map': {'1001_0': '1001', '1002_0': '1002'},
             'service_to_route_map': {'1001': ['1001_0'], '1002': ['1002_0']}, 'change_log': change_log.ChangeLog(),
-            'routes': {'1001_0': {'arrival_offsets': ['0 days 00:00:00', '0 days 00:02:00'], 'route_color': 'CE312D',
-                                     'ordered_stops': ['BSE', 'BSN'], 'mode': 'bus', 'route_type': 3,
-                                     'departure_offsets': ['0 days 00:00:00', '0 days 00:02:00'],
-                                     'route_long_name': 'Bus Test Route', 'route_short_name': 'BTR',
-                                     'trips': {'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'],
-                                               'vehicle_id': ['veh_0']}, 'service_id': '1001', 'id': '1001_0'},
-                          '1002_0': {'arrival_offsets': ['0 days 00:00:00', '0 days 00:02:00'], 'route_color': 'CE312D',
-                                     'ordered_stops': ['RSN', 'RSE'], 'mode': 'rail', 'route_type': 2,
-                                     'departure_offsets': ['0 days 00:00:00', '0 days 00:02:00'],
-                                     'route_long_name': 'Rail Test Route', 'route_short_name': 'RTR',
-                                     'trips': {'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'],
-                                               'vehicle_id': ['veh_1']}, 'service_id': '1002',
-                                     'id': '1002_0'}},
+            'routes': {'1001_0': {'arrival_offsets': ['00:00:00', '00:02:00'], 'route_color': 'CE312D',
+                                  'ordered_stops': ['BSE', 'BSN'], 'mode': 'bus', 'route_type': 3,
+                                  'departure_offsets': ['00:00:00', '00:02:00'],
+                                  'route_long_name': 'Bus Test Route', 'route_short_name': 'BTR',
+                                  'trips': {'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'],
+                                            'vehicle_id': ['veh_0']}, 'service_id': '1001', 'id': '1001_0'},
+                       '1002_0': {'arrival_offsets': ['00:00:00', '00:02:00'], 'route_color': 'CE312D',
+                                  'ordered_stops': ['RSN', 'RSE'], 'mode': 'rail', 'route_type': 2,
+                                  'departure_offsets': ['00:00:00', '00:02:00'],
+                                  'route_long_name': 'Rail Test Route', 'route_short_name': 'RTR',
+                                  'trips': {'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'],
+                                            'vehicle_id': ['veh_1']}, 'service_id': '1002',
+                                  'id': '1002_0'}},
             'services': {'1001': {'id': '1001', 'name': 'BTR'}, '1002': {'id': '1002', 'name': 'RTR'}}}
+
 
 @pytest.fixture()
 def correct_stops_to_service_mapping_from_test_gtfs():
@@ -373,19 +371,26 @@ def correct_services_from_test_pt2matsim_schedule():
 
 @pytest.fixture()
 def full_fat_default_config_path():
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "genet", "configs", "OSM", "default_config.yml"))
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "genet", "configs", "OSM", "default_config.yml"))
+
 
 @pytest.fixture()
 def full_fat_default_config():
-    return osm_reader.Config(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "genet", "configs", "OSM", "default_config.yml")))
+    return osm_reader.Config(
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "genet", "configs", "OSM", "default_config.yml")))
+
 
 @pytest.fixture()
 def slim_default_config_path():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "genet", "configs", "OSM", "slim_config.yml"))
 
+
 @pytest.fixture()
 def slim_default_config():
-    return osm_reader.Config(os.path.join(os.path.dirname(__file__), "..", "genet", "configs", "OSM", "slim_config.yml"))
+    return osm_reader.Config(
+        os.path.join(os.path.dirname(__file__), "..", "genet", "configs", "OSM", "slim_config.yml"))
+
 
 ###########################################################
 # vehicle types configs
