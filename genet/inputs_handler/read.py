@@ -1,5 +1,6 @@
 import ast
 import pandas as pd
+import geopandas as gpd
 import json
 import logging
 import genet.core as core
@@ -24,14 +25,45 @@ def read_matsim(path_to_network: str, path_to_schedule: str = None, path_to_vehi
 def read_json(network_path: str, epsg: str, schedule_path: str = ''):
     """
     Reads Network and, if passed, Schedule JSON files in to a genet.Network
-    :param network_path: path to json or geojson network file
-    :param schedule_path: path to json or geojson schedule file
+    :param network_path: path to json network file
+    :param schedule_path: path to json schedule file
     :param epsg: projection for the network, e.g. 'epsg:27700'
     :return: genet.Network object
     """
     n = read_json_network(network_path, epsg)
     if schedule_path:
         n.schedule = read_json_schedule(schedule_path, epsg)
+    return n
+
+
+def read_geojson_network(nodes_path: str, links_path: str, epsg: str):
+    """
+    Reads Network graph from JSON file.
+    :param nodes_path: path to geojson network nodes file
+    :param links_path: path to geojson network links file
+    :param epsg: projection for the network, e.g. 'epsg:27700'
+    :return: genet.Network object
+    """
+    logging.info(f'Reading Network nodes from {nodes_path}')
+    nodes = gpd.read_file(nodes_path)
+    nodes = nodes.drop('geometry', axis=1)
+    nodes['id'] = nodes['id'].astype(int).astype(str)
+    nodes = nodes.set_index('id', drop=False)
+    if 'index' in nodes.columns:
+        nodes = nodes.drop('index', axis=1)
+
+    logging.info(f'Reading Network links from {links_path}')
+    links = gpd.read_file(links_path).to_crs(epsg)
+    links['modes'] = links['modes'].apply(lambda x: set(x.split(',')))
+    links['id'] = links['id'].astype(int).astype(str)
+    links = links.set_index('id', drop=False)
+    if 'index' in links.columns:
+        links = links.drop('index', axis=1)
+
+    n = core.Network(epsg=epsg)
+    n.add_nodes(nodes.T.to_dict())
+    n.add_links(links.T.to_dict())
+    n.change_log = change_log.ChangeLog()
     return n
 
 

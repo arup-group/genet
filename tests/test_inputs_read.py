@@ -78,6 +78,49 @@ def test_reading_json():
     )
 
 
+geojson_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "geojson"))
+
+def test_reading_geojson():
+    n = read.read_geojson_network(nodes_path=os.path.join(geojson_test_folder, 'network_nodes.geojson'),
+                                  links_path=os.path.join(geojson_test_folder, 'network_links.geojson'),
+                                  epsg='epsg:27700')
+    assert_semantically_equal(
+        dict(n.nodes()),
+        {'25508485': {'x': 528489.467895946, 'y': 182206.20303669575, 'lat': 51.52416253323928,
+                      'lon': -0.14930198709481451, 's2_id': 5.221390301001263e+18, 'id': '25508485'},
+         '21667818': {'x': 528504.1342843144, 'y': 182155.7435136598, 'lat': 51.523705733239396,
+                      'lon': -0.14910908709500162, 's2_id': 5.221390302696205e+18, 'id': '21667818'},
+         '295927764': {'x': 528358.873300625, 'y': 182147.63137142852, 'lat': 51.52366583323935,
+                       'lon': -0.15120468709594614, 's2_id': 5.221390299830573e+18, 'id': '295927764'},
+         '200048': {'x': 528364.6182191424, 'y': 182094.16422237465, 'lat': 51.52318403323943,
+                    'lon': -0.1511413870962065, 's2_id': 5.221390299873156e+18, 'id': '200048'}}
+    )
+    links = dict(n.links())
+    assert [(round(x, 6), round(y, 6)) for x,y in links['1']['geometry'].coords] == [(528489.467896, 182206.203037), (528504.134284, 182155.743514)]
+    assert [(round(x, 6), round(y, 6)) for x,y in links['10']['geometry'].coords] == [(528364.618219, 182094.164222), (528358.873301, 182147.631371)]
+    del links['1']['geometry']
+    del links['10']['geometry']
+    assert_semantically_equal(
+        links,
+        {'1': {'from': '25508485', 'modes': {'car'}, 'oneway': '1', 's2_to': 5221390302696205321,
+               'attributes': {
+                   'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
+                   'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
+                   'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
+                   'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}},
+               'capacity': 600.0, 'freespeed': 4.166666666666667, 'to': '21667818', 'length': 52.76515108787025,
+               'permlanes': 1.0, 'id': '1', 's2_from': 5221390301001263407},
+         '10': {'from': '200048', 'modes': {'car'}, 'oneway': '1', 's2_to': 5221390299830573099,
+                'attributes': {
+                    'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
+                    'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
+                    'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997927'},
+                    'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Macfarren Place'}},
+                'capacity': 600.0, 'freespeed': 4.166666666666667, 'to': '295927764', 'length': 53.775084358791744,
+                'permlanes': 1.0, 'id': '10', 's2_from': 5221390299873156021}}
+    )
+
+
 csv_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "csv"))
 
 
