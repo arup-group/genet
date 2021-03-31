@@ -65,19 +65,19 @@ def read_gtfs_to_db_like_tables(path):
 
         if "stop_times" in file:
             logging.info("Reading stop times")
-            stop_times_db = pd.read_csv(file)
+            stop_times_db = pd.read_csv(file, dtype={'trip_id': str, 'stop_id': str}, low_memory=False)
 
         elif "stops" in file:
             logging.info("Reading stops")
-            stops_db = pd.read_csv(file)
+            stops_db = pd.read_csv(file, dtype={'stop_id': str})
 
         elif "trips" in file:
             logging.info("Reading trips")
-            trips_db = pd.read_csv(file)
+            trips_db = pd.read_csv(file, dtype={'route_id': str, 'service_id': str, 'trip_id': str})
 
         elif "routes" in file:
             logging.info("Reading routes")
-            routes_db = pd.read_csv(file)
+            routes_db = pd.read_csv(file, dtype={'route_id': str})
 
     return stop_times_db, stops_db, trips_db, routes_db
 
