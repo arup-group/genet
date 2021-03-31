@@ -187,9 +187,9 @@ def gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, serv
     stops_db['s2_id'] = stops_db.apply(
         lambda x: spatial.generate_index_s2(lat=float(x['lat']), lng=float(x['lon'])), axis=1)
     nx.set_node_attributes(g, stops_db[stops_db['stop_id'].isin(stops)].set_index('stop_id').T.to_dict())
-    nx.set_node_attributes(g, pd.DataFrame(stop_groups['route_id'].apply(list)).rename(
+    nx.set_node_attributes(g, pd.DataFrame(stop_groups['route_id'].apply(set)).rename(
         columns={'route_id': 'routes'}).T.to_dict())
-    nx.set_node_attributes(g, pd.DataFrame(stop_groups['service_id'].apply(list)).rename(
+    nx.set_node_attributes(g, pd.DataFrame(stop_groups['service_id'].apply(set)).rename(
         columns={'service_id': 'services'}).T.to_dict())
 
     # and edges
@@ -202,9 +202,9 @@ def gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, serv
              to_stop=stop_cols[:, 1])
     edge_groups = edges.groupby(['from_stop', 'to_stop'])
     g.add_edges_from(edge_groups.groups)
-    nx.set_edge_attributes(g, pd.DataFrame(edge_groups['route_id'].apply(list)).rename(
+    nx.set_edge_attributes(g, pd.DataFrame(edge_groups['route_id'].apply(set)).rename(
         columns={'route_id': 'routes'}).T.to_dict())
-    nx.set_edge_attributes(g, pd.DataFrame(edge_groups['service_id'].apply(list)).rename(
+    nx.set_edge_attributes(g, pd.DataFrame(edge_groups['service_id'].apply(set)).rename(
         columns={'service_id': 'services'}).T.to_dict())
     return g
 
