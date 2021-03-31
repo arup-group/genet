@@ -244,7 +244,7 @@ def correct_stops_db():
 @pytest.fixture()
 def correct_trips_db():
     return pd.DataFrame(
-        {'route_id': {0: 1001, 1: 1002}, 'service_id': {0: 6630, 1: 6631}, 'trip_id': {0: 'BT1', 1: 'RT1'},
+        {'route_id': {0: '1001', 1: '1002'}, 'service_id': {0: '6630', 1: '6631'}, 'trip_id': {0: 'BT1', 1: 'RT1'},
          'trip_headsign': {0: 'Bus Test trip', 1: 'Rail Test trip'}, 'block_id': {0: float('nan'), 1: float('nan')},
          'wheelchair_accessible': {0: 0, 1: 0}, 'trip_direction_name': {0: float('nan'), 1: float('nan')},
          'exceptional': {0: float('nan'), 1: float('nan')}}
@@ -254,7 +254,7 @@ def correct_trips_db():
 @pytest.fixture()
 def correct_routes_db():
     return pd.DataFrame(
-        {'route_id': {0: 1001, 1: 1002}, 'agency_id': {0: 'OP550', 1: 'OP550'},
+        {'route_id': {0: '1001', 1: '1002'}, 'agency_id': {0: 'OP550', 1: 'OP550'},
          'route_short_name': {0: 'BTR', 1: 'RTR'}, 'route_long_name': {0: 'Bus Test Route', 1: 'Rail Test Route'},
          'route_type': {0: 3, 1: 2}, 'route_url': {0: float('nan'), 1: float('nan')},
          'route_color': {0: 'CE312D', 1: 'CE312D'},
