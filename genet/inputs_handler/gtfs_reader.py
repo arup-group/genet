@@ -38,7 +38,7 @@ def read_services_from_calendar(path, day):
         file = os.path.join(path, file_name)
         if ("calendar" in file) and (not ("dates" in file)):
             calendar_present = True
-            with open(file, mode='r') as infile:
+            with open(file, mode='r', encoding="utf-8-sig") as infile:
                 reader = csv.DictReader(infile)
                 for row in reader:
                     if (int(day) in range(int(row['start_date']), int(row['end_date']))) and \
