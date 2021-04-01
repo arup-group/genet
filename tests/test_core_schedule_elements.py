@@ -232,46 +232,62 @@ def test_generating_reference_edges_for_service(schedule):
 @pytest.fixture()
 def basic_service():
     return Service(id='service1',
-                   routes=[
-                       Route(id='1', route_short_name='route1', mode='bus',
-                             stops=[
-                                 Stop('0', x=1, y=1, epsg='epsg:4326'),
-                                 Stop('1', x=2, y=2, epsg='epsg:4326'),
-                                 Stop('2', x=3, y=3, epsg='epsg:4326')
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['00:00:00', '00:02:00'],
-                             departure_offsets=['00:00:00', '00:02:00'],
-                             route=[]),
-                       Route(id='2', route_short_name='route2', mode='bus',
-                             stops=[
-                                 Stop('1', x=2, y=2, epsg='epsg:4326'),
-                                 Stop('2', x=3, y=3, epsg='epsg:4326')
-                             ],
-                             trips={'route2_05:40:00': '05:40:00'},
-                             arrival_offsets=['00:00:00', '00:03:00'],
-                             departure_offsets=['00:00:00', '00:05:00'],
-                             route=[]),
-                       Route(id='3', route_short_name='route3', mode='bus',
-                             stops=[
-                                 Stop('0', x=1, y=1, epsg='epsg:4326'),
-                                 Stop('1', x=2, y=2, epsg='epsg:4326'),
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['00:00:00', '00:02:00'],
-                             departure_offsets=['00:00:00', '00:02:00'],
-                             route=[]),
-                       Route(id='4', route_short_name='route4', mode='bus',
-                             stops=[
-                                 Stop('2', x=3, y=3, epsg='epsg:4326'),
-                                 Stop('1', x=2, y=2, epsg='epsg:4326'),
-                                 Stop('0', x=1, y=1, epsg='epsg:4326')
-                             ],
-                             trips={'route2_05:40:00': '05:40:00'},
-                             arrival_offsets=['00:00:00', '00:03:00'],
-                             departure_offsets=['00:00:00', '00:05:00'],
-                             route=[])
-                   ])
+                      routes=[
+                          Route(id='1', route_short_name='route1', mode='bus',
+                                stops=[
+                                    Stop('0', x=1, y=1, epsg='epsg:4326'),
+                                    Stop('1', x=2, y=2, epsg='epsg:4326'),
+                                    Stop('2', x=3, y=3, epsg='epsg:4326')
+                                ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_1']
+                                },
+                                arrival_offsets=['00:00:00', '00:02:00'],
+                                departure_offsets=['00:00:00', '00:02:00'],
+                                route=[]),
+                          Route(id='2', route_short_name='route2', mode='bus',
+                                stops=[
+                                    Stop('1', x=2, y=2, epsg='epsg:4326'),
+                                    Stop('2', x=3, y=3, epsg='epsg:4326')
+                                ],
+                                trips={
+                                    'trip_id': ['route2_05:40:00'],
+                                    'trip_departure_time': ['05:40:00'],
+                                    'vehicle_id': ['veh_bus_2']
+                                },
+                                arrival_offsets=['00:00:00', '00:03:00'],
+                                departure_offsets=['00:00:00', '00:05:00'],
+                                route=[]),
+                          Route(id='3', route_short_name='route3', mode='bus',
+                                stops=[
+                                    Stop('0', x=1, y=1, epsg='epsg:4326'),
+                                    Stop('1', x=2, y=2, epsg='epsg:4326'),
+                                ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_3']
+                                },
+                                arrival_offsets=['00:00:00', '00:02:00'],
+                                departure_offsets=['00:00:00', '00:02:00'],
+                                route=[]),
+                          Route(id='4', route_short_name='route4', mode='bus',
+                                stops=[
+                                    Stop('2', x=3, y=3, epsg='epsg:4326'),
+                                    Stop('1', x=2, y=2, epsg='epsg:4326'),
+                                    Stop('0', x=1, y=1, epsg='epsg:4326')
+                                ],
+                                trips={
+                                    'trip_id': ['route2_05:40:00'],
+                                    'trip_departure_time': ['05:40:00'],
+                                    'vehicle_id': ['veh_bus_4']
+                                },
+                                arrival_offsets=['00:00:00', '00:03:00'],
+                                departure_offsets=['00:00:00', '00:05:00'],
+                                route=[])
+                      ])
 
 
 def test_splitting_service_on_direction_finds_two_distinct_directions(basic_service):
@@ -290,37 +306,49 @@ def test_splitting_service_graph_finds_two_distinct_directions(basic_service):
 @pytest.fixture()
 def service_with_separated_routes():
     return Service(id='service1',
-                   routes=[
-                       Route(id='1', route_short_name='route1', mode='bus',
-                             stops=[
-                                 Stop('0', x=0, y=0, epsg='epsg:4326'),
-                                 Stop('1', x=0, y=1, epsg='epsg:4326'),
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['00:00:00', '00:02:00'],
-                             departure_offsets=['00:00:00', '00:02:00'],
-                             route=[]),
-                       Route(id='2', route_short_name='route2', mode='bus',
-                             stops=[
-                                 Stop('2', x=0, y=2, epsg='epsg:4326'),
-                                 Stop('3', x=0, y=3, epsg='epsg:4326'),
-                             ],
-                             trips={'route2_05:40:00': '05:40:00'},
-                             arrival_offsets=['00:00:00', '00:03:00'],
-                             departure_offsets=['00:00:00', '00:05:00'],
-                             route=[]),
-                       Route(id='3', route_short_name='route3', mode='bus',
-                             stops=[
-                                 Stop('0', x=0, y=0, epsg='epsg:4326'),
-                                 Stop('1', x=0, y=1, epsg='epsg:4326'),
-                                 Stop('2', x=0, y=2, epsg='epsg:4326'),
-                                 Stop('3', x=0, y=3, epsg='epsg:4326')
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['00:00:00', '00:02:00'],
-                             departure_offsets=['00:00:00', '00:02:00'],
-                             route=['0', '1', '2', '3'])
-                   ])
+                      routes=[
+                          Route(id='1', route_short_name='route1', mode='bus',
+                                stops=[
+                                    Stop('0', x=0, y=0, epsg='epsg:4326'),
+                                    Stop('1', x=0, y=1, epsg='epsg:4326'),
+                                ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_1']
+                                },
+                                arrival_offsets=['00:00:00', '00:02:00'],
+                                departure_offsets=['00:00:00', '00:02:00'],
+                                route=[]),
+                          Route(id='2', route_short_name='route2', mode='bus',
+                                stops=[
+                                    Stop('2', x=0, y=2, epsg='epsg:4326'),
+                                    Stop('3', x=0, y=3, epsg='epsg:4326'),
+                                ],
+                                trips={
+                                    'trip_id': ['route2_05:40:00'],
+                                    'trip_departure_time': ['05:40:00'],
+                                    'vehicle_id': ['veh_bus_2']
+                                },
+                                arrival_offsets=['00:00:00', '00:03:00'],
+                                departure_offsets=['00:00:00', '00:05:00'],
+                                route=[]),
+                          Route(id='3', route_short_name='route3', mode='bus',
+                                stops=[
+                                    Stop('0', x=0, y=0, epsg='epsg:4326'),
+                                    Stop('1', x=0, y=1, epsg='epsg:4326'),
+                                    Stop('2', x=0, y=2, epsg='epsg:4326'),
+                                    Stop('3', x=0, y=3, epsg='epsg:4326')
+                                ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_3']
+                                },
+                                arrival_offsets=['00:00:00', '00:02:00'],
+                                departure_offsets=['00:00:00', '00:02:00'],
+                                route=['0', '1', '2', '3'])
+                      ])
 
 
 def test_splitting_service_on_direction_combines_separated_routes(service_with_separated_routes):
@@ -337,50 +365,66 @@ def test_splitting_service_graph_combines_separated_routes(service_with_separate
 @pytest.fixture()
 def service_with_loopy_routes():
     return Service(id='service1',
-                   routes=[
-                       Route(id='1_dir_1', route_short_name='route1', mode='bus',
-                             stops=[
-                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
-                                 Stop('B', x=0, y=-1, epsg='epsg:4326'),
-                                 Stop('C', x=-1, y=0, epsg='epsg:4326'),
-                                 Stop('D', x=0, y=1, epsg='epsg:4326'),
-                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['', '', ''],
-                             departure_offsets=['', '', '']),
-                       Route(id='2_dir_1', route_short_name='route2', mode='bus',
-                             stops=[
-                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
-                                 Stop('C', x=-1, y=0, epsg='epsg:4326'),
-                                 Stop('D', x=0, y=1, epsg='epsg:4326'),
-                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
-                             ],
-                             trips={'route2_05:40:00': '05:40:00'},
-                             arrival_offsets=['', '', ''],
-                             departure_offsets=['', '', '']),
-                       Route(id='3_dir_2', route_short_name='route3', mode='bus',
-                             stops=[
-                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
-                                 Stop('D', x=0, y=1, epsg='epsg:4326'),
-                                 Stop('C', x=-1, y=0, epsg='epsg:4326'),
-                                 Stop('B', x=0, y=-1, epsg='epsg:4326'),
-                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['', '', ''],
-                             departure_offsets=['', '', '']),
-                       Route(id='4_dir_2', route_short_name='route4', mode='bus',
-                             stops=[
-                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
-                                 Stop('D', x=0, y=1, epsg='epsg:4326'),
-                                 Stop('C', x=-1, y=0, epsg='epsg:4326'),
-                                 Stop('A', x=1, y=0, epsg='epsg:4326'),
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['', '', ''],
-                             departure_offsets=['', '', '']),
-                   ])
+                      routes=[
+                          Route(id='1_dir_1', route_short_name='route1', mode='bus',
+                                stops=[
+                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
+                                    Stop('B', x=0, y=-1, epsg='epsg:4326'),
+                                    Stop('C', x=-1, y=0, epsg='epsg:4326'),
+                                    Stop('D', x=0, y=1, epsg='epsg:4326'),
+                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
+                                    ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_1']
+                                },
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='2_dir_1', route_short_name='route2', mode='bus',
+                                stops=[
+                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
+                                    Stop('C', x=-1, y=0, epsg='epsg:4326'),
+                                    Stop('D', x=0, y=1, epsg='epsg:4326'),
+                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
+                                ],
+                                trips={
+                                    'trip_id': ['route2_05:40:00'],
+                                    'trip_departure_time': ['05:40:00'],
+                                    'vehicle_id': ['veh_bus_2']
+                                },
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='3_dir_2', route_short_name='route3', mode='bus',
+                                stops=[
+                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
+                                    Stop('D', x=0, y=1, epsg='epsg:4326'),
+                                    Stop('C', x=-1, y=0, epsg='epsg:4326'),
+                                    Stop('B', x=0, y=-1, epsg='epsg:4326'),
+                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
+                                ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_3']
+                                },
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='4_dir_2', route_short_name='route4', mode='bus',
+                                stops=[
+                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
+                                    Stop('D', x=0, y=1, epsg='epsg:4326'),
+                                    Stop('C', x=-1, y=0, epsg='epsg:4326'),
+                                    Stop('A', x=1, y=0, epsg='epsg:4326'),
+                                ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_4']
+                                },
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                      ])
 
 
 def test_splitting_service_on_direction_with_loopy_routes(service_with_loopy_routes):
@@ -402,44 +446,59 @@ def test_splitting_service_graph_with_loopy_routes(service_with_loopy_routes):
 @pytest.fixture()
 def service_with_routes_that_have_non_overlapping_graph_edges():
     return Service(id='service1',
-                   routes=[
-                       Route(id='1_dir_1', route_short_name='route1', mode='rail',
-                             stops=[
-                                 Stop('A', x=0, y=1, epsg='epsg:4326'),
-                                 Stop('B', x=0, y=2, epsg='epsg:4326'),
-                                 Stop('C', x=0, y=3, epsg='epsg:4326'),
-                                 Stop('D', x=0, y=4, epsg='epsg:4326')
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['', '', ''],
-                             departure_offsets=['', '', '']),
-                       Route(id='2_dir_1', route_short_name='route2', mode='rail',
-                             stops=[
-                                 Stop('A', x=0, y=1, epsg='epsg:4326'),
-                                 Stop('C', x=0, y=3, epsg='epsg:4326')
-                             ],
-                             trips={'route2_05:40:00': '05:40:00'},
-                             arrival_offsets=['', '', ''],
-                             departure_offsets=['', '', '']),
-                       Route(id='3_dir_2', route_short_name='route3', mode='rail',
-                             stops=[
-                                 Stop('C', x=0, y=3, epsg='epsg:4326'),
-                                 Stop('B', x=0, y=2, epsg='epsg:4326'),
-                                 Stop('A', x=0, y=1, epsg='epsg:4326')
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['', '', ''],
-                             departure_offsets=['', '', '']),
-                       Route(id='4_dir_2', route_short_name='route4', mode='rail',
-                             stops=[
-                                 Stop('C', x=0, y=3, epsg='epsg:4326'),
-                                 Stop('A', x=0, y=1, epsg='epsg:4326')
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['', '', ''],
-                             departure_offsets=['', '', '']),
-                   ])
-
+                      routes=[
+                          Route(id='1_dir_1', route_short_name='route1', mode='rail',
+                                stops=[
+                                    Stop('A', x=0, y=1, epsg='epsg:4326'),
+                                    Stop('B', x=0, y=2, epsg='epsg:4326'),
+                                    Stop('C', x=0, y=3, epsg='epsg:4326'),
+                                    Stop('D', x=0, y=4, epsg='epsg:4326')
+                                    ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_1']
+                                },
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='2_dir_1', route_short_name='route2', mode='rail',
+                                stops=[
+                                    Stop('A', x=0, y=1, epsg='epsg:4326'),
+                                    Stop('C', x=0, y=3, epsg='epsg:4326')
+                                ],
+                                trips={
+                                    'trip_id': ['route2_05:40:00'],
+                                    'trip_departure_time': ['05:40:00'],
+                                    'vehicle_id': ['veh_bus_2']
+                                },
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='3_dir_2', route_short_name='route3', mode='rail',
+                                stops=[
+                                    Stop('C', x=0, y=3, epsg='epsg:4326'),
+                                    Stop('B', x=0, y=2, epsg='epsg:4326'),
+                                    Stop('A', x=0, y=1, epsg='epsg:4326')
+                                ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_3']
+                                },
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='4_dir_2', route_short_name='route4', mode='rail',
+                                stops=[
+                                    Stop('C', x=0, y=3, epsg='epsg:4326'),
+                                    Stop('A', x=0, y=1, epsg='epsg:4326')
+                                ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_4']
+                                },
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                      ])
 
 def test_splitting_service_on_direction_with_non_overlapping_graph_edges_produces_two_directions(
         service_with_routes_that_have_non_overlapping_graph_edges):
@@ -461,44 +520,59 @@ def test_splitting_service_graph_with_non_overlapping_graph_edges_produces_two_d
 def service_edge_case_loopy_and_non_overlapping_graph():
     # inspired by district and circle LU lines
     return Service(id='service1',
-                   routes=[
-                       Route(id='1_dir_1', route_short_name='route1', mode='rail',
-                             stops=[
-                                 Stop('A', x=-1, y=0, epsg='epsg:4326'),
-                                 Stop('C', x=-3, y=0, epsg='epsg:4326')
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['', '', ''],
-                             departure_offsets=['', '', '']),
-                       Route(id='2_dir_2', route_short_name='route2', mode='rail',
-                             stops=[
-                                 Stop('F', x=-6, y=0, epsg='epsg:4326'),
-                                 Stop('A', x=-1, y=0, epsg='epsg:4326')
-                             ],
-                             trips={'route2_05:40:00': '05:40:00'},
-                             arrival_offsets=['', '', ''],
-                             departure_offsets=['', '', '']),
-                       Route(id='3_dir_1', route_short_name='route3', mode='rail',
-                             stops=[
-                                 Stop('E', x=-5, y=0, epsg='epsg:4326'),
-                                 Stop('F', x=-6, y=0, epsg='epsg:4326')
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['', '', ''],
-                             departure_offsets=['', '', '']),
-                       Route(id='4_dir_1', route_short_name='route4', mode='rail',
-                             stops=[
-                                 Stop('A', x=-1, y=0, epsg='epsg:4326'),
-                                 Stop('B', x=-2, y=0, epsg='epsg:4326'),
-                                 Stop('C', x=-3, y=0, epsg='epsg:4326'),
-                                 Stop('D', x=-4, y=0, epsg='epsg:4326'),
-                                 Stop('E', x=-5, y=0, epsg='epsg:4326')
-                             ],
-                             trips={'route1_04:40:00': '04:40:00'},
-                             arrival_offsets=['', '', ''],
-                             departure_offsets=['', '', '']),
-                   ])
-
+                      routes=[
+                          Route(id='1_dir_1', route_short_name='route1', mode='rail',
+                                stops=[
+                                    Stop('A', x=-1, y=0, epsg='epsg:4326'),
+                                    Stop('C', x=-3, y=0, epsg='epsg:4326')
+                                ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_1']
+                                },
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='2_dir_2', route_short_name='route2', mode='rail',
+                                stops=[
+                                    Stop('F', x=-6, y=0, epsg='epsg:4326'),
+                                    Stop('A', x=-1, y=0, epsg='epsg:4326')
+                                ],
+                                trips={
+                                    'trip_id': ['route2_05:40:00'],
+                                    'trip_departure_time': ['05:40:00'],
+                                    'vehicle_id': ['veh_bus_2']
+                                },
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='3_dir_1', route_short_name='route3', mode='rail',
+                                stops=[
+                                    Stop('E', x=-5, y=0, epsg='epsg:4326'),
+                                    Stop('F', x=-6, y=0, epsg='epsg:4326')
+                                ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_3']
+                                },
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                          Route(id='4_dir_1', route_short_name='route4', mode='rail',
+                                stops=[
+                                    Stop('A', x=-1, y=0, epsg='epsg:4326'),
+                                    Stop('B', x=-2, y=0, epsg='epsg:4326'),
+                                    Stop('C', x=-3, y=0, epsg='epsg:4326'),
+                                    Stop('D', x=-4, y=0, epsg='epsg:4326'),
+                                    Stop('E', x=-5, y=0, epsg='epsg:4326')
+                                ],
+                                trips={
+                                    'trip_id': ['route1_04:40:00'],
+                                    'trip_departure_time': ['04:40:00'],
+                                    'vehicle_id': ['veh_bus_4']
+                                },
+                                arrival_offsets=['', '', ''],
+                                departure_offsets=['', '', '']),
+                      ])
 
 def test_splitting_service_edge_case_on_direction_results_in_two_directions(
         service_edge_case_loopy_and_non_overlapping_graph):
@@ -624,21 +698,21 @@ def test_mode_map_for_route(schedule):
 def test_schedule_subgraph(schedule):
     sub_g = schedule.subgraph({('1', '2'), ('0', '1')})
 
-    assert_semantically_equal(list(sub_g.edges(data=True)),
-                              [('1', '2', {'services': ['service1'], 'routes': ['2']}),
-                               ('0', '1', {'services': ['service1'], 'routes': ['1']})])
+    assert_semantically_equal(sub_g.edges(data=True)._adjdict,
+                              {'2': {}, '0': {'1': {'services': {'service1'}, 'routes': {'1'}}},
+                               '1': {'2': {'services': {'service1'}, 'routes': {'2'}}}})
 
     assert_semantically_equal(dict(sub_g.nodes(data=True)),
-                              {'0': {'services': ['service1'], 'routes': ['1'], 'id': '0', 'x': 529455.7452394223,
+                              {'0': {'services': {'service1'}, 'routes': {'1'}, 'id': '0', 'x': 529455.7452394223,
                                      'y': 182401.37630677427, 'epsg': 'epsg:27700', 'name': '',
                                      'lat': 51.525696033239186, 'lon': -0.13530998708775874,
                                      's2_id': 5221390668020036699, 'additional_attributes': {'linkRefId'},
                                      'linkRefId': '0'},
-                               '1': {'services': ['service1'], 'routes': ['1', '2'], 'id': '1', 'x': 529350.7866124967,
+                               '1': {'services': {'service1'}, 'routes': {'1', '2'}, 'id': '1', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
                                      'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
                                      'additional_attributes': {'linkRefId'}, 'linkRefId': '1'},
-                               '2': {'services': ['service1'], 'routes': ['2'], 'id': '2', 'x': 529350.7866124967,
+                               '2': {'services': {'service1'}, 'routes': {'2'}, 'id': '2', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
                                      'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
                                      'additional_attributes': {'linkRefId'}, 'linkRefId': '2'}})
@@ -647,16 +721,16 @@ def test_schedule_subgraph(schedule):
 def test_service_subgraph(schedule):
     sub_g = schedule['service1'].subgraph({('0', '1')})
 
-    assert_semantically_equal(list(sub_g.edges(data=True)),
-                              [('0', '1', {'services': ['service1'], 'routes': ['1']})])
+    assert_semantically_equal(sub_g.edges(data=True)._adjdict,
+                              {'0': {'1': {'services': {'service1'}, 'routes': {'1'}}}, '1': {}})
 
     assert_semantically_equal(dict(sub_g.nodes(data=True)),
-                              {'0': {'services': ['service1'], 'routes': ['1'], 'id': '0', 'x': 529455.7452394223,
+                              {'0': {'services': {'service1'}, 'routes': {'1'}, 'id': '0', 'x': 529455.7452394223,
                                      'y': 182401.37630677427, 'epsg': 'epsg:27700', 'name': '',
                                      'lat': 51.525696033239186, 'lon': -0.13530998708775874,
                                      's2_id': 5221390668020036699, 'additional_attributes': {'linkRefId'},
                                      'linkRefId': '0'},
-                               '1': {'services': ['service1'], 'routes': ['1', '2'], 'id': '1', 'x': 529350.7866124967,
+                               '1': {'services': {'service1'}, 'routes': {'1', '2'}, 'id': '1', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
                                      'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
                                      'additional_attributes': {'linkRefId'}, 'linkRefId': '1'}})
@@ -665,15 +739,15 @@ def test_service_subgraph(schedule):
 def test_route_subgraph(schedule):
     sub_g = schedule.route('1').subgraph({('0', '1')})
 
-    assert_semantically_equal(list(sub_g.edges(data=True)),
-                              [('0', '1', {'services': ['service1'], 'routes': ['1']})])
+    assert_semantically_equal(sub_g.edges(data=True)._adjdict,
+                              {'0': {'1': {'services': {'service1'}, 'routes': {'1'}}}, '1': {}})
 
     assert_semantically_equal(dict(sub_g.nodes(data=True)),
-                              {'1': {'services': ['service1'], 'routes': ['2', '1'], 'id': '1', 'x': 529350.7866124967,
+                              {'1': {'services': {'service1'}, 'routes': {'2', '1'}, 'id': '1', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'lat': 51.52560003323918,
                                      'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
                                      'additional_attributes': {'linkRefId'}, 'linkRefId': '1', 'name': ''},
-                               '0': {'services': ['service1'], 'routes': ['1'], 'id': '0', 'x': 529455.7452394223,
+                               '0': {'services': {'service1'}, 'routes': {'1'}, 'id': '0', 'x': 529455.7452394223,
                                      'y': 182401.37630677427, 'epsg': 'epsg:27700', 'lat': 51.525696033239186,
                                      'lon': -0.13530998708775874, 's2_id': 5221390668020036699,
                                      'additional_attributes': {'linkRefId'}, 'linkRefId': '0', 'name': ''}})
@@ -686,16 +760,16 @@ def test_reading_gtfs_into_schedule(correct_schedule_dict_from_test_gtfs, correc
     s.read_gtfs_schedule('some_path_to_gtfs', 'day_for_gtfs')
 
     assert_semantically_equal(dict(s.graph().nodes(data=True)),
-                              {'RSN': {'services': ['1002'], 'routes': ['1002_0'], 'id': 'RSN', 'x': 529061.7214134948,
+                              {'RSN': {'services': {'1002'}, 'routes': {'1002_0'}, 'id': 'RSN', 'x': 529061.7214134948,
                                        'y': 182106.20208785852, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.5231335,
                                        'lon': -0.1410946, 's2_id': 5221390332291192399, 'additional_attributes': set()},
-                               'RSE': {'services': ['1002'], 'routes': ['1002_0'], 'id': 'RSE', 'x': 528998.7798063147,
+                               'RSE': {'services': {'1002'}, 'routes': {'1002_0'}, 'id': 'RSE', 'x': 528998.7798063147,
                                        'y': 181673.74458124593, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.5192615,
                                        'lon': -0.1421595, 's2_id': 5221390324026756531, 'additional_attributes': set()},
-                               'BSE': {'services': ['1001'], 'routes': ['1001_0'], 'id': 'BSE', 'x': 529044.4274520243,
+                               'BSE': {'services': {'1001'}, 'routes': {'1001_0'}, 'id': 'BSE', 'x': 529044.4274520243,
                                        'y': 182056.01144580863, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.5226864,
                                        'lon': -0.1413621, 's2_id': 5221390325135889957, 'additional_attributes': set()},
-                               'BSN': {'services': ['1001'], 'routes': ['1001_0'], 'id': 'BSN', 'x': 529138.2570252238,
+                               'BSN': {'services': {'1001'}, 'routes': {'1001_0'}, 'id': 'BSN', 'x': 529138.2570252238,
                                        'y': 181939.72009660664, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.5216199,
                                        'lon': -0.140053, 's2_id': 5221390684150342605, 'additional_attributes': set()}})
 
@@ -731,42 +805,42 @@ def test_reading_gtfs_into_non_empty_schedule_gives_consistently_projected_stops
     s.read_gtfs_schedule('some_path_to_gtfs', 'day_for_gtfs')
 
     assert_semantically_equal(dict(s.graph().nodes(data=True)),
-                              {'4': {'services': ['service2'], 'routes': ['3', '4'], 'id': '4', 'x': 529350.7866124967,
+                              {'4': {'services': {'service2'}, 'routes': {'3', '4'}, 'id': '4', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
                                      'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
                                      'additional_attributes': {'linkRefId'}, 'linkRefId': '4'},
-                               '5': {'services': ['service2'], 'routes': ['4'], 'id': '5', 'x': 529350.7866124967,
+                               '5': {'services': {'service2'}, 'routes': {'4'}, 'id': '5', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
                                      'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
                                      'additional_attributes': {'linkRefId'}, 'linkRefId': '5'},
-                               '3': {'services': ['service2'], 'routes': ['3'], 'id': '3', 'x': 529455.7452394223,
+                               '3': {'services': {'service2'}, 'routes': {'3'}, 'id': '3', 'x': 529455.7452394223,
                                      'y': 182401.37630677427, 'epsg': 'epsg:27700', 'name': '',
                                      'lat': 51.525696033239186, 'lon': -0.13530998708775874,
                                      's2_id': 5221390668020036699, 'additional_attributes': {'linkRefId'},
                                      'linkRefId': '3'},
-                               '2': {'services': ['service1'], 'routes': ['2'], 'id': '2', 'x': 529350.7866124967,
+                               '2': {'services': {'service1'}, 'routes': {'2'}, 'id': '2', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
                                      'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
                                      'additional_attributes': {'linkRefId'}, 'linkRefId': '2'},
-                               '0': {'services': ['service1'], 'routes': ['1'], 'id': '0', 'x': 529455.7452394223,
+                               '0': {'services': {'service1'}, 'routes': {'1'}, 'id': '0', 'x': 529455.7452394223,
                                      'y': 182401.37630677427, 'epsg': 'epsg:27700', 'name': '',
                                      'lat': 51.525696033239186, 'lon': -0.13530998708775874,
                                      's2_id': 5221390668020036699, 'additional_attributes': {'linkRefId'},
                                      'linkRefId': '0'},
-                               '1': {'services': ['service1'], 'routes': ['2', '1'], 'id': '1', 'x': 529350.7866124967,
+                               '1': {'services': {'service1'}, 'routes': {'2', '1'}, 'id': '1', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
                                      'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
                                      'additional_attributes': {'linkRefId'}, 'linkRefId': '1'},
-                               'RSN': {'services': ['1002'], 'routes': ['1002_0'], 'id': 'RSN', 'x': 529061.7214134948,
+                               'RSN': {'services': {'1002'}, 'routes': {'1002_0'}, 'id': 'RSN', 'x': 529061.7214134948,
                                        'y': 182106.20208785852, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.5231335,
                                        'lon': -0.1410946, 's2_id': 5221390332291192399, 'additional_attributes': set()},
-                               'RSE': {'services': ['1002'], 'routes': ['1002_0'], 'id': 'RSE', 'x': 528998.7798063147,
+                               'RSE': {'services': {'1002'}, 'routes': {'1002_0'}, 'id': 'RSE', 'x': 528998.7798063147,
                                        'y': 181673.74458124593, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.5192615,
                                        'lon': -0.1421595, 's2_id': 5221390324026756531, 'additional_attributes': set()},
-                               'BSE': {'services': ['1001'], 'routes': ['1001_0'], 'id': 'BSE', 'x': 529044.4274520243,
+                               'BSE': {'services': {'1001'}, 'routes': {'1001_0'}, 'id': 'BSE', 'x': 529044.4274520243,
                                        'y': 182056.01144580863, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.5226864,
                                        'lon': -0.1413621, 's2_id': 5221390325135889957, 'additional_attributes': set()},
-                               'BSN': {'services': ['1001'], 'routes': ['1001_0'], 'id': 'BSN', 'x': 529138.2570252238,
+                               'BSN': {'services': {'1001'}, 'routes': {'1001_0'}, 'id': 'BSN', 'x': 529138.2570252238,
                                        'y': 181939.72009660664, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.5216199,
                                        'lon': -0.140053, 's2_id': 5221390684150342605, 'additional_attributes': set()}})
 
