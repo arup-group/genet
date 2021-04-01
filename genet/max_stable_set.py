@@ -313,7 +313,7 @@ class MaxStableSet:
 
     def _access_link_data(self, link_id):
         try:
-            link_data = self.network_spatial_tree.nodes[link_id]
+            link_data = self.network_spatial_tree.links.loc[link_id, :].to_dict()
         except KeyError:
             # that link must be artificial
             if 'artificial_link' in link_id:
@@ -381,10 +381,10 @@ class ChangeSet:
     """
 
     def __init__(self, max_stable_set, df_route_data):
-        self.routes = list(df_route_data.index)
-        self.services = list({max_stable_set.pt_graph.graph['route_to_service_map'][r_id] for r_id in self.routes})
+        self.routes = set(df_route_data.index)
+        self.services = {max_stable_set.pt_graph.graph['route_to_service_map'][r_id] for r_id in self.routes}
         self.other_routes_in_service = {r_id for s_id in self.services for r_id in
-                                        max_stable_set.pt_graph.graph['service_to_route_map'][s_id]} - set(self.routes)
+                                        max_stable_set.pt_graph.graph['service_to_route_map'][s_id]} - self.routes
 
         self.new_links = self.new_network_links(max_stable_set)
         self.new_nodes = self.new_network_nodes(max_stable_set)

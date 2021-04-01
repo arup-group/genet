@@ -120,45 +120,45 @@ class ScheduleElement:
 
     def _remove_routes_from_nodes(self, nodes: Set[str], route_ids: Set[str]):
         for node in nodes:
-            self._graph.nodes[node]['routes'] = list(set(self._graph.nodes[node]['routes']) - route_ids)
+            self._graph.nodes[node]['routes'] = self._graph.nodes[node]['routes'] - route_ids
 
     def _remove_routes_from_edges(self, edges: Set[Tuple[str, str]], route_ids: Set[str]):
         for u, v in edges:
-            self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) - route_ids)
+            self._graph[u][v]['routes'] = self._graph[u][v]['routes'] - route_ids
 
     def _add_routes_to_nodes(self, nodes: Set[str], route_ids: Set[str]):
         for node in nodes:
-            self._graph.nodes[node]['routes'] = list((set(self._graph.nodes[node]['routes']) | route_ids))
+            self._graph.nodes[node]['routes'] = self._graph.nodes[node]['routes'] | route_ids
 
     def _add_routes_to_edges(self, edges: Set[Tuple[str, str]], route_ids: Set[str]):
         for u, v in edges:
-            self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) | route_ids)
+            self._graph[u][v]['routes'] = self._graph[u][v]['routes'] | route_ids
 
     def _remove_services_from_nodes(self, nodes: Set[str], service_ids: Set[str]):
         for node in nodes:
-            self._graph.nodes[node]['services'] = list(set(self._graph.nodes[node]['services']) - service_ids)
+            self._graph.nodes[node]['services'] = self._graph.nodes[node]['services'] - service_ids
 
     def _remove_services_from_edges(self, edges: Set[Tuple[str, str]], service_ids: Set[str]):
         for u, v in edges:
-            self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) - service_ids)
+            self._graph[u][v]['services'] = self._graph[u][v]['services'] - service_ids
 
     def _add_services_to_nodes(self, nodes: Set[str], service_ids: Set[str]):
         for node in nodes:
-            self._graph.nodes[node]['services'] = list((set(self._graph.nodes[node]['services']) | service_ids))
+            self._graph.nodes[node]['services'] = self._graph.nodes[node]['services'] | service_ids
 
     def _add_services_to_edges(self, edges: Set[Tuple[str, str]], service_ids: Set[str]):
         for u, v in edges:
-            self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) | service_ids)
+            self._graph[u][v]['services'] = self._graph[u][v]['services'] | service_ids
 
     def _generate_services_on_nodes(self, nodes: Set[str]):
         for node in nodes:
-            self._graph.nodes[node]['services'] = list(
-                {self._graph.graph['route_to_service_map'][r_id] for r_id in self._graph.nodes[node]['routes']})
+            self._graph.nodes[node]['services'] = {self._graph.graph['route_to_service_map'][r_id] for r_id in
+                                                   self._graph.nodes[node]['routes']}
 
     def _generate_services_on_edges(self, edges: Set[Tuple[str, str]]):
         for u, v in edges:
-            self._graph[u][v]['services'] = list(
-                {self._graph.graph['route_to_service_map'][r_id] for r_id in self._graph[u][v]['routes']})
+            self._graph[u][v]['services'] = {self._graph.graph['route_to_service_map'][r_id] for r_id in
+                                             self._graph[u][v]['routes']}
 
     def stop(self, stop_id):
         stop_data = {k: v for k, v in dict(self._graph.nodes[stop_id]).items() if k not in {'routes', 'services'}}
@@ -618,7 +618,7 @@ class Route(ScheduleElement):
         same_departure_offsets = self.departure_offsets == other.departure_offsets
 
         statement = same_route_name and same_mode and same_stops and same_trips and same_arrival_offsets \
-            and same_departure_offsets
+                    and same_departure_offsets
         return statement
 
     def isin_exact(self, routes: list):

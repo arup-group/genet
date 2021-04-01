@@ -143,62 +143,75 @@ def test_all_elements_in_schedule_share_the_same_graph(schedule):
 def test_removing_routes_from_nodes(schedule):
     schedule._remove_routes_from_nodes(nodes={'1'}, route_ids={'2'})
     assert_semantically_equal(dict(schedule._graph.nodes(data='routes')),
-                              {'4': ['3', '4'], '5': ['4'], '3': ['3'], '2': ['2'], '1': ['1'], '0': ['1']})
+                              {'4': {'4', '3'}, '5': {'4'}, '3': {'3'}, '0': {'1'}, '1': {'1'}, '2': {'2'}})
 
 
 def test_removing_routes_from_edges(schedule):
     schedule._remove_routes_from_edges(edges={('1', '2')}, route_ids={'2'})
-    assert_semantically_equal(list(schedule._graph.edges(data='routes')),
-                              [('4', '5', ['4']), ('3', '4', ['3']), ('1', '2', []), ('0', '1', ['1'])])
-
+    assert_semantically_equal(
+        schedule._graph.edges._adjdict,
+        {'4': {'5': {'services': {'service2'}, 'routes': {'4'}}},
+         '5': {},
+         '3': {'4': {'services': {'service2'}, 'routes': {'3'}}},
+         '0': {'1': {'services': {'service1'}, 'routes': {'1'}}},
+         '1': {'2': {'services': {'service1'}, 'routes': set()}},
+         '2': {}}
+    )
 
 def test_adding_routes_to_nodes(schedule):
     schedule._add_routes_to_nodes(nodes={'1'}, route_ids={'new_route'})
-    assert schedule._graph.nodes['0']['routes'] == ['1']
-    assert set(schedule._graph.nodes['1']['routes']) == {'2', '1', 'new_route'}
-    assert schedule._graph.nodes['2']['routes'] == ['2']
-    assert schedule._graph.nodes['3']['routes'] == ['3']
-    assert set(schedule._graph.nodes['4']['routes']) == {'4', '3'}
-    assert schedule._graph.nodes['5']['routes'] == ['4']
+    assert_semantically_equal(
+        dict(schedule._graph.nodes(data='routes')),
+        {'4': {'3', '4'}, '5': {'4'}, '3': {'3'}, '0': {'1'}, '2': {'2'}, '1': {'2', '1', 'new_route'}}
+    )
 
 
 def test_adding_routes_to_edges(schedule):
     schedule._add_routes_to_edges(edges={('1', '2')}, route_ids={'new_route'})
-    assert schedule._graph['0']['1']['routes'] == ['1']
-    assert set(schedule._graph['1']['2']['routes']) == {'2', 'new_route'}
-    assert schedule._graph['3']['4']['routes'] == ['3']
-    assert schedule._graph['4']['5']['routes'] == ['4']
+    assert_semantically_equal(
+        schedule._graph.edges._adjdict,
+        {'4': {'5': {'services': {'service2'}, 'routes': {'4'}}}, '5': {},
+         '3': {'4': {'services': {'service2'}, 'routes': {'3'}}}, '2': {},
+         '1': {'2': {'services': {'service1'}, 'routes': {'2', 'new_route'}}},
+         '0': {'1': {'services': {'service1'}, 'routes': {'1'}}}}
+    )
 
 
 def test_removing_services_from_nodes(schedule):
     schedule._remove_services_from_nodes(nodes={'2'}, service_ids={'service1'})
     assert_semantically_equal(dict(schedule._graph.nodes(data='services')),
-                              {'4': ['service2'], '5': ['service2'], '3': ['service2'], '1': ['service1'],
-                               '2': [], '0': ['service1']})
+                              {'4': {'service2'}, '5': {'service2'}, '3': {'service2'}, '1': {'service1'},
+                               '2': set(), '0': {'service1'}})
 
 
 def test_removing_services_from_edges(schedule):
     schedule._remove_services_from_edges(edges={('1', '2')}, service_ids={'service1'})
-    assert_semantically_equal(list(schedule._graph.edges(data='services')),
-                              [('4', '5', ['service2']), ('3', '4', ['service2']), ('1', '2', []), ('0', '1', ['service1'])])
+    assert_semantically_equal(
+        schedule._graph.edges._adjdict,
+        {'4': {'5': {'services': {'service2'}, 'routes': {'4'}}}, '5': {},
+         '3': {'4': {'services': {'service2'}, 'routes': {'3'}}}, '2': {},
+         '1': {'2': {'services': set(), 'routes': {'2'}}}, '0': {'1': {'services': {'service1'}, 'routes': {'1'}}}}
+    )
 
 
 def test_adding_services_to_nodes(schedule):
     schedule._add_services_to_nodes(nodes={'2'}, service_ids={'new_service'})
-    assert schedule._graph.nodes['0']['services'] == ['service1']
-    assert schedule._graph.nodes['1']['services'] == ['service1']
-    assert set(schedule._graph.nodes['2']['services']) == {'service1', 'new_service'}
-    assert schedule._graph.nodes['3']['services'] == ['service2']
-    assert schedule._graph.nodes['4']['services'] == ['service2']
-    assert schedule._graph.nodes['5']['services'] == ['service2']
+    assert_semantically_equal(
+        dict(schedule._graph.nodes(data='services')),
+        {'4': {'service2'}, '5': {'service2'}, '3': {'service2'}, '0': {'service1'}, '2': {'service1', 'new_service'},
+         '1': {'service1'}}
+    )
 
 
 def test_adding_services_to_edges(schedule):
     schedule._add_services_to_edges(edges={('1', '2')}, service_ids={'new_service'})
-    assert schedule._graph['0']['1']['services'] == ['service1']
-    assert set(schedule._graph['1']['2']['services']) == {'service1', 'new_service'}
-    assert schedule._graph['3']['4']['services'] == ['service2']
-    assert schedule._graph['4']['5']['services'] == ['service2']
+    assert_semantically_equal(
+        schedule._graph.edges._adjdict,
+        {'4': {'5': {'services': {'service2'}, 'routes': {'4'}}}, '5': {},
+         '3': {'4': {'services': {'service2'}, 'routes': {'3'}}},
+         '0': {'1': {'services': {'service1'}, 'routes': {'1'}}},
+         '1': {'2': {'services': {'service1', 'new_service'}, 'routes': {'2'}}}, '2': {}}
+    )
 
 
 def test_generating_reference_nodes_for_route(schedule):
