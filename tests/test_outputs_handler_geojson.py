@@ -219,12 +219,13 @@ def test_generating_standard_outputs(network, tmpdir):
                                                                                       'vehicles_per_hour_bus.geojson',
                                                                                       'vehicles_per_hour_rail.geojson'}
     assert set(os.listdir(os.path.join(tmpdir, 'schedule', 'vehicles_per_hour', 'shp_files'))) == {
-        'vehicles_per_hour_rail.cpg', 'vehicles_per_hour_all_modes.cpg', 'vehicles_per_hour_all_modes.dbf',
-        'vehicles_per_hour_bus.shx', 'vph_all_modes_within_6:30-7:30.cpg', 'vehicles_per_hour_bus.cpg',
-        'vph_all_modes_within_6:30-7:30.shx', 'vehicles_per_hour_all_modes.shp', 'vehicles_per_hour_all_modes.shx',
-        'vehicles_per_hour_rail.dbf', 'vehicles_per_hour_rail.shx', 'vph_all_modes_within_6:30-7:30.dbf',
-        'vehicles_per_hour_bus.shp', 'vehicles_per_hour_bus.dbf', 'vehicles_per_hour_rail.shp',
-        'vph_all_modes_within_6:30-7:30.shp'}
+    'vph_all_modes_within_6:30-7:30.shx', 'vph_all_modes_within_6:30-7:30.cpg', 'vehicles_per_hour_rail.shp',
+    'vehicles_per_hour_rail.cpg', 'vehicles_per_hour_all_modes.cpg', 'vehicles_per_hour_bus.dbf',
+    'vehicles_per_hour_rail.prj', 'vehicles_per_hour_bus.shp', 'vehicles_per_hour_all_modes.shp',
+    'vehicles_per_hour_rail.shx', 'vph_all_modes_within_6:30-7:30.dbf', 'vehicles_per_hour_bus.prj',
+    'vph_all_modes_within_6:30-7:30.shp', 'vehicles_per_hour_bus.shx', 'vehicles_per_hour_rail.dbf',
+    'vehicles_per_hour_all_modes.prj', 'vehicles_per_hour_all_modes.shx', 'vph_all_modes_within_6:30-7:30.prj',
+    'vehicles_per_hour_bus.cpg', 'vehicles_per_hour_all_modes.dbf'}
     assert set(os.listdir(os.path.join(tmpdir, 'schedule', 'subgraphs'))) == {'schedule_subgraph_links_bus.geojson',
                                                                               'schedule_subgraph_links_rail.geojson',
                                                                               'shp_files',
