@@ -2269,8 +2269,13 @@ class Schedule(ScheduleElement):
         else:
             matsim_schedule = self.__class__(services=services, epsg=self.epsg)
         matsim_schedule.minimal_transfer_times = minimal_transfer_times
-        matsim_schedule._graph.add_nodes_from(transit_stop_id_mapping)
-        nx.set_node_attributes(matsim_schedule._graph, transit_stop_id_mapping)
+        extra_stops = {stop: transit_stop_id_mapping[stop] for stop in
+                       set(transit_stop_id_mapping) - set(matsim_schedule.graph().nodes())}
+        for v in extra_stops.values():
+            v['routes'] = set()
+            v['services'] = set()
+        matsim_schedule._graph.add_nodes_from(extra_stops)
+        nx.set_node_attributes(matsim_schedule._graph, extra_stops)
         self.add(matsim_schedule)
 
     def read_matsim_vehicles(self, path_to_vehicles):

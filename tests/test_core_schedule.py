@@ -1065,7 +1065,7 @@ def test_reading_schedule_with_stops_unused_by_services():
                                                     'linkRefId': '1', 'isBlocking': 'false'},
                                'extra_stop': {'id': 'extra_stop', 'x': 528464.1342843144, 'y': 182179.7435136598,
                                               'name': 'Brunswick Place (Stop P)', 'isBlocking': 'false',
-                                              'epsg': 'epsg:27700'}})
+                                              'epsg': 'epsg:27700', 'routes': set(), 'services': set()}})
     assert_semantically_equal(schedule.minimal_transfer_times,
                               {('26997928P', 'extra_stop'): 0.0, ('extra_stop', '26997928P'): 0.0})
 
