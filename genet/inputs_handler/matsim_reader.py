@@ -247,7 +247,6 @@ def read_schedule(schedule_path, epsg):
     transitLine = {}
     transitRoutes = {}
     transportMode = {}
-    transitStops = {}
     transit_stop_id_mapping = {}
     is_minimalTransferTimes = False
     minimalTransferTimes = {}  # {('stop_id_1': 'stop_id_2'): 0.0} -- (from_Stop,to_Stop): seconds_to_transfer
@@ -257,10 +256,12 @@ def read_schedule(schedule_path, epsg):
         if event == 'start':
             if elem.tag == 'stopFacility':
                 attribs = elem.attrib
-                if attribs['id'] not in transitStops:
-                    transitStops[attribs['id']] = attribs
+                attribs['epsg'] = epsg
+                attribs['x'] = float(attribs['x'])
+                attribs['y'] = float(attribs['y'])
                 if attribs['id'] not in transit_stop_id_mapping:
-                    transit_stop_id_mapping[attribs['id']] = elem.attrib
+                    transit_stop_id_mapping[attribs['id']] = attribs
+
             if elem.tag == 'minimalTransferTimes':
                 is_minimalTransferTimes = not is_minimalTransferTimes
             if elem.tag == 'relation':
@@ -304,7 +305,7 @@ def read_schedule(schedule_path, epsg):
     # add the last one
     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
 
-    return services, minimalTransferTimes
+    return services, minimalTransferTimes, transit_stop_id_mapping
 
 
 def read_vehicles(vehicles_path):

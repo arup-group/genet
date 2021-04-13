@@ -2260,7 +2260,8 @@ class Schedule(ScheduleElement):
         persistence.zip_folder(output_dir)
 
     def read_matsim_schedule(self, path_to_schedule, path_to_vehicles=''):
-        services, minimal_transfer_times = matsim_reader.read_schedule(path_to_schedule, self.epsg)
+        services, minimal_transfer_times, transit_stop_id_mapping = matsim_reader.read_schedule(
+            path_to_schedule, self.epsg)
         if path_to_vehicles:
             vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
             matsim_schedule = self.__class__(
@@ -2268,6 +2269,8 @@ class Schedule(ScheduleElement):
         else:
             matsim_schedule = self.__class__(services=services, epsg=self.epsg)
         matsim_schedule.minimal_transfer_times = minimal_transfer_times
+        matsim_schedule._graph.add_nodes_from(transit_stop_id_mapping)
+        nx.set_node_attributes(matsim_schedule._graph, transit_stop_id_mapping)
         self.add(matsim_schedule)
 
     def read_matsim_vehicles(self, path_to_vehicles):

@@ -1001,7 +1001,7 @@ def test_iter_stops_returns_stops_objects(test_service, different_test_service):
 
 
 def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker, route):
-    mocker.patch.object(matsim_reader, 'read_schedule', return_value=([Service(id='1', routes=[route])], {}))
+    mocker.patch.object(matsim_reader, 'read_schedule', return_value=([Service(id='1', routes=[route])], {}, {}))
 
     schedule = Schedule('epsg:27700')
     schedule.read_matsim_schedule(pt2matsim_schedule_file)
@@ -1040,6 +1040,33 @@ def test_read_matsim_schedule_returns_expected_schedule():
     assert_semantically_equal(schedule.minimal_transfer_times,
                               {('26997928P', '26997928P.link:1'): 0.0,
                                ('26997928P.link:1', '26997928P'): 0.0})
+
+pt2matsim_schedule_extra_stop_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule_extra_stop.xml"))
+
+def test_reading_schedule_with_stops_unused_by_services():
+    schedule = Schedule('epsg:27700')
+    schedule.read_matsim_schedule(pt2matsim_schedule_extra_stop_file)
+    assert_semantically_equal(dict(schedule.graph().nodes(data=True)),
+                              {'26997928P': {'services': {'10314'},
+                                             'routes': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'},
+                                             'id': '26997928P', 'x': '528464.1342843144', 'y': '182179.7435136598',
+                                             'epsg': 'epsg:27700', 'name': 'Brunswick Place (Stop P)',
+                                             'lon': 51.52393050617373, 'lat': -0.14967658860132668,
+                                             's2_id': 2507584876381457671,
+                                             'additional_attributes': {'name', 'isBlocking'}, 'isBlocking': 'false'},
+                               '26997928P.link:1': {'services': {'10314'},
+                                                    'routes': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'},
+                                                    'id': '26997928P.link:1', 'x': '528464.1342843144',
+                                                    'y': '182179.7435136598', 'epsg': 'epsg:27700',
+                                                    'name': 'Brunswick Place (Stop P)', 'lon': 51.52393050617373,
+                                                    'lat': -0.14967658860132668, 's2_id': 2507584876381457671,
+                                                    'additional_attributes': {'linkRefId', 'name', 'isBlocking'},
+                                                    'linkRefId': '1', 'isBlocking': 'false'},
+                               'extra_stop': {'id': 'extra_stop', 'x': '528464.1342843144', 'y': '182179.7435136598',
+                                              'name': 'Brunswick Place (Stop P)', 'isBlocking': 'false'}})
+    assert_semantically_equal(schedule.minimal_transfer_times,
+                              {('26997928P', 'extra_stop'): 0.0, ('extra_stop', '26997928P'): 0.0})
 
 
 def test_reading_vehicles_with_a_schedule():
