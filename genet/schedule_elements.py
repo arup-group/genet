@@ -2074,12 +2074,12 @@ class Schedule(ScheduleElement):
         service = self[service_id]
         service_data = self._graph.graph['services'][service_id]
         route_ids = set(self._graph.graph['service_to_route_map'][service_id])
-        for stop in service.reference_nodes():
-            self._graph.nodes[stop]['routes'] = list(set(self._graph.nodes[stop]['routes']) - route_ids)
-            self._graph.nodes[stop]['services'] = list(set(self._graph.nodes[stop]['services']) - {service_id})
-        for u, v in service.reference_edges():
-            self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) - route_ids)
-            self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) - {service_id})
+        ref_nodes = service.reference_nodes()
+        ref_edges = service.reference_edges()
+        self._remove_routes_from_nodes(nodes=ref_nodes, route_ids=route_ids)
+        self._remove_services_from_nodes(nodes=ref_nodes, service_ids={service_id})
+        self._remove_routes_from_edges(edges=ref_edges, route_ids=route_ids)
+        self._remove_services_from_edges(edges=ref_edges, service_ids={service_id})
 
         del self._graph.graph['services'][service_id]
         del self._graph.graph['service_to_route_map'][service_id]
