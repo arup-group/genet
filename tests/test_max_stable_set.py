@@ -353,7 +353,7 @@ def test_solving_problem_with_isolated_catchments(mocker, network, network_spati
                        modes={'car', 'bus'})
     mss.solve()
     assert mss.solution == {'stop_1': 'link_1_2_bus', 'stop_2': 'link_4_5_car', 'stop_3': 'link_7_8_car'}
-    assert mss.artificial_stops == {
+    assert_semantically_equal(mss.artificial_stops, {
         'stop_1.link:link_1_2_bus': {'services': {'bus_service'}, 'routes': {'service_1_route_2', 'service_1_route_1'},
                                      'id': 'stop_1.link:link_1_2_bus', 'x': 1.0, 'y': 2.5, 'epsg': 'epsg:27700',
                                      'name': '',
@@ -368,7 +368,7 @@ def test_solving_problem_with_isolated_catchments(mocker, network, network_spati
                                      'id': 'stop_3.link:link_7_8_car', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700',
                                      'name': '',
                                      'lon': -7.55708584676138, 'lat': 49.76682879603468, 's2_id': 5205973754096513977,
-                                     'additional_attributes': set(), 'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}}
+                                     'additional_attributes': set(), 'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}})
 
 
 def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(mocker, network):
@@ -395,7 +395,7 @@ def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(mocker,
                        step_size=10)
     mss.solve()
     assert mss.solution == {'stop_2': 'link_5_6_car', 'stop_3': 'link_7_8_car'}
-    assert mss.artificial_stops == {
+    assert_semantically_equal(mss.artificial_stops, {
         'stop_2.link:link_5_6_car': {'services': {'bus_service'}, 'routes': {'service_1_route_2', 'service_1_route_1'},
                                      'id': 'stop_2.link:link_5_6_car', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700',
                                      'name': '',
@@ -405,7 +405,7 @@ def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(mocker,
                                      'id': 'stop_3.link:link_7_8_car', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700',
                                      'name': '',
                                      'lon': -7.55708584676138, 'lat': 49.76682879603468, 's2_id': 5205973754096513977,
-                                     'additional_attributes': set(), 'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}}
+                                     'additional_attributes': set(), 'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}})
 
 
 @pytest.fixture()
