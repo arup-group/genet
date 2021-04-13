@@ -1066,14 +1066,41 @@ class Network:
     def route_schedule(self, solver='glpk', allow_partial=True, distance_threshold=30, step_size=10,
                        additional_modes=None, allow_directional_split=False):
         """
+        Method to find relationship between all Services in Schedule and the Network. It finds closest
+        links in the Network for all stops and finds a network route (ordered list of links in the network) for all
+        Route objects within each Service.
 
-        :param solver:
-        :param allow_partial:
-        :param distance_threshold:
-        :param step_size:
-        :param additional_modes: {'tram': {'car', 'rail'}, 'bus': 'car'}
-        :param allow_directional_split:
-        :return:
+        It creates new stops: 'old_id:link:link_id' for an 'old_stop' which snapped to 'link_id'. It does not delete
+        old stops, it creates minimal_tranfer_times between the 'old_stop' and 'old_id:link:link_id', in both directions
+        and of value zero seconds.
+
+        If there isn't a link available for snapping within threshold and under modal conditions, an artificial
+        self-loop link will be created as well as any connecting links to that unsnapped stop. This can be switched off
+        by setting allow_partial=False. It will raise PartialMaxStableSetProblem error instead.
+
+        :param solver: you can specify different mathematical solvers. Defaults to GLPK, open source solver which can
+        be found here: https://www.gnu.org/software/glpk/. Another good open source choice is CBC:
+        https://projects.coin-or.org/Cbc. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'. It needs to support
+        MILP - mixed integer linear programming
+        :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and
+        under modal conditions, an artificial self-loop link will be created as well as any connecting links to that
+        unsnapped stop. If set to False and the problem is partial, it will raise PartialMaxStableSetProblem error
+        instead.
+        :param distance_threshold: in metres, upper bound for how far too look for links to snap to stops.
+        Defaults to 30
+        :param step_size: in metres, how much to increase search area for links (making this smaller than the distance
+        threshold makes the problem less computationally heavy)
+        :param additional_modes: By default the network subgraph considered for snapping and routing will be matching
+        the service modes exactly e.g. just 'bus' mode. You can relax it by adding extra modes
+        e.g. {'tram': {'car', 'rail'}, 'bus': 'car'} - either a set, list of just a single additional mode for a mode
+        in the Schedule. This dictionary need not be exhaustive. Any other modes will be handled in the default way.
+        Referencing modes present under 'modes' attribute of Network links.
+        :param allow_directional_split: Defaults to False i.e. one link will be related to a stop in each Service.
+        For some modes, e.g. rail, it may be beneficial to split this problem based on direction of travel. This usually
+        results in stops snapping to multiple links. Routes' stops and their network routes are updated based on
+        direction too. You may like to investigate directional split for different services using a Service object
+        method: `split_graph`.
+        :return: None, updates Network object and the Schedule object within.
         """
         if self.schedule:
             spatial_tree = spatial.SpatialTree(self)
@@ -1123,16 +1150,43 @@ class Network:
     def route_service(self, service_id, spatial_tree=None, solver='glpk', allow_partial=True, distance_threshold=30,
                       step_size=10, additional_modes=None, allow_directional_split=False):
         """
+        Method to find relationship between the Service with ID 'service_id' in the Schedule and the Network.
+        It finds closest links in the Network for all stops and finds a network route (ordered list of links in the
+        network) for all Route objects within this Service.
 
-        :param service_id:
-        :param spatial_tree:
-        :param solver:
-        :param allow_partial:
-        :param distance_threshold:
-        :param step_size:
-        :param additional_modes:
-        :param allow_directional_split:
-        :return:
+        It creates new stops: 'old_id:link:link_id' for an 'old_stop' which snapped to 'link_id'. It does not delete
+        old stops, it creates minimal_tranfer_times between the 'old_stop' and 'old_id:link:link_id', in both directions
+        and of value zero seconds.
+
+        If there isn't a link available for snapping within threshold and under modal conditions, an artificial
+        self-loop link will be created as well as any connecting links to that unsnapped stop. This can be switched off
+        by setting allow_partial=False. It will raise PartialMaxStableSetProblem error instead.
+
+        :param service_id: ID of the Service object to snap and route
+        :param spatial_tree: optional, if snapping more than one Service, it may be beneficcial to build the spatial
+        tree which is used for snapping separately and pass it here. This is done simply by importing genet and passing
+        the network obejct in the following way: genet.utils.spatial.SpatialTree(network_object)
+        :param solver: you can specify different mathematical solvers. Defaults to GLPK, open source solver which can
+        be found here: https://www.gnu.org/software/glpk/. Another good open source choice is CBC:
+        https://projects.coin-or.org/Cbc. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'. It needs to support
+        MILP - mixed integer linear programming
+        :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and
+        under modal conditions, an artificial self-loop link will be created as well as any connecting links to that
+        unsnapped stop. If set to False and the problem is partial, it will raise PartialMaxStableSetProblem error
+        instead.
+        :param distance_threshold: in metres, upper bound for how far too look for links to snap to stops.
+        Defaults to 30
+        :param step_size: in metres, how much to increase search area for links (making this smaller than the distance
+        threshold makes the problem less computationally heavy)
+        :param additional_modes: string, set or list. By default the network subgraph considered for snapping and
+        routing will be matching the service modes exactly e.g. just 'bus' mode. You can relax it by adding extra modes
+        e.g. 'car' or {'car', 'rail'}. Referencing modes present under 'modes' attribute of Network links.
+        :param allow_directional_split: Defaults to False i.e. one link will be related to a stop in each Service.
+        For some modes, e.g. rail, it may be beneficial to split this problem based on direction of travel. This usually
+        results in stops snapping to multiple links. Routes' stops and their network routes are updated based on
+        direction too. You may like to investigate directional split for different services using a Service object
+        method: `split_graph`.
+        :return: None, updates Network object and the Schedule object within.
         """
         if spatial_tree is None:
             spatial_tree = spatial.SpatialTree(self)

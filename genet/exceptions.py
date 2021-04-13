@@ -81,3 +81,10 @@ class InvalidMaxStableSetProblem(Exception):
     Raised when the maximum stable set to snap PT to the network is not valid and cannot proceed to the solver
     """
     pass
+
+
+class PartialMaxStableSetProblem(Exception):
+    """
+    Raised when the maximum stable set to snap PT to the network is partial - some stops found nothing to snap to
+    """
+    pass

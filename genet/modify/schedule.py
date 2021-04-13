@@ -2,6 +2,7 @@ from pyproj import Transformer
 from pandas import DataFrame
 import genet.utils.spatial as spatial
 from genet.max_stable_set import MaxStableSet
+from genet import exceptions
 import logging
 
 
@@ -39,8 +40,8 @@ def route_pt_graph(pt_graph, network_spatial_tree, modes, solver='glpk', allow_p
                             'viable, meaning not all stops have found a link to snap to within the distance_threshold.'
                             'Partial snapping is ON, this problem will proceed to the solver.')
         else:
-            # TODO throw error
-            return None
+            raise exceptions.PartialMaxStableSetProblem('This Problem is partial. To allow partially snapped '
+                                                        'solutions set `allow_partial=True`')
     logging.info('Passing problem to solver')
     mss.solve(solver=solver)
     mss.route_edges()
