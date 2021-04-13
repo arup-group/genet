@@ -1064,7 +1064,7 @@ class Network:
         return dict(self.graph[u][v][multi_idx])
 
     def route_schedule(self, solver='glpk', allow_partial=True, distance_threshold=30, step_size=10,
-                       additional_modes=None):
+                       additional_modes=None, allow_directional_split=False):
         """
 
         :param solver:
@@ -1072,6 +1072,7 @@ class Network:
         :param distance_threshold:
         :param step_size:
         :param additional_modes: {'tram': {'car', 'rail'}, 'bus': 'car'}
+        :param allow_directional_split:
         :return:
         """
         if self.schedule:
@@ -1090,8 +1091,13 @@ class Network:
 
             for service in self.schedule.services():
                 logging.info(f'Routing Service {service.id}')
-                logging.info('Splitting Service graph')
-                routes, graph_groups = service.split_graph()
+                if allow_directional_split:
+                    logging.info('Splitting Service graph')
+                    routes, graph_groups = service.split_graph()
+                    logging.info(f'Split Problem into {len(routes)}')
+                else:
+                    routes = [set(service.route_ids())]
+                    graph_groups = [service.reference_edges()]
                 service_g = service.graph()
                 modes = service.modes()
                 for m in modes & set(additional_modes.keys()):
@@ -1115,7 +1121,7 @@ class Network:
             logging.warning('Schedule object not found')
 
     def route_service(self, service_id, spatial_tree=None, solver='glpk', allow_partial=True, distance_threshold=30,
-                      step_size=10, additional_modes=None):
+                      step_size=10, additional_modes=None, allow_directional_split=False):
         """
 
         :param service_id:
@@ -1125,6 +1131,7 @@ class Network:
         :param distance_threshold:
         :param step_size:
         :param additional_modes:
+        :param allow_directional_split:
         :return:
         """
         if spatial_tree is None:
@@ -1135,8 +1142,12 @@ class Network:
             additional_modes = {additional_modes}
 
         service = self.schedule[service_id]
-        routes, graph_groups = service.split_graph()
-        logging.info(f'Splitting Problem into {len(routes)}')
+        if allow_directional_split:
+            routes, graph_groups = service.split_graph()
+            logging.info(f'Splitting Problem into {len(routes)}')
+        else:
+            routes = [set(service.route_ids())]
+            graph_groups = [service.reference_edges()]
         service_g = service.graph()
         changeset = None
         route_data = self.schedule.route_attribute_data(keys=['ordered_stops'])
