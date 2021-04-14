@@ -1,10 +1,13 @@
 import ast
 import pandas as pd
 import geopandas as gpd
+import networkx as nx
 import json
 import logging
 import genet.core as core
 import genet.inputs_handler.gtfs_reader as gtfs_reader
+import genet.inputs_handler.osm_reader as osm_reader
+import genet.utils.parallel as parallel
 import genet.inputs_handler.matsim_reader as matsim_reader
 import genet.schedule_elements as schedule_elements
 import genet.utils.spatial as spatial
@@ -273,7 +276,7 @@ def read_gtfs(path, day, epsg=None):
     Reads from GTFS. The resulting services will not have network routes. Assumed to be in lat lon epsg:4326.
     :param path: to GTFS folder or a zip file
     :param day: 'YYYYMMDD' to use from the gtfs
-    :param epsg: projection for the output Schedule, e.g. 'epsg:27700'. In not provided, the Schedule remains in
+    :param epsg: projection for the output Schedule, e.g. 'epsg:27700'. If not provided, the Schedule remains in
         epsg:4326
     :return:
     """
@@ -283,3 +286,45 @@ def read_gtfs(path, day, epsg=None):
     if epsg is not None:
         s.reproject(new_epsg=epsg)
     return s
+
+
+def read_osm(osm_file_path, osm_read_config, num_processes: int = 1, epsg=None):
+    """
+    Reads OSM data into a graph of the Network object
+    :param osm_file_path: path to .osm or .osm.pbf file
+    :param osm_read_config: config file (see configs folder in genet for examples) which informs for example which
+    highway types to read (in case of road network) and what modes to assign to them
+    :param num_processes: number of processes to split parallelisable operations across
+    :param epsg: projection for the output Network, e.g. 'epsg:27700'. If not provided, defaults to epsg:4326
+    :return: genet.Network object
+    """
+    if epsg is None:
+        epsg = 'epsg:4326'
+    config = osm_reader.Config(osm_read_config)
+    n = core.Network(epsg)
+    nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
+        osm_file_path, config, num_processes)
+
+    nodes_and_attributes = parallel.multiprocess_wrap(
+        data=nodes,
+        split=parallel.split_dict,
+        apply=osm_reader.generate_graph_nodes,
+        combine=parallel.combine_dict,
+        epsg=epsg
+    )
+    reindexing_dict, nodes_and_attributes = n.add_nodes(nodes_and_attributes)
+
+    edges_attributes = parallel.multiprocess_wrap(
+        data=edges,
+        split=parallel.split_list,
+        apply=osm_reader.generate_graph_edges,
+        combine=parallel.combine_list,
+        reindexing_dict=reindexing_dict,
+        nodes_and_attributes=nodes_and_attributes,
+        config_path=osm_read_config
+    )
+    n.add_edges(edges_attributes)
+
+    logging.info('Deleting isolated nodes which have no edges.')
+    n.remove_nodes(list(nx.isolates(n.graph)))
+    return n

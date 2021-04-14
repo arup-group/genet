@@ -9,7 +9,6 @@ from copy import deepcopy
 from typing import Union, List, Dict
 from pyproj import Transformer
 from s2sphere import CellId
-import genet.inputs_handler.osm_reader as osm_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.geojson as geojson
 import genet.outputs_handler.sanitiser as sanitiser
@@ -1351,42 +1350,6 @@ class Network:
         geojson.generate_standard_outputs(self, output_dir, gtfs_day)
         logging.info('Finished generating standard outputs. Zipping folder.')
         persistence.zip_folder(output_dir)
-
-    def read_osm(self, osm_file_path, osm_read_config, num_processes: int = 1):
-        """
-        Reads OSM data into a graph of the Network object
-        :param osm_file_path: path to .osm or .osm.pbf file
-        :param osm_read_config: config file (see configs folder in genet for examples) which informs for example which
-        highway types to read (in case of road network) and what modes to assign to them
-        :param num_processes: number of processes to split parallelisable operations across
-        :return:
-        """
-        config = osm_reader.Config(osm_read_config)
-        nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
-            osm_file_path, config, num_processes)
-
-        nodes_and_attributes = parallel.multiprocess_wrap(
-            data=nodes,
-            split=parallel.split_dict,
-            apply=osm_reader.generate_graph_nodes,
-            combine=parallel.combine_dict,
-            epsg=self.epsg
-        )
-        reindexing_dict, nodes_and_attributes = self.add_nodes(nodes_and_attributes)
-
-        edges_attributes = parallel.multiprocess_wrap(
-            data=edges,
-            split=parallel.split_list,
-            apply=osm_reader.generate_graph_edges,
-            combine=parallel.combine_list,
-            reindexing_dict=reindexing_dict,
-            nodes_and_attributes=nodes_and_attributes,
-            config_path=osm_read_config
-        )
-        self.add_edges(edges_attributes)
-
-        logging.info('Deleting isolated nodes which have no edges.')
-        self.remove_nodes(list(nx.isolates(self.graph)))
 
     def read_auxiliary_link_file(self, file_path):
         aux_file = auxiliary_files.AuxiliaryFile(file_path)

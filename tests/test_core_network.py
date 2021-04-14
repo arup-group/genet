@@ -1655,8 +1655,7 @@ def test_schedule_routes_with_disconnected_routes(network_object_from_test_data)
 def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
     osm_test_file = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml"))
-    network = Network('epsg:27700')
-    network.read_osm(osm_test_file, full_fat_default_config_path, 1)
+    network = read.read_osm(osm_test_file, full_fat_default_config_path, 1, 'epsg:27700')
     assert_semantically_equal(dict(network.nodes()), {
         '0': {'id': '0', 'x': 622502.8306679451, 'y': -5526117.781903352, 'lat': 0.008554364250688652,
               'lon': -0.0006545205888310243, 's2_id': 1152921492875543713},
