@@ -2271,9 +2271,10 @@ class Schedule(ScheduleElement):
         matsim_schedule.minimal_transfer_times = minimal_transfer_times
         extra_stops = {stop: transit_stop_id_mapping[stop] for stop in
                        set(transit_stop_id_mapping) - set(matsim_schedule.graph().nodes())}
-        for v in extra_stops.values():
-            v['routes'] = set()
-            v['services'] = set()
+        for k in extra_stops.keys():
+            extra_stops[k] = Stop(**extra_stops[k]).__dict__
+            extra_stops[k]['routes'] = set()
+            extra_stops[k]['services'] = set()
         matsim_schedule._graph.add_nodes_from(extra_stops)
         nx.set_node_attributes(matsim_schedule._graph, extra_stops)
         self.add(matsim_schedule)

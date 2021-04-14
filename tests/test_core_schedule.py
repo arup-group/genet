@@ -913,16 +913,20 @@ def test_removing_route(schedule):
 def test_removing_route_updates_services_on_nodes_and_edges(schedule):
     schedule.remove_route('2')
     assert_semantically_equal(dict(schedule.graph().nodes(data=True)),
-                              {'5': {'services': set(), 'routes': set(), 'id': '5', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
+                              {'5': {'services': set(), 'routes': set(), 'id': '5', 'x': 4.0, 'y': 2.0,
+                                     'epsg': 'epsg:27700',
                                      'name': '', 'lat': 49.76682779861249, 'lon': -7.557106577683727,
                                      's2_id': 5205973754090531959, 'additional_attributes': set()},
-                               '6': {'services': set(), 'routes': set(), 'id': '6', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
+                               '6': {'services': set(), 'routes': set(), 'id': '6', 'x': 1.0, 'y': 2.0,
+                                     'epsg': 'epsg:27700',
                                      'name': '', 'lat': 49.766825803756994, 'lon': -7.557148039524952,
                                      's2_id': 5205973754090365183, 'additional_attributes': set()},
-                               '7': {'services': set(), 'routes': set(), 'id': '7', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700',
+                               '7': {'services': set(), 'routes': set(), 'id': '7', 'x': 3.0, 'y': 3.0,
+                                     'epsg': 'epsg:27700',
                                      'name': '', 'lat': 49.76683608549253, 'lon': -7.557121424907424,
                                      's2_id': 5205973754090203369, 'additional_attributes': set()},
-                               '8': {'services': set(), 'routes': set(), 'id': '8', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700',
+                               '8': {'services': set(), 'routes': set(), 'id': '8', 'x': 7.0, 'y': 5.0,
+                                     'epsg': 'epsg:27700',
                                      'name': '', 'lat': 49.766856648946295, 'lon': -7.5570681956375,
                                      's2_id': 5205973754097123809, 'additional_attributes': set()},
                                '3': {'services': {'service'}, 'routes': {'1'}, 'id': '3', 'x': 3.0, 'y': 3.0,
@@ -968,6 +972,7 @@ def test_removing_stop_updates_minimal_tranfer_times(schedule):
                                   ('3', '2'): 0.0,
                                   ('2', '3'): 0.0
                               })
+
 
 def test_removing_unused_stops(schedule):
     schedule.remove_route('1')
@@ -1041,8 +1046,10 @@ def test_read_matsim_schedule_returns_expected_schedule():
                               {('26997928P', '26997928P.link:1'): 0.0,
                                ('26997928P.link:1', '26997928P'): 0.0})
 
+
 pt2matsim_schedule_extra_stop_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule_extra_stop.xml"))
+
 
 def test_reading_schedule_with_stops_unused_by_services():
     schedule = Schedule('epsg:27700')
@@ -1064,8 +1071,10 @@ def test_reading_schedule_with_stops_unused_by_services():
                                                     'additional_attributes': {'linkRefId', 'isBlocking', 'name'},
                                                     'linkRefId': '1', 'isBlocking': 'false'},
                                'extra_stop': {'id': 'extra_stop', 'x': 528464.1342843144, 'y': 182179.7435136598,
-                                              'name': 'Brunswick Place (Stop P)', 'isBlocking': 'false',
-                                              'epsg': 'epsg:27700', 'routes': set(), 'services': set()}})
+                                              'epsg': 'epsg:27700', 'name': 'Brunswick Place (Stop P)',
+                                              'lon': -0.14967658860132668, 'lat': 51.52393050617373,
+                                              's2_id': 5221390302759871369, 'additional_attributes': {'isBlocking'},
+                                              'isBlocking': 'false', 'routes': set(), 'services': set()}})
     assert_semantically_equal(schedule.minimal_transfer_times,
                               {('26997928P', 'extra_stop'): 0.0, ('extra_stop', '26997928P'): 0.0})
 
