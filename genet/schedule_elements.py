@@ -273,7 +273,6 @@ class Stop:
         else:
             self.s2_id = spatial.generate_index_s2(lat=self.lat, lng=self.lon)
 
-        self.additional_attributes = set()
         if kwargs:
             self.add_additional_attributes(kwargs)
 
@@ -329,13 +328,8 @@ class Stop:
         :return:
         """
         for k, v in attribs.items():
-            if k not in self.__dict__ or (not self.__dict__[k] and k != "additional_attributes"):
+            if k not in self.__dict__ or (not self.__dict__[k]):
                 setattr(self, k, v)
-                self.additional_attributes.add(k)
-
-    def iter_through_additional_attributes(self):
-        for attr_key in self.additional_attributes:
-            yield attr_key, self.__dict__[attr_key]
 
     def additional_attribute(self, attrib_name):
         return self.__dict__[attrib_name]

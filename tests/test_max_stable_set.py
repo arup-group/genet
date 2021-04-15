@@ -358,17 +358,17 @@ def test_solving_problem_with_isolated_catchments(mocker, network, network_spati
                                      'id': 'stop_1.link:link_1_2_bus', 'x': 1.0, 'y': 2.5, 'epsg': 'epsg:27700',
                                      'name': '',
                                      'lon': -7.557148552832129, 'lat': 49.76683027967191, 's2_id': 5205973754090340691,
-                                     'additional_attributes': set(), 'linkRefId': 'link_1_2_bus', 'stop_id': 'stop_1'},
+                                     'linkRefId': 'link_1_2_bus', 'stop_id': 'stop_1'},
         'stop_2.link:link_4_5_car': {'services': {'bus_service'}, 'routes': {'service_1_route_2', 'service_1_route_1'},
                                      'id': 'stop_2.link:link_4_5_car', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700',
                                      'name': '',
                                      'lon': -7.557134732217642, 'lat': 49.76683094462549, 's2_id': 5205973754090230267,
-                                     'additional_attributes': set(), 'linkRefId': 'link_4_5_car', 'stop_id': 'stop_2'},
+                                     'linkRefId': 'link_4_5_car', 'stop_id': 'stop_2'},
         'stop_3.link:link_7_8_car': {'services': {'bus_service'}, 'routes': {'service_1_route_2', 'service_1_route_1'},
                                      'id': 'stop_3.link:link_7_8_car', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700',
                                      'name': '',
                                      'lon': -7.55708584676138, 'lat': 49.76682879603468, 's2_id': 5205973754096513977,
-                                     'additional_attributes': set(), 'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}})
+                                     'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}})
 
 
 def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(mocker, network):
@@ -400,12 +400,12 @@ def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(mocker,
                                      'id': 'stop_2.link:link_5_6_car', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700',
                                      'name': '',
                                      'lon': -7.557134732217642, 'lat': 49.76683094462549, 's2_id': 5205973754090230267,
-                                     'additional_attributes': set(), 'linkRefId': 'link_5_6_car', 'stop_id': 'stop_2'},
+                                     'linkRefId': 'link_5_6_car', 'stop_id': 'stop_2'},
         'stop_3.link:link_7_8_car': {'services': {'bus_service'}, 'routes': {'service_1_route_2', 'service_1_route_1'},
                                      'id': 'stop_3.link:link_7_8_car', 'x': 5.5, 'y': 2.0, 'epsg': 'epsg:27700',
                                      'name': '',
                                      'lon': -7.55708584676138, 'lat': 49.76682879603468, 's2_id': 5205973754096513977,
-                                     'additional_attributes': set(), 'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}})
+                                     'linkRefId': 'link_7_8_car', 'stop_id': 'stop_3'}})
 
 
 @pytest.fixture()

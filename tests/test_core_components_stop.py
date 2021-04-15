@@ -8,7 +8,6 @@ import pickle
 def test_initiate_stop_with_kwargs():
     a = Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700', linkRefId='1')
     assert a.has_linkRefId()
-    assert a.additional_attributes == {'linkRefId'}
 
 
 def test_reproject_stops_without_transformer():
@@ -72,12 +71,6 @@ def test_add_additional_attributes_to_stops():
     a.add_additional_attributes({'isBlocking': True})
 
     assert a.isBlocking == True
-
-
-def test_iterating_through_additional_attribs():
-    s = Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700', additional_attrib_1='hey',
-             additional_attrib_2='what?')
-    assert set(s.iter_through_additional_attributes()) == {('additional_attrib_1', 'hey'), ('additional_attrib_2', 'what?')}
 
 
 def test_stops_equal():
