@@ -343,3 +343,12 @@ def test_rerouting_with_extra_mode(test_network):
 
     assert test_network.schedule._graph.graph['routes']['7797_0']['route']
     test_network.schedule.route('7797_0').is_valid_route()
+
+
+def test_rerouting_with_additional_mode_updates_mode_on_links(test_network, mocker):
+    test_network.add_link('new_link', u='1', v='2', attribs={'modes': 'car'})
+    test_network.add_link('new_link_2', u='1', v='2', attribs={'modes': {'car'}})
+    mocker.patch.object(test_network, 'find_shortest_path', return_value=['new_link', 'new_link_2'])
+    test_network.reroute('7797_0', additional_modes='car')
+    assert test_network.link('new_link')['modes'] == {'car', 'bus'}
+    assert test_network.link('new_link_2')['modes'] == {'car', 'bus'}

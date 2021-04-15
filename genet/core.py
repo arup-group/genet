@@ -1284,14 +1284,20 @@ class Network:
             logging.info(f'Rerouting Route `{_id}`')
             modes = {route.mode} | self._setify(additional_modes)
             subgraph = self.modal_subgraph(modes)
-            route = [linkrefids[0]]
+            network_route = [linkrefids[0]]
             for from_stop_link_id, to_stop_link_id in zip(linkrefids[:-1], linkrefids[1:]):
-                route += self.find_shortest_path(
+                network_route += self.find_shortest_path(
                     self.link(from_stop_link_id)['to'],
                     self.link(to_stop_link_id)['from'],
                     subgraph=subgraph)
-                route.append(to_stop_link_id)
-            self.schedule.apply_attributes_to_routes({_id: {'route': route}})
+                network_route.append(to_stop_link_id)
+            self.schedule.apply_attributes_to_routes({_id: {'route': network_route}})
+            links_for_mode_add = {link_id for link_id in set(network_route) if
+                                  not {route.mode}.issubset(self._setify(self.link(link_id)['modes']))}
+            if links_for_mode_add:
+                self.apply_attributes_to_links(
+                    {link_id: {'modes': self._setify(self.link(link_id)['modes']) | {route.mode}} for link_id in
+                     links_for_mode_add})
         else:
             logging.warning(f'Could not reroute Route of ID: `{_id}` due to some stops having unrecognised '
                             f'`linkRefId`s. Unrecognised link IDs: {unrecognised_linkrefids}. You will need to '
