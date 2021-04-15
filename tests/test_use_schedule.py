@@ -110,7 +110,7 @@ def test_generating_edge_vph_geodataframe(schedule):
                                    10: LineString([(-7.5570681956375, 49.766856648946295),
                                                    (-7.557121424907424, 49.76683608549253)]),
                                    11: LineString([(-7.5570681956375, 49.766856648946295),
-                                                   (-7.557121424907424, 49.76683608549253)])}})
+                                                   (-7.557121424907424, 49.76683608549253)])}}, crs='epsg:4326')
 
     assert_geodataframe_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1), check_less_precise=True)
 
@@ -161,7 +161,7 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
                                    10: LineString([(-7.5570681956375, 49.766856648946295),
                                                    (-7.557121424907424, 49.76683608549253)]),
                                    11: LineString([(-7.5570681956375, 49.766856648946295),
-                                                   (-7.557121424907424, 49.76683608549253)])}})
+                                                   (-7.557121424907424, 49.76683608549253)])}}, crs='epsg:4326')
 
     assert_geodataframe_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1), check_less_precise=True)
 
@@ -191,7 +191,7 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
                                             4: LineString([(-7.5570681956375, 49.766856648946295),
                                                            (-7.557121424907424, 49.76683608549253)]),
                                             5: LineString([(-7.5570681956375, 49.766856648946295),
-                                                           (-7.557121424907424, 49.76683608549253)])}})
+                                                           (-7.557121424907424, 49.76683608549253)])}}, crs='epsg:4326')
 
     assert_geodataframe_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1), check_less_precise=True)
 
