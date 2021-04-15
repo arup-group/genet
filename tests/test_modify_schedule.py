@@ -280,6 +280,36 @@ def test_routing_service_with_additional_modes(test_network, test_service):
     assert rep['routing']['services_have_routes_in_the_graph']
 
 
+def test_teleporting_service(test_network, test_service):
+    test_network.schedule = Schedule(epsg='epsg:27700', services=[test_service])
+    test_network.teleport_service('service_bus')
+
+    rep = test_network.generate_validation_report()
+    assert rep['graph']['graph_connectivity']['car']['number_of_connected_subgraphs'] == 1
+    assert rep['schedule']['schedule_level']['is_valid_schedule']
+    assert rep['routing']['services_have_routes_in_the_graph']
+    assert test_network.schedule.route('route_1').route == ['artificial_link===from:490004695A===to:490004695A',
+                                                            'artificial_link===from:490004695A===to:490000235C',
+                                                            'artificial_link===from:490000235C===to:490000235C',
+                                                            'artificial_link===from:490000235C===to:490000089A',
+                                                            'artificial_link===from:490000089A===to:490000089A']
+    assert test_network.schedule.route('route_2').route == ['artificial_link===from:490000089A===to:490000089A',
+                                                            'artificial_link===from:490000089A===to:490000252X',
+                                                            'artificial_link===from:490000252X===to:490000252X',
+                                                            'artificial_link===from:490000252X===to:490000078Q',
+                                                            'artificial_link===from:490000078Q===to:490000078Q']
+    for link in {'artificial_link===from:490000252X===to:490000252X',
+                 'artificial_link===from:490000078Q===to:490000078Q',
+                 'artificial_link===from:490000235C===to:490000235C',
+                 'artificial_link===from:490000235C===to:490000089A',
+                 'artificial_link===from:490004695A===to:490004695A',
+                 'artificial_link===from:490000089A===to:490000089A',
+                 'artificial_link===from:490000089A===to:490000252X',
+                 'artificial_link===from:490000252X===to:490000078Q',
+                 'artificial_link===from:490004695A===to:490000235C'}:
+        assert test_network.has_link(link)
+
+
 def test_routing_schedule_with_directional_split(test_network, test_service):
     test_network.schedule = Schedule(epsg='epsg:27700', services=[test_service])
     test_network.route_schedule(allow_directional_split=True)

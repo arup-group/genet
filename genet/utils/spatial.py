@@ -163,7 +163,7 @@ def approximate_metres_distance_in_4326_degrees(distance, lat):
 class SpatialTree(nx.DiGraph):
     def __init__(self, n=None):
         super().__init__()
-        self.links = pd.DataFrame()
+        self.links = pd.DataFrame(columns={'link_id', 'modes'})
         if n is not None:
             self.add_links(n)
 

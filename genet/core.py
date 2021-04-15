@@ -1225,6 +1225,11 @@ class Network:
                 changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
         self._apply_max_stable_changes(changeset)
 
+    def teleport_service(self, service_id):
+        self.route_service(
+            service_id, spatial_tree=spatial.SpatialTree(), solver='glpk', allow_partial=True, distance_threshold=30,
+            step_size=30, additional_modes=None, allow_directional_split=False)
+
     def _apply_max_stable_changes(self, max_stable_set_changeset):
         self.schedule._graph.add_nodes_from(max_stable_set_changeset.new_stops.items())
         self.schedule._graph.add_edges_from(max_stable_set_changeset.new_pt_edges)
