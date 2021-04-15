@@ -308,3 +308,38 @@ def test_routing_schedule_with_additional_modes(test_network, test_service):
     assert rep['graph']['graph_connectivity']['car']['number_of_connected_subgraphs'] == 1
     assert rep['schedule']['schedule_level']['is_valid_schedule']
     assert rep['routing']['services_have_routes_in_the_graph']
+
+
+def test_rerouting_service(test_network):
+    test_network.schedule._graph.graph['routes']['7797_0']['route'] = []
+    test_network.schedule._graph.graph['routes']['7797_1']['route'] = []
+
+    test_network.reroute('7797')
+
+    assert test_network.schedule._graph.graph['routes']['7797_0']['route']
+    assert test_network.schedule._graph.graph['routes']['7797_1']['route']
+    test_network.schedule['7797'].is_valid_service()
+
+
+def test_rerouting_route(test_network):
+    test_network.schedule._graph.graph['routes']['7797_0']['route'] = []
+
+    test_network.reroute('7797_0')
+
+    assert test_network.schedule._graph.graph['routes']['7797_0']['route']
+    test_network.schedule.route('7797_0').is_valid_route()
+
+
+def test_rerouting_nonexistent_id_throws_error(test_network):
+    with pytest.raises(IndexError) as e:
+        test_network.reroute('non existent')
+    assert 'Unrecognised' in str(e.value)
+
+
+def test_rerouting_with_extra_mode(test_network):
+    test_network.schedule._graph.graph['routes']['7797_0']['route'] = []
+
+    test_network.reroute('7797_0', additional_modes='car')
+
+    assert test_network.schedule._graph.graph['routes']['7797_0']['route']
+    test_network.schedule.route('7797_0').is_valid_route()

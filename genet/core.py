@@ -25,6 +25,7 @@ import genet.utils.simplification as simplification
 import genet.schedule_elements as schedule_elements
 import genet.validate.network_validation as network_validation
 import genet.auxiliary_files as auxiliary_files
+import genet.exceptions as exceptions
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -333,7 +334,7 @@ class Network:
         nodes = {self.link(link)['from'] for link in links} | {self.link(link)['to'] for link in links}
         return list(nodes)
 
-    def modal_subgraph(self, modes: Union[str, list]):
+    def modal_subgraph(self, modes: Union[str, list, set]):
         return self.subgraph_on_link_conditions(conditions={'modes': modes}, mixed_dtypes=True)
 
     def nodes_on_spatial_condition(self, region_input):
@@ -705,8 +706,8 @@ class Network:
                 pass
         return modes
 
-    def find_shortest_path(self, from_node, to_node, modes: Union[str, list] = None, subgraph: nx.MultiDiGraph = None,
-                           return_nodes=False):
+    def find_shortest_path(self, from_node, to_node, modes: Union[str, list, set] = None,
+                           subgraph: nx.MultiDiGraph = None, return_nodes=False):
         """
         Finds shortest path between from and to nodes in the graph. If modes specified, finds shortest path in the
         modal subgraph (using links which have given modes stored under 'modes' key in link attributes). If computing
@@ -1063,6 +1064,14 @@ class Network:
         u, v, multi_idx = self.edge_tuple_from_link_id(link_id)
         return dict(self.graph[u][v][multi_idx])
 
+    def _setify(self, value: Union[str, list, set]):
+        if isinstance(value, str):
+            return {value}
+        elif isinstance(value, (list, set)):
+            return set(value)
+        elif value is None:
+            return set()
+
     def route_schedule(self, solver='glpk', allow_partial=True, distance_threshold=30, step_size=10,
                        additional_modes=None, allow_directional_split=False):
         """
@@ -1108,10 +1117,7 @@ class Network:
                 additional_modes = {}
             else:
                 for k, v in additional_modes.items():
-                    if isinstance(v, str):
-                        additional_modes[k] = {v}
-                    elif isinstance(v, list):
-                        additional_modes[k] = set(v)
+                    additional_modes[k] = self._setify(v)
 
             changeset = None
             route_data = self.schedule.route_attribute_data(keys=['ordered_stops'])
@@ -1190,10 +1196,7 @@ class Network:
         """
         if spatial_tree is None:
             spatial_tree = spatial.SpatialTree(self)
-        if additional_modes is None:
-            additional_modes = set()
-        elif isinstance(additional_modes, str):
-            additional_modes = {additional_modes}
+        additional_modes = self._setify(additional_modes)
 
         service = self.schedule[service_id]
         if allow_directional_split:
@@ -1244,6 +1247,55 @@ class Network:
                 data['permlanes'] = 1
             self.add_links(max_stable_set_changeset.new_links)
         self.apply_attributes_to_links(max_stable_set_changeset.additional_links_modes)
+
+    def reroute(self, _id, additional_modes=None):
+        """
+        Finds network route for a Service of ID=_id or Route of ID=_id, if the Stops for that Route or Service are
+        already snapped to the network (have linkRefId attributes). Checks that those linkRefIds are still in the
+        network, logs a warning if not.
+        :param _id: ID of Route or Service object. If Service, updated route attribute of all Routes contained within
+        the Service object
+        :param additional_modes: string, set or list. By default the network subgraph considered for snapping and
+        routing will be matching the service modes exactly e.g. just 'bus' mode. You can relax it by adding extra modes
+        e.g. 'car' or {'car', 'rail'}. Referencing modes present under 'modes' attribute of Network links.
+        :return: None, updates the `route` attribute of `Route` object(s)
+        """
+        try:
+            self._reroute_service(_id, additional_modes)
+        except exceptions.ServiceIndexError:
+            try:
+                self._reroute_route(_id, additional_modes)
+            except exceptions.RouteIndexError:
+                logging.warning(f'Object of ID: `{_id}` was not found as a Route or Service in the Schedule')
+                raise IndexError(f'Unrecognised Index `{_id}` in this context.')
+
+    def _reroute_service(self, _id, additional_modes=None):
+        service = self.schedule[_id]
+        logging.info(f'Rerouting Service `{_id}`')
+        for route_id in service.route_ids():
+            self._reroute_route(route_id, additional_modes)
+
+    def _reroute_route(self, _id, additional_modes=None):
+        route = self.schedule.route(_id)
+        logging.info(f'Checking `linkRefId`s of the Route: `{_id}` are present in the graph')
+        linkrefids = [stop.linkRefId for stop in route.stops()]
+        unrecognised_linkrefids = set(linkrefids) - set(self.link_id_mapping.keys())
+        if not unrecognised_linkrefids:
+            logging.info(f'Rerouting Route `{_id}`')
+            modes = {route.mode} | self._setify(additional_modes)
+            subgraph = self.modal_subgraph(modes)
+            route = [linkrefids[0]]
+            for from_stop_link_id, to_stop_link_id in zip(linkrefids[:-1], linkrefids[1:]):
+                route += self.find_shortest_path(
+                    self.link(from_stop_link_id)['to'],
+                    self.link(to_stop_link_id)['from'],
+                    subgraph=subgraph)
+                route.append(to_stop_link_id)
+            self.schedule.apply_attributes_to_routes({_id: {'route': route}})
+        else:
+            logging.warning(f'Could not reroute Route of ID: `{_id}` due to some stops having unrecognised '
+                            f'`linkRefId`s. Unrecognised link IDs: {unrecognised_linkrefids}. You will need to '
+                            'use a different method to snap and route the Service object containing this Route.')
 
     def services(self):
         """
