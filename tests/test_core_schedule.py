@@ -282,6 +282,8 @@ def test_adding_merges_separable_schedules(route):
     assert schedule.epsg == schedule_to_be_added.epsg
     assert set(schedule._graph.nodes()) == set(before_graph_nodes) | set(tba_graph_nodes)
     assert set(schedule._graph.edges()) == set(before_graph_edges) | set(tba_graph_edges)
+    assert schedule._graph.graph['route_to_service_map'] == {'1':'1', '2':'2'}
+    assert schedule._graph.graph['service_to_route_map'] == {'1': ['1'], '2': ['2']}
 
 
 def test_adding_throws_error_when_schedules_not_separable(test_service):

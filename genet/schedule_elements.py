@@ -28,7 +28,6 @@ import genet.modify.schedule as mod_schedule
 import genet.modify.change_log as change_log
 import genet.use.schedule as use_schedule
 import genet.validate.schedule_validation as schedule_validation
-import genet.outputs_handler.geojson as gngeojson
 from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisationError, ServiceInitialisationError, \
     UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData, \
     InconsistentVehicleModeError
@@ -1376,13 +1375,15 @@ class Schedule(ScheduleElement):
             other._graph.graph['services'], self._graph.graph['services'])
         self._graph.graph['routes'] = dict_support.merge_complex_dictionaries(
             other._graph.graph['routes'], self._graph.graph['routes'])
-        self._graph.graph['route_to_service_map'] = \
-            {**self._graph.graph['route_to_service_map'], **other._graph.graph['route_to_service_map']}
-        self._graph.graph['service_to_route_map'] = \
-            {**self._graph.graph['service_to_route_map'], **other._graph.graph['service_to_route_map']}
+        route_to_service_map = {**self._graph.graph['route_to_service_map'],
+                                **other._graph.graph['route_to_service_map']}
+        service_to_route_map = {**self._graph.graph['service_to_route_map'],
+                                **other._graph.graph['service_to_route_map']}
         self.minimal_transfer_times = {**other.minimal_transfer_times, **self.minimal_transfer_times}
         # todo assuming separate schedules, with non conflicting ids, nodes and edges
         self._graph.update(other._graph)
+        self._graph.graph['route_to_service_map'] = route_to_service_map
+        self._graph.graph['service_to_route_map'] = service_to_route_map
 
         # merge change_log DataFrames
         self._graph.graph['change_log'] = self.change_log().merge_logs(other.change_log())
