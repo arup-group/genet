@@ -149,7 +149,14 @@ def parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, route_db, servi
                 schedule[route_id] = []
             route_val = route_db[route_id]
             stop_times = stop_times_db[trip_id]
-            stops = [stop_time['stop_id'] for stop_time in stop_times]
+            init_stops = [stop_time['stop_id'] for stop_time in stop_times]
+            stops = [init_stops[0]] + [init_stops[i] for i in range(1, len(init_stops)) if
+                                       init_stops[i - 1] != init_stops[i]]
+            if len(stops) != len(init_stops):
+                logging.warning(
+                    'Your GTFS has a looooop edge! A zero link between a node and itself, edge affected'
+                    '\nThis edge will not be considered for computation, the stop will be deleted and the'
+                    ' schedule will be changed.')
             s2_stops = [spatial.generate_index_s2(
                 lat=float(stops_db[stop]['stop_lat']), lng=float(stops_db[stop]['stop_lon'])) for stop in stops]
             mode = get_mode(route_val['route_type'])
