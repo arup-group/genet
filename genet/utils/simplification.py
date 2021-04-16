@@ -1,8 +1,10 @@
-import genet.utils.parallel as parallel
-from math import ceil
-from shapely.geometry import LineString, Point
 import logging
+from math import ceil
 from statistics import median
+
+from shapely.geometry import LineString, Point
+
+import genet.utils.parallel as parallel
 
 
 # rip and monkey patch of a few functions from osmnx.simplification to customise graph simplification
@@ -195,7 +197,8 @@ def simplify_graph(n, no_processes=1):
 
     logging.info('Generating paths to be simplified')
     # generate each path that needs to be simplified
-    edges_to_simplify = _get_edge_groups_to_simplify(n.graph, no_processes=no_processes)
+    edges_to_simplify = [list(x) for x in
+                         set(tuple(x) for x in _get_edge_groups_to_simplify(n.graph, no_processes=no_processes))]
     logging.info(f'Found {len(edges_to_simplify)} paths to simplify.')
 
     indexed_paths_to_simplify = dict(zip(n.generate_indices_for_n_edges(len(edges_to_simplify)), edges_to_simplify))

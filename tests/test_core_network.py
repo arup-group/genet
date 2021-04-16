@@ -1,23 +1,25 @@
+import ast
+import json
 import os
 import sys
-import ast
 import uuid
+
+import lxml
+import networkx as nx
 import pandas as pd
 import geopandas as gpd
-import networkx as nx
 import pytest
-import lxml
-import json
-from shapely.geometry import LineString, Polygon, Point
 from pandas.testing import assert_frame_equal, assert_series_equal
-from tests.fixtures import route, stop_epsg_27700, network_object_from_test_data, assert_semantically_equal, \
-    full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path
-from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
-from genet.inputs_handler import matsim_reader
+from shapely.geometry import LineString, Polygon, Point
+
 from genet.core import Network
+from genet.inputs_handler import matsim_reader
+from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule
-from genet.utils import plot, spatial, graph_operations
+from genet.utils import plot, spatial
 from genet.inputs_handler import read
+from tests.fixtures import assert_semantically_equal, route, stop_epsg_27700, network_object_from_test_data, \
+    full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -485,6 +487,44 @@ def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_
     assert schedule_dtd.validate(xml_obj), \
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
                                                                         schedule_dtd.error_log.filter_from_errors())
+
+
+def test_simplifying_network_with_multi_edges_resulting_in_multi_paths():
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n_-1': {'x': -1, 'y': -1, 's2_id': -1},
+        'n_0': {'x': 0, 'y': 0, 's2_id': 0},
+        'n_1': {'x': 1, 'y': 1, 's2_id': 1},
+        'n_2': {'x': 2, 'y': 2, 's2_id': 2},
+        'n_3': {'x': 3, 'y': 3, 's2_id': 3},
+        'n_4': {'x': 4, 'y': 4, 's2_id': 4},
+        'n_5': {'x': 5, 'y': 5, 's2_id': 5},
+        'n_6': {'x': 6, 'y': 5, 's2_id': 6},
+    })
+    n.add_links({
+        'l_-1': {'from': 'n_-1', 'to': 'n_1', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
+                'modes': {'car'}},
+        'l_0': {'from': 'n_0', 'to': 'n_1', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
+                'modes': {'car'}},
+        'l_1': {'from': 'n_1', 'to': 'n_2', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
+                'modes': {'car'}},
+        'l_2': {'from': 'n_1', 'to': 'n_2', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
+                'modes': {'car'}},
+        'l_3': {'from': 'n_2', 'to': 'n_3', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
+                'modes': {'car'}},
+        'l_4': {'from': 'n_2', 'to': 'n_3', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
+                'modes': {'car'}},
+        'l_5': {'from': 'n_3', 'to': 'n_4', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
+                'modes': {'car'}},
+        'l_6': {'from': 'n_3', 'to': 'n_4', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
+                'modes': {'car'}},
+        'l_7': {'from': 'n_4', 'to': 'n_5', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
+                'modes': {'car'}},
+        'l_8': {'from': 'n_4', 'to': 'n_6', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
+                'modes': {'car'}}
+    })
+    n.simplify()
+    assert set(n.link_simplification_map) == {'l_4', 'l_1', 'l_5', 'l_3', 'l_6', 'l_2'}
 
 
 def test_reading_back_simplified_network():
