@@ -1300,6 +1300,8 @@ class Network:
                 nodes[link_data['to']] = self.node(link_data['to'])
 
         routes = self.schedule.route_attribute_data(keys='ordered_stops')
+        _rs = [self.schedule.service_to_route_map()[service_id] for service_id in service_ids]
+        routes = routes[routes.index.to_series().isin({item for sublist in _rs for item in sublist})]
         routes['route'] = routes['ordered_stops'].apply(lambda x: route_path(x))
         routes = routes.drop('ordered_stops', axis=1).T.to_dict()
 
