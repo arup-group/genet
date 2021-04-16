@@ -1235,30 +1235,20 @@ class Network:
         def route_path(ordered_stops):
             path = []
             for u, v in zip(ordered_stops[:-1], ordered_stops[1:]):
-                try:
-                    from_linkrefid = g.nodes[u]['linkRefId']
-                    f_node = self.link(from_linkrefid)['to']
-                    _from = self.node(f_node)
-                except KeyError:
-                    from_linkrefid = stop_changes[u]['linkRefId']
-                    f_node = u
-                    _from = g.nodes[u]
-                try:
-                    to_linkrefid = g.nodes[v]['linkRefId']
-                    t_node = self.link(to_linkrefid)['from']
-                    _to = self.node(t_node)
-                except KeyError:
-                    to_linkrefid = stop_changes[v]['linkRefId']
-                    t_node = v
-                    _to = g.nodes[v]
+                from_linkrefid = stop_linkrefids[u]['linkRefId']
+                to_linkrefid = stop_linkrefids[v]['linkRefId']
+                f_node = reference_links[from_linkrefid]['to']
+                t_node = reference_links[to_linkrefid]['from']
+                f_node_data = nodes[f_node]
+                t_node_data = nodes[t_node]
 
                 connecting_link = f'artificial_link===from:{f_node}===to:{t_node}'
-                links_to_add[connecting_link] = {
+                reference_links[connecting_link] = {
                     'from': f_node,
                     'to': t_node,
                     'modes': {routes_to_mode_map[route_id]['mode'] for route_id in g.nodes[u]['routes']} | {
                         routes_to_mode_map[route_id]['mode'] for route_id in g.nodes[v]['routes']},
-                    'length': spatial.distance_between_s2cellids(_from['s2_id'], _to['s2_id']),
+                    'length': spatial.distance_between_s2cellids(f_node_data['s2_id'], t_node_data['s2_id']),
                     'freespeed': 44.44,
                     'capacity': 9999.0,
                     'permlanes': 1
@@ -1282,15 +1272,15 @@ class Network:
         g = nx.DiGraph(nx.edge_subgraph(self.schedule.graph(), sub_graph_edges))
 
         routes_to_mode_map = self.schedule.route_attribute_data(keys=['mode']).T.to_dict()
-        nodes_to_add = {}
-        links_to_add = {}
-        stop_changes = {}
+        nodes = {}
+        reference_links = {}
+        stop_linkrefids = {}
         for stop, data in g.nodes(data=True):
             if 'linkRefId' not in data:
-                nodes_to_add[stop] = {k: v for k, v in data.items() if k not in {'services', 'routes', 'epsg'}}
+                nodes[stop] = {k: v for k, v in data.items() if k not in {'services', 'routes', 'epsg'}}
 
                 link_id = f'artificial_link===from:{stop}===to:{stop}'
-                links_to_add[link_id] = {
+                reference_links[link_id] = {
                     'from': stop,
                     'to': stop,
                     'modes': {routes_to_mode_map[route_id]['mode'] for route_id in data['routes']},
@@ -1300,17 +1290,22 @@ class Network:
                     'permlanes': 1
                 }
 
-                stop_changes[stop] = {
-                    'linkRefId': link_id
-                }
+                stop_linkrefids[stop] = {'linkRefId': link_id}
+            else:
+                link_id = data['linkRefId']
+                link_data = self.link(link_id)
+                stop_linkrefids[stop] = {'linkRefId': link_id}
+                reference_links[link_id] = link_data
+                nodes[link_data['from']] = self.node(link_data['from'])
+                nodes[link_data['to']] = self.node(link_data['to'])
 
         routes = self.schedule.route_attribute_data(keys='ordered_stops')
         routes['route'] = routes['ordered_stops'].apply(lambda x: route_path(x))
         routes = routes.drop('ordered_stops', axis=1).T.to_dict()
 
-        self.add_nodes(nodes_to_add)
-        self.add_links(links_to_add)
-        self.schedule.apply_attributes_to_stops(stop_changes)
+        self.add_nodes({node: nodes[node] for node in set(nodes) - set(self.graph.nodes)})
+        self.add_links({link: reference_links[link] for link in set(reference_links) - set(self.link_id_mapping)})
+        self.schedule.apply_attributes_to_stops(stop_linkrefids)
         self.schedule.apply_attributes_to_routes(routes)
 
     def _apply_max_stable_changes(self, max_stable_set_changeset):
