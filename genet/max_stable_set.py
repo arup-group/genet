@@ -178,8 +178,8 @@ class MaxStableSet:
         self.nodes.plot(ax=ax, color='#F9CACA', alpha=0.7)
         self.stops.plot(ax=ax, marker='x', color='#F76363')
 
-        ax.set_xlim(minx - 0.001, maxx + 0.001)
-        ax.set_ylim(miny - 0.001, maxy + 0.001)
+        ax.set_xlim(minx - 0.003, maxx + 0.003)
+        ax.set_ylim(miny - 0.003, maxy + 0.003)
         ax.set_title('Stops, their catchments and underlying network for the Max Stable Set Problem')
         return fig, ax
 
@@ -193,8 +193,8 @@ class MaxStableSet:
         self.nodes.plot(ax=ax, color='#F9CACA', alpha=0.7)
         self.stops.plot(ax=ax, marker='x', color='#F76363')
 
-        ax.set_xlim(minx - 0.001, maxx + 0.001)
-        ax.set_ylim(miny - 0.001, maxy + 0.001)
+        ax.set_xlim(minx - 0.003, maxx + 0.003)
+        ax.set_ylim(miny - 0.003, maxy + 0.003)
         ax.set_title('Stops, their catchments, the underlying network and route')
         return fig, ax
 

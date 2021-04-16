@@ -1225,10 +1225,93 @@ class Network:
                 changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
         self._apply_max_stable_changes(changeset)
 
-    def teleport_service(self, service_id):
-        self.route_service(
-            service_id, spatial_tree=spatial.SpatialTree(), solver='glpk', allow_partial=True, distance_threshold=30,
-            step_size=30, additional_modes=None, allow_directional_split=False)
+    def teleport_service(self, service_ids: Union[str, list, set]):
+        """
+        Teleports service(s) of ID(s) given in `service_ids`
+        :param service_ids: a Service ID or collection of them
+        :return: None, updates Network and Schedule objects
+        """
+
+        def route_path(ordered_stops):
+            path = []
+            for u, v in zip(ordered_stops[:-1], ordered_stops[1:]):
+                try:
+                    from_linkrefid = g.nodes[u]['linkRefId']
+                    f_node = self.link(from_linkrefid)['to']
+                    _from = self.node(f_node)
+                except KeyError:
+                    from_linkrefid = stop_changes[u]['linkRefId']
+                    f_node = u
+                    _from = g.nodes[u]
+                try:
+                    to_linkrefid = g.nodes[v]['linkRefId']
+                    t_node = self.link(to_linkrefid)['from']
+                    _to = self.node(t_node)
+                except KeyError:
+                    to_linkrefid = stop_changes[v]['linkRefId']
+                    t_node = v
+                    _to = g.nodes[v]
+
+                connecting_link = f'artificial_link===from:{f_node}===to:{t_node}'
+                links_to_add[connecting_link] = {
+                    'from': f_node,
+                    'to': t_node,
+                    'modes': {routes_to_mode_map[route_id]['mode'] for route_id in g.nodes[u]['routes']} | {
+                        routes_to_mode_map[route_id]['mode'] for route_id in g.nodes[v]['routes']},
+                    'length': spatial.distance_between_s2cellids(_from['s2_id'], _to['s2_id']),
+                    'freespeed': 44.44,
+                    'capacity': 9999.0,
+                    'permlanes': 1
+                }
+
+                pairwise_path = [from_linkrefid, connecting_link, to_linkrefid]
+                if path:
+                    if path[-1] == pairwise_path[0]:
+                        path += pairwise_path[1:]
+                    else:
+                        path += pairwise_path
+                else:
+                    path.extend(pairwise_path)
+            return path
+
+        if isinstance(service_ids, str):
+            service_ids = {service_ids}
+        sub_graph_edges = set()
+        for service_id in service_ids:
+            sub_graph_edges |= self.schedule.service_reference_edges(service_id)
+        g = nx.DiGraph(nx.edge_subgraph(self.schedule.graph(), sub_graph_edges))
+
+        routes_to_mode_map = self.schedule.route_attribute_data(keys=['mode']).T.to_dict()
+        nodes_to_add = {}
+        links_to_add = {}
+        stop_changes = {}
+        for stop, data in g.nodes(data=True):
+            if 'linkRefId' not in data:
+                nodes_to_add[stop] = {k: v for k, v in data.items() if k not in {'services', 'routes', 'epsg'}}
+
+                link_id = f'artificial_link===from:{stop}===to:{stop}'
+                links_to_add[link_id] = {
+                    'from': stop,
+                    'to': stop,
+                    'modes': {routes_to_mode_map[route_id]['mode'] for route_id in data['routes']},
+                    'length': 1,
+                    'freespeed': 44.44,
+                    'capacity': 9999.0,
+                    'permlanes': 1
+                }
+
+                stop_changes[stop] = {
+                    'linkRefId': link_id
+                }
+
+        routes = self.schedule.route_attribute_data(keys='ordered_stops')
+        routes['route'] = routes['ordered_stops'].apply(lambda x: route_path(x))
+        routes = routes.drop('ordered_stops', axis=1).T.to_dict()
+
+        self.add_nodes(nodes_to_add)
+        self.add_links(links_to_add)
+        self.schedule.apply_attributes_to_stops(stop_changes)
+        self.schedule.apply_attributes_to_routes(routes)
 
     def _apply_max_stable_changes(self, max_stable_set_changeset):
         self.schedule._graph.add_nodes_from(max_stable_set_changeset.new_stops.items())

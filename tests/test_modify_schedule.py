@@ -1,11 +1,12 @@
-import pytest
-import sys
 import os
-from pyproj import Transformer
+import sys
+
+import pytest
 from pandas import DataFrame
+
+import genet.utils.spatial as spatial
 from genet import Stop, Route, Service, Schedule, Network, MaxStableSet
 from genet.modify import schedule as mod_schedule
-import genet.utils.spatial as spatial
 from tests.fixtures import assert_semantically_equal
 
 
@@ -307,6 +308,98 @@ def test_teleporting_service(test_network, test_service):
                  'artificial_link===from:490000089A===to:490000252X',
                  'artificial_link===from:490000252X===to:490000078Q',
                  'artificial_link===from:490004695A===to:490000235C'}:
+        assert test_network.has_link(link)
+
+
+def test_teleporting_more_than_one_service(test_network, test_service):
+    test_network.schedule = Schedule(
+        epsg='epsg:27700',
+        services=[test_service,
+                  Service(
+                      id='service_rail',
+                      routes=[
+                          Route(id='route_1_rail',
+                                route_short_name='',
+                                mode='rail',
+                                stops=[
+                                    Stop(epsg='epsg:27700', id='490004695A', x=529871.7641447927, y=181148.2259665833),
+                                    Stop(epsg='epsg:27700', id='490000235C', x=529741.7652299237, y=181516.3450505745),
+                                    Stop(epsg='epsg:27700', id='49000008900000', x=529488.7339130711,
+                                         y=181894.12649680028)],
+                                trips={'trip_id': ['trip_1'],
+                                       'trip_departure_time': ['15:30:00'],
+                                       'vehicle_id': ['veh_rail_1']},
+                                arrival_offsets=['00:00:00', '00:02:00', '00:05:00'],
+                                departure_offsets=['00:00:00', '00:03:00', '00:07:00']
+                                )])
+                  ])
+    test_network.teleport_service(['service_bus', 'service_rail'])
+
+    rep = test_network.generate_validation_report()
+    assert rep['graph']['graph_connectivity']['car']['number_of_connected_subgraphs'] == 1
+    assert rep['schedule']['schedule_level']['is_valid_schedule']
+    assert rep['routing']['services_have_routes_in_the_graph']
+    assert test_network.schedule.route('route_1').route == ['artificial_link===from:490004695A===to:490004695A',
+                                                            'artificial_link===from:490004695A===to:490000235C',
+                                                            'artificial_link===from:490000235C===to:490000235C',
+                                                            'artificial_link===from:490000235C===to:490000089A',
+                                                            'artificial_link===from:490000089A===to:490000089A']
+    assert test_network.schedule.route('route_2').route == ['artificial_link===from:490000089A===to:490000089A',
+                                                            'artificial_link===from:490000089A===to:490000252X',
+                                                            'artificial_link===from:490000252X===to:490000252X',
+                                                            'artificial_link===from:490000252X===to:490000078Q',
+                                                            'artificial_link===from:490000078Q===to:490000078Q']
+    assert test_network.schedule.route('route_1_rail').route == ['artificial_link===from:490004695A===to:490004695A',
+                                                                 'artificial_link===from:490004695A===to:490000235C',
+                                                                 'artificial_link===from:490000235C===to:490000235C',
+                                                                 'artificial_link===from:490000235C===to:49000008900000',
+                                                                 'artificial_link===from:49000008900000===to:49000008900000']
+    for link in {'artificial_link===from:490000252X===to:490000252X',
+                 'artificial_link===from:490000078Q===to:490000078Q',
+                 'artificial_link===from:490000235C===to:490000235C',
+                 'artificial_link===from:490000235C===to:490000089A',
+                 'artificial_link===from:490004695A===to:490004695A',
+                 'artificial_link===from:490000089A===to:490000089A',
+                 'artificial_link===from:490000089A===to:490000252X',
+                 'artificial_link===from:490000252X===to:490000078Q',
+                 'artificial_link===from:490004695A===to:490000235C',
+                 'artificial_link===from:490000235C===to:49000008900000',
+                 'artificial_link===from:49000008900000===to:49000008900000'}:
+        assert test_network.has_link(link)
+    assert test_network.link('artificial_link===from:490004695A===to:490000235C')['modes'] == {'rail', 'bus'}
+    assert test_network.link('artificial_link===from:490000235C===to:490000235C')['modes'] == {'rail', 'bus'}
+    assert test_network.link('artificial_link===from:49000008900000===to:49000008900000')['modes'] == {'rail'}
+
+
+def test_teleporting_service_with_some_snapped_stops(test_network, test_service):
+    test_network.schedule = Schedule(epsg='epsg:27700', services=[test_service])
+    test_network.schedule._graph.nodes['490000252X']['linkRefId'] = '5221366094904818311_5221366094903752729'
+    test_network.apply_attributes_to_links({'5221366094904818311_5221366094903752729': {
+        'modes': test_network.link('5221366094904818311_5221366094903752729')['modes'] | {'bus'}}})
+    test_network.teleport_service('service_bus')
+
+    rep = test_network.generate_validation_report()
+    assert rep['graph']['graph_connectivity']['car']['number_of_connected_subgraphs'] == 1
+    assert rep['schedule']['schedule_level']['is_valid_schedule']
+    assert rep['routing']['services_have_routes_in_the_graph']
+    assert test_network.schedule.route('route_1').route == ['artificial_link===from:490004695A===to:490004695A',
+                                                            'artificial_link===from:490004695A===to:490000235C',
+                                                            'artificial_link===from:490000235C===to:490000235C',
+                                                            'artificial_link===from:490000235C===to:490000089A',
+                                                            'artificial_link===from:490000089A===to:490000089A']
+    assert test_network.schedule.route('route_2').route == ['artificial_link===from:490000089A===to:490000089A',
+                                                            'artificial_link===from:490000089A===to:5221366094904818311',
+                                                            '5221366094904818311_5221366094903752729',
+                                                            'artificial_link===from:5221366094903752729===to:490000078Q',
+                                                            'artificial_link===from:490000078Q===to:490000078Q']
+    for link in {'artificial_link===from:490000235C===to:490000235C',
+                 'artificial_link===from:5221366094903752729===to:490000078Q',
+                 'artificial_link===from:490004695A===to:490000235C', '5221366094904818311_5221366094903752729',
+                 'artificial_link===from:490000235C===to:490000089A',
+                 'artificial_link===from:490000078Q===to:490000078Q',
+                 'artificial_link===from:490004695A===to:490004695A',
+                 'artificial_link===from:490000089A===to:5221366094904818311',
+                 'artificial_link===from:490000089A===to:490000089A'}:
         assert test_network.has_link(link)
 
 
