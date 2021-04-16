@@ -148,11 +148,11 @@ def parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, route_db, servi
             if route_id not in schedule:
                 schedule[route_id] = []
             route_val = route_db[route_id]
-            stop_times = stop_times_db[trip_id]
-            init_stops = [stop_time['stop_id'] for stop_time in stop_times]
-            stops = [init_stops[0]] + [init_stops[i] for i in range(1, len(init_stops)) if
-                                       init_stops[i - 1] != init_stops[i]]
-            if len(stops) != len(init_stops):
+            init_stop_times = stop_times_db[trip_id]
+            stop_times = [init_stop_times[0]] + [init_stop_times[i] for i in range(1, len(init_stop_times)) if
+                                                 init_stop_times[i - 1]['stop_id'] != init_stop_times[i]['stop_id']]
+            stops = [stop_time['stop_id'] for stop_time in stop_times]
+            if len(stop_times) != len(init_stop_times):
                 logging.warning(
                     'Your GTFS has a looooop edge! A zero link between a node and itself, edge affected'
                     '\nThis edge will not be considered for computation, the stop will be deleted and the'
