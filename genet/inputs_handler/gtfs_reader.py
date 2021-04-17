@@ -177,7 +177,7 @@ def parse_db_to_schedule_dict(stop_times_db, stops_db, trips_db, route_db, servi
                         'route_short_name': route_val['route_short_name'],
                         'route_long_name': route_val['route_long_name'],
                         'mode': mode,
-                        'route_color': '#{}'.format(route_val['route_color']),
+                        # 'route_color': '#{}'.format(route_val['route_color']),
                         # trip ids, their own departure times and vehicles
                         'trips': {
                             'trip_id': [trip_id],
