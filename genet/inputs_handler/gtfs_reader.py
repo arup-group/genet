@@ -34,7 +34,7 @@ def read_services_from_calendar(path, day):
         file = os.path.join(path, file_name)
         if ("calendar" in file) and (not ("dates" in file)):
             calendar_present = True
-            with open(file, mode='r') as infile:
+            with open(file, mode='r', encoding="utf-8-sig") as infile:
                 reader = csv.DictReader(infile)
                 for row in reader:
                     if (int(day) in range(int(row['start_date']), int(row['end_date']))) and \
@@ -62,7 +62,7 @@ def read_gtfs_to_db_like_tables(path):
 
         if "stop_times" in file:
             logging.info("Reading stop times")
-            with open(file, mode='r') as infile:
+            with open(file, mode='r', encoding="utf-8-sig") as infile:
                 reader = csv.DictReader(infile)
                 for row in reader:
                     stop_times.append(dict(row))
@@ -73,21 +73,21 @@ def read_gtfs_to_db_like_tables(path):
 
         elif "stops" in file:
             logging.info("Reading stops")
-            with open(file, mode='r') as infile:
+            with open(file, mode='r', encoding="utf-8-sig") as infile:
                 reader = csv.DictReader(infile)
                 for row in reader:
                     stops_db[row['stop_id']] = dict(row)
 
         elif "trips" in file:
             logging.info("Reading trips")
-            with open(file, mode='r') as infile:
+            with open(file, mode='r', encoding="utf-8-sig") as infile:
                 reader = csv.DictReader(infile)
                 for row in reader:
                     trips_db[row['trip_id']] = dict(row)
 
         elif "routes" in file:
             logging.info("Reading routes")
-            with open(file, mode='r') as infile:
+            with open(file, mode='r', encoding="utf-8-sig") as infile:
                 reader = csv.DictReader(infile)
                 for row in reader:
                     routes_db[row['route_id']] = dict(row)
