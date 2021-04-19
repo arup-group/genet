@@ -406,10 +406,10 @@ class ChangeSet:
 
     def update_df_route_data(self, df_route_data, max_stable_set):
         # update stops and generate routed paths
-        df_route_data['route'] = df_route_data['ordered_stops'].apply(
+        df_route_data.loc[:, 'route'] = df_route_data.loc[:, 'ordered_stops'].apply(
             lambda x: max_stable_set.routed_path(x))
         map = max_stable_set.stops_to_artificial_stops_map()
-        df_route_data['ordered_stops'] = df_route_data['ordered_stops'].map(
+        df_route_data.loc[:, 'ordered_stops'] = df_route_data.loc[:, 'ordered_stops'].map(
             lambda x: [map[stop] for stop in x])
         return df_route_data
 
