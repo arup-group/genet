@@ -206,7 +206,7 @@ def test_subsetting_links_df_by_mode_that_isnt_present_throws_error(network):
 
 
 def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(network):
-    spatial_tree = spatial.SpatialTree(network)
+    spatial_tree = spatial.SpatialTree(network).modal_subtree(modes='car')
     stops = GeoDataFrame({
         'id': {0: 'stop_10m_to_link_1', 1: 'stop_15m_to_link_2', 2: 'stop_20m_to_link_1'},
         'geometry': {0: Point(-0.15186089346604492, 51.51950409732838),
@@ -214,7 +214,7 @@ def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(networ
                      2: Point(-0.1520233977548685, 51.51952913606585)}})
     stops.crs = {'init': 'epsg:4326'}
 
-    closest_links = spatial_tree.closest_links(stops, 30, modes='car')
+    closest_links = spatial_tree.closest_links(stops, 30)
     assert_semantically_equal(closest_links.reset_index().groupby('id')['link_id'].apply(list).to_dict(),
                               {'stop_10m_to_link_1': ['link_1'],
                                'stop_20m_to_link_1': ['link_1'],
@@ -222,7 +222,7 @@ def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(networ
 
 
 def test_SpatialTree_closest_links_in_london_finds_a_link_within_13_metres(network):
-    spatial_tree = spatial.SpatialTree(network)
+    spatial_tree = spatial.SpatialTree(network).modal_subtree(modes='car')
     stops = GeoDataFrame({
         'id': {0: 'stop_10m_to_link_1', 1: 'stop_15m_to_link_2', 2: 'stop_20m_to_link_1'},
         'geometry': {0: Point(-0.15186089346604492, 51.51950409732838),
@@ -230,7 +230,7 @@ def test_SpatialTree_closest_links_in_london_finds_a_link_within_13_metres(netwo
                      2: Point(-0.1520233977548685, 51.51952913606585)}})
     stops.crs = {'init': 'epsg:4326'}
 
-    closest_links = spatial_tree.closest_links(stops, 13, modes='car')
+    closest_links = spatial_tree.closest_links(stops, 13)
     closest_links = closest_links.dropna()
     assert_semantically_equal(closest_links.reset_index().groupby('id')['link_id'].apply(list).to_dict(),
                               {'stop_10m_to_link_1': ['link_1']})
@@ -245,13 +245,13 @@ def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
                attribs={
                    'modes': ['car']
                })
-    spatial_tree = spatial.SpatialTree(n)
+    spatial_tree = spatial.SpatialTree(n).modal_subtree(modes='car')
     stops = GeoDataFrame({'geometry': {
         'stop_15m_to_link_1': Point(109.380607, 0.320333)
     }})
     stops.crs = {'init': 'epsg:4326'}
 
-    closest_links = spatial_tree.closest_links(stops, 20, modes='car')
+    closest_links = spatial_tree.closest_links(stops, 20)
     closest_links = closest_links.dropna()
     assert_semantically_equal(closest_links.reset_index().groupby('index')['link_id'].apply(list).to_dict(),
                               {'stop_15m_to_link_1': ['link_1']})
@@ -266,13 +266,13 @@ def test_SpatialTree_closest_links_in_indonesia_doesnt_find_link_within_10_metre
                attribs={
                    'modes': ['car']
                })
-    spatial_tree = spatial.SpatialTree(n)
+    spatial_tree = spatial.SpatialTree(n).modal_subtree(modes='car')
     stops = GeoDataFrame({'geometry': {
         'stop_15m_to_link_1': Point(109.380607, 0.320333)
     }})
     stops.crs = {'init': 'epsg:4326'}
 
-    closest_links = spatial_tree.closest_links(stops, 10, modes='car')
+    closest_links = spatial_tree.closest_links(stops, 10)
     closest_links = closest_links.dropna()
     assert closest_links.empty
 
@@ -286,13 +286,13 @@ def test_SpatialTree_closest_links_in_north_canada_finds_link_within_30_metres()
                attribs={
                    'modes': ['car']
                })
-    spatial_tree = spatial.SpatialTree(n)
+    spatial_tree = spatial.SpatialTree(n).modal_subtree(modes='car')
     stops = GeoDataFrame({'geometry': {
         'stop_15m_to_link_1': Point(-93.250971, 73.664114)
     }})
     stops.crs = {'init': 'epsg:4326'}
 
-    closest_links = spatial_tree.closest_links(stops, 30, modes='car')
+    closest_links = spatial_tree.closest_links(stops, 30)
     assert_semantically_equal(closest_links.reset_index().groupby('index')['link_id'].apply(list).to_dict(),
                               {'stop_15m_to_link_1': ['link_1']})
 
@@ -306,23 +306,23 @@ def test_SpatialTree_closest_links_in_north_canada_doesnt_find_link_within_10_me
                attribs={
                    'modes': ['car']
                })
-    spatial_tree = spatial.SpatialTree(n)
+    spatial_tree = spatial.SpatialTree(n).modal_subtree(modes='car')
     stops = GeoDataFrame({'geometry': {
         'stop_15m_to_link_1': Point(-93.250971, 73.664114)
     }})
     stops.crs = {'init': 'epsg:4326'}
 
-    closest_links = spatial_tree.closest_links(stops, 10, modes='car')
+    closest_links = spatial_tree.closest_links(stops, 10)
     closest_links = closest_links.dropna()
     assert closest_links.empty
 
 
 def test_SpatialTree_shortest_paths(network):
-    spatial_tree = spatial.SpatialTree(network)
+    spatial_tree = spatial.SpatialTree(network).modal_subtree(modes='car')
     df = DataFrame({'u': ['link_1', 'link_2', 'link_2', 'link_1'],
                     'v': ['link_2', 'link_3', 'link_4', 'link_4']})
 
-    df = spatial_tree.shortest_paths(df, modes='car')
+    df = spatial_tree.shortest_paths(df)
     assert_semantically_equal(df.T.to_dict(),
                               {0: {'u': 'link_1', 'v': 'link_2', 'shortest_path': ['link_1', 'link_2']},
                                1: {'u': 'link_2', 'v': 'link_3', 'shortest_path': None},
@@ -332,11 +332,11 @@ def test_SpatialTree_shortest_paths(network):
 
 
 def test_SpatialTree_shortest_path_lengths(network):
-    spatial_tree = spatial.SpatialTree(network)
+    spatial_tree = spatial.SpatialTree(network).modal_subtree(modes='car')
     df = DataFrame({'u': ['link_1', 'link_2', 'link_2', 'link_1'],
                     'v': ['link_2', 'link_3', 'link_4', 'link_4']})
 
-    df = spatial_tree.shortest_path_lengths(df, modes='car')
+    df = spatial_tree.shortest_path_lengths(df)
     assert_semantically_equal(df.T.to_dict(),
                               {0: {'u': 'link_1', 'v': 'link_2', 'path_lengths': 153.0294},
                                1: {'u': 'link_2', 'v': 'link_3', 'path_lengths': float('nan')},

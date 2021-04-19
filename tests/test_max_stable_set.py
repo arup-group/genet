@@ -138,22 +138,18 @@ def test_stops_missing_nearest_links_identifies_stops_with_missing_closest_links
     assert mss.stops_missing_nearest_links() == {'stop_1'}
 
 
-def test_buidling_mss_with_nothing_to_snap_to(mocker, network, network_spatial_tree):
-    mocker.patch.object(spatial.SpatialTree, 'modal_links_geodataframe', side_effect=EmptySpatialTree(''))
-
+def test_buidling_mss_with_nothing_to_snap_to(network):
     mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
-                       network_spatial_tree=network_spatial_tree,
+                       network_spatial_tree=spatial.SpatialTree(),
                        modes={'car', 'bus'},
                        distance_threshold=10,
                        step_size=10)
     assert is_empty(mss.problem_graph)
 
 
-def test_empty_mss_produces_completely_artificial_but_sensible_results(mocker, network, network_spatial_tree):
-    mocker.patch.object(spatial.SpatialTree, 'modal_links_geodataframe', side_effect=EmptySpatialTree(''))
-
+def test_empty_mss_produces_completely_artificial_but_sensible_results(network):
     mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
-                       network_spatial_tree=network_spatial_tree,
+                       network_spatial_tree=spatial.SpatialTree(),
                        modes={'car', 'bus'},
                        distance_threshold=10,
                        step_size=10)

@@ -269,21 +269,21 @@ def correct_trips_db():
 def correct_routes_db():
     return {'1001': {'route_id': '1001', 'agency_id': 'OP550', 'route_short_name': 'BTR',
                      'route_long_name': 'Bus Test Route', 'route_type': '3', 'route_url': '',
-                     'route_color': 'CE312D', 'route_text_color': 'FFFFFF', 'checkin_duration': ''},
+                     'route_text_color': 'FFFFFF', 'checkin_duration': ''},
             '1002': {'route_id': '1002', 'agency_id': 'OP550', 'route_short_name': 'RTR',
                      'route_long_name': 'Rail Test Route', 'route_type': '2', 'route_url': '',
-                     'route_color': 'CE312D', 'route_text_color': 'FFFFFF', 'checkin_duration': ''}}
+                     'route_text_color': 'FFFFFF', 'checkin_duration': ''}}
 
 
 @pytest.fixture()
 def correct_schedule_dict():
     return {'1001': [
-        {'route_short_name': 'BTR', 'route_long_name': 'Bus Test Route', 'mode': 'bus', 'route_color': '#CE312D',
+        {'route_short_name': 'BTR', 'route_long_name': 'Bus Test Route', 'mode': 'bus',
          'trips': {'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_0_bus']},
          'stops': ['BSE', 'BSN'], 'arrival_offsets': ['0:00:00', '0:02:00'],
          'departure_offsets': ['0:00:00', '0:02:00'], 's2_stops': [5221390325135889957, 5221390684150342605]}],
         '1002': [
-            {'route_short_name': 'RTR', 'route_long_name': 'Rail Test Route', 'mode': 'rail', 'route_color': '#CE312D',
+            {'route_short_name': 'RTR', 'route_long_name': 'Rail Test Route', 'mode': 'rail',
              'trips': {'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_1_rail']},
              'stops': ['RSN', 'RSE'], 'arrival_offsets': ['0:00:00', '0:02:00'],
              'departure_offsets': ['0:00:00', '0:02:00'], 's2_stops': [5221390332291192399, 5221390324026756531]}]}
@@ -292,12 +292,11 @@ def correct_schedule_dict():
 @pytest.fixture()
 def correct_schedule_dict_from_test_gtfs():
     return {'1001': [
-        {'route_short_name': 'BTR', 'route_long_name': 'Bus Test Route', 'mode': 'bus', 'route_color': '#CE312D',
+        {'route_short_name': 'BTR', 'route_long_name': 'Bus Test Route', 'mode': 'bus',
          'trips': {'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_0_bus']},
          'stops': ['BSE', 'BSN'], 'arrival_offsets': ['0:00:00', '0:02:00'],
          'departure_offsets': ['0:00:00', '0:02:00'], 's2_stops': [5221390325135889957, 5221390684150342605]}],
             '1002': [{'route_short_name': 'RTR', 'route_long_name': 'Rail Test Route', 'mode': 'rail',
-                      'route_color': '#CE312D',
                       'trips': {'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_1_rail']},
                       'stops': ['RSN', 'RSE'],
                       'arrival_offsets': ['0:00:00', '0:02:00'], 'departure_offsets': ['0:00:00', '0:02:00'],

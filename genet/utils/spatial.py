@@ -163,7 +163,7 @@ def approximate_metres_distance_in_4326_degrees(distance, lat):
 class SpatialTree(nx.DiGraph):
     def __init__(self, n=None):
         super().__init__()
-        self.links = pd.DataFrame(columns={'link_id', 'modes'})
+        self.links = gpd.GeoDataFrame(columns={'link_id', 'modes', 'geometry'})
         if n is not None:
             self.add_links(n)
 
@@ -203,14 +203,24 @@ class SpatialTree(nx.DiGraph):
             raise EmptySpatialTree(f'No links found satisfying modes: {modes}')
         return _df
 
-    def closest_links(self, gdf_points, distance_radius, modes):
+    def modal_subtree(self, modes):
+        """
+        :param modes: str of set of strings to consider modal subgraph
+        :return:
+        """
+        sub_tree = self.__class__()
+        links = gpd.GeoDataFrame(self.modal_links_geodataframe(modes))
+        sub_tree = self.subgraph(links['link_id'])
+        sub_tree.links = links
+        return sub_tree
+
+    def closest_links(self, gdf_points, distance_radius):
         """
         Given a GeoDataFrame `gdf_points` with a`geometry` column with shapely.geometry.Points,
         finds closest links within `distance_radius` from the spatial tree which accept `mode`.
         Does not work very close to the poles.
         :param gdf_points: GeoDataFrame, uniquely indexed, in crs: EPSG:4326 shapely.geometry.Points (lon,lat)
         :param distance_radius: metres
-        :param modes: str of set of strings to consider modal subgraph
         :return: GeoDataFrame
         """
         bdds = gdf_points['geometry'].bounds
@@ -219,7 +229,7 @@ class SpatialTree(nx.DiGraph):
         gdf_points['geometry'] = gdf_points['geometry'].apply(lambda x: grow_point(x, approx_degree_radius))
         try:
             closest_links = gpd.sjoin(
-                self.modal_links_geodataframe(modes)[['link_id', 'geometry']],
+                self.links[['link_id', 'geometry']],
                 gdf_points,
                 how='right',
                 op='intersects'
@@ -235,11 +245,10 @@ class SpatialTree(nx.DiGraph):
         except nx.NetworkXNoPath:
             pass
 
-    def shortest_paths(self, df_pt_edges, modes, from_col='u', to_col='v', weight='length'):
+    def shortest_paths(self, df_pt_edges, from_col='u', to_col='v', weight='length'):
         """
         :param df_pt_edges: pandas DataFrame with a `from_col` and `to_col` defining links stored in the graph for
         which a path is required
-        :param modes: str of set of strings to consider modal subgraph for routing
         :param from_col: name of the column which gives ID for the source link
         :param to_col: name of the column which gives ID for the target link
         :param weight: weight for routing, defaults ot length
@@ -249,9 +258,8 @@ class SpatialTree(nx.DiGraph):
             df_pt_edges['shortest_path'] = None
         else:
             try:
-                links = self.modal_links_geodataframe(modes)['link_id']
                 df_pt_edges['shortest_path'] = df_pt_edges.apply(
-                    lambda x: self.path(G=self.subgraph(links), source=x[from_col], target=x[to_col], weight=weight),
+                    lambda x: self.path(G=self, source=x[from_col], target=x[to_col], weight=weight),
                     axis=1)
             except EmptySpatialTree:
                 df_pt_edges['shortest_path'] = None
@@ -263,11 +271,10 @@ class SpatialTree(nx.DiGraph):
         except nx.NetworkXNoPath:
             pass
 
-    def shortest_path_lengths(self, df_pt_edges, modes, from_col='u', to_col='v', weight='length'):
+    def shortest_path_lengths(self, df_pt_edges, from_col='u', to_col='v', weight='length'):
         """
         :param df_pt_edges: pandas DataFrame with a `from_col` and `to_col` defining links stored in the graph for
         which a path length is required
-        :param modes: str of set of strings to consider modal subgraph for routing
         :param from_col: name of the column which gives ID for the source link
         :param to_col: name of the column which gives ID for the target link
         :param weight: weight for routing, defaults ot length
@@ -277,9 +284,8 @@ class SpatialTree(nx.DiGraph):
             df_pt_edges['path_lengths'] = None
         else:
             try:
-                links = self.modal_links_geodataframe(modes)['link_id']
                 df_pt_edges['path_lengths'] = df_pt_edges.apply(
-                    lambda x: self.path_length(G=self.subgraph(links), source=x[from_col], target=x[to_col],
+                    lambda x: self.path_length(G=self, source=x[from_col], target=x[to_col],
                                                weight=weight),
                     axis=1)
             except EmptySpatialTree:

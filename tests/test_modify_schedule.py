@@ -80,8 +80,8 @@ def test_service():
 def test_snapping_pt_route_results_in_all_stops_with_link_references_and_routes_between_them(
         test_network, test_spatialtree):
     mss = MaxStableSet(pt_graph=test_network.schedule.route('40230_1').graph(),
-                       network_spatial_tree=test_spatialtree,
-                       modes={'car', 'bus'},
+                       network_spatial_tree=test_spatialtree.modal_subtree(modes={'car', 'bus'}),
+                       modes={'bus'},
                        distance_threshold=10,
                        step_size=10)
 

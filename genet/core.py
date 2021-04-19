@@ -1123,7 +1123,8 @@ class Network:
             route_data = self.schedule.route_attribute_data(keys=['ordered_stops'])
 
             for service in self.schedule.services():
-                logging.info(f'Routing Service {service.id}')
+                modes = service.modes()
+                logging.info(f'Routing Service {service.id} with modes = {modes}')
                 if allow_directional_split:
                     logging.info('Splitting Service graph')
                     routes, graph_groups = service.split_graph()
@@ -1132,23 +1133,30 @@ class Network:
                     routes = [set(service.route_ids())]
                     graph_groups = [service.reference_edges()]
                 service_g = service.graph()
-                modes = service.modes()
-                for m in modes & set(additional_modes.keys()):
-                    modes |= additional_modes[m]
 
-                for route_group, graph_group in zip(routes, graph_groups):
-                    mss = modify_schedule.route_pt_graph(
-                        pt_graph=nx.edge_subgraph(service_g, graph_group),
-                        network_spatial_tree=spatial_tree,
-                        modes=modes,
-                        solver=solver,
-                        allow_partial=allow_partial,
-                        distance_threshold=distance_threshold,
-                        step_size=step_size)
-                    if changeset is None:
-                        changeset = mss.to_changeset(route_data[route_data.index.isin(route_group)])
-                    else:
-                        changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
+                buffed_modes = modes.copy()
+                for m in modes & set(additional_modes.keys()):
+                    buffed_modes |= additional_modes[m]
+
+                try:
+                    sub_tree = spatial_tree.modal_subtree(buffed_modes)
+                    for route_group, graph_group in zip(routes, graph_groups):
+                        mss = modify_schedule.route_pt_graph(
+                            pt_graph=nx.edge_subgraph(service_g, graph_group),
+                            network_spatial_tree=sub_tree,
+                            modes=modes,
+                            solver=solver,
+                            allow_partial=allow_partial,
+                            distance_threshold=distance_threshold,
+                            step_size=step_size)
+                        if changeset is None:
+                            changeset = mss.to_changeset(route_data[route_data.index.isin(route_group)])
+                        else:
+                            changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
+                except exceptions.EmptySpatialTree:
+                    logging.warning(f'Service {service.id} cannot be snapped to the Network with modes = {modes}. The '
+                                    f'modal graph is empty for those modes. Consider teleporting.')
+                    return service.id
             self._apply_max_stable_changes(changeset)
         else:
             logging.warning('Schedule object not found')
@@ -1209,22 +1217,28 @@ class Network:
         changeset = None
         route_data = self.schedule.route_attribute_data(keys=['ordered_stops'])
 
-        logging.info(f'Routing Service {service.id}')
-        for route_group, graph_group in zip(routes, graph_groups):
-            mss = modify_schedule.route_pt_graph(
-                pt_graph=nx.edge_subgraph(service_g, graph_group),
-                network_spatial_tree=spatial_tree,
-                modes=service.modes(),
-                additional_modes=additional_modes,
-                solver=solver,
-                allow_partial=allow_partial,
-                distance_threshold=distance_threshold,
-                step_size=step_size)
-            if changeset is None:
-                changeset = mss.to_changeset(route_data[route_data.index.isin(route_group)])
-            else:
-                changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
-        self._apply_max_stable_changes(changeset)
+        modes = service.modes()
+        logging.info(f'Routing Service {service.id} with modes = {modes}')
+        try:
+            sub_tree = spatial_tree.modal_subtree(modes | additional_modes)
+            for route_group, graph_group in zip(routes, graph_groups):
+                mss = modify_schedule.route_pt_graph(
+                    pt_graph=nx.edge_subgraph(service_g, graph_group),
+                    network_spatial_tree=sub_tree,
+                    modes=modes,
+                    solver=solver,
+                    allow_partial=allow_partial,
+                    distance_threshold=distance_threshold,
+                    step_size=step_size)
+                if changeset is None:
+                    changeset = mss.to_changeset(route_data[route_data.index.isin(route_group)])
+                else:
+                    changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
+            self._apply_max_stable_changes(changeset)
+        except exceptions.EmptySpatialTree:
+            logging.warning(f'Service {service.id} cannot be snapped to the Network with modes = {modes}. The '
+                            f'modal graph is empty for those modes. Consider teleporting.')
+            return service.id
 
     def teleport_service(self, service_ids: Union[str, list, set]):
         """

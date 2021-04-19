@@ -15,12 +15,8 @@ def exists(coeff_attrib):
 
 
 class MaxStableSet:
-    def __init__(self, pt_graph, network_spatial_tree, modes, distance_threshold=30, step_size=10,
-                 additional_modes=None):
+    def __init__(self, pt_graph, network_spatial_tree, modes, distance_threshold=30, step_size=10):
         self.service_modes = modes
-        if additional_modes is None:
-            additional_modes = set()
-        self.modes = modes | additional_modes
         self.distance_threshold = distance_threshold
         self.step_size = step_size
         self.network_spatial_tree = network_spatial_tree
@@ -67,8 +63,7 @@ class MaxStableSet:
     def cast_catchment(self, df_stops, distance):
         return self.network_spatial_tree.closest_links(
             gdf_points=df_stops,
-            distance_radius=distance,
-            modes=self.modes).dropna()
+            distance_radius=distance).dropna()
 
     def all_stops_have_nearest_links(self):
         return not bool(self.stops_missing_nearest_links())
@@ -90,7 +85,6 @@ class MaxStableSet:
             left_on='v', right_on='id')
         self.edges = self.network_spatial_tree.shortest_path_lengths(
             df_pt_edges=self.edges,
-            modes=self.modes,
             from_col='link_id_u',
             to_col='link_id_v',
             weight='length'
@@ -290,7 +284,6 @@ class MaxStableSet:
         self.pt_edges['linkRefId_v'] = self.pt_edges['v'].map(self.solution)
         pt_edges = self.network_spatial_tree.shortest_paths(
             df_pt_edges=self.pt_edges[['linkRefId_u', 'linkRefId_v']].dropna(),
-            modes=self.modes,
             from_col='linkRefId_u',
             to_col='linkRefId_v',
             weight='length'
@@ -417,7 +410,7 @@ class ChangeSet:
         link_ids = {link_id for route_list in self.df_route_data['route'].values for link_id in route_list}
         links = max_stable_set.network_spatial_tree.links.copy()
         links = links[links['link_id'].isin(link_ids)][['link_id', 'modes']]
-        links['modes'] = links['modes'].apply(lambda x: x.__class__(set(x) | max_stable_set.modes))
+        links['modes'] = links['modes'].apply(lambda x: x.__class__(set(x) | max_stable_set.service_modes))
         return links.set_index('link_id').T.to_dict()
 
     def schedule_stops(self, max_stable_set):

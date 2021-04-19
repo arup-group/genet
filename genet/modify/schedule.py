@@ -23,14 +23,13 @@ def reproj_stops(schedule_element_nodes: dict, new_epsg):
 
 
 def route_pt_graph(pt_graph, network_spatial_tree, modes, solver='glpk', allow_partial=False, distance_threshold=30,
-                   step_size=10, additional_modes=None):
+                   step_size=10):
     logging.info(f'Building Maximum Stable Set for PT graph with {pt_graph.number_of_nodes()} stops and '
                  f'{pt_graph.number_of_edges()} edges')
     mss = MaxStableSet(
         pt_graph=pt_graph,
         network_spatial_tree=network_spatial_tree,
         modes=modes,
-        additional_modes=additional_modes,
         distance_threshold=distance_threshold,
         step_size=step_size
     )
