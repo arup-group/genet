@@ -1209,6 +1209,7 @@ class Network:
         changeset = None
         route_data = self.schedule.route_attribute_data(keys=['ordered_stops'])
 
+        logging.info(f'Routing Service {service.id}')
         for route_group, graph_group in zip(routes, graph_groups):
             mss = modify_schedule.route_pt_graph(
                 pt_graph=nx.edge_subgraph(service_g, graph_group),
