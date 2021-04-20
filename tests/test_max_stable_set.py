@@ -138,49 +138,6 @@ def test_stops_missing_nearest_links_identifies_stops_with_missing_closest_links
     assert mss.stops_missing_nearest_links() == {'stop_1'}
 
 
-def test_buidling_mss_with_nothing_to_snap_to(network):
-    mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
-                       network_spatial_tree=spatial.SpatialTree(),
-                       modes={'car', 'bus'},
-                       distance_threshold=10,
-                       step_size=10)
-    assert is_empty(mss.problem_graph)
-
-
-def test_empty_mss_produces_completely_artificial_but_sensible_results(network):
-    mss = MaxStableSet(pt_graph=network.schedule['bus_service'].graph(),
-                       network_spatial_tree=spatial.SpatialTree(),
-                       modes={'car', 'bus'},
-                       distance_threshold=10,
-                       step_size=10)
-    mss.solve()
-    mss.route_edges()
-    mss.fill_in_solution_artificially()
-    assert_semantically_equal(
-        mss.solution,
-        {'stop_3': 'artificial_link===from:stop_3===to:stop_3',
-         'stop_1': 'artificial_link===from:stop_1===to:stop_1',
-         'stop_2': 'artificial_link===from:stop_2===to:stop_2'})
-    assert_semantically_equal(
-        mss.pt_edges[['u', 'v', 'shortest_path']].to_dict(),
-        {'u': {0: 'stop_3', 1: 'stop_2', 2: 'stop_2', 3: 'stop_1'},
-         'v': {0: 'stop_2', 1: 'stop_1', 2: 'stop_3', 3: 'stop_2'},
-         'shortest_path': {
-             0: ['artificial_link===from:stop_3===to:stop_3',
-                 'artificial_link===from:stop_3===to:stop_2',
-                 'artificial_link===from:stop_2===to:stop_2'],
-             1: ['artificial_link===from:stop_2===to:stop_2',
-                 'artificial_link===from:stop_2===to:stop_1',
-                 'artificial_link===from:stop_1===to:stop_1'],
-             2: ['artificial_link===from:stop_2===to:stop_2',
-                 'artificial_link===from:stop_2===to:stop_3',
-                 'artificial_link===from:stop_3===to:stop_3'],
-             3: ['artificial_link===from:stop_1===to:stop_1',
-                 'artificial_link===from:stop_1===to:stop_2',
-                 'artificial_link===from:stop_2===to:stop_2']}}
-    )
-
-
 def test_build_graph_for_maximum_stable_set_problem_with_non_trivial_closest_link_selection_pool(mocker, network,
                                                                                                  network_spatial_tree):
     closest_links = DataFrame({

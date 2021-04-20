@@ -269,10 +269,10 @@ def correct_trips_db():
 def correct_routes_db():
     return {'1001': {'route_id': '1001', 'agency_id': 'OP550', 'route_short_name': 'BTR',
                      'route_long_name': 'Bus Test Route', 'route_type': '3', 'route_url': '',
-                     'route_text_color': 'FFFFFF', 'checkin_duration': ''},
+                     'route_color': 'CE312D', 'route_text_color': 'FFFFFF', 'checkin_duration': ''},
             '1002': {'route_id': '1002', 'agency_id': 'OP550', 'route_short_name': 'RTR',
                      'route_long_name': 'Rail Test Route', 'route_type': '2', 'route_url': '',
-                     'route_text_color': 'FFFFFF', 'checkin_duration': ''}}
+                     'route_color': 'CE312D', 'route_text_color': 'FFFFFF', 'checkin_duration': ''}}
 
 
 @pytest.fixture()
