@@ -462,6 +462,24 @@ def test_routing_schedule_with_additional_modes(test_network, test_service):
     assert rep['routing']['services_have_routes_in_the_graph']
 
 
+def test_routing_schedule_specifying_services(test_network, test_service):
+    test_network.schedule = Schedule(epsg='epsg:27700', services=[test_service])
+    test_network.route_schedule(services=['service_bus'])
+
+    rep = test_network.generate_validation_report()
+    assert rep['graph']['graph_connectivity']['car']['number_of_connected_subgraphs'] == 1
+    assert rep['schedule']['schedule_level']['is_valid_schedule']
+    assert rep['routing']['services_have_routes_in_the_graph']
+
+
+def test_routing_schedule_records_unsnapped_service_with_unbounded_solver_error(test_network, test_service, mocker):
+    mocker.obhect.patch()
+    test_network.schedule = Schedule(epsg='epsg:27700', services=[test_service])
+    test_network.route_schedule()
+
+
+
+
 def test_rerouting_service(test_network):
     test_network.schedule._graph.graph['routes']['7797_0']['route'] = []
     test_network.schedule._graph.graph['routes']['7797_1']['route'] = []

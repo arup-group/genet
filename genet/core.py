@@ -3,6 +3,7 @@ import pandas as pd
 import geopandas as gpd
 import uuid
 import logging
+import traceback
 import os
 from copy import deepcopy
 from typing import Union, List, Dict
@@ -1072,8 +1073,8 @@ class Network:
         elif value is None:
             return set()
 
-    def route_schedule(self, solver='glpk', allow_partial=True, distance_threshold=30, step_size=10,
-                       additional_modes=None, allow_directional_split=False):
+    def route_schedule(self, services: Union[list, set] = None, solver='glpk', allow_partial=True,
+                       distance_threshold=30, step_size=10, additional_modes=None, allow_directional_split=False):
         """
         Method to find relationship between all Services in Schedule and the Network. It finds closest
         links in the Network for all stops and finds a network route (ordered list of links in the network) for all
@@ -1087,6 +1088,7 @@ class Network:
         self-loop link will be created as well as any connecting links to that unsnapped stop. This can be switched off
         by setting allow_partial=False. It will raise PartialMaxStableSetProblem error instead.
 
+        :param services: you can specify a list of services within the schedule to be snapped, defaults to all services
         :param solver: you can specify different mathematical solvers. Defaults to GLPK, open source solver which can
         be found here: https://www.gnu.org/software/glpk/. Another good open source choice is CBC:
         https://projects.coin-or.org/Cbc. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'. It needs to support
@@ -1112,6 +1114,7 @@ class Network:
         :return: None, updates Network object and the Schedule object within.
         """
         if self.schedule:
+            logging.info('Building Spatial Tree')
             spatial_tree = spatial.SpatialTree(self)
             if additional_modes is None:
                 additional_modes = {}
@@ -1121,43 +1124,64 @@ class Network:
 
             changeset = None
             route_data = self.schedule.route_attribute_data(keys=['ordered_stops'])
+            service_modes = self.schedule.route_attribute_data(keys=['mode'], index_name='route_id').reset_index()
+            service_modes['service_id'] = service_modes['route_id'].map(self.schedule.graph().graph['route_to_service_map'])
+            if services is not None:
+                service_modes = service_modes[service_modes['service_id'].isin(services)]
+            service_modes = service_modes.groupby('service_id')['mode'].apply(set).apply(list).reset_index()
+            service_modes['mode'] = service_modes['mode'].apply(lambda x: tuple(sorted(x)))
+            service_modes = service_modes.groupby('mode')['service_id'].apply(set).T.to_dict()
 
-            for service in self.schedule.services():
-                modes = service.modes()
-                logging.info(f'Routing Service {service.id} with modes = {modes}')
-                if allow_directional_split:
-                    logging.info('Splitting Service graph')
-                    routes, graph_groups = service.split_graph()
-                    logging.info(f'Split Problem into {len(routes)}')
-                else:
-                    routes = [set(service.route_ids())]
-                    graph_groups = [service.reference_edges()]
-                service_g = service.graph()
-
+            unsnapped_services = set()
+            for modes, service_ids in service_modes.items():
+                modes = set(modes)
                 buffed_modes = modes.copy()
                 for m in modes & set(additional_modes.keys()):
                     buffed_modes |= additional_modes[m]
 
                 try:
+                    logging.info(f'Extracting Modal SubTree for modes: `{modes}`')
                     sub_tree = spatial_tree.modal_subtree(buffed_modes)
-                    for route_group, graph_group in zip(routes, graph_groups):
-                        mss = modify_schedule.route_pt_graph(
-                            pt_graph=nx.edge_subgraph(service_g, graph_group),
-                            network_spatial_tree=sub_tree,
-                            modes=modes,
-                            solver=solver,
-                            allow_partial=allow_partial,
-                            distance_threshold=distance_threshold,
-                            step_size=step_size)
-                        if changeset is None:
-                            changeset = mss.to_changeset(route_data[route_data.index.isin(route_group)])
-                        else:
-                            changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
                 except exceptions.EmptySpatialTree:
-                    logging.warning(f'Service {service.id} cannot be snapped to the Network with modes = {modes}. The '
-                                    f'modal graph is empty for those modes. Consider teleporting.')
-                    return service.id
-            self._apply_max_stable_changes(changeset)
+                    sub_tree = None
+                    logging.warning(f'Services {service_ids} cannot be snapped to the Network with modes = {modes}. '
+                                    'The modal graph is empty for those modes. Consider teleporting.')
+                    unsnapped_services |= service_ids
+
+                if sub_tree is not None:
+                    for service_id in service_ids:
+                        service = self.schedule[service_id]
+                        logging.info(f'Routing Service {service.id} with modes = {modes}')
+                        if allow_directional_split:
+                            logging.info('Splitting Service graph')
+                            routes, graph_groups = service.split_graph()
+                            logging.info(f'Split Problem into {len(routes)}')
+                        else:
+                            routes = [set(service.route_ids())]
+                            graph_groups = [service.reference_edges()]
+                        service_g = service.graph()
+
+                        for route_group, graph_group in zip(routes, graph_groups):
+                            try:
+                                mss = modify_schedule.route_pt_graph(
+                                    pt_graph=nx.edge_subgraph(service_g, graph_group),
+                                    network_spatial_tree=sub_tree,
+                                    modes=modes,
+                                    solver=solver,
+                                    allow_partial=allow_partial,
+                                    distance_threshold=distance_threshold,
+                                    step_size=step_size)
+                                if changeset is None:
+                                    changeset = mss.to_changeset(route_data[route_data.index.isin(route_group)])
+                                else:
+                                    changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
+                            except Exception as e:
+                                logging.error(f'\nRouting Service: `{service_id}` resulted in the following Exception:'
+                                              f'\n{traceback.format_exc()}')
+                                unsnapped_services.add(service_id)
+            if changeset is not None:
+                self._apply_max_stable_changes(changeset)
+            return unsnapped_services
         else:
             logging.warning('Schedule object not found')
 
