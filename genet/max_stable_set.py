@@ -423,7 +423,8 @@ class ChangeSet:
 
     def schedule_edges(self, max_stable_set):
         map = max_stable_set.stops_to_artificial_stops_map()
-        new_pt_edges = [(map[u], map[v], data) for u, v, data in list(max_stable_set.pt_graph.edges(data=True))]
+        new_pt_edges = [(map[u], map[v], {'routes': self.routes, 'services': self.services}) for u, v, data in
+                        list(max_stable_set.pt_graph.edges(data=True))]
         return new_pt_edges
 
     def make_minimal_transfer_times(self, max_stable_set):

@@ -281,6 +281,35 @@ def test_routing_service_with_additional_modes(test_network, test_service):
     assert rep['routing']['services_have_routes_in_the_graph']
 
 
+def test_routing_services_with_shared_stops(test_network, test_service):
+    test_network.schedule = Schedule(epsg='epsg:27700', services=[
+        test_service,
+        Service(
+            id='other_service_bus',
+            routes=[
+                Route(id='other_route',
+                      route_short_name='',
+                      mode='bus',
+                      stops=[Stop(epsg='epsg:27700', id='A', x=529871.7641447927, y=181148.2259665833),
+                             Stop(epsg='epsg:27700', id='490000235C', x=529741.7652299237, y=181516.3450505745),
+                             Stop(epsg='epsg:27700', id='490000089A', x=529488.7339130711, y=181894.12649680028)],
+                      trips={'trip_id': ['trip_1'],
+                             'trip_departure_time': ['15:30:00'],
+                             'vehicle_id': ['veh_bus_0']},
+                      arrival_offsets=['00:00:00', '00:02:00', '00:05:00'],
+                      departure_offsets=['00:00:00', '00:03:00', '00:07:00']
+                      )
+    ])])
+    test_network.route_service('service_bus', additional_modes='car')
+    assert test_network.schedule['other_service_bus'].reference_edges() == {('A', '490000235C'), ('490000235C', '490000089A')}
+    test_network.route_service('other_service_bus', additional_modes='car')
+
+    rep = test_network.generate_validation_report()
+    assert rep['graph']['graph_connectivity']['car']['number_of_connected_subgraphs'] == 1
+    assert rep['schedule']['schedule_level']['is_valid_schedule']
+    assert rep['routing']['services_have_routes_in_the_graph']
+
+
 def test_teleporting_service(test_network, test_service):
     test_network.schedule = Schedule(epsg='epsg:27700', services=[test_service])
     test_network.teleport_service('service_bus')

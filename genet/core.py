@@ -1259,6 +1259,7 @@ class Network:
 
                 connecting_link = f'artificial_link===from:{f_node}===to:{t_node}'
                 reference_links[connecting_link] = {
+                    'id': link_id,
                     'from': f_node,
                     'to': t_node,
                     'modes': {routes_to_mode_map[route_id]['mode'] for route_id in g.nodes[u]['routes']} | {
@@ -1296,6 +1297,7 @@ class Network:
 
                 link_id = f'artificial_link===from:{stop}===to:{stop}'
                 reference_links[link_id] = {
+                    'id': link_id,
                     'from': stop,
                     'to': stop,
                     'modes': {routes_to_mode_map[route_id]['mode'] for route_id in data['routes']},
