@@ -338,6 +338,19 @@ def test_routing_services_with_stops_that_have_colons_in_id_and_are_unsnapped(te
     assert rep['routing']['services_have_routes_in_the_graph']
 
 
+def test_routing_services_to_network_with_clashing_artificial_links(test_network, test_service):
+    test_network.schedule = Schedule(epsg='epsg:27700', services=[test_service])
+    # teleport first to create artificial links - recreates a InvalidMaxStableSetProblem of completely connected
+    # catchments
+    test_network.teleport_service('service_bus')
+    test_network.route_service('service_bus', additional_modes='car')
+
+    rep = test_network.generate_validation_report()
+    assert rep['graph']['graph_connectivity']['car']['number_of_connected_subgraphs'] == 1
+    assert rep['schedule']['schedule_level']['is_valid_schedule']
+    assert rep['routing']['services_have_routes_in_the_graph']
+
+
 def test_teleporting_service(test_network, test_service):
     test_network.schedule = Schedule(epsg='epsg:27700', services=[test_service])
     test_network.teleport_service('service_bus')

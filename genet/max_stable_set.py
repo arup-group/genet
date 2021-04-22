@@ -58,7 +58,7 @@ class MaxStableSet:
                 distance=distance)
             _df['catchment'] = distance
             nodes = nodes.append(_df)
-        return nodes
+        return nodes[~nodes['link_id'].str.match("artificial")]
 
     def cast_catchment(self, df_stops, distance):
         return self.network_spatial_tree.closest_links(
