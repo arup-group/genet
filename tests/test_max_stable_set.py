@@ -497,6 +497,7 @@ def test_combining_two_changesets_with_overlap(partial_mss):
         partial_mss.pt_edges['routes'].apply(lambda x: 'service_1_route_2' in x)]
 
     partial_mss.pt_edges = service_1_route_2_pt_edges
+    partial_mss.pt_graph.remove_edges_from([('stop_1', 'stop_2'), ('stop_2', 'stop_3')])
     changeset = partial_mss.to_changeset(
         DataFrame({'ordered_stops': {'service_1_route_2': ['stop_3', 'stop_2', 'stop_1']}}))
 
@@ -513,6 +514,10 @@ def test_combining_two_changesets_with_overlap(partial_mss):
         'artificial_link===from:node_5===to:stop_1': {'from': 'node_5', 'to': 'stop_1', 'modes': {'bus'}},
         'artificial_link===from:stop_1===to:node_6': {'from': 'stop_1', 'to': 'node_6', 'modes': {'bus'}}}
     partial_mss.pt_edges = service_1_route_1_pt_edges
+    partial_mss.pt_graph.remove_edges_from([('stop_3', 'stop_2'), ('stop_2', 'stop_1')])
+    partial_mss.pt_graph.add_edges_from(
+        [('stop_1', 'stop_2', {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}),
+         ('stop_2', 'stop_3', {'services': {'bus_service'}, 'routes': {'service_1_route_1'}})])
 
     changeset += partial_mss.to_changeset(
         DataFrame({'ordered_stops': {'service_1_route_1': ['stop_1', 'stop_2', 'stop_3']}}))
@@ -577,30 +582,11 @@ def test_combining_two_changesets_with_overlap(partial_mss):
     )
 
     changeset.new_pt_edges.sort()
-    assert changeset.new_pt_edges == [('stop_1.link:artificial_link===from:stop_1===to:stop_1',
-                                       'stop_2.link:link_5_6_car',
-                                       {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}),
-                                      ('stop_1.link:artificial_link===from:stop_1===to:stop_1',
-                                       'stop_2.link:link_6_5_car',
-                                       {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}),
-                                      ('stop_2.link:link_5_6_car',
-                                       'stop_1.link:artificial_link===from:stop_1===to:stop_1',
-                                       {'services': {'bus_service'}, 'routes': {'service_1_route_2'}}),
-                                      ('stop_2.link:link_5_6_car',
-                                       'stop_3.link:link_7_8_car',
-                                       {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}),
-                                      ('stop_2.link:link_6_5_car',
-                                       'stop_1.link:artificial_link===from:stop_1===to:stop_1',
-                                       {'services': {'bus_service'}, 'routes': {'service_1_route_2'}}),
-                                      ('stop_2.link:link_6_5_car',
-                                       'stop_3.link:link_7_8_car',
-                                       {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}),
-                                      ('stop_3.link:link_7_8_car',
-                                       'stop_2.link:link_5_6_car',
-                                       {'services': {'bus_service'}, 'routes': {'service_1_route_2'}}),
-                                      ('stop_3.link:link_7_8_car',
-                                       'stop_2.link:link_6_5_car',
-                                       {'services': {'bus_service'}, 'routes': {'service_1_route_2'}})]
+    assert changeset.new_pt_edges == [
+        ('stop_1.link:artificial_link===from:stop_1===to:stop_1', 'stop_2.link:link_6_5_car', {'routes': {'service_1_route_1'}, 'services': {'bus_service'}}),
+        ('stop_2.link:link_5_6_car', 'stop_1.link:artificial_link===from:stop_1===to:stop_1', {'routes': {'service_1_route_2'}, 'services': {'bus_service'}}),
+        ('stop_2.link:link_6_5_car', 'stop_3.link:link_7_8_car', {'routes': {'service_1_route_1'}, 'services': {'bus_service'}}),
+        ('stop_3.link:link_7_8_car', 'stop_2.link:link_5_6_car', {'routes': {'service_1_route_2'}, 'services': {'bus_service'}})]
     assert_semantically_equal(
         changeset.minimal_transfer_times,
         {('stop_1', 'stop_1.link:artificial_link===from:stop_1===to:stop_1'): 0.0,

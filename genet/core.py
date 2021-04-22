@@ -1125,7 +1125,8 @@ class Network:
             changeset = None
             route_data = self.schedule.route_attribute_data(keys=['ordered_stops'])
             service_modes = self.schedule.route_attribute_data(keys=['mode'], index_name='route_id').reset_index()
-            service_modes['service_id'] = service_modes['route_id'].map(self.schedule.graph().graph['route_to_service_map'])
+            service_modes['service_id'] = service_modes['route_id'].map(
+                self.schedule.graph().graph['route_to_service_map'])
             if services is not None:
                 service_modes = service_modes[service_modes['service_id'].isin(services)]
             service_modes = service_modes.groupby('service_id')['mode'].apply(set).apply(list).reset_index()
@@ -1175,7 +1176,7 @@ class Network:
                                     changeset = mss.to_changeset(route_data[route_data.index.isin(route_group)])
                                 else:
                                     changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
-                            except Exception as e:
+                            except Exception as e:  # noqa: F841
                                 logging.error(f'\nRouting Service: `{service_id}` resulted in the following Exception:'
                                               f'\n{traceback.format_exc()}')
                                 unsnapped_services.add(service_id)

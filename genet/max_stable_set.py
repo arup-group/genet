@@ -261,7 +261,8 @@ class MaxStableSet:
             selected = [str(v).strip('x[]') for v in model.component_data_objects(Var) if  # noqa: F405
                         float(v.value) == 1.0]
             # solution maps Stop IDs to Link IDs
-            self.solution = {self.problem_graph.nodes[node]['id']: self.problem_graph.nodes[node]['link_id'] for node in selected}
+            self.solution = {self.problem_graph.nodes[node]['id']: self.problem_graph.nodes[node]['link_id'] for
+                             node in selected}
             self.artificial_stops = {
                 node: {
                     **self.pt_graph.nodes[self.problem_graph.nodes[node]['id']],
@@ -422,8 +423,9 @@ class ChangeSet:
 
     def schedule_edges(self, max_stable_set):
         map = max_stable_set.stops_to_artificial_stops_map()
-        new_pt_edges = [(map[u], map[v], {'routes': self.routes, 'services': self.services}) for u, v, data in
-                        list(max_stable_set.pt_graph.edges(data=True))]
+        new_pt_edges = [
+            (map[u], map[v], {'routes': data['routes'] & self.routes, 'services': data['services'] & self.services}) for
+            u, v, data in list(max_stable_set.pt_graph.edges(data=True))]
         return new_pt_edges
 
     def make_minimal_transfer_times(self, max_stable_set):
