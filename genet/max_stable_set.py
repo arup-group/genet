@@ -261,11 +261,11 @@ class MaxStableSet:
             selected = [str(v).strip('x[]') for v in model.component_data_objects(Var) if  # noqa: F405
                         float(v.value) == 1.0]
             # solution maps Stop IDs to Link IDs
-            self.solution = {self.problem_graph.nodes[node]['id']: node.split(':')[-1] for node in selected}
+            self.solution = {self.problem_graph.nodes[node]['id']: self.problem_graph.nodes[node]['link_id'] for node in selected}
             self.artificial_stops = {
                 node: {
                     **self.pt_graph.nodes[self.problem_graph.nodes[node]['id']],
-                    **{'linkRefId': node.split(':')[-1],
+                    **{'linkRefId': self.problem_graph.nodes[node]['link_id'],
                        'stop_id': self.problem_graph.nodes[node]['id'],
                        'id': node}
                 }
@@ -310,8 +310,7 @@ class MaxStableSet:
         except KeyError:
             # that link must be artificial
             if 'artificial_link' in link_id:
-                link_data = link_id.split('===')
-                link_data = {'from': link_data[1].split(':')[1], 'to': link_data[2].split(':')[1]}
+                link_data = self.artificial_links[link_id]
             else:
                 raise RuntimeError(f'A stop has snapped to an identified link {link_data}')
         return link_data

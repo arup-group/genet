@@ -579,24 +579,28 @@ def test_combining_two_changesets_with_overlap(partial_mss):
     changeset.new_pt_edges.sort()
     assert changeset.new_pt_edges == [('stop_1.link:artificial_link===from:stop_1===to:stop_1',
                                        'stop_2.link:link_5_6_car',
-                                       {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}), (
-                                          'stop_1.link:artificial_link===from:stop_1===to:stop_1',
-                                          'stop_2.link:link_6_5_car',
-                                          {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}), (
-                                          'stop_2.link:link_5_6_car',
-                                          'stop_1.link:artificial_link===from:stop_1===to:stop_1',
-                                          {'services': {'bus_service'}, 'routes': {'service_1_route_2'}}), (
-                                          'stop_2.link:link_5_6_car', 'stop_3.link:link_7_8_car',
-                                          {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}), (
-                                          'stop_2.link:link_6_5_car',
-                                          'stop_1.link:artificial_link===from:stop_1===to:stop_1',
-                                          {'services': {'bus_service'}, 'routes': {'service_1_route_2'}}), (
-                                          'stop_2.link:link_6_5_car', 'stop_3.link:link_7_8_car',
-                                          {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}), (
-                                          'stop_3.link:link_7_8_car', 'stop_2.link:link_5_6_car',
-                                          {'services': {'bus_service'}, 'routes': {'service_1_route_2'}}), (
-                                          'stop_3.link:link_7_8_car', 'stop_2.link:link_6_5_car',
-                                          {'services': {'bus_service'}, 'routes': {'service_1_route_2'}})]
+                                       {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}),
+                                      ('stop_1.link:artificial_link===from:stop_1===to:stop_1',
+                                       'stop_2.link:link_6_5_car',
+                                       {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}),
+                                      ('stop_2.link:link_5_6_car',
+                                       'stop_1.link:artificial_link===from:stop_1===to:stop_1',
+                                       {'services': {'bus_service'}, 'routes': {'service_1_route_2'}}),
+                                      ('stop_2.link:link_5_6_car',
+                                       'stop_3.link:link_7_8_car',
+                                       {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}),
+                                      ('stop_2.link:link_6_5_car',
+                                       'stop_1.link:artificial_link===from:stop_1===to:stop_1',
+                                       {'services': {'bus_service'}, 'routes': {'service_1_route_2'}}),
+                                      ('stop_2.link:link_6_5_car',
+                                       'stop_3.link:link_7_8_car',
+                                       {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}),
+                                      ('stop_3.link:link_7_8_car',
+                                       'stop_2.link:link_5_6_car',
+                                       {'services': {'bus_service'}, 'routes': {'service_1_route_2'}}),
+                                      ('stop_3.link:link_7_8_car',
+                                       'stop_2.link:link_6_5_car',
+                                       {'services': {'bus_service'}, 'routes': {'service_1_route_2'}})]
     assert_semantically_equal(
         changeset.minimal_transfer_times,
         {('stop_1', 'stop_1.link:artificial_link===from:stop_1===to:stop_1'): 0.0,

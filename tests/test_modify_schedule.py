@@ -2,6 +2,7 @@ import os
 import sys
 
 import pytest
+import networkx as nx
 from pandas import DataFrame
 
 import genet.utils.spatial as spatial
@@ -310,6 +311,33 @@ def test_routing_services_with_shared_stops(test_network, test_service):
     assert rep['routing']['services_have_routes_in_the_graph']
 
 
+def test_routing_services_with_stops_that_have_colons_in_id_and_are_unsnapped(test_network, mocker):
+    mocker.patch.object(nx, 'is_empty', return_value=True)
+    test_network.schedule = Schedule(epsg='epsg:27700', services=[
+        Service(
+            id='service_bus',
+            routes=[
+                Route(id='other_route',
+                      route_short_name='',
+                      mode='bus',
+                      stops=[Stop(epsg='epsg:27700', id='490000235C', x=529741.7652299237, y=181516.3450505745),
+                             Stop(epsg='epsg:27700', id='A:heyo', x=529871.7641447927, y=181148.2259665833),
+                             Stop(epsg='epsg:27700', id='490000089A', x=529488.7339130711, y=181894.12649680028)],
+                      trips={'trip_id': ['trip_1'],
+                             'trip_departure_time': ['15:30:00'],
+                             'vehicle_id': ['veh_bus_0']},
+                      arrival_offsets=['00:00:00', '00:02:00', '00:05:00'],
+                      departure_offsets=['00:00:00', '00:03:00', '00:07:00']
+                      )
+    ])])
+    test_network.route_service('service_bus', additional_modes='car')
+
+    rep = test_network.generate_validation_report()
+    assert rep['graph']['graph_connectivity']['car']['number_of_connected_subgraphs'] == 1
+    assert rep['schedule']['schedule_level']['is_valid_schedule']
+    assert rep['routing']['services_have_routes_in_the_graph']
+
+
 def test_teleporting_service(test_network, test_service):
     test_network.schedule = Schedule(epsg='epsg:27700', services=[test_service])
     test_network.teleport_service('service_bus')
@@ -470,14 +498,6 @@ def test_routing_schedule_specifying_services(test_network, test_service):
     assert rep['graph']['graph_connectivity']['car']['number_of_connected_subgraphs'] == 1
     assert rep['schedule']['schedule_level']['is_valid_schedule']
     assert rep['routing']['services_have_routes_in_the_graph']
-
-
-def test_routing_schedule_records_unsnapped_service_with_unbounded_solver_error(test_network, test_service, mocker):
-    mocker.obhect.patch()
-    test_network.schedule = Schedule(epsg='epsg:27700', services=[test_service])
-    test_network.route_schedule()
-
-
 
 
 def test_rerouting_service(test_network):
