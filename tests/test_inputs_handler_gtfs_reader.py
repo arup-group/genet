@@ -39,7 +39,7 @@ def test_get_mode_returns_other_if_doesnt_recognise():
 def test_read_to_schedule_correct(correct_schedule_graph_nodes_from_test_gtfs,
                                   correct_schedule_graph_edges_from_test_gtfs,
                                   correct_schedule_graph_data_from_test_gtfs):
-    schedule_graph = gtfs_reader.read_to_dict_schedule_and_stopd_db(gtfs_test_file, '20190604')
+    schedule_graph = gtfs_reader.read_gtfs_to_schedule_graph(gtfs_test_file, '20190604')
     assert_semantically_equal(dict(schedule_graph.nodes(data=True)), correct_schedule_graph_nodes_from_test_gtfs)
     assert_semantically_equal(schedule_graph.edges._adjdict, correct_schedule_graph_edges_from_test_gtfs)
     del schedule_graph.graph['change_log']
@@ -50,7 +50,7 @@ def test_read_to_schedule_correct(correct_schedule_graph_nodes_from_test_gtfs,
 def test_zip_read_to_schedule_correct(correct_schedule_graph_nodes_from_test_gtfs,
                                       correct_schedule_graph_edges_from_test_gtfs,
                                       correct_schedule_graph_data_from_test_gtfs):
-    schedule_graph = gtfs_reader.read_to_dict_schedule_and_stopd_db(gtfs_test_file, '20190604')
+    schedule_graph = gtfs_reader.read_gtfs_to_schedule_graph(gtfs_test_file, '20190604')
     assert_semantically_equal(dict(schedule_graph.nodes(data=True)), correct_schedule_graph_nodes_from_test_gtfs)
     assert_semantically_equal(schedule_graph.edges._adjdict, correct_schedule_graph_edges_from_test_gtfs)
     del schedule_graph.graph['change_log']

@@ -281,7 +281,7 @@ def read_gtfs(path, day, epsg=None):
     :return:
     """
     logging.info(f'Reading GTFS from {path}')
-    schedule_graph = gtfs_reader.read_to_dict_schedule_and_stopd_db(path, day)
+    schedule_graph = gtfs_reader.read_gtfs_to_schedule_graph(path, day)
     s = schedule_elements.Schedule(epsg='epsg:4326', _graph=schedule_graph)
     if epsg is not None:
         s.reproject(new_epsg=epsg)

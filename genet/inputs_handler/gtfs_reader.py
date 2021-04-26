@@ -209,7 +209,7 @@ def gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, serv
     return g
 
 
-def read_to_dict_schedule_and_stopd_db(path: str, day: str):
+def read_gtfs_to_schedule_graph(path: str, day: str):
     if persistence.is_zip(path):
         gtfs_path = os.path.join(os.getcwd(), 'tmp')
         if not os.path.exists(gtfs_path):
