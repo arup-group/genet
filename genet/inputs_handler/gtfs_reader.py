@@ -112,6 +112,8 @@ def gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, serv
 
     def generate_stop_sequence(group):
         group = group.sort_values(by='stop_sequence')
+        # remove stops that are loopy (consecutively duplicated)
+        group = group.loc[group['stop_id'].shift() != group['stop_id']]
         flattened = group.iloc[0, :][
             list(set(group.columns) - {'trip_id', 'stop_sequence', 'stop_id', 'arrival_time', 'departure_time'})]
         departure_time = group.iloc[0, :]['arrival_time']

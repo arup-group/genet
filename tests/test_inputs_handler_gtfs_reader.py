@@ -56,3 +56,10 @@ def test_zip_read_to_schedule_correct(correct_schedule_graph_nodes_from_test_gtf
     del schedule_graph.graph['change_log']
     del correct_schedule_graph_data_from_test_gtfs['change_log']
     assert_semantically_equal(schedule_graph.graph, correct_schedule_graph_data_from_test_gtfs)
+
+
+def test_reading_loopy_gtfs_removes_duplicated_stops():
+    schedule_graph = gtfs_reader.read_gtfs_to_schedule_graph(
+         os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "loopy_gtfs")),
+        '20190604')
+    assert schedule_graph.graph['routes']['1001_0']['ordered_stops'] == ['BSE', 'BSN', 'BSE', 'BSN']
