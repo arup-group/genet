@@ -1337,7 +1337,7 @@ class Network:
             }
         return report
 
-    def generate_standard_outputs(self, output_dir, gtfs_day='19700101'):
+    def generate_standard_outputs(self, output_dir, gtfs_day='19700101', include_shp_files=False):
         """
         Generates geojsons that can be used for generating standard kepler visualisations.
         These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
@@ -1347,7 +1347,7 @@ class Network:
         defaults to 1970/01/01 otherwise
         :return: None
         """
-        geojson.generate_standard_outputs(self, output_dir, gtfs_day)
+        geojson.generate_standard_outputs(self, output_dir, gtfs_day, include_shp_files)
         logging.info('Finished generating standard outputs. Zipping folder.')
         persistence.zip_folder(output_dir)
 

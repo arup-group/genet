@@ -69,7 +69,7 @@ def save_geodataframe(gdf, filename, output_dir, include_shp_files=False):
             gdf.to_file(os.path.join(shp_files, f'{filename}.shp'))
 
 
-def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700101', include_shp_files=True):
+def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700101', include_shp_files=False):
     logging.info('Generating geojson standard outputs for schedule')
     schedule_links = schedule.to_geodataframe()['links'].to_crs("epsg:4326")
     df = schedule.route_trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
@@ -155,7 +155,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
         os.path.join(output_dir, 'trips_per_day_per_route_aggregated_per_stop_name_pair.csv'))
 
 
-def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_files=True):
+def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_files=False):
     logging.info(f'Generating geojson outputs for the entire network in {output_dir}')
     n.write_to_geojson(output_dir)
 
@@ -203,4 +203,6 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
         generate_standard_outputs_for_schedule(
             n.schedule,
             output_dir=os.path.join(output_dir, 'schedule'),
-            gtfs_day=gtfs_day)
+            gtfs_day=gtfs_day,
+            include_shp_files=include_shp_files
+        )

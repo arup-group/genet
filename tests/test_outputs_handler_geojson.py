@@ -167,7 +167,7 @@ def test_generating_standard_outputs(network, tmpdir):
                 )])
     ])
     assert os.listdir(tmpdir) == []
-    network.generate_standard_outputs(tmpdir)
+    network.generate_standard_outputs(tmpdir, include_shp_files=True)
     assert set(os.listdir(tmpdir)) == {'graph', 'schedule_links_geometry_only.geojson',
                                        'network_nodes_geometry_only.geojson', 'network_links.geojson',
                                        'network_links_geometry_only.geojson', 'schedule_nodes.geojson',

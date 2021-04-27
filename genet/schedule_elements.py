@@ -2167,7 +2167,7 @@ class Schedule(ScheduleElement):
     def generate_validation_report(self):
         return schedule_validation.generate_validation_report(schedule=self)
 
-    def generate_standard_outputs(self, output_dir, gtfs_day='19700101'):
+    def generate_standard_outputs(self, output_dir, gtfs_day='19700101', include_shp_files=False):
         """
         Generates geojsons that can be used for generating standard kepler visualisations.
         These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
@@ -2177,7 +2177,7 @@ class Schedule(ScheduleElement):
         defaults to 1970/01/01 otherwise
         :return: None
         """
-        gngeojson.generate_standard_outputs_for_schedule(self, output_dir, gtfs_day)
+        gngeojson.generate_standard_outputs_for_schedule(self, output_dir, gtfs_day, include_shp_files)
         logging.info('Finished generating standard outputs. Zipping folder.')
         persistence.zip_folder(output_dir)
 
