@@ -65,7 +65,8 @@ def test_offsets_going_over_24_hrs_why_not():
 
 
 def test_generating_edge_vph_geodataframe(schedule):
-    nodes, links = gngeojson.generate_geodataframes(schedule.graph())
+    gdfs = gngeojson.generate_geodataframes(schedule.graph())
+    nodes, links = gdfs['nodes'], gdfs['links']
     df = schedule.route_trips_with_stops_to_dataframe()
     df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
@@ -87,36 +88,25 @@ def test_generating_edge_vph_geodataframe(schedule):
                                                 11: 'Stop_3'},
                                'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1},
                                'geometry': {
-                                   0: LineString([(-7.557106577683727, 49.76682779861249),
-                                                  (-7.557148039524952, 49.766825803756994)]),
-                                   1: LineString([(-7.557106577683727, 49.76682779861249),
-                                                  (-7.557148039524952, 49.766825803756994)]),
-                                   2: LineString([(-7.557148039524952, 49.766825803756994),
-                                                  (-7.557106577683727, 49.76682779861249)]),
-                                   3: LineString([(-7.557148039524952, 49.766825803756994),
-                                                  (-7.557106577683727, 49.76682779861249)]),
-                                   4: LineString([(-7.557148039524952, 49.766825803756994),
-                                                  (-7.557121424907424, 49.76683608549253)]),
-                                   5: LineString([(-7.557148039524952, 49.766825803756994),
-                                                  (-7.557121424907424, 49.76683608549253)]),
-                                   6: LineString([(-7.557121424907424, 49.76683608549253),
-                                                  (-7.557148039524952, 49.766825803756994)]),
-                                   7: LineString([(-7.557121424907424, 49.76683608549253),
-                                                  (-7.557148039524952, 49.766825803756994)]),
-                                   8: LineString([(-7.557121424907424, 49.76683608549253),
-                                                  (-7.5570681956375, 49.766856648946295)]),
-                                   9: LineString([(-7.557121424907424, 49.76683608549253),
-                                                  (-7.5570681956375, 49.766856648946295)]),
-                                   10: LineString([(-7.5570681956375, 49.766856648946295),
-                                                   (-7.557121424907424, 49.76683608549253)]),
-                                   11: LineString([(-7.5570681956375, 49.766856648946295),
-                                                   (-7.557121424907424, 49.76683608549253)])}}, crs='epsg:4326')
+                                   0: LineString([(4,2), (1,2)]),
+                                   1: LineString([(4,2), (1,2)]),
+                                   2: LineString([(1,2), (4,2)]),
+                                   3: LineString([(1,2), (4,2)]),
+                                   4: LineString([(1,2), (3,3)]),
+                                   5: LineString([(1,2), (3,3)]),
+                                   6: LineString([(3,3), (1,2)]),
+                                   7: LineString([(3,3), (1,2)]),
+                                   8: LineString([(3,3), (7,5)]),
+                                   9: LineString([(3,3), (7,5)]),
+                                   10: LineString([(7,5), (3,3)]),
+                                   11: LineString([(7,5), (3,3)])}}, crs='epsg:27700')
 
     assert_geodataframe_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1), check_less_precise=True)
 
 
 def test_generating_edge_vph_geodataframe_for_service(schedule):
-    nodes, links = gngeojson.generate_geodataframes(schedule['service'].graph())
+    gdfs = gngeojson.generate_geodataframes(schedule['service'].graph())
+    nodes, links = gdfs['nodes'], gdfs['links']
     df = schedule['service'].route_trips_with_stops_to_dataframe()
     df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
@@ -138,36 +128,25 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
                                                 11: 'Stop_3'},
                                'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1},
                                'geometry': {
-                                   0: LineString([(-7.557106577683727, 49.76682779861249),
-                                                  (-7.557148039524952, 49.766825803756994)]),
-                                   1: LineString([(-7.557106577683727, 49.76682779861249),
-                                                  (-7.557148039524952, 49.766825803756994)]),
-                                   2: LineString([(-7.557148039524952, 49.766825803756994),
-                                                  (-7.557106577683727, 49.76682779861249)]),
-                                   3: LineString([(-7.557148039524952, 49.766825803756994),
-                                                  (-7.557106577683727, 49.76682779861249)]),
-                                   4: LineString([(-7.557148039524952, 49.766825803756994),
-                                                  (-7.557121424907424, 49.76683608549253)]),
-                                   5: LineString([(-7.557148039524952, 49.766825803756994),
-                                                  (-7.557121424907424, 49.76683608549253)]),
-                                   6: LineString([(-7.557121424907424, 49.76683608549253),
-                                                  (-7.557148039524952, 49.766825803756994)]),
-                                   7: LineString([(-7.557121424907424, 49.76683608549253),
-                                                  (-7.557148039524952, 49.766825803756994)]),
-                                   8: LineString([(-7.557121424907424, 49.76683608549253),
-                                                  (-7.5570681956375, 49.766856648946295)]),
-                                   9: LineString([(-7.557121424907424, 49.76683608549253),
-                                                  (-7.5570681956375, 49.766856648946295)]),
-                                   10: LineString([(-7.5570681956375, 49.766856648946295),
-                                                   (-7.557121424907424, 49.76683608549253)]),
-                                   11: LineString([(-7.5570681956375, 49.766856648946295),
-                                                   (-7.557121424907424, 49.76683608549253)])}}, crs='epsg:4326')
+                                   0: LineString([(4, 2), (1, 2)]),
+                                   1: LineString([(4, 2), (1, 2)]),
+                                   2: LineString([(1, 2), (4, 2)]),
+                                   3: LineString([(1, 2), (4, 2)]),
+                                   4: LineString([(1, 2), (3, 3)]),
+                                   5: LineString([(1, 2), (3, 3)]),
+                                   6: LineString([(3, 3), (1, 2)]),
+                                   7: LineString([(3, 3), (1, 2)]),
+                                   8: LineString([(3, 3), (7, 5)]),
+                                   9: LineString([(3, 3), (7, 5)]),
+                                   10: LineString([(7, 5), (3, 3)]),
+                                   11: LineString([(7, 5), (3, 3)])}}, crs='epsg:27700')
 
     assert_geodataframe_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1), check_less_precise=True)
 
 
 def test_generating_edge_vph_geodataframe_for_route(schedule):
-    nodes, links = gngeojson.generate_geodataframes(schedule.route('2').graph())
+    gdfs = gngeojson.generate_geodataframes(schedule.route('2').graph())
+    nodes, links = gdfs['nodes'], gdfs['links']
     df = schedule.route('2').route_trips_with_stops_to_dataframe()
     df = use_schedule.generate_edge_vph_geodataframe(df, links)
 
@@ -180,18 +159,12 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
                                'to_stop_name': {0: 'Stop_1', 1: 'Stop_1', 2: 'Stop_2', 3: 'Stop_2', 4: 'Stop_3',
                                                 5: 'Stop_3'},
                                'vph': {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1},
-                               'geometry': {0: LineString([(-7.557148039524952, 49.766825803756994),
-                                                           (-7.557106577683727, 49.76682779861249)]),
-                                            1: LineString([(-7.557148039524952, 49.766825803756994),
-                                                           (-7.557106577683727, 49.76682779861249)]),
-                                            2: LineString([(-7.557121424907424, 49.76683608549253),
-                                                           (-7.557148039524952, 49.766825803756994)]),
-                                            3: LineString([(-7.557121424907424, 49.76683608549253),
-                                                           (-7.557148039524952, 49.766825803756994)]),
-                                            4: LineString([(-7.5570681956375, 49.766856648946295),
-                                                           (-7.557121424907424, 49.76683608549253)]),
-                                            5: LineString([(-7.5570681956375, 49.766856648946295),
-                                                           (-7.557121424907424, 49.76683608549253)])}}, crs='epsg:4326')
+                               'geometry': {0: LineString([(1, 2), (4, 2)]),
+                                            1: LineString([(1, 2), (4, 2)]),
+                                            2: LineString([(3, 3), (1, 2)]),
+                                            3: LineString([(3, 3), (1, 2)]),
+                                            4: LineString([(7, 5), (3, 3)]),
+                                            5: LineString([(7, 5), (3, 3)])}}, crs='epsg:27700')
 
     assert_geodataframe_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1), check_less_precise=True)
 

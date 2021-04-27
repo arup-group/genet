@@ -7,6 +7,7 @@ import pytest
 
 from genet.core import Network
 from genet.use import road_pricing
+from genet.inputs_handler import read
 
 # paths in use assume we're in the repo's root, so make sure we always are
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -29,9 +30,7 @@ def road_pricing_sample_xml():
 def network_object():
     network_xml_path = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                                    "test_data/road_pricing/network.xml"))
-    n = Network(epsg='epsg:27700')
-    n.read_matsim_network(network_xml_path)
-    yield n
+    yield read.read_matsim(path_to_network=network_xml_path, epsg='epsg:27700')
 
 @pytest.fixture
 def road_pricing_xml_tree():

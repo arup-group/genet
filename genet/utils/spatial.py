@@ -173,7 +173,7 @@ class SpatialTree(nx.DiGraph):
         :param n: genet.Network object
         :return:
         """
-        self.links = gngeojson.generate_geodataframes(n.graph)[1]
+        self.links = n.to_geodataframe()['links'].to_crs('epsg:4326')
         self.links = self.links.rename(columns={'id': 'link_id'})
 
         nodes = self.links.set_index('link_id').T.to_dict()

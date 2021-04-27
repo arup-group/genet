@@ -4,14 +4,14 @@ import geopandas as gpd
 import uuid
 import logging
 import os
+import json
 from copy import deepcopy
 from typing import Union, List, Dict
 from pyproj import Transformer
 from s2sphere import CellId
-import genet.inputs_handler.matsim_reader as matsim_reader
-import genet.inputs_handler.osm_reader as osm_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.geojson as geojson
+import genet.outputs_handler.sanitiser as sanitiser
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
 import genet.utils.spatial as spatial
@@ -188,7 +188,7 @@ class Network:
         """
         return pd.Series(graph_operations.get_attribute_data_under_key(self.nodes(), key))
 
-    def node_attribute_data_under_keys(self, keys: list, index_name=None):
+    def node_attribute_data_under_keys(self, keys: Union[list, set], index_name=None):
         """
         Generates a pandas.DataFrame object indexed by link ids, with data stored on the nodes under `key`
         :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
@@ -217,7 +217,7 @@ class Network:
         """
         return pd.Series(graph_operations.get_attribute_data_under_key(self.links(), key))
 
-    def link_attribute_data_under_keys(self, keys: list, index_name=None):
+    def link_attribute_data_under_keys(self, keys: Union[list, set], index_name=None):
         """
         Generates a pandas.DataFrame object indexed by link ids, with data stored on the links under `key`
         :param keys: list of either a string e.g. 'modes', or if accessing nested information, a dictionary
@@ -349,10 +349,10 @@ class Network:
         """
         if not isinstance(region_input, str):
             # assumed to be a shapely.geometry input
-            gdf = geojson.generate_geodataframes(self.graph)[0]
+            gdf = self.to_geodataframe()['nodes'].to_crs("epsg:4326")
             return self._find_ids_on_shapely_geometry(gdf, how='intersect', shapely_input=region_input)
         elif persistence.is_geojson(region_input):
-            gdf = geojson.generate_geodataframes(self.graph)[0]
+            gdf = self.to_geodataframe()['nodes'].to_crs("epsg:4326")
             return self._find_ids_on_geojson(gdf, how='intersect', geojson_input=region_input)
         else:
             # is assumed to be hex
@@ -369,7 +369,7 @@ class Network:
             - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
         :return: link IDs
         """
-        gdf = geojson.generate_geodataframes(self.graph)[1]
+        gdf = self.to_geodataframe()['links'].to_crs("epsg:4326")
         if not isinstance(region_input, str):
             # assumed to be a shapely.geometry input
             return self._find_ids_on_shapely_geometry(gdf, how, region_input)
@@ -1337,7 +1337,7 @@ class Network:
             }
         return report
 
-    def generate_standard_outputs(self, output_dir, gtfs_day='19700101'):
+    def generate_standard_outputs(self, output_dir, gtfs_day='19700101', include_shp_files=False):
         """
         Generates geojsons that can be used for generating standard kepler visualisations.
         These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
@@ -1347,73 +1347,9 @@ class Network:
         defaults to 1970/01/01 otherwise
         :return: None
         """
-        geojson.generate_standard_outputs(self, output_dir, gtfs_day)
+        geojson.generate_standard_outputs(self, output_dir, gtfs_day, include_shp_files)
         logging.info('Finished generating standard outputs. Zipping folder.')
         persistence.zip_folder(output_dir)
-
-    def read_osm(self, osm_file_path, osm_read_config, num_processes: int = 1):
-        """
-        Reads OSM data into a graph of the Network object
-        :param osm_file_path: path to .osm or .osm.pbf file
-        :param osm_read_config: config file (see configs folder in genet for examples) which informs for example which
-        highway types to read (in case of road network) and what modes to assign to them
-        :param num_processes: number of processes to split parallelisable operations across
-        :return:
-        """
-        config = osm_reader.Config(osm_read_config)
-        nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
-            osm_file_path, config, num_processes)
-
-        nodes_and_attributes = parallel.multiprocess_wrap(
-            data=nodes,
-            split=parallel.split_dict,
-            apply=osm_reader.generate_graph_nodes,
-            combine=parallel.combine_dict,
-            epsg=self.epsg
-        )
-        reindexing_dict, nodes_and_attributes = self.add_nodes(nodes_and_attributes)
-
-        edges_attributes = parallel.multiprocess_wrap(
-            data=edges,
-            split=parallel.split_list,
-            apply=osm_reader.generate_graph_edges,
-            combine=parallel.combine_list,
-            reindexing_dict=reindexing_dict,
-            nodes_and_attributes=nodes_and_attributes,
-            config_path=osm_read_config
-        )
-        self.add_edges(edges_attributes)
-
-        logging.info('Deleting isolated nodes which have no edges.')
-        self.remove_nodes(list(nx.isolates(self.graph)))
-
-    def read_matsim_network(self, path):
-        self.graph, self.link_id_mapping, duplicated_nodes, duplicated_links = \
-            matsim_reader.read_network(path, self.transformer)
-        self.graph.graph['name'] = 'Network graph'
-        self.graph.graph['crs'] = {'init': self.epsg}
-        if 'simplified' not in self.graph.graph:
-            self.graph.graph['simplified'] = False
-
-        for node_id, duplicated_node_attribs in duplicated_nodes.items():
-            for duplicated_node_attrib in duplicated_node_attribs:
-                self.change_log.remove(
-                    object_type='node',
-                    object_id=node_id,
-                    object_attributes=duplicated_node_attrib
-                )
-        for link_id, reindexed_duplicated_links in duplicated_links.items():
-            for duplicated_link in reindexed_duplicated_links:
-                self.change_log.modify(
-                    object_type='link',
-                    old_id=link_id,
-                    old_attributes=self.link(duplicated_link),
-                    new_id=duplicated_link,
-                    new_attributes=self.link(duplicated_link)
-                )
-
-    def read_matsim_schedule(self, schedule_path, vehicles_path=''):
-        self.schedule.read_matsim_schedule(schedule_path, vehicles_path)
 
     def read_auxiliary_link_file(self, file_path):
         aux_file = auxiliary_files.AuxiliaryFile(file_path)
@@ -1452,13 +1388,93 @@ class Network:
             for name, aux_file in self.auxiliary_files[id_type].items():
                 aux_file.write_to_file(output_dir)
 
+    def write_extras(self, output_dir):
+        self.change_log.export(os.path.join(output_dir, 'network_change_log.csv'))
+        self.write_auxiliary_files(os.path.join(output_dir, 'auxiliary_files'))
+
     def write_to_matsim(self, output_dir):
+        """
+        Writes Network and Schedule (if applicable) to MATSim xml format
+        :param output_dir: output directory
+        :return:
+        """
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_matsim_network(output_dir, self)
         if self.schedule:
             self.schedule.write_to_matsim(output_dir)
-        self.change_log.export(os.path.join(output_dir, 'network_change_log.csv'))
-        self.write_auxiliary_files(os.path.join(output_dir, 'auxiliary_files'))
+        self.write_extras(output_dir)
 
-    def save_network_to_geojson(self, output_dir):
-        geojson.save_network_to_geojson(self, output_dir)
+    def to_json(self):
+        _network = self.to_encoded_geometry_dataframe()
+        return {'nodes': _network['nodes'].T.to_dict(), 'links': _network['links'].T.to_dict()}
+
+    def write_to_json(self, output_dir):
+        """
+        Writes Network and Schedule (if applicable) to a single JSON file with nodes and links
+        :param output_dir: output directory
+        :return:
+        """
+        persistence.ensure_dir(output_dir)
+        logging.info(f'Saving Network to JSON in {output_dir}')
+        with open(os.path.join(output_dir, 'network.json'), 'w') as outfile:
+            json.dump(sanitiser.sanitise_dictionary(self.to_json()), outfile)
+        if self.schedule:
+            self.schedule.write_to_json(output_dir)
+        self.write_extras(output_dir)
+
+    def write_to_geojson(self, output_dir, epsg: str = None):
+        """
+        Writes Network graph and Schedule (if applicable) to nodes and links geojson files.
+        :param output_dir: output directory
+        :param epsg: projection if the geometry is to be reprojected, defaults to own projection
+        :return:
+        """
+        persistence.ensure_dir(output_dir)
+        _network = self.to_geodataframe()
+        if epsg is not None:
+            _network['nodes'] = _network['nodes'].to_crs(epsg)
+            _network['links'] = _network['links'].to_crs(epsg)
+        logging.info(f'Saving Network to GeoJSON in {output_dir}')
+        geojson.save_geodataframe(_network['nodes'], 'network_nodes', output_dir)
+        geojson.save_geodataframe(_network['links'], 'network_links', output_dir)
+        geojson.save_geodataframe(_network['nodes']['geometry'], 'network_nodes_geometry_only', output_dir)
+        geojson.save_geodataframe(_network['links']['geometry'], 'network_links_geometry_only', output_dir)
+        if self.schedule:
+            self.schedule.write_to_geojson(output_dir, epsg)
+        self.write_extras(output_dir)
+
+    def to_geodataframe(self):
+        """
+        Generates GeoDataFrames of the Network graph in Network's crs
+        :return: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and links
+        """
+        return geojson.generate_geodataframes(self.graph)
+
+    def to_encoded_geometry_dataframe(self):
+        _network = self.to_geodataframe()
+        _network['nodes'] = pd.DataFrame(_network['nodes'])
+        _network['links'] = pd.DataFrame(_network['links'])
+        _network['nodes']['geometry'] = _network['nodes']['geometry'].apply(
+            lambda row: [row.x, row.y])
+        _network['links']['geometry'] = _network['links']['geometry'].apply(
+            lambda x: spatial.encode_shapely_linestring_to_polyline(x))
+        return _network
+
+    def write_to_csv(self, output_dir, gtfs_day='19700101'):
+        """
+        Writes nodes and links tables for the Network and if there is a Schedule, exports it to a GTFS-like format.
+        :param output_dir: output directory
+        :param gtfs_day: defaults to 19700101, day which is represented in the Schedule
+        :return:
+        """
+        network_csv_folder = os.path.join(output_dir, 'network')
+        schedule_csv_folder = os.path.join(output_dir, 'schedule')
+        persistence.ensure_dir(network_csv_folder)
+        csv_network = self.to_encoded_geometry_dataframe()
+        logging.info(f'Saving Network to CSV in {network_csv_folder}')
+        csv_network['nodes'].to_csv(os.path.join(network_csv_folder, 'nodes.csv'))
+        csv_network['links'].to_csv(os.path.join(network_csv_folder, 'links.csv'))
+        if self.schedule:
+            persistence.ensure_dir(schedule_csv_folder)
+            self.schedule.write_to_csv(schedule_csv_folder, gtfs_day)
+        self.write_extras(network_csv_folder)
