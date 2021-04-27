@@ -102,7 +102,7 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
     fname = os.path.join(output_dir, "schedule.xml")
     if not epsg:
         epsg = schedule.epsg
-    transformer = Transformer.from_proj(Proj('epsg:4326'), Proj(epsg))
+    transformer = Transformer.from_proj(Proj('epsg:4326'), Proj(epsg), always_xy=True)
     logging.info('Writing {}'.format(fname))
 
     with open(fname, "wb") as f, etree.xmlfile(f, encoding='utf-8') as xf:
