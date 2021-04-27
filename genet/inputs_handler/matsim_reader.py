@@ -182,7 +182,7 @@ def read_schedule(schedule_path, epsg):
     :return: list of Service objects
     """
     services = []
-    transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'))
+    transformer = Transformer.from_proj(Proj(epsg), Proj('epsg:4326'), always_xy=True)
 
     def write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode):
         mode = transportMode['transportMode']
