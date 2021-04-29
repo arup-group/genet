@@ -1,8 +1,8 @@
 import argparse
-from genet import read_matsim
 import logging
 import time
 
+from genet import read_matsim
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Reproject a MATSim network')

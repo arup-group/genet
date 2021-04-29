@@ -68,9 +68,11 @@ if __name__ == '__main__':
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
-    n = gn.Network(projection)
     logging.info('Reading in network at {}'.format(network))
-    n.read_matsim_network(network)
+    n = gn.read_matsim(
+        path_to_network=network,
+        epsg=projection
+    )
 
     if subset_conditions is not None:
         logging.info(f"Considering subset of the network satisfying attributes-osm:way:highway-{subset_conditions}")
