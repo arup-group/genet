@@ -16,13 +16,13 @@ if __name__ == '__main__':
                             '--schedule',
                             help='Location of the schedule.xml file',
                             required=False,
-                            default='')
+                            default=None)
 
     arg_parser.add_argument('-v',
                             '--vehicles',
                             help='Location of the vehicles.xml file',
                             required=False,
-                            default='')
+                            default=None)
 
     arg_parser.add_argument('-cp',
                             '--current_projection',
