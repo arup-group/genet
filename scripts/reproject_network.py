@@ -1,5 +1,5 @@
 import argparse
-import genet as gn
+from genet import read_matsim
 import logging
 import time
 
@@ -57,19 +57,23 @@ if __name__ == '__main__':
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
-    n = gn.Network(current_projection)
     logging.info('Reading in network at {}'.format(network))
-    n.read_matsim_network(network)
     if schedule:
         logging.info(f'Reading in schedule at {schedule}')
         if vehicles:
             logging.info(f'Reading in vehicles at {vehicles}')
         else:
             logging.info('No vehicles file given with the Schedule, vehicle types will be based on the default.')
-        n.read_matsim_schedule(schedule, vehicles)
     else:
         logging.info('You have not passed the schedule.xml file. If your network is road only, that is fine, otherwise'
                      'if you mix and match them, you will have a bad time.')
+    n = read_matsim(
+        path_to_network=network,
+        epsg=current_projection,
+        path_to_schedule=schedule,
+        path_to_vehicles=vehicles
+    )
+
     logging.info('Reprojecting the network.')
 
     start = time.time()
