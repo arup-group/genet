@@ -37,6 +37,7 @@ def read_services_from_calendar(path, day):
             with open(file, mode='r', encoding="utf-8-sig") as infile:
                 reader = csv.DictReader(infile)
                 for row in reader:
+                    row['service_id'] = sanitise_id(row['service_id'])
                     if (int(day) in range(int(row['start_date']), int(row['end_date']))) and \
                             (int(row[day_of_the_week]) == 1):
                         services.append(row['service_id'])
@@ -47,6 +48,8 @@ def read_services_from_calendar(path, day):
             raise RuntimeError('Calendar was not found with the GTFS')
     return services
 
+def sanitise_id(_id: str):
+    return _id.replace(' ', '_')
 
 def read_gtfs_to_db_like_tables(path):
     logging.info("Reading GTFS data into usable format")
@@ -65,6 +68,8 @@ def read_gtfs_to_db_like_tables(path):
             with open(file, mode='r', encoding="utf-8-sig") as infile:
                 reader = csv.DictReader(infile)
                 for row in reader:
+                    row['trip_id'] = sanitise_id(row['trip_id'])
+                    row['stop_id'] = sanitise_id(row['stop_id'])
                     stop_times.append(dict(row))
                     if row['trip_id'] in stop_times_db:
                         stop_times_db[row['trip_id']].append(dict(row))
@@ -76,13 +81,19 @@ def read_gtfs_to_db_like_tables(path):
             with open(file, mode='r', encoding="utf-8-sig") as infile:
                 reader = csv.DictReader(infile)
                 for row in reader:
-                    stops_db[row['stop_id']] = dict(row)
+                    _id = sanitise_id(row['stop_id'])
+                    row['stop_id'] = _id
+                    stops_db[_id] = dict(row)
 
         elif "trips" in file:
             logging.info("Reading trips")
             with open(file, mode='r', encoding="utf-8-sig") as infile:
                 reader = csv.DictReader(infile)
                 for row in reader:
+                    _id = sanitise_id(row['trip_id'])
+                    row['trip_id'] = _id
+                    row['route_id'] = sanitise_id(row['route_id'])
+                    row['service_id'] = sanitise_id(row['service_id'])
                     trips_db[row['trip_id']] = dict(row)
 
         elif "routes" in file:
@@ -90,6 +101,8 @@ def read_gtfs_to_db_like_tables(path):
             with open(file, mode='r', encoding="utf-8-sig") as infile:
                 reader = csv.DictReader(infile)
                 for row in reader:
+                    _id = sanitise_id(row['route_id'])
+                    row['route_id'] = _id
                     routes_db[row['route_id']] = dict(row)
 
     return stop_times, stop_times_db, stops_db, trips_db, routes_db
