@@ -1,7 +1,6 @@
 import argparse
 import genet as gn
 import logging
-import json
 import os
 
 
@@ -43,9 +42,11 @@ if __name__ == '__main__':
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
-    n = gn.Network(projection)
-    logging.info(f'Reading in network at {network}')
-    n.read_matsim_network(network)
+    logging.info('Reading in network at {}'.format(network))
+    n = gn.read_matsim(
+        path_to_network=network,
+        epsg=projection
+    )
 
     logging.info('Generating requests for the network')
     api_requests = gn.google_directions.generate_requests(n=n)

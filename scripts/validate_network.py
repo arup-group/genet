@@ -1,15 +1,13 @@
 import argparse
-import genet as gn
-import logging
-import time
-import os
 import json
+import logging
+import os
+
+from genet import read_matsim
 from genet.utils.persistence import ensure_dir
 
-
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Simplify a MATSim network by removing '
-                                                     'intermediate links from paths')
+    arg_parser = argparse.ArgumentParser(description='Run MATSim specific validation methods on a MATSim network')
 
     arg_parser.add_argument('-n',
                             '--network',
@@ -20,13 +18,13 @@ if __name__ == '__main__':
                             '--schedule',
                             help='Location of the schedule.xml file',
                             required=False,
-                            default='')
+                            default=None)
 
     arg_parser.add_argument('-v',
                             '--vehicles',
                             help='Location of the vehicles.xml file',
                             required=False,
-                            default='')
+                            default=None)
 
     arg_parser.add_argument('-p',
                             '--projection',
@@ -48,16 +46,19 @@ if __name__ == '__main__':
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
-    n = gn.Network(projection)
     logging.info('Reading in network at {}'.format(network))
-    n.read_matsim_network(network)
     if schedule:
         logging.info(f'Reading in schedule at {schedule}')
         if vehicles:
             logging.info(f'Reading in vehicles at {vehicles}')
         else:
             logging.info('No vehicles file given with the Schedule, vehicle types will be based on the default.')
-        n.read_matsim_schedule(schedule, vehicles)
+    n = read_matsim(
+        path_to_network=network,
+        epsg=projection,
+        path_to_schedule=schedule,
+        path_to_vehicles=vehicles
+    )
 
     logging.info('Generating validation report')
     report = n.generate_validation_report()

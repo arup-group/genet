@@ -1,8 +1,8 @@
 import argparse
-import genet as gn
 import logging
 import time
 
+from genet import read_matsim
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Reproject a MATSim network')
@@ -16,13 +16,13 @@ if __name__ == '__main__':
                             '--schedule',
                             help='Location of the schedule.xml file',
                             required=False,
-                            default='')
+                            default=None)
 
     arg_parser.add_argument('-v',
                             '--vehicles',
                             help='Location of the vehicles.xml file',
                             required=False,
-                            default='')
+                            default=None)
 
     arg_parser.add_argument('-cp',
                             '--current_projection',
@@ -57,19 +57,23 @@ if __name__ == '__main__':
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
-    n = gn.Network(current_projection)
     logging.info('Reading in network at {}'.format(network))
-    n.read_matsim_network(network)
     if schedule:
         logging.info(f'Reading in schedule at {schedule}')
         if vehicles:
             logging.info(f'Reading in vehicles at {vehicles}')
         else:
             logging.info('No vehicles file given with the Schedule, vehicle types will be based on the default.')
-        n.read_matsim_schedule(schedule, vehicles)
     else:
         logging.info('You have not passed the schedule.xml file. If your network is road only, that is fine, otherwise'
                      'if you mix and match them, you will have a bad time.')
+    n = read_matsim(
+        path_to_network=network,
+        epsg=current_projection,
+        path_to_schedule=schedule,
+        path_to_vehicles=vehicles
+    )
+
     logging.info('Reprojecting the network.')
 
     start = time.time()
