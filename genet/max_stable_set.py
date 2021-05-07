@@ -385,7 +385,6 @@ class ChangeSet:
         self.additional_links_modes = self.generate_additional_links_modes(max_stable_set)
         self.new_stops = self.schedule_stops(max_stable_set)
         self.new_pt_edges = self.schedule_edges(max_stable_set)
-        self.minimal_transfer_times = self.make_minimal_transfer_times(max_stable_set)
 
     def new_network_links(self, max_stable_set):
         # generate data needed for the network to add artificial links following a partially viable max stable set
@@ -428,15 +427,6 @@ class ChangeSet:
             u, v, data in list(max_stable_set.pt_graph.edges(data=True))]
         return new_pt_edges
 
-    def make_minimal_transfer_times(self, max_stable_set):
-        map = max_stable_set.stops_to_artificial_stops_map()
-        minimal_transfer_times = {(from_stop, to_stop): 0.0 for from_stop, to_stop in map.items()}
-        minimal_transfer_times = {
-            **minimal_transfer_times,
-            **{(to_stop, from_stop): 0.0 for from_stop, to_stop in map.items()}
-        }
-        return minimal_transfer_times
-
     def __add__(self, other):
         # combine two changesets
         self.new_links = {**self.new_links, **other.new_links}
@@ -446,5 +436,4 @@ class ChangeSet:
             self.additional_links_modes, other.additional_links_modes)
         self.new_stops = dict_support.merge_complex_dictionaries(self.new_stops, other.new_stops)
         self.new_pt_edges = dict_support.combine_edge_data_lists(self.new_pt_edges, other.new_pt_edges)
-        self.minimal_transfer_times = {**self.minimal_transfer_times, **other.minimal_transfer_times}
         return self

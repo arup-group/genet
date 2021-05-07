@@ -1081,8 +1081,7 @@ class Network:
         Route objects within each Service.
 
         It creates new stops: 'old_id:link:link_id' for an 'old_stop' which snapped to 'link_id'. It does not delete
-        old stops, it creates minimal_tranfer_times between the 'old_stop' and 'old_id:link:link_id', in both directions
-        and of value zero seconds.
+        old stops.
 
         If there isn't a link available for snapping within threshold and under modal conditions, an artificial
         self-loop link will be created as well as any connecting links to that unsnapped stop. This can be switched off
@@ -1194,8 +1193,7 @@ class Network:
         network) for all Route objects within this Service.
 
         It creates new stops: 'old_id:link:link_id' for an 'old_stop' which snapped to 'link_id'. It does not delete
-        old stops, it creates minimal_tranfer_times between the 'old_stop' and 'old_id:link:link_id', in both directions
-        and of value zero seconds.
+        old stops.
 
         If there isn't a link available for snapping within threshold and under modal conditions, an artificial
         self-loop link will be created as well as any connecting links to that unsnapped stop. This can be switched off
@@ -1357,8 +1355,7 @@ class Network:
         self.schedule._graph.add_edges_from(max_stable_set_changeset.new_pt_edges)
 
         self.schedule.apply_attributes_to_routes(max_stable_set_changeset.df_route_data.T.to_dict())
-        self.schedule.minimal_transfer_times = {**self.schedule.minimal_transfer_times,
-                                                **max_stable_set_changeset.minimal_transfer_times}
+
         if max_stable_set_changeset.new_nodes:
             self.add_nodes(max_stable_set_changeset.new_nodes)
         if max_stable_set_changeset.new_links:

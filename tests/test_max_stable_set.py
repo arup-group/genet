@@ -481,13 +481,6 @@ def test_generating_changeset_from_partial_mss_problem(partial_mss):
                                       {'services': {'bus_service'}, 'routes': {'service_1_route_1'}}), (
                                       'stop_3.link:link_7_8_car', 'stop_2.link:link_5_6_car',
                                       {'services': {'bus_service'}, 'routes': {'service_1_route_2'}})]
-    assert_semantically_equal(
-        changeset.minimal_transfer_times,
-        {('stop_1', 'stop_1.link:artificial_link===from:stop_1===to:stop_1'): 0.0,
-         ('stop_2', 'stop_2.link:link_5_6_car'): 0.0, ('stop_3', 'stop_3.link:link_7_8_car'): 0.0,
-         ('stop_1.link:artificial_link===from:stop_1===to:stop_1', 'stop_1'): 0.0,
-         ('stop_2.link:link_5_6_car', 'stop_2'): 0.0, ('stop_3.link:link_7_8_car', 'stop_3'): 0.0}
-    )
 
 
 def test_combining_two_changesets_with_overlap(partial_mss):
@@ -587,14 +580,3 @@ def test_combining_two_changesets_with_overlap(partial_mss):
         ('stop_2.link:link_5_6_car', 'stop_1.link:artificial_link===from:stop_1===to:stop_1', {'routes': {'service_1_route_2'}, 'services': {'bus_service'}}),
         ('stop_2.link:link_6_5_car', 'stop_3.link:link_7_8_car', {'routes': {'service_1_route_1'}, 'services': {'bus_service'}}),
         ('stop_3.link:link_7_8_car', 'stop_2.link:link_5_6_car', {'routes': {'service_1_route_2'}, 'services': {'bus_service'}})]
-    assert_semantically_equal(
-        changeset.minimal_transfer_times,
-        {('stop_1', 'stop_1.link:artificial_link===from:stop_1===to:stop_1'): 0.0,
-         ('stop_2', 'stop_2.link:link_5_6_car'): 0.0,
-         ('stop_3', 'stop_3.link:link_7_8_car'): 0.0,
-         ('stop_1.link:artificial_link===from:stop_1===to:stop_1', 'stop_1'): 0.0,
-         ('stop_2.link:link_5_6_car', 'stop_2'): 0.0,
-         ('stop_3.link:link_7_8_car', 'stop_3'): 0.0,
-         ('stop_2', 'stop_2.link:link_6_5_car'): 0.0,
-         ('stop_2.link:link_6_5_car', 'stop_2'): 0.0}
-    )
