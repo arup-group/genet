@@ -485,6 +485,9 @@ class Route(ScheduleElement):
     def modes(self):
         return {self.mode}
 
+    def vehicles(self):
+        return set(self.trips['vehicle_id'])
+
     def _index_unique(self, idx):
         return idx not in self._graph.graph['routes']
 
@@ -921,6 +924,9 @@ class Service(ScheduleElement):
 
     def modes(self):
         return {r.mode for r in self.routes()}
+
+    def vehicles(self):
+        return set().union(*[r_dat['trips']['vehicle_id'] for r_id, r_dat in self.graph().graph['routes'].items()])
 
     def _index_unique(self, idx):
         return idx not in self._graph.graph['services']
@@ -2056,6 +2062,7 @@ class Schedule(ScheduleElement):
         self._graph.graph['change_log'].add(object_type='service', object_id=service.id, object_attributes=service_data)
         logging.info(f'Added Service with index `{service.id}`, data={service_data} and Routes: {route_ids}')
         service._graph = self._graph
+        self.generate_vehicles(overwrite=False)
         return service
 
     def remove_service(self, service_id):
@@ -2084,6 +2091,12 @@ class Schedule(ScheduleElement):
             del self._graph.graph['routes'][r_id]
         self._graph.graph['change_log'].remove(object_type='service', object_id=service_id,
                                                object_attributes=service_data)
+
+        # update vehicles
+        old_vehicles = deepcopy(self.vehicles)
+        self.vehicles = {}
+        self.generate_vehicles()
+        self.vehicles = {**self.vehicles, **{k: v for k, v in old_vehicles.items() if k in self.vehicles}}
         logging.info(f'Removed Service with index `{service_id}`, data={service_data} and Routes: {route_ids}')
 
     def add_route(self, service_id, route: Route, force=False):
@@ -2141,6 +2154,7 @@ class Schedule(ScheduleElement):
         logging.info(f'Added Route with index `{route.id}`, data={route_data} to Service `{service_id}` within the '
                      f'Schedule')
         route._graph = self._graph
+        self.generate_vehicles(overwrite=False)
         return route
 
     def remove_route(self, route_id):
@@ -2171,6 +2185,12 @@ class Schedule(ScheduleElement):
         del self._graph.graph['route_to_service_map'][route_id]
         del self._graph.graph['routes'][route_id]
         self._graph.graph['change_log'].remove(object_type='route', object_id=route_id, object_attributes=route_data)
+
+        # update vehicles
+        old_vehicles = deepcopy(self.vehicles)
+        self.vehicles = {}
+        self.generate_vehicles()
+        self.vehicles = {**self.vehicles, **{k: v for k, v in old_vehicles.items() if k in self.vehicles}}
         logging.info(f'Removed Route with index `{route_id}`, data={route_data}. '
                      f'It was linked to Service `{service_id}`.')
 

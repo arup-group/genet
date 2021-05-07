@@ -642,7 +642,7 @@ def test_adding_service_with_clashing_stops_data_does_not_overwrite_existing_sto
         id='3',
         route_short_name='name',
         mode='bus',
-        trips={},
+        trips={'trip_id': ['1'], 'trip_departure_time':['02:20:20'], 'vehicle_id': ['1']},
         arrival_offsets=[],
         departure_offsets=[],
         stops=[Stop(id='1', x=1, y=2, epsg='epsg:27700'),
@@ -664,7 +664,7 @@ def test_adding_service_with_clashing_stops_data_without_force_flag_throws_error
         id='3',
         route_short_name='name',
         mode='bus',
-        trips={},
+        trips={'trip_id': ['1'], 'trip_departure_time':['02:20:20'], 'vehicle_id': ['1']},
         arrival_offsets=[],
         departure_offsets=[],
         stops=[Stop(id='1', x=1, y=2, epsg='epsg:27700'),
@@ -683,6 +683,11 @@ def test_removing_service(schedule):
     assert not set(schedule.service_ids())
     assert not schedule._graph.graph['route_to_service_map']
     assert not schedule._graph.graph['service_to_route_map']
+
+
+def test_removing_service_updates_vehicles(schedule):
+    schedule.remove_service('service')
+    assert schedule.vehicles == {}
 
 
 def test_adding_route(schedule, route):
@@ -730,7 +735,7 @@ def test_creating_a_route_to_add_using_id_references_to_existing_stops_inherits_
         id='3',
         route_short_name='name',
         mode='bus',
-        trips={},
+        trips={'trip_id': ['1'], 'trip_departure_time':['02:20:20'], 'vehicle_id': ['1']},
         arrival_offsets=[],
         departure_offsets=[],
         stops=['1', '2', '5']
@@ -764,7 +769,7 @@ def test_creating_a_route_to_add_giving_existing_schedule_stops(schedule):
         id='3',
         route_short_name='name',
         mode='bus',
-        trips={},
+        trips={'trip_id': ['1'], 'trip_departure_time':['02:20:20'], 'vehicle_id': ['1']},
         arrival_offsets=[],
         departure_offsets=[],
         stops=[schedule.stop('1'), schedule.stop('2'), schedule.stop('5')]
@@ -803,7 +808,7 @@ def test_adding_route_with_clashing_stops_data_does_not_overwrite_existing_stops
         id='3',
         route_short_name='name',
         mode='bus',
-        trips={},
+        trips={'trip_id': ['1'], 'trip_departure_time':['02:20:20'], 'vehicle_id': ['1']},
         arrival_offsets=[],
         departure_offsets=[],
         stops=[Stop(id='1', x=1, y=2, epsg='epsg:27700'),
@@ -824,7 +829,7 @@ def test_adding_route_with_clashing_stops_data_only_flags_those_that_are_actuall
         id='3',
         route_short_name='name',
         mode='bus',
-        trips={},
+        trips={'trip_id': ['1'], 'trip_departure_time':['02:20:20'], 'vehicle_id': ['1']},
         arrival_offsets=[],
         departure_offsets=[],
         stops=[Stop(id='1', x=1, y=2, epsg='epsg:27700'),
@@ -844,7 +849,7 @@ def test_adding_route_with_clashing_stops_data_without_force_flag_throws_error(s
         id='3',
         route_short_name='name',
         mode='bus',
-        trips={},
+        trips={'trip_id': ['1'], 'trip_departure_time':['02:20:20'], 'vehicle_id': ['1']},
         arrival_offsets=[],
         departure_offsets=[],
         stops=[Stop(id='1', x=1, y=2, epsg='epsg:27700'),
@@ -862,7 +867,7 @@ def test_extracting_epsg_from_an_intermediate_route_gives_none():
     r = Route(
         route_short_name='name',
         mode='bus',
-        trips={},
+        trips={'trip_id': ['1'], 'trip_departure_time':['02:20:20'], 'vehicle_id': ['1']},
         arrival_offsets=[],
         departure_offsets=[],
         stops=['S1', 'S2', 'S3']
@@ -919,6 +924,20 @@ def test_removing_route_updates_services_on_nodes_and_edges(schedule):
                                '1': {'2': {'services': {'service'}, 'routes': {'1'}}},
                                '3': {'4': {'services': {'service'}, 'routes': {'1'}}},
                                '2': {'3': {'services': {'service'}, 'routes': {'1'}}}, '4': {}})
+
+
+def test_removing_route_updates_vehicles(schedule):
+    schedule.remove_route('2')
+    assert_semantically_equal(schedule.vehicles,
+                              {'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'}})
+
+
+def test_removing_route_with_overlapping_vehicles_leaves_all_vehicles(schedule, route):
+    schedule.add_route(route=route, service_id='service')
+    schedule.remove_route('1')
+    assert_semantically_equal(schedule.vehicles,
+                              {'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'},
+                               'veh_3_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'}})
 
 
 def test_removing_stop(schedule):

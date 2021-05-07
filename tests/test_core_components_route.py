@@ -384,3 +384,7 @@ def test_building_trips_dataframe(route):
                             'to_stop_name': {0: '', 1: '', 2: '', 3: '', 4: '', 5: ''}})
 
     assert_frame_equal(df, correct_df)
+
+
+def test_vehicles(route):
+    assert route.vehicles() == {'veh_1_bus', 'veh_2_bus'}

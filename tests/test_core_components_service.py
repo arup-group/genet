@@ -409,3 +409,7 @@ def test_building_trips_dataframe(service):
                                              6: 'name', 7: 'name', 8: 'name', 9: 'name', 10: 'name', 11: 'name'}})
 
     assert_frame_equal(df, correct_df)
+
+
+def test_vehicles(service):
+    assert service.vehicles() == {'veh_1_bus', 'veh_2_bus', 'veh_3_bus', 'veh_4_bus'}
