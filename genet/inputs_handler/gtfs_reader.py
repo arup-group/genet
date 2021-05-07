@@ -48,8 +48,10 @@ def read_services_from_calendar(path, day):
             raise RuntimeError('Calendar was not found with the GTFS')
     return services
 
+
 def sanitise_id(_id: str):
     return _id.replace(' ', '_')
+
 
 def read_gtfs_to_db_like_tables(path):
     logging.info("Reading GTFS data into usable format")
