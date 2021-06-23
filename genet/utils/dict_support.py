@@ -112,6 +112,10 @@ def combine_edge_data_lists(l1, l2):
     return [(u, v, dat) for (u, v), dat in edges.items()]
 
 
+def dataframe_to_dict(df):
+    return {_id: {k: v for k, v in m.items() if notna(v)} for _id, m in df.to_dict().items()}
+
+
 def notna(value):
     nn = pd.notna(value)
     if isinstance(nn, ndarray):

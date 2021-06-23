@@ -2486,6 +2486,52 @@ def test_transforming_network_to_json(network_1_geo_and_json):
     assert_semantically_equal(network_1_geo_and_json['network'].to_json(), network_1_geo_and_json['expected_json'])
 
 
+def test_transforming_uneven_network_to_json():
+    # some nodes and links have different params, we expect only those with values in the json
+    n = Network(epsg='epsg:4326')
+    n.add_node('101982',
+                {'id': '101982',
+                 'x': '528704.1425925883',
+                 'y': '182068.78193707118',
+                 'lon': -0.14625948709424305,
+                 'lat': 51.52287873323954,
+                 's2_id': 5221390329378179879,
+                 'name': 'hello'
+                 })
+    n.add_node('101986',
+                {'id': '101986',
+                 'x': '528835.203274008',
+                 'y': '182006.27331298392',
+                 'lon': -0.14439428709377497,
+                 'lat': 51.52228713323965,
+                 's2_id': 5221390328605860387})
+    n.add_link('0', '101982', '101986',
+                attribs={'id': '0',
+                         'from': '101982',
+                         'to': '101986',
+                         'freespeed': 4})
+    n.add_link('0', '101982', '101986',
+               attribs={'id': '0',
+                        'from': '101982',
+                        'to': '101986',
+                        'capacity': 5})
+
+    assert_semantically_equal(
+        n.to_json(),
+        {'nodes': {
+            '101982': {'id': '101982', 'x': '528704.1425925883', 'y': '182068.78193707118', 'lon': -0.14625948709424305,
+                       'lat': 51.52287873323954, 's2_id': 5221390329378179879, 'name': 'hello',
+                       'geometry': [528704.1425925883, 182068.78193707118]},
+            '101986': {'id': '101986', 'x': '528835.203274008', 'y': '182006.27331298392', 'lon': -0.14439428709377497,
+                       'lat': 51.52228713323965, 's2_id': 5221390328605860387,
+                       'geometry': [528835.203274008, 182006.27331298392]}}, 'links': {
+            '0': {'id': '0', 'from': '101982', 'to': '101986', 'freespeed': 4.0,
+                  'geometry': 'ez~hinaBc~sze|`@gx|~W|uo|J', 'u': '101982', 'v': '101986'},
+            '1': {'id': '1', 'from': '101982', 'to': '101986', 'capacity': 5.0,
+                  'geometry': 'ez~hinaBc~sze|`@gx|~W|uo|J', 'u': '101982', 'v': '101986'}}}
+    )
+
+
 def test_saving_network_to_json(network_1_geo_and_json, tmpdir):
     network_1_geo_and_json['network'].write_to_json(tmpdir)
     expected_network_json = os.path.join(tmpdir, 'network.json')

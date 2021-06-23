@@ -74,7 +74,7 @@ def read_matsim_schedule(path_to_schedule: str, epsg: str, path_to_vehicles: str
     :param epsg: projection for the schedule, e.g. 'epsg:27700'
     :return: genet.Schedule object
     """
-    services, minimal_transfer_times = matsim_reader.read_schedule(path_to_schedule, epsg)
+    services, minimal_transfer_times, transit_stop_id_mapping = matsim_reader.read_schedule(path_to_schedule, epsg)
     if path_to_vehicles:
         vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
         matsim_schedule = schedule_elements.Schedule(
@@ -82,6 +82,15 @@ def read_matsim_schedule(path_to_schedule: str, epsg: str, path_to_vehicles: str
     else:
         matsim_schedule = schedule_elements.Schedule(services=services, epsg=epsg)
     matsim_schedule.minimal_transfer_times = minimal_transfer_times
+
+    extra_stops = {stop: transit_stop_id_mapping[stop] for stop in
+                   set(transit_stop_id_mapping) - set(matsim_schedule.graph().nodes())}
+    for k in extra_stops.keys():
+        extra_stops[k] = schedule_elements.Stop(**extra_stops[k]).__dict__
+        extra_stops[k]['routes'] = set()
+        extra_stops[k]['services'] = set()
+    matsim_schedule._graph.add_nodes_from(extra_stops)
+    nx.set_node_attributes(matsim_schedule._graph, extra_stops)
     return matsim_schedule
 
 

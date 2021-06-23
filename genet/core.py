@@ -1,32 +1,34 @@
-import networkx as nx
-import pandas as pd
-import geopandas as gpd
-import uuid
-import logging
-import traceback
-import os
 import json
+import logging
+import os
+import traceback
+import uuid
 from copy import deepcopy
 from typing import Union, List, Dict
+
+import geopandas as gpd
+import networkx as nx
+import pandas as pd
 from pyproj import Transformer
 from s2sphere import CellId
-import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
-import genet.outputs_handler.geojson as geojson
-import genet.outputs_handler.sanitiser as sanitiser
+
+import genet.auxiliary_files as auxiliary_files
+import genet.exceptions as exceptions
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
 import genet.modify.schedule as modify_schedule
-import genet.utils.spatial as spatial
-import genet.utils.persistence as persistence
+import genet.outputs_handler.geojson as geojson
+import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
+import genet.outputs_handler.sanitiser as sanitiser
+import genet.schedule_elements as schedule_elements
+import genet.utils.dict_support as dict_support
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
-import genet.utils.dict_support as dict_support
+import genet.utils.persistence as persistence
 import genet.utils.plot as plot
 import genet.utils.simplification as simplification
-import genet.schedule_elements as schedule_elements
+import genet.utils.spatial as spatial
 import genet.validate.network_validation as network_validation
-import genet.auxiliary_files as auxiliary_files
-import genet.exceptions as exceptions
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -1770,7 +1772,8 @@ class Network:
 
     def to_json(self):
         _network = self.to_encoded_geometry_dataframe()
-        return {'nodes': _network['nodes'].T.to_dict(), 'links': _network['links'].T.to_dict()}
+        return {'nodes': dict_support.dataframe_to_dict(_network['nodes'].T),
+                'links': dict_support.dataframe_to_dict(_network['links'].T)}
 
     def write_to_json(self, output_dir):
         """

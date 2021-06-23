@@ -8,7 +8,6 @@ from tests.fixtures import *
 from tests.test_core_components_route import self_looping_route, route
 from tests.test_core_components_service import service
 from genet.inputs_handler import matsim_reader, gtfs_reader
-from genet.inputs_handler import read
 from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation
@@ -1568,6 +1567,35 @@ def json_schedule():
 
 def test_transforming_schedule_to_json(schedule, json_schedule):
     assert_semantically_equal(schedule.to_json(), json_schedule)
+
+
+def test_transforming_uneven_schedule_to_json():
+    # the stops have different params, we expect only those with values in the json
+    route_2 = Route(route_short_name='name',
+                    mode='bus', id='2',
+                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700', linkRefId='1234'),
+                           Stop(id='6', x=1, y=2, epsg='epsg:27700', name='stop'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700', isBlocking='false'),
+                           Stop(id='8', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['11:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    service = Service(id='service', routes=[route_2])
+    schedule = Schedule(epsg='epsg:27700', services=[service])
+    assert_semantically_equal(
+        schedule.to_json()['schedule']['stops'],
+        {
+            '5': {'linkRefId': '1234', 'id': '5', 'name': '', 'y': 2.0, 'lon': -7.557106577683727,
+                  's2_id': 5205973754090531959, 'x': 4.0, 'lat': 49.76682779861249},
+            '6': {'id': '6', 'name': 'stop', 'y': 2.0, 'lon': -7.557148039524952,
+                  's2_id': 5205973754090365183, 'x': 1.0, 'lat': 49.766825803756994},
+            '7': {'isBlocking': 'false', 'id': '7', 'name': '', 'y': 3.0, 'lon': -7.557121424907424,
+                  's2_id': 5205973754090203369, 'x': 3.0, 'lat': 49.76683608549253},
+            '8': {'id': '8', 'name': '', 'y': 5.0, 'lon': -7.5570681956375,
+                  's2_id': 5205973754097123809, 'x': 7.0, 'lat': 49.766856648946295}}
+    )
 
 
 def test_writing_schedule_to_json(schedule, json_schedule, tmpdir):

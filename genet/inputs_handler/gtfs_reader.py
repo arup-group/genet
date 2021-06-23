@@ -2,13 +2,15 @@ import csv
 import logging
 import os
 import shutil
-import pandas as pd
-import numpy as np
-import networkx as nx
 from datetime import datetime, timedelta
-from genet.utils import spatial, persistence
+
+import networkx as nx
+import numpy as np
+import pandas as pd
+
 import genet.modify.change_log as change_log
 from genet import variables
+from genet.utils import spatial, persistence
 
 
 def read_services_from_calendar(path, day):
@@ -123,16 +125,6 @@ def gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, serv
         return str(td).split('days')[-1].strip(' ')
 
     def generate_stop_sequence(group):
-        # TODO
-        # init_stop_times = stop_times_db[trip_id]
-        # stop_times = [init_stop_times[0]] + [init_stop_times[i] for i in range(1, len(init_stop_times)) if
-        #                                      init_stop_times[i - 1]['stop_id'] != init_stop_times[i]['stop_id']]
-        # stops = [stop_time['stop_id'] for stop_time in stop_times]
-        # if len(stop_times) != len(init_stop_times):
-        #     logging.warning(
-        #         'Your GTFS has a looooop edge! A zero link between a node and itself, edge affected'
-        #         '\nThis edge will not be considered for computation, the stop will be deleted and the'
-        #         ' schedule will be changed.')
         group = group.sort_values(by='stop_sequence')
         # remove stops that are loopy (consecutively duplicated)
         unique_stops_mask = group['stop_id'].shift() != group['stop_id']
@@ -172,7 +164,9 @@ def gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, serv
 
     trips_db = trips_db[trips_db['service_id'].isin(services)]
     df = trips_db[['route_id', 'trip_id']].merge(
-        routes_db[['route_id', 'route_type', 'route_short_name', 'route_long_name', 'route_color']], on='route_id',
+        routes_db[{'route_id', 'route_type', 'route_short_name', 'route_long_name', 'route_color'} and set(
+            routes_db.columns)],
+        on='route_id',
         how='left')
     df['mode'] = df['route_type'].apply(lambda x: get_mode(x))
     df = df.merge(stop_times_db[['trip_id', 'stop_id', 'arrival_time', 'departure_time', 'stop_sequence']],

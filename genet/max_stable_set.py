@@ -21,7 +21,8 @@ class MaxStableSet:
         self.step_size = step_size
         self.network_spatial_tree = network_spatial_tree
         self.pt_graph = pt_graph
-        self.stops, self.pt_edges = gngeojson.generate_geodataframes(pt_graph)
+        _gdf = gngeojson.generate_geodataframes(pt_graph)
+        self.stops, self.pt_edges = _gdf['nodes'].to_crs('epsg:4326'), _gdf['links'].to_crs('epsg:4326')
         self.edges = self.pt_edges[['u', 'v', 'geometry']].copy()
         self.nodes = self.find_closest_links()
         if self.nodes.empty or len(set(self.nodes['id'])) == 1:

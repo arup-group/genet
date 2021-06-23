@@ -8,6 +8,7 @@ from pandas import DataFrame
 import genet.utils.spatial as spatial
 from genet import Stop, Route, Service, Schedule, Network, MaxStableSet
 from genet.modify import schedule as mod_schedule
+from genet.inputs_handler import read
 from tests.fixtures import assert_semantically_equal
 
 
@@ -35,10 +36,7 @@ schedule_test_file = os.path.abspath(
 
 @pytest.fixture()
 def test_network():
-    n = Network('epsg:27700')
-    n.read_matsim_network(network_test_file)
-    n.read_matsim_schedule(schedule_test_file)
-    return n
+    return read.read_matsim(path_to_network=network_test_file, epsg='epsg:27700', path_to_schedule=schedule_test_file)
 
 
 @pytest.fixture()

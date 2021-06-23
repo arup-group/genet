@@ -2298,7 +2298,8 @@ class Schedule(ScheduleElement):
         for service_id, data in services.items():
             data['routes'] = {route_id: self._graph.graph['routes'][route_id] for route_id in
                               self._graph.graph['service_to_route_map'][service_id]}
-        d = {'stops': stops.T.to_dict(), 'services': services}
+        d = {'stops': dict_support.dataframe_to_dict(stops.T),
+             'services': services}
         if self.minimal_transfer_times:
             d['minimal_transfer_times'] = self.minimal_transfer_times
         return {'schedule': d, 'vehicles': {'vehicle_types': self.vehicle_types, 'vehicles': self.vehicles}}
