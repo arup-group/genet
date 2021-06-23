@@ -127,7 +127,7 @@ def _generate_requests_for_simplified_network(n):
     :param n: genet.Network
     :return:
     """
-    gdf_links = geojson.generate_geodataframes(n.modal_subgraph(modes='car'))[1]
+    gdf_links = geojson.generate_geodataframes(n.modal_subgraph(modes='car'))['links'].to_crs("epsg:4326")
     gdf_links['path_polyline'] = gdf_links['geometry'].apply(lambda x: spatial.swap_x_y_in_linestring(x))
     gdf_links['path_polyline'] = gdf_links['path_polyline'].apply(
         lambda x: spatial.encode_shapely_linestring_to_polyline(x))

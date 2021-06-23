@@ -8,6 +8,7 @@ import os
 import io
 import yaml
 import pkgutil
+import json
 from datetime import datetime
 from pandas import DataFrame, Series
 from copy import deepcopy
@@ -18,8 +19,6 @@ from s2sphere import CellId
 import genet.utils.plot as plot
 import genet.utils.spatial as spatial
 import genet.utils.dict_support as dict_support
-import genet.inputs_handler.matsim_reader as matsim_reader
-import genet.inputs_handler.gtfs_reader as gtfs_reader
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.geojson as gngeojson
 import genet.utils.persistence as persistence
@@ -615,7 +614,7 @@ class Route(ScheduleElement):
         same_departure_offsets = self.departure_offsets == other.departure_offsets
 
         statement = same_route_name and same_mode and same_stops and same_trips and same_arrival_offsets \
-            and same_departure_offsets
+                    and same_departure_offsets  # noqa: E127
         return statement
 
     def isin_exact(self, routes: list):
@@ -1851,7 +1850,7 @@ class Schedule(ScheduleElement):
         return self._find_stops_on_shapely_geometry(shapely_input)
 
     def _find_stops_on_shapely_geometry(self, shapely_input):
-        stops_gdf = gngeojson.generate_geodataframes(self._graph)[0]
+        stops_gdf = self.to_geodataframe()['nodes'].to_crs("epsg:4326")
         return list(stops_gdf[stops_gdf.intersects(shapely_input)].index)
 
     def _find_stops_on_s2_geometry(self, s2_input):
@@ -2261,7 +2260,7 @@ class Schedule(ScheduleElement):
     def generate_validation_report(self):
         return schedule_validation.generate_validation_report(schedule=self)
 
-    def generate_standard_outputs(self, output_dir, gtfs_day='19700101'):
+    def generate_standard_outputs(self, output_dir, gtfs_day='19700101', include_shp_files=False):
         """
         Generates geojsons that can be used for generating standard kepler visualisations.
         These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
@@ -2271,68 +2270,167 @@ class Schedule(ScheduleElement):
         defaults to 1970/01/01 otherwise
         :return: None
         """
-        gngeojson.generate_standard_outputs_for_schedule(self, output_dir, gtfs_day)
+        gngeojson.generate_standard_outputs_for_schedule(self, output_dir, gtfs_day, include_shp_files)
         logging.info('Finished generating standard outputs. Zipping folder.')
         persistence.zip_folder(output_dir)
-
-    def read_matsim_schedule(self, path_to_schedule, path_to_vehicles=''):
-        services, minimal_transfer_times, transit_stop_id_mapping = matsim_reader.read_schedule(
-            path_to_schedule, self.epsg)
-        if path_to_vehicles:
-            vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
-            matsim_schedule = self.__class__(
-                services=services, epsg=self.epsg, vehicles=vehicles, vehicle_types=vehicle_types)
-        else:
-            matsim_schedule = self.__class__(services=services, epsg=self.epsg)
-        matsim_schedule.minimal_transfer_times = minimal_transfer_times
-        extra_stops = {stop: transit_stop_id_mapping[stop] for stop in
-                       set(transit_stop_id_mapping) - set(matsim_schedule.graph().nodes())}
-        for k in extra_stops.keys():
-            extra_stops[k] = Stop(**extra_stops[k]).__dict__
-            extra_stops[k]['routes'] = set()
-            extra_stops[k]['services'] = set()
-        matsim_schedule._graph.add_nodes_from(extra_stops)
-        nx.set_node_attributes(matsim_schedule._graph, extra_stops)
-        self.add(matsim_schedule)
-
-    def read_matsim_vehicles(self, path_to_vehicles):
-        vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
-        self.update_vehicles(vehicles, vehicle_types)
-
-    def read_gtfs_schedule(self, path, day):
-        """
-        Reads from GTFS. The resulting services will not have route lists. Assumes to be in lat lon epsg:4326
-        :param path: to GTFS folder or a zip file
-        :param day: 'YYYYMMDD' to use form the gtfs
-        :return:
-        """
-        schedule, stops_db = gtfs_reader.read_to_dict_schedule_and_stopd_db(path, day)
-        services = []
-        for key, routes in schedule.items():
-            routes_list = []
-            for route in routes:
-                r = Route(
-                    route_short_name=route['route_short_name'],
-                    mode=route['mode'],
-                    stops=[Stop(id=id, x=stops_db[id]['stop_lon'], y=stops_db[id]['stop_lat'], epsg='epsg:4326') for id
-                           in
-                           route['stops']],
-                    trips=route['trips'],
-                    arrival_offsets=route['arrival_offsets'],
-                    departure_offsets=route['departure_offsets']
-                )
-                routes_list.append(r)
-            services.append(Service(id=key, routes=routes_list))
-
-        # add services rather than creating new object (in case there are already services present)
-        to_add = self.__class__('epsg:4326', services)
-        self.add(to_add)
 
     def write_to_matsim(self, output_dir):
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_matsim_schedule(output_dir, self)
         matsim_xml_writer.write_vehicles(output_dir, self.vehicles, self.vehicle_types)
+        self.write_extras(output_dir)
+
+    def write_extras(self, output_dir):
         self.change_log().export(os.path.join(output_dir, 'schedule_change_log.csv'))
+
+    def to_geodataframe(self):
+        """
+        Generates GeoDataFrames of the Schedule graph in Schedule's crs
+        :return: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and edges
+        """
+        return gngeojson.generate_geodataframes(self._graph)
+
+    def to_json(self):
+        stop_keys = {d.name for d in graph_operations.get_attribute_schema(self._graph.nodes(data=True)).children}
+        stop_keys = stop_keys - {'routes', 'services', 'additional_attributes', 'epsg'}
+        stops = self.stop_attribute_data(keys=stop_keys)
+        services = self._graph.graph['services']
+        for service_id, data in services.items():
+            data['routes'] = {route_id: self._graph.graph['routes'][route_id] for route_id in
+                              self._graph.graph['service_to_route_map'][service_id]}
+        d = {'stops': stops.T.to_dict(), 'services': services}
+        if self.minimal_transfer_times:
+            d['minimal_transfer_times'] = self.minimal_transfer_times
+        return {'schedule': d, 'vehicles': {'vehicle_types': self.vehicle_types, 'vehicles': self.vehicles}}
+
+    def write_to_json(self, output_dir):
+        """
+        Writes Schedule to a single JSON file with stops, services, vehicles and minimum transfer times (if applicable)
+        :param output_dir: output directory
+        :return:
+        """
+        persistence.ensure_dir(output_dir)
+        logging.info(f'Saving Schedule to JSON in {output_dir}')
+        with open(os.path.join(output_dir, 'schedule.json'), 'w') as outfile:
+            json.dump(self.to_json(), outfile)
+        self.write_extras(output_dir)
+
+    def write_to_geojson(self, output_dir, epsg):
+        """
+        Writes Schedule graph to nodes and edges geojson files.
+        :param output_dir: output directory
+        :param epsg: projection if the geometry is to be reprojected, defaults to own projection
+        :return:
+        """
+        persistence.ensure_dir(output_dir)
+        _gdfs = self.to_geodataframe()
+        if epsg is not None:
+            _gdfs['nodes'] = _gdfs['nodes'].to_crs(epsg)
+            _gdfs['links'] = _gdfs['links'].to_crs(epsg)
+        logging.info(f'Saving Schedule to GeoJSON in {output_dir}')
+        gngeojson.save_geodataframe(_gdfs['nodes'], 'schedule_nodes', output_dir)
+        gngeojson.save_geodataframe(_gdfs['links'], 'schedule_links', output_dir)
+        gngeojson.save_geodataframe(_gdfs['nodes']['geometry'], 'schedule_nodes_geometry_only', output_dir)
+        gngeojson.save_geodataframe(_gdfs['links']['geometry'], 'schedule_links_geometry_only', output_dir)
+        self.write_extras(output_dir)
+
+    def to_gtfs(self, gtfs_day, mode_to_route_type: dict = None):
+        """
+        Transforms Schedule in to GTFS-like format. It's not full GTFS as it only represents one day, misses a lot
+         of optional data and does not include `agency.txt` required file. Produces 'stops', 'routes', 'trips',
+         'stop_times', 'calendar' tables.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format
+        :param mode_to_route_type: PT modes in Route objects to route type code by default uses
+        https://developers.google.com/transit/gtfs/reference#routestxt
+        {
+            "tram": 0, "subway": 1, "rail": 2, "bus": 3, "ferry": 4, "cablecar": 5, "gondola": 6, "funicular": 7
+        }
+        Reference for extended mode types:
+        https://developers.google.com/transit/gtfs/reference/extended-route-types
+
+        :return: Dictionary, keys are the names of the tables e.g. `stops` for the `stops.txt` file, values are
+            pandas.DataFrame tables.
+        """
+        stops = self.stop_attribute_data(
+            keys=['id', 'name', 'lat', 'lon', 'stop_code', 'stop_desc', 'zone_id', 'stop_url', 'location_type',
+                  'parent_station', 'stop_timezone', 'wheelchair_boarding', 'level_id', 'platform_code'])
+        stops = stops.rename(columns={'id': 'stop_id', 'name': 'stop_name', 'lat': 'stop_lat', 'lon': 'stop_lon'})
+
+        routes = self.route_attribute_data(
+            keys=['id', 'route_short_name', 'route_long_name', 'mode', 'agency_id', 'route_desc', 'route_url',
+                  'route_type', 'route_color', 'route_text_color', 'route_sort_order', 'continuous_pickup',
+                  'continuous_drop_off'])
+        if mode_to_route_type is None:
+            mode_to_route_type = {
+                "tram": 0, "subway": 1, "rail": 2, "bus": 3, "ferry": 4, "cablecar": 5, "gondola": 6, "funicular": 7
+            }
+        routes.loc[routes['route_type'].isna(), 'route_type'] = routes.loc[routes['route_type'].isna(), 'mode'].map(
+            mode_to_route_type)
+        routes['route_id'] = routes['id'].map(self._graph.graph['route_to_service_map'])
+        routes = routes.drop(['mode', 'id'], axis=1)
+        routes = routes.groupby('route_id').first().reset_index()
+
+        trips = self.route_attribute_data(keys=['id', 'ordered_stops', 'arrival_offsets', 'departure_offsets'])
+        trips = trips.merge(self.route_trips_to_dataframe(), left_on='id', right_on='route_id')
+        trips['route_id'] = trips['service_id']
+
+        # expand the frame for stops and offsets to get stop times
+        trips['stop_sequence'] = trips['ordered_stops'].apply(lambda x: list(range(len(x))))
+        trips['departure_offsets'] = trips['departure_offsets'].apply(lambda x: list(map(use_schedule.get_offset, x)))
+        trips['arrival_offsets'] = trips['arrival_offsets'].apply(lambda x: list(map(use_schedule.get_offset, x)))
+        stop_times = DataFrame({
+            col: np.repeat(trips[col].values, trips['ordered_stops'].str.len())
+            for col in {'trip_id', 'trip_departure_time'}}
+        ).assign(stop_id=np.concatenate(trips['ordered_stops'].values),
+                 stop_sequence=np.concatenate(trips['stop_sequence'].values),
+                 departure_time=np.concatenate(trips['departure_offsets'].values),
+                 arrival_time=np.concatenate(trips['arrival_offsets'].values))
+        stop_times['arrival_time'] = (stop_times['trip_departure_time'] + stop_times['arrival_time']).dt.strftime(
+            '%H:%M:%S')
+        stop_times['departure_time'] = (stop_times['trip_departure_time'] + stop_times['departure_time']).dt.strftime(
+            '%H:%M:%S')
+        stop_times = stop_times.drop(['trip_departure_time'], axis=1)
+        for col in ['stop_headsign', 'pickup_type', 'drop_off_type', 'continuous_pickup', 'continuous_drop_off',
+                    'shape_dist_traveled', 'timepoint']:
+            stop_times[col] = float('nan')
+
+        # finish off trips frame
+        trips = trips[['route_id', 'service_id', 'trip_id']]
+        for col in ['trip_headsign', 'trip_short_name', 'direction_id', 'block_id', 'shape_id', 'wheelchair_accessible',
+                    'bikes_allowed']:
+            trips[col] = float('nan')
+
+        calendar = DataFrame(routes['route_id'])
+        for col in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
+            calendar[col] = 1
+        calendar['start_date'] = gtfs_day
+        calendar['end_date'] = gtfs_day
+        return {'stops': stops, 'routes': routes, 'trips': trips, 'stop_times': stop_times, 'calendar': calendar}
+
+    def write_to_csv(self, output_dir, gtfs_day='19700101', file_extention='csv'):
+        """
+        Writes 'stops', 'routes', 'trips', 'stop_times', 'calendar' tables to CSV files
+        :param output_dir: folder to output csv or txt files
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :param file_extention: csv by default, or txt
+        :return: None
+        """
+        persistence.ensure_dir(output_dir)
+        logging.info(f'Saving Schedule to GTFS {file_extention} in {output_dir}')
+        for table, df in self.to_gtfs(gtfs_day).items():
+            file_path = os.path.join(output_dir, f'{table}.{file_extention}')
+            logging.info(f'Saving {file_path}')
+            df.to_csv(file_path)
+        self.write_extras(output_dir)
+
+    def write_to_gtfs(self, output_dir, gtfs_day='19700101'):
+        """
+        Writes 'stops', 'routes', 'trips', 'stop_times', 'calendar' tables to CSV files
+        :param output_dir: folder to output txt files
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return: None
+        """
+        self.write_to_csv(output_dir, gtfs_day=gtfs_day, file_extention='txt')
 
 
 def verify_graph_schema(graph):

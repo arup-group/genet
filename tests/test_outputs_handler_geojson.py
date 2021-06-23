@@ -26,47 +26,49 @@ def test_saving_values_which_result_in_overflow(tmpdir):
     n.add_node('0', attribs={'x': 528704.1425925883, 'y': 182068.78193707118, 's2_id': 7860190995130875979})
     n.add_node('1', attribs={'x': 528804.1425925883, 'y': 182168.78193707118, 's2_id': 12118290696817869383})
     n.add_link('link_0', '0', '1', attribs={'length': 123, 'modes': ['car', 'walk'], 'ids': ['1', '2']})
-    n.save_network_to_geojson(tmpdir)
+    n.write_to_geojson(tmpdir)
 
 
 def test_generating_network_graph_geodataframe(network):
-    nodes, links = gngeojson.generate_geodataframes(network.graph)
+    gdfs = gngeojson.generate_geodataframes(network.graph)
+    nodes, links = gdfs['nodes'], gdfs['links']
     correct_nodes = {
         'x': {'0': 528704.1425925883, '1': 528804.1425925883},
         'y': {'0': 182068.78193707118, '1': 182168.78193707118}}
-    correct_links = {'length': {0: 123, 1: 123, 2: 123},
-                     'modes': {0: ['car', 'walk'], 1: ['bike'], 2: ['rail']},
-                     'freespeed': {0: 10.0, 1: float('nan'), 2: float('nan')},
-                     'capacity': {0: 5.0, 1: float('nan'), 2: float('nan')},
-                     'from': {0: '0', 1: '0', 2: '1'}, 'to': {0: '1', 1: '1', 2: '0'},
-                     'id': {0: 'link_0', 1: 'link_1', 2: 'link_2'}, 'u': {0: '0', 1: '0', 2: '1'},
-                     'v': {0: '1', 1: '1', 2: '0'}, 'key': {0: 0, 1: 1, 2: 0},
-                     'attributes': {0: float('nan'),
-                                    1: {'osm:way:highway': {'name': 'osm:way:highway',
-                                                            'class': 'java.lang.String',
-                                                            'text': 'unclassified'}},
-                                    2: float('nan')}}
+    correct_links = {'u': {'link_0': '0', 'link_1': '0', 'link_2': '1'},
+                     'v': {'link_0': '1', 'link_1': '1', 'link_2': '0'},
+                     'length': {'link_0': 123, 'link_1': 123, 'link_2': 123},
+                     'attributes': {'link_0': float('nan'), 'link_1': {
+                         'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
+                                             'text': 'unclassified'}}, 'link_2': float('nan')},
+                     'to': {'link_0': '1', 'link_1': '1', 'link_2': '0'},
+                     'from': {'link_0': '0', 'link_1': '0', 'link_2': '1'},
+                     'freespeed': {'link_0': 10.0, 'link_1': float('nan'), 'link_2': float('nan')},
+                     'id': {'link_0': 'link_0', 'link_1': 'link_1', 'link_2': 'link_2'},
+                     'capacity': {'link_0': 5.0, 'link_1': float('nan'), 'link_2': float('nan')},
+                     'modes': {'link_0': ['car', 'walk'], 'link_1': ['bike'], 'link_2': ['rail']}}
 
     assert_semantically_equal(nodes[set(nodes.columns) - {'geometry'}].to_dict(), correct_nodes)
     assert_semantically_equal(links[set(links.columns) - {'geometry'}].to_dict(), correct_links)
 
-    assert round(nodes.loc['0', 'geometry'].coords[:][0][0], 7) == round(-0.14625948709424305, 7)
-    assert round(nodes.loc['0', 'geometry'].coords[:][0][1], 7) == round(51.52287873323954, 7)
-    assert round(nodes.loc['1', 'geometry'].coords[:][0][0], 7) == round(-0.14478238148334213, 7)
-    assert round(nodes.loc['1', 'geometry'].coords[:][0][1], 7) == round(51.523754629002234, 7)
+    assert round(nodes.loc['0', 'geometry'].coords[:][0][0], 7) == round(528704.1425925883, 7)
+    assert round(nodes.loc['0', 'geometry'].coords[:][0][1], 7) == round(182068.78193707118, 7)
+    assert round(nodes.loc['1', 'geometry'].coords[:][0][0], 7) == round(528804.1425925883, 7)
+    assert round(nodes.loc['1', 'geometry'].coords[:][0][1], 7) == round(182168.78193707118, 7)
 
-    points = links.loc[0, 'geometry'].coords[:]
-    assert round(points[0][0], 7) == round(-0.14625948709424305, 7)
-    assert round(points[0][1], 7) == round(51.52287873323954, 7)
-    assert round(points[1][0], 7) == round(-0.14478238148334213, 7)
-    assert round(points[1][1], 7) == round(51.523754629002234, 7)
+    points = links.loc['link_0', 'geometry'].coords[:]
+    assert round(points[0][0], 7) == round(528704.1425925883, 7)
+    assert round(points[0][1], 7) == round(182068.78193707118, 7)
+    assert round(points[1][0], 7) == round(528804.1425925883, 7)
+    assert round(points[1][1], 7) == round(182168.78193707118, 7)
 
-    assert nodes.crs == "EPSG:4326"
-    assert links.crs == "EPSG:4326"
+    assert nodes.crs == "EPSG:27700"
+    assert links.crs == "EPSG:27700"
 
 
 def test_generating_schedule_graph_geodataframe(network):
-    nodes, links = gngeojson.generate_geodataframes(network.schedule.graph())
+    gdfs = gngeojson.generate_geodataframes(network.schedule.graph())
+    nodes, links = gdfs['nodes'], gdfs['links']
     correct_nodes = {'services': {'0': {'service'}, '1': {'service'}},
                      'routes': {'0': {'1', '2'}, '1': {'1', '2'}},
                      'id': {'0': '0', '1': '1'}, 'x': {'0': 529455.7452394223, '1': 529350.7866124967},
@@ -81,33 +83,33 @@ def test_generating_schedule_graph_geodataframe(network):
     correct_links = {'services': {0: {'service'}},
                      'routes': {0: {'1', '2'}},
                      'u': {0: '0'},
-                     'v': {0: '1'},
-                     'key': {0: 0}}
+                     'v': {0: '1'}}
 
     assert_semantically_equal(nodes[set(nodes.columns) - {'geometry'}].to_dict(), correct_nodes)
     assert_semantically_equal(links[set(links.columns) - {'geometry'}].to_dict(), correct_links)
 
-    assert round(nodes.loc['0', 'geometry'].coords[:][0][0], 7) == round(-0.13530998708775874, 7)
-    assert round(nodes.loc['0', 'geometry'].coords[:][0][1], 7) == round(51.525696033239186, 7)
-    assert round(nodes.loc['1', 'geometry'].coords[:][0][0], 7) == round(-0.13682698708848137, 7)
-    assert round(nodes.loc['1', 'geometry'].coords[:][0][1], 7) == round(51.52560003323918, 7)
+    assert round(nodes.loc['0', 'geometry'].coords[:][0][0], 7) == round(529455.7452394223, 7)
+    assert round(nodes.loc['0', 'geometry'].coords[:][0][1], 7) == round(182401.37630677427, 7)
+    assert round(nodes.loc['1', 'geometry'].coords[:][0][0], 7) == round(529350.7866124967, 7)
+    assert round(nodes.loc['1', 'geometry'].coords[:][0][1], 7) == round(182388.0201078112, 7)
 
     points = links.loc[0, 'geometry'].coords[:]
-    assert round(points[0][0], 7) == round(-0.13530998708775874, 7)
-    assert round(points[0][1], 7) == round(51.525696033239186, 7)
-    assert round(points[1][0], 7) == round(-0.13682698708848137, 7)
-    assert round(points[1][1], 7) == round(51.52560003323918, 7)
+    assert round(points[0][0], 7) == round(529455.7452394223, 7)
+    assert round(points[0][1], 7) == round(182401.37630677427, 7)
+    assert round(points[1][0], 7) == round(529350.7866124967, 7)
+    assert round(points[1][1], 7) == round(182388.0201078112, 7)
 
-    assert nodes.crs == "EPSG:4326"
-    assert links.crs == "EPSG:4326"
+    assert nodes.crs == "EPSG:27700"
+    assert links.crs == "EPSG:27700"
 
 
 def test_modal_subset(network):
-    nodes, links = gngeojson.generate_geodataframes(network.graph)
+    gdfs = gngeojson.generate_geodataframes(network.graph)
+    nodes, links = gdfs['nodes'], gdfs['links']
     car = links[links.apply(lambda x: gngeojson.modal_subset(x, {'car'}), axis=1)]
 
     assert len(car) == 1
-    assert car.loc[0, 'modes'] == ['car', 'walk']
+    assert car.loc['link_0', 'modes'] == ['car', 'walk']
 
 
 def test_generating_standard_outputs_after_modifying_modes_in_schedule(network, tmpdir):
@@ -117,11 +119,11 @@ def test_generating_standard_outputs_after_modifying_modes_in_schedule(network, 
 
 def test_save_to_geojson(network, tmpdir):
     assert os.listdir(tmpdir) == []
-    network.save_network_to_geojson(tmpdir)
-    assert set(os.listdir(tmpdir)) == {
-        'network_nodes.geojson', 'network_links.geojson', 'network_links_geometry_only.geojson',
-        'network_nodes_geometry_only.geojson', 'schedule_nodes.geojson', 'schedule_links.geojson',
-        'schedule_links_geometry_only.geojson', 'schedule_nodes_geometry_only.geojson', 'shp_files'}
+    network.write_to_geojson(tmpdir)
+    assert set(os.listdir(tmpdir)) == {'schedule_nodes.geojson', 'schedule_links.geojson', 'network_nodes.geojson',
+                                       'schedule_nodes_geometry_only.geojson', 'network_nodes_geometry_only.geojson',
+                                       'schedule_links_geometry_only.geojson', 'network_links_geometry_only.geojson',
+                                       'network_links.geojson', 'network_change_log.csv', 'schedule_change_log.csv'}
 
 
 def test_generating_standard_outputs(network, tmpdir):
@@ -164,12 +166,12 @@ def test_generating_standard_outputs(network, tmpdir):
                 )])
     ])
     assert os.listdir(tmpdir) == []
-    network.generate_standard_outputs(tmpdir)
+    network.generate_standard_outputs(tmpdir, include_shp_files=True)
     assert set(os.listdir(tmpdir)) == {'graph', 'schedule_links_geometry_only.geojson',
                                        'network_nodes_geometry_only.geojson', 'network_links.geojson',
                                        'network_links_geometry_only.geojson', 'schedule_nodes.geojson',
                                        'schedule_nodes_geometry_only.geojson', 'schedule', 'network_nodes.geojson',
-                                       'shp_files', 'schedule_links.geojson'}
+                                       'schedule_links.geojson', 'network_change_log.csv', 'schedule_change_log.csv'}
     assert set(os.listdir(os.path.join(tmpdir, 'graph'))) == {'car_capacity_subgraph.geojson',
                                                               'car_freespeed_subgraph.geojson',
                                                               'car_osm_highway_unclassified.geojson',
@@ -218,24 +220,25 @@ def test_generating_standard_outputs(network, tmpdir):
                                                                                       'vehicles_per_hour_bus.geojson',
                                                                                       'vehicles_per_hour_rail.geojson'}
     assert set(os.listdir(os.path.join(tmpdir, 'schedule', 'vehicles_per_hour', 'shp_files'))) == {
-    'vph_all_modes_within_6:30-7:30.shx', 'vph_all_modes_within_6:30-7:30.cpg', 'vehicles_per_hour_rail.shp',
-    'vehicles_per_hour_rail.cpg', 'vehicles_per_hour_all_modes.cpg', 'vehicles_per_hour_bus.dbf',
-    'vehicles_per_hour_rail.prj', 'vehicles_per_hour_bus.shp', 'vehicles_per_hour_all_modes.shp',
-    'vehicles_per_hour_rail.shx', 'vph_all_modes_within_6:30-7:30.dbf', 'vehicles_per_hour_bus.prj',
-    'vph_all_modes_within_6:30-7:30.shp', 'vehicles_per_hour_bus.shx', 'vehicles_per_hour_rail.dbf',
-    'vehicles_per_hour_all_modes.prj', 'vehicles_per_hour_all_modes.shx', 'vph_all_modes_within_6:30-7:30.prj',
-    'vehicles_per_hour_bus.cpg', 'vehicles_per_hour_all_modes.dbf'}
+        'vehicles_per_hour_all_modes.cpg', 'vph_all_modes_within_6:30-7:30.shx', 'vehicles_per_hour_rail.prj',
+        'vehicles_per_hour_bus.shp', 'vehicles_per_hour_bus.dbf', 'vehicles_per_hour_rail.shx',
+    'vehicles_per_hour_bus.prj',
+        'vehicles_per_hour_all_modes.prj', 'vehicles_per_hour_bus.shx', 'vehicles_per_hour_rail.dbf',
+        'vph_all_modes_within_6:30-7:30.dbf', 'vehicles_per_hour_rail.cpg', 'vph_all_modes_within_6:30-7:30.shp',
+        'vehicles_per_hour_rail.shp', 'vehicles_per_hour_all_modes.shx', 'vehicles_per_hour_bus.cpg',
+        'vehicles_per_hour_all_modes.shp', 'vph_all_modes_within_6:30-7:30.prj', 'vehicles_per_hour_all_modes.dbf',
+        'vph_all_modes_within_6:30-7:30.cpg'}
     assert set(os.listdir(os.path.join(tmpdir, 'schedule', 'subgraphs'))) == {'schedule_subgraph_links_bus.geojson',
                                                                               'schedule_subgraph_links_rail.geojson',
                                                                               'shp_files',
                                                                               'schedule_subgraph_nodes_bus.geojson',
                                                                               'schedule_subgraph_nodes_rail.geojson'}
     assert set(os.listdir(os.path.join(tmpdir, 'schedule', 'subgraphs', 'shp_files'))) == {
-        'schedule_subgraph_nodes_bus.shx', 'schedule_subgraph_links_rail.dbf', 'schedule_subgraph_nodes_rail.cpg',
-        'schedule_subgraph_nodes_bus.prj', 'schedule_subgraph_links_bus.prj', 'schedule_subgraph_nodes_rail.shx',
-        'schedule_subgraph_links_bus.cpg', 'schedule_subgraph_nodes_rail.shp', 'schedule_subgraph_nodes_rail.dbf',
-        'schedule_subgraph_nodes_bus.dbf', 'schedule_subgraph_nodes_rail.prj', 'schedule_subgraph_nodes_bus.shp',
-        'schedule_subgraph_links_rail.shx', 'schedule_subgraph_links_rail.shp', 'schedule_subgraph_links_rail.prj',
-        'schedule_subgraph_links_rail.cpg', 'schedule_subgraph_nodes_bus.cpg', 'schedule_subgraph_links_bus.shp',
-        'schedule_subgraph_links_bus.shx', 'schedule_subgraph_links_bus.dbf'}
+    'schedule_subgraph_nodes_rail.prj', 'schedule_subgraph_links_bus.shx', 'schedule_subgraph_links_bus.prj',
+    'schedule_subgraph_nodes_rail.dbf', 'schedule_subgraph_nodes_rail.shx', 'schedule_subgraph_links_rail.dbf',
+    'schedule_subgraph_links_rail.shx', 'schedule_subgraph_nodes_bus.cpg', 'schedule_subgraph_links_rail.shp',
+    'schedule_subgraph_nodes_bus.prj', 'schedule_subgraph_nodes_bus.dbf', 'schedule_subgraph_links_rail.cpg',
+    'schedule_subgraph_links_bus.dbf', 'schedule_subgraph_links_bus.shp', 'schedule_subgraph_links_rail.prj',
+    'schedule_subgraph_nodes_bus.shx', 'schedule_subgraph_links_bus.cpg', 'schedule_subgraph_nodes_bus.shp',
+    'schedule_subgraph_nodes_rail.cpg', 'schedule_subgraph_nodes_rail.shp'}
     assert os.path.exists(tmpdir + '.zip')
