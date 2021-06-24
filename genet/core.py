@@ -569,7 +569,7 @@ class Network:
         # check for compulsory attribs
         df_links = pd.DataFrame(links_and_attributes).T
         if ('from' not in df_links.columns) or (df_links['from'].isnull().any()):
-            print(df_links['fromt'].isnull())
+            print(df_links['from'].isnull())
             raise RuntimeError('You are trying to add links which are missing `from` (origin) nodes')
         if ('to' not in df_links.columns) or (df_links['to'].isnull().any()):
             raise RuntimeError('You are trying to add links which are missing `to` (destination) nodes')
