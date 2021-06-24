@@ -569,6 +569,7 @@ class Network:
         # check for compulsory attribs
         df_links = pd.DataFrame(links_and_attributes).T
         if ('from' not in df_links.columns) or (df_links['from'].isnull().any()):
+            print(df_links['from'].isnull())
             raise RuntimeError('You are trying to add links which are missing `from` (origin) nodes')
         if ('to' not in df_links.columns) or (df_links['to'].isnull().any()):
             raise RuntimeError('You are trying to add links which are missing `to` (destination) nodes')
@@ -1054,6 +1055,8 @@ class Network:
                 links_data['from'] = v
                 links_data['to'] = u
                 links_to_add.append(links_data.to_dict())
+
+            print(links_data)
 
             if links_to_add:
                 links_to_add = dict(zip(self.generate_indices_for_n_edges(len(links_to_add)), links_to_add))
