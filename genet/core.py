@@ -1047,10 +1047,14 @@ class Network:
             links_data['length'] = dist
             links_data['from'] = u
             links_data['to'] = v
+            
+            print(links_data)
             links_to_add.append(links_data.to_dict())
 
             links_data['from'] = v
             links_data['to'] = u
+            
+            print(links_data)
             links_to_add.append(links_data.to_dict())
 
         links_to_add = dict(zip(self.generate_indices_for_n_edges(len(links_to_add)), links_to_add))
