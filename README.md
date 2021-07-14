@@ -46,6 +46,8 @@ To run pre-baked scripts that use genet in a number of different scenarios you c
                             Location of the network.xml file
       -s SCHEDULE, --schedule SCHEDULE
                             Location of the schedule.xml file
+      -v VEHICLES, --vehicles VEHCILES
+      							  Location of the vehicles.xml file
       -cp CURRENT_PROJECTION, --current_projection CURRENT_PROJECTION
                             The projection network is currently in, eg.
                             "epsg:27700"
