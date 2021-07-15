@@ -34,7 +34,7 @@ To run pre-baked scripts that use genet in a number of different scenarios you c
 
     docker run genet reproject_network.py -h
     
-    usage: reproject_network.py [-h] -n NETWORK [-s SCHEDULE] -cp
+    usage: reproject_network.py [-h] -n NETWORK [-s SCHEDULE] [-v VEHICLES] -cp
                                 CURRENT_PROJECTION -np NEW_PROJECTION
                                 [-p PROCESSES] -od OUTPUT_DIR
     
