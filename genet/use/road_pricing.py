@@ -21,7 +21,7 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
     osm_df = pd.read_csv(osm_csv_path, dtype=str)
     osm_df['network_id'] = pd.Series(dtype=str)
 
-    target_osm_ids = set(osm_df['osm_ids'].values)
+    target_osm_ids = set(osm_df['osm_id'].values)
 
     osm_to_network_dict = {}
 
@@ -36,10 +36,10 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
                 # store list of links in dictionary
                 osm_to_network_dict[target_id] = links
                 # mark the OSM id as "matched" in the dataframe
-                osm_df.loc[osm_df['osm_ids'] == target_id, 'network_id'] = True
+                osm_df.loc[osm_df['osm_id'] == target_id, 'network_id'] = True
             else:
                 # mark the OSM id as "ummatched" in the dataframe
-                osm_df.loc[osm_df['osm_ids'] == target_id, 'network_id'] = False
+                osm_df.loc[osm_df['osm_id'] == target_id, 'network_id'] = False
 
             pbar.update(1)
 
@@ -48,7 +48,7 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
     if unmatched_osm_df.shape[0] > 0:
         # print unmatched ids
         logging.info('these OSM way ids did not find a match in the network.xml')
-        logging.info(unmatched_osm_df['osm_ids'].values)
+        logging.info(unmatched_osm_df['osm_id'].values)
     # write dataframe as .csv and dictionary as .json
     osm_df.to_csv(os.path.join(outpath, 'osm_tolls_with_network_ids.csv'), index=False)
     with open(os.path.join(outpath, 'osm_to_network_ids.json'), 'w') as write_file:
@@ -88,9 +88,9 @@ def build_tree_from_csv_json(csv_input, json_input):
     links = SubElement(roadpricing, "links")
 
     # CSV input
-    tolled_links_df = pd.read_csv(csv_input, dtype={'osm_ids': str})
+    tolled_links_df = pd.read_csv(csv_input, dtype={'osm_id': str})
     # make sure all links from same toll are grouped together:
-    tolled_links_df = tolled_links_df.sort_values(by='osm_refs')
+    tolled_links_df = tolled_links_df.sort_values(by='osm_ref')
     # remove the links whose osm_id were not matched to network_ids ('network_id' column is boolean)
     tolled_links_df = tolled_links_df[tolled_links_df['network_id']]
 
@@ -98,7 +98,7 @@ def build_tree_from_csv_json(csv_input, json_input):
     # links with multiple tolling amounts throughout the day appear as multiple rows in the .csv config
     # links with uniform pricing throughout the day appear only once in .csv config
     try:
-        links_repeat = pd.concat(g for _, g in tolled_links_df.groupby('osm_ids') if len(g) > 1)
+        links_repeat = pd.concat(g for _, g in tolled_links_df.groupby('osm_id') if len(g) > 1)
     except ValueError:
         links_repeat = pd.DataFrame()
     links_no_repeat = tolled_links_df[~tolled_links_df.index.isin(links_repeat.index)]
@@ -113,12 +113,12 @@ def build_tree_from_csv_json(csv_input, json_input):
     # links without time-of-day pricing:
     for index, row in links_no_repeat.iterrows():
 
-        if str(row['osm_refs']) not in commented_tolls:
-            links.append(Comment(' === '+str(row['osm_refs'])+' === '))
-            commented_tolls.append(str(row['osm_refs']))
+        if str(row['osm_ref']) not in commented_tolls:
+            links.append(Comment(' === '+str(row['osm_ref'])+' === '))
+            commented_tolls.append(str(row['osm_ref']))
 
         # from the JSON input, obtain all network_ids that match this row's specific osm_id
-        list_of_network_ids = osm_id_to_network_id_dict[row['osm_ids']]
+        list_of_network_ids = osm_id_to_network_id_dict[row['osm_id']]
         # network link in list_of_network_ids is matched with 1 row of links_no_repeat
         for net_id in list_of_network_ids:
             link = SubElement(links, "link", id=str(net_id))
@@ -128,12 +128,12 @@ def build_tree_from_csv_json(csv_input, json_input):
     # links with time-of-day pricing:
     # get unique ids of these links and iterate through them
     if not links_repeat.empty:
-        unique_repeated_ids = links_repeat['osm_ids'].unique()
+        unique_repeated_ids = links_repeat['osm_id'].unique()
         for link_id in unique_repeated_ids:
 
-            link_time_of_day_df = links_repeat[links_repeat['osm_ids'] == link_id]
+            link_time_of_day_df = links_repeat[links_repeat['osm_id'] == link_id]
 
-            link_ref = link_time_of_day_df['osm_refs'].unique()[0]
+            link_ref = link_time_of_day_df['osm_ref'].unique()[0]
             if link_ref not in commented_tolls:
                 links.append(Comment(' === '+str(link_ref)+' === '))
                 commented_tolls.append(str(link_ref))
