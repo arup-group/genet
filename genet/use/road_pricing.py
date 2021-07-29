@@ -1,21 +1,99 @@
-import os
 import json
 import logging
+import os
+import numpy as np
 import pandas as pd
 from lxml import etree as et
 from lxml.etree import Element, SubElement, Comment
 from tqdm import tqdm
 
 
-def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpath):
+class Cordon:
+    def __init__(self, df_tolls: pd.DataFrame = None):
+        if df_tolls is None:
+            self.tolls_df = pd.DataFrame(
+                columns=[
+                    'toll_id',  # optional, unique ID of the toll, based off OSM ref if applicable
+                    'network_link_id',  # network link ID to be charged
+                    'vehicle_type',  # optional, type of vehicle, does not persist to MATSim road pricing xml file
+                    'toll_amount',  # cost to travel on that link
+                    'start_time',  # start time for the toll
+                    'end_time',  # end time for the toll
+                    'osm_name',  # optional, if derived from OSM, human readable name of the road
+                    'notes'  # optional, user notes
+                ]
+            )
+        else:
+            self.df_tolls = df_tolls
+
+    def write_to_csv(self, output_dir):
+        """
+        Exports all tolls to csv file
+        :param output_dir: path to folder to receive the file
+        :return: None
+        """
+        self.tolls_df.to_csv(os.path.join(output_dir, 'cordon_road_pricing.csv'), index=False)
+
+    def write_to_xml(self, output_dir):
+        """
+
+        :param output_dir: path to folder to receive the file
+        :return: None
+        """
+        # xml_tree = road_pricing.build_tree_from_csv_json(
+        #     '../example_data/pt2matsim_network/road_pricing/osm_tolls_with_network_ids.csv',
+        #     '../example_data/pt2matsim_network/road_pricing/osm_to_network_ids.json')
+        #
+        # road_pricing.write_xml(xml_tree, '../example_data/pt2matsim_network/road_pricing')
+        # write_xml(
+        #
+        # )
+        pass
+
+
+def road_pricing_from_osm(network, attribute_name, osm_csv_path, outpath):
     """
-    Parse a Network() object and find edges whose
+    Instantiates a RoadPricing object from OSM csv config and network inputs
+
+    Parse a genet.Network object and find edges whose
     ['attributes'][attribute_name]['text'] is present in a list of OSM way ids
-    :param network: a Network() object with attribute_name tags
+    :param network: a genet.Network object with attribute_name tags
     :param attribute_name: a string corresponding to the name of the link attribute of interest
     :param osm_csv_path: path to a .csv config file where OSM way ids are stored in column `osm_ids`
     :param outpath: path to a folder
-    :return: None, but will write .csv and .json files to `outpath` location
+    :return: osm_df which is also written to .csv and a mapping between OSM IDs and network link IDs osm_to_network_dict
+     which is also saved to .json in the `outpath` location
+    :return:
+    """
+    osm_df, osm_to_network_dict = extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpath)
+    tolls_df = merge_osm_tolls_and_network_snapping(osm_df, osm_to_network_dict)
+    return Cordon(tolls_df)
+
+
+def merge_osm_tolls_and_network_snapping(osm_df, osm_to_network_dict):
+    # map OSM IDs to network link IDs
+    osm_df['network_link_id'] = osm_df['osm_id'].map(osm_to_network_dict)
+    # not all would have matched, we drop unmatched at this point (they get reported elsewhere)
+    osm_df = osm_df[osm_df['network_link_id'].notna()]
+    osm_df = osm_df.drop(['osm_id', 'network_id'], axis=1)
+    df = pd.DataFrame({
+        col: np.repeat(osm_df[col].values, osm_df['network_link_id'].str.len())
+        for col in set(osm_df.columns) - {'network_link_id'}}
+    ).assign(network_link_id=np.concatenate(osm_df['network_link_id'].values))
+    df = df.rename(columns={'osm_ref': 'toll_id'})
+    return df
+
+
+def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpath):
+    """
+    Parse a genet.Network object and find edges whose ['attributes'][attribute_name]['text'] is present in a list
+    of OSM way ids
+    :param network: a genet.Network object with attribute_name tags
+    :param attribute_name: a string corresponding to the name of the link attribute of interest
+    :param osm_csv_path: path to a .csv config file where OSM way ids are stored in column `osm_ids`
+    :param outpath: path to a folder
+    :return: osm_df which is also written to .csv and a mapping between OSM IDs and network link IDs
+    osm_to_network_dict which is also saved to .json in the `outpath` location
     """
 
     osm_df = pd.read_csv(osm_csv_path, dtype=str)
@@ -44,15 +122,15 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
             pbar.update(1)
 
     # check whether some of our OSM ids were not found
-    unmatched_osm_df = osm_df[osm_df['network_id'] == 'no']
+    unmatched_osm_df = osm_df[osm_df['network_id'] != True]
     if unmatched_osm_df.shape[0] > 0:
         # print unmatched ids
-        logging.info('these OSM way ids did not find a match in the network.xml')
-        logging.info(unmatched_osm_df['osm_id'].values)
+        logging.info(f'These OSM way IDs did not find a match in the network.xml: {unmatched_osm_df["osm_id"].values}')
     # write dataframe as .csv and dictionary as .json
     osm_df.to_csv(os.path.join(outpath, 'osm_tolls_with_network_ids.csv'), index=False)
     with open(os.path.join(outpath, 'osm_to_network_ids.json'), 'w') as write_file:
         json.dump(osm_to_network_dict, write_file)
+    return osm_df, osm_to_network_dict
 
 
 def write_xml(root, path):
@@ -80,6 +158,22 @@ def build_tree_from_csv_json(csv_input, json_input):
     :param json_input: json output from `extract_network_id_from_osm_csv`
     :return: an 'lxml.etree._Element' object
     """
+    # CSV input
+    osm_df = pd.read_csv(csv_input, dtype={'osm_id': str})
+    # JSON input
+    with open(json_input, 'r') as f:
+        osm_to_network_dict = json.load(f)
+    return build_tree(merge_osm_tolls_and_network_snapping(osm_df, osm_to_network_dict))
+
+
+def build_tree(df_tolls):
+    """
+    Build XML config for MATSim Road Pricing from .csv and .json input
+    :param csv_input: csv output from `extract_network_id_from_osm_csv` with additional columns: `vehicle_type`,
+    `toll_amount`, `start_time` and `end_time` for each of the tolls required.
+    :param json_input: json output from `extract_network_id_from_osm_csv`
+    :return: an 'lxml.etree._Element' object
+    """
 
     roadpricing = Element("roadpricing", type="cordon", name="cordon-toll")
     description = SubElement(roadpricing, "description")
@@ -87,25 +181,17 @@ def build_tree_from_csv_json(csv_input, json_input):
 
     links = SubElement(roadpricing, "links")
 
-    # CSV input
-    tolled_links_df = pd.read_csv(csv_input, dtype={'osm_id': str})
     # make sure all links from same toll are grouped together:
-    tolled_links_df = tolled_links_df.sort_values(by='osm_ref')
-    # remove the links whose osm_id were not matched to network_ids ('network_id' column is boolean)
-    tolled_links_df = tolled_links_df[tolled_links_df['network_id']]
+    df_tolls = df_tolls.sort_values(by='toll_id')
 
     # Time-of-day pricing:
     # links with multiple tolling amounts throughout the day appear as multiple rows in the .csv config
     # links with uniform pricing throughout the day appear only once in .csv config
     try:
-        links_repeat = pd.concat(g for _, g in tolled_links_df.groupby('osm_id') if len(g) > 1)
+        links_repeat = pd.concat(g for _, g in df_tolls.groupby('network_link_id') if len(g) > 1)
     except ValueError:
         links_repeat = pd.DataFrame()
-    links_no_repeat = tolled_links_df[~tolled_links_df.index.isin(links_repeat.index)]
-
-    # JSON input
-    with open(json_input, 'r') as f:
-        osm_id_to_network_id_dict = json.load(f)
+    links_no_repeat = df_tolls[~df_tolls.index.isin(links_repeat.index)]
 
     # list to keep track of which Toll names we added as comments
     commented_tolls = []
@@ -113,38 +199,30 @@ def build_tree_from_csv_json(csv_input, json_input):
     # links without time-of-day pricing:
     for index, row in links_no_repeat.iterrows():
 
-        if str(row['osm_ref']) not in commented_tolls:
-            links.append(Comment(' === '+str(row['osm_ref'])+' === '))
-            commented_tolls.append(str(row['osm_ref']))
+        if str(row['toll_id']) not in commented_tolls:
+            links.append(Comment(' === '+str(row['toll_id'])+' === '))
+            commented_tolls.append(str(row['toll_id']))
 
-        # from the JSON input, obtain all network_ids that match this row's specific osm_id
-        list_of_network_ids = osm_id_to_network_id_dict[row['osm_id']]
-        # network link in list_of_network_ids is matched with 1 row of links_no_repeat
-        for net_id in list_of_network_ids:
-            link = SubElement(links, "link", id=str(net_id))
-            SubElement(link, "cost", start_time=str(row['start_time']),
-                       end_time=str(row['end_time']), amount=str(row['toll_amount']))
+        link = SubElement(links, "link", id=str(row['network_link_id']))
+        SubElement(link, "cost", start_time=str(row['start_time']),
+                   end_time=str(row['end_time']), amount=str(row['toll_amount']))
 
     # links with time-of-day pricing:
     # get unique ids of these links and iterate through them
     if not links_repeat.empty:
-        unique_repeated_ids = links_repeat['osm_id'].unique()
+        unique_repeated_ids = links_repeat['network_link_id'].unique()
         for link_id in unique_repeated_ids:
 
-            link_time_of_day_df = links_repeat[links_repeat['osm_id'] == link_id]
+            link_time_of_day_df = links_repeat[links_repeat['network_link_id'] == link_id]
 
-            link_ref = link_time_of_day_df['osm_ref'].unique()[0]
+            link_ref = link_time_of_day_df['toll_id'].unique()[0]
             if link_ref not in commented_tolls:
                 links.append(Comment(' === '+str(link_ref)+' === '))
                 commented_tolls.append(str(link_ref))
 
-            # from the JSON input, obtain all network_ids that match this row's specific osm_id
-            list_of_network_ids = osm_id_to_network_id_dict[link_id]
-            # each network link in list_of_network_ids is now matched with multiple rows of link_time_of_day_df
-            for net_id in list_of_network_ids:
-                link = SubElement(links, "link", id=str(net_id))
-                for index, row in link_time_of_day_df.iterrows():
-                    SubElement(link, "cost", start_time=str(row['start_time']),
-                               end_time=str(row['end_time']), amount=str(row['toll_amount']))
+            link = SubElement(links, "link", id=str(link_id))
+            for index, row in link_time_of_day_df.iterrows():
+                SubElement(link, "cost", start_time=str(row['start_time']),
+                           end_time=str(row['end_time']), amount=str(row['toll_amount']))
 
     return roadpricing
