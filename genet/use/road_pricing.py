@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+
 import numpy as np
 import pandas as pd
 from lxml import etree as et
@@ -40,15 +41,8 @@ class Cordon:
         :param output_dir: path to folder to receive the file
         :return: None
         """
-        # xml_tree = road_pricing.build_tree_from_csv_json(
-        #     '../example_data/pt2matsim_network/road_pricing/osm_tolls_with_network_ids.csv',
-        #     '../example_data/pt2matsim_network/road_pricing/osm_to_network_ids.json')
-        #
-        # road_pricing.write_xml(xml_tree, '../example_data/pt2matsim_network/road_pricing')
-        # write_xml(
-        #
-        # )
-        pass
+        xml_tree = build_tree(self.df_tolls)
+        write_xml(xml_tree, output_dir)
 
 
 def road_pricing_from_osm(network, attribute_name, osm_csv_path, outpath):
@@ -122,14 +116,17 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
             pbar.update(1)
 
     # check whether some of our OSM ids were not found
-    unmatched_osm_df = osm_df[osm_df['network_id'] != True]
+    osm_df['network_id'] = osm_df['network_id'].fillna(False)
+    unmatched_osm_df = osm_df[~osm_df['network_id']]
     if unmatched_osm_df.shape[0] > 0:
         # print unmatched ids
         logging.info(f'These OSM way IDs did not find a match in the network.xml: {unmatched_osm_df["osm_id"].values}')
+
     # write dataframe as .csv and dictionary as .json
     osm_df.to_csv(os.path.join(outpath, 'osm_tolls_with_network_ids.csv'), index=False)
     with open(os.path.join(outpath, 'osm_to_network_ids.json'), 'w') as write_file:
         json.dump(osm_to_network_dict, write_file)
+
     return osm_df, osm_to_network_dict
 
 
@@ -169,9 +166,17 @@ def build_tree_from_csv_json(csv_input, json_input):
 def build_tree(df_tolls):
     """
     Build XML config for MATSim Road Pricing from .csv and .json input
-    :param csv_input: csv output from `extract_network_id_from_osm_csv` with additional columns: `vehicle_type`,
-    `toll_amount`, `start_time` and `end_time` for each of the tolls required.
-    :param json_input: json output from `extract_network_id_from_osm_csv`
+    :param df_tolls: pd.DataFrame(
+                columns=[
+                    'toll_id',  # optional, unique ID of the toll, based off OSM ref if applicable
+                    'network_link_id',  # network link ID to be charged
+                    'vehicle_type',  # optional, type of vehicle, does not persist to MATSim road pricing xml file
+                    'toll_amount',  # cost to travel on that link
+                    'start_time',  # start time for the toll
+                    'end_time',  # end time for the toll
+                    'osm_name',  # optional, if derived from OSM, human readable name of the road
+                    'notes'  # optional, user notes
+                ]
     :return: an 'lxml.etree._Element' object
     """
 
@@ -182,6 +187,9 @@ def build_tree(df_tolls):
     links = SubElement(roadpricing, "links")
 
     # make sure all links from same toll are grouped together:
+    if 'toll_id' not in df_tolls.columns:
+        # if not present just take it link by link
+        df_tolls['toll_id'] = df_tolls['network_link_id']
     df_tolls = df_tolls.sort_values(by='toll_id')
 
     # Time-of-day pricing:

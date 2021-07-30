@@ -149,6 +149,12 @@ def osm_tolls_df():
                                       149: '1095', 150: '1096', 151: '1097', 152: '1098', 153: '1099', 154: '4946',
                                       155: '3986', 156: '4725', 157: '4726'}}).sort_index(axis=1)
 
+
+@pytest.fixture
+def cordon(osm_tolls_df):
+    return road_pricing.Cordon(osm_tolls_df)
+
+
 @pytest.fixture
 def road_pricing_xml_tree():
     path_csv = os.path.abspath(os.path.join(os.path.dirname(__file__),
@@ -183,6 +189,24 @@ def test_instantiating_cordon_class_from_osm_inputs(network_object, osm_tolls_df
         check_dtype=False
     )
     assert isinstance(osm_cordon, road_pricing.Cordon)
+
+
+def test_saving_cordon_to_xml_produces_xml_file(cordon, tmpdir):
+    # the content of the file is tested elsewhere
+    expected_xml = os.path.join(tmpdir, 'roadpricing-file.xml')
+    assert not os.path.exists(expected_xml)
+    cordon.write_to_xml(tmpdir)
+    assert os.path.exists(expected_xml)
+
+
+def test_saving_cordon_to_xml_with_missing_toll_ids_produces_xml_file(cordon, tmpdir):
+    cordon.df_tolls = cordon.df_tolls.drop('toll_id', axis=1)
+    assert not 'toll_id' in cordon.df_tolls.columns
+    # the content of the file is tested elsewhere
+    expected_xml = os.path.join(tmpdir, 'roadpricing-file.xml')
+    assert not os.path.exists(expected_xml)
+    cordon.write_to_xml(tmpdir)
+    assert os.path.exists(expected_xml)
 
 
 def test_building_tree_where_no_links_repeat(tmpdir):
