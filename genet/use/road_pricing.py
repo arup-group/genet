@@ -47,7 +47,7 @@ class Cordon:
 
 def road_pricing_from_osm(network, attribute_name, osm_csv_path, outpath):
     """
-    Instantiates a RoadPricing object from OSM csv config and network inputs
+    Instantiates a Cordon object from OSM csv config and network inputs
 
     Parse a genet.Network object and find edges whose
     ['attributes'][attribute_name]['text'] is present in a list of OSM way ids
@@ -165,7 +165,7 @@ def build_tree_from_csv_json(csv_input, json_input):
 
 def build_tree(df_tolls):
     """
-    Build XML config for MATSim Road Pricing from .csv and .json input
+    Build XML config for MATSim Road Pricing from tolls DataFrame input
     :param df_tolls: pd.DataFrame(
                 columns=[
                     'toll_id',  # optional, unique ID of the toll, based off OSM ref if applicable
