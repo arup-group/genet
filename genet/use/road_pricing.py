@@ -33,7 +33,7 @@ class Cordon:
         :param output_dir: path to folder to receive the file
         :return: None
         """
-        self.tolls_df.to_csv(os.path.join(output_dir, 'cordon_road_pricing.csv'), index=False)
+        self.df_tolls.to_csv(os.path.join(output_dir, 'cordon_road_pricing.csv'), index=False)
 
     def write_to_xml(self, output_dir):
         """

@@ -191,6 +191,19 @@ def test_instantiating_cordon_class_from_osm_inputs(network_object, osm_tolls_df
     assert isinstance(osm_cordon, road_pricing.Cordon)
 
 
+def test_saving_cordon_to_csv_produces_correct_csv(cordon, osm_tolls_df, tmpdir):
+    expected_csv = os.path.join(tmpdir, 'cordon_road_pricing.csv')
+    assert not os.path.exists(expected_csv)
+    cordon.write_to_csv(tmpdir)
+    assert os.path.exists(expected_csv)
+    df_from_csv = pd.read_csv(expected_csv, dtype=str)
+    assert_frame_equal(
+        df_from_csv.sort_index(axis=1),
+        osm_tolls_df,
+        check_dtype=False
+    )
+
+
 def test_saving_cordon_to_xml_produces_xml_file(cordon, tmpdir):
     # the content of the file is tested elsewhere
     expected_xml = os.path.join(tmpdir, 'roadpricing-file.xml')
