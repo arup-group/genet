@@ -9,7 +9,7 @@ certifi==2020.4.5.2
 chardet==3.0.4
 cligj==0.5.0
 colorama==0.4.4
-coverage==5.1
+coverage>=5.1
 cycler==0.10.0
 decorator==4.4.2
 descartes==1.1.0
