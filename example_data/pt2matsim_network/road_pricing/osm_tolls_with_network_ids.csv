@@ -1,3 +1,3 @@
-,osm_ids,osm_refs,osm_names,network_id,vehicle_type,toll_amount,start_time,end_time
+,osm_id,osm_ref,osm_name,network_id,vehicle_type,toll_amount,start_time,end_time
 0,26997928,A400,Charing Cross Road,True,type2,2.9,00:00,23:59
 1,546461337,A3211,Byward Street,True,type2,2.9,00:00,23:59

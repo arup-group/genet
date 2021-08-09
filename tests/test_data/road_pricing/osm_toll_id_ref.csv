@@ -1,4 +1,4 @@
-osm_ids,osm_refs,osm_names,network_id,vehicle_type,toll_amount,start_time,end_time,notes
+osm_id,osm_ref,osm_name,network_id,vehicle_type,toll_amount,start_time,end_time,notes
 5029178,M4_Kilcock,noname,,type2,2.9,00:00,23:59,
 31425800,M4_Kilcock,noname,,type2,2.9,00:00,23:59,
 38335434,M4_Kilcock,Kilcock%20%%2013%%20%Kinnegad%20%Motorway,,type2,2.9,00:00,23:59,
