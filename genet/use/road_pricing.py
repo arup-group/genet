@@ -12,7 +12,7 @@ from tqdm import tqdm
 class Cordon:
     def __init__(self, df_tolls: pd.DataFrame = None):
         if df_tolls is None:
-            self.tolls_df = pd.DataFrame(
+            self.df_tolls = pd.DataFrame(
                 columns=[
                     'toll_id',  # optional, unique ID of the toll, based off OSM ref if applicable
                     'network_link_id',  # network link ID to be charged
@@ -54,7 +54,7 @@ def road_pricing_from_osm(network, attribute_name, osm_csv_path, outpath):
     :param network: a genet.Network object with attribute_name tags
     :param attribute_name: a string corresponding to the name of the link attribute of interest
     :param osm_csv_path: path to a .csv config file where OSM way ids are stored in column `osm_ids`
-    :param outpath: path to a folder
+    :param outpath: path to an outputs folder
     :return: osm_df which is also written to .csv and a mapping between OSM IDs and network link IDs osm_to_network_dict
      which is also saved to .json in the `outpath` location
     :return:
