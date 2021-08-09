@@ -505,7 +505,7 @@ class Network:
         if ('to' not in df_edges.columns) or (df_edges['to'].isnull().any()):
             raise RuntimeError('You are trying to add edges which are missing `to` (destination) nodes')
 
-        df_edges['id'] = self.generate_indices_for_n_edges(len(df_edges))
+        df_edges['id'] = list(self.generate_indices_for_n_edges(len(df_edges)))
         df_edges = df_edges.set_index('id', drop=False)
 
         return self.add_links(df_edges.T.to_dict(), silent=silent, ignore_change_log=ignore_change_log)
@@ -993,6 +993,7 @@ class Network:
         :param silent: whether to mute stdout logging messages
         :return:
         """
+        links = list(links)
         if not ignore_change_log:
             self.change_log = self.change_log.remove_bunch(
                 object_type='link', id_bunch=links, attributes_bunch=[self.link(link_id) for link_id in links])
