@@ -4,7 +4,8 @@ import networkx as nx
 import numpy as np
 import statistics
 import json
-from shapely.geometry import LineString, shape, GeometryCollection
+from shapely.geometry import LineString, shape, GeometryCollection, MultiLineString
+from shapely.ops import linemerge
 import pandas as pd
 import geopandas as gpd
 import genet.outputs_handler.geojson as gngeojson
@@ -37,6 +38,16 @@ def swap_x_y_in_linestring(linestring):
     :return: shapely.geometry.LineString
     """
     return LineString((p[1], p[0]) for p in linestring.coords)
+
+
+def merge_linestrings(linestring_list):
+    """
+    :param linestring_list: ordered list of shapely.geometry.Linestring objects.
+    Assumes lines are contiguous. If they are not, will results in a MultiLineString
+    :return:
+    """
+    multi_line = MultiLineString(linestring_list)
+    return linemerge(multi_line)
 
 
 def decode_polyline_to_shapely_linestring(_polyline):
