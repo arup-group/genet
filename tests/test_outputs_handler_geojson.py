@@ -133,24 +133,24 @@ def test_generating_standard_outputs(network, tmpdir):
                 routes=[
                     Route(id='1', route_short_name='', mode='bus',
                           stops=[
-                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='1'),
-                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')],
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='link_1'),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='link_2')],
                           trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
                                  'trip_departure_time': ['04:40:00'],
                                  'vehicle_id': ['veh_1_bus']},
                           arrival_offsets=['00:00:00', '00:02:00'],
                           departure_offsets=['00:00:00', '00:02:00'],
-                          route=['1', '2']),
+                          route=['link_1', 'link_2']),
                     Route(id='2', route_short_name='route2', mode='bus',
                           stops=[
-                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='1'),
-                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')],
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='link_1'),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='link_2')],
                           trips={'trip_id': ['1_05:40:00', '2_05:45:00', '3_05:50:00', '4_06:40:00', '5_06:46:00'],
                                  'trip_departure_time': ['05:40:00', '05:45:00', '05:50:00', '06:40:00', '06:46:00'],
                                  'vehicle_id': ['veh_2_bus', 'veh_3_bus', 'veh_4_bus', 'veh_5_bus', 'veh_6_bus']},
                           arrival_offsets=['00:00:00', '00:03:00'],
                           departure_offsets=['00:00:00', '00:05:00'],
-                          route=['1', '2'])
+                          route=['link_1', 'link_2'])
                 ]),
         Service(id='rail_service',
                 routes=[Route(
@@ -172,7 +172,8 @@ def test_generating_standard_outputs(network, tmpdir):
                                        'network_nodes_geometry_only.geojson', 'network_links.geojson',
                                        'network_links_geometry_only.geojson', 'schedule_nodes.geojson',
                                        'schedule_nodes_geometry_only.geojson', 'schedule', 'network_nodes.geojson',
-                                       'schedule_links.geojson', 'network_change_log.csv', 'schedule_change_log.csv'}
+                                       'schedule_links.geojson', 'network_change_log.csv', 'schedule_change_log.csv',
+                                       'routing'}
     assert set(os.listdir(os.path.join(tmpdir, 'graph'))) == {'car_capacity_subgraph.geojson',
                                                               'car_freespeed_subgraph.geojson',
                                                               'car_osm_highway_unclassified.geojson',
@@ -242,4 +243,6 @@ def test_generating_standard_outputs(network, tmpdir):
     'schedule_subgraph_links_bus.dbf', 'schedule_subgraph_links_bus.shp', 'schedule_subgraph_links_rail.prj',
     'schedule_subgraph_nodes_bus.shx', 'schedule_subgraph_links_bus.cpg', 'schedule_subgraph_nodes_bus.shp',
     'schedule_subgraph_nodes_rail.cpg', 'schedule_subgraph_nodes_rail.shp'}
+
+    assert set(os.listdir(os.path.join(tmpdir, 'routing'))) == {'shp_files', 'schedule_network_routes_geodataframe.geojson'}
     assert os.path.exists(tmpdir + '.zip')

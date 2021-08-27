@@ -1,29 +1,32 @@
-import networkx as nx
-import pandas as pd
-import geopandas as gpd
-import uuid
+import json
 import logging
 import os
-import json
+import uuid
 from copy import deepcopy
 from typing import Union, List, Dict
+
+import geopandas as gpd
+import networkx as nx
+import numpy as np
+import pandas as pd
 from pyproj import Transformer
 from s2sphere import CellId
-import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
-import genet.outputs_handler.geojson as geojson
-import genet.outputs_handler.sanitiser as sanitiser
+
+import genet.auxiliary_files as auxiliary_files
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
-import genet.utils.spatial as spatial
-import genet.utils.persistence as persistence
+import genet.outputs_handler.geojson as geojson
+import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
+import genet.outputs_handler.sanitiser as sanitiser
+import genet.schedule_elements as schedule_elements
+import genet.utils.dict_support as dict_support
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
-import genet.utils.dict_support as dict_support
+import genet.utils.persistence as persistence
 import genet.utils.plot as plot
 import genet.utils.simplification as simplification
-import genet.schedule_elements as schedule_elements
+import genet.utils.spatial as spatial
 import genet.validate.network_validation as network_validation
-import genet.auxiliary_files as auxiliary_files
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -1098,6 +1101,37 @@ class Network:
             if _route.route:
                 routes.append(_route.route)
         return routes
+
+    def schedule_network_routes_geodataframe(self):
+        if not self.schedule:
+            logging.warning('Schedule in this Network is empty')
+            return gpd.GeoDataFrame()
+
+        def combine_geometry(group):
+            group = group.sort_values(by='route_sequence')
+            geom = spatial.merge_linestrings(list(group['geometry']))
+            group = group.iloc[0, :][{'route_id', 'route_short_name', 'mode', 'service_id'}]
+            group['geometry'] = geom
+            return group
+
+        gdf_links = self.to_geodataframe()['links']
+        routes = self.schedule.route_attribute_data(keys=['id', 'route_short_name', 'mode', 'route'])
+        routes = routes.rename(columns={'id': 'route_id'})
+        routes['route_sequence'] = routes['route'].apply(lambda x: list(range(len(x))))
+
+        # expand on network route link sequence
+        routes = pd.DataFrame({
+            col: np.repeat(routes[col].values, routes['route'].str.len())
+            for col in {'route_id', 'route_short_name', 'mode'}}
+        ).assign(route=np.concatenate(routes['route'].values),
+                 route_sequence=np.concatenate(routes['route_sequence'].values))
+        routes['service_id'] = routes['route_id'].apply(
+            lambda x: self.schedule.graph().graph['route_to_service_map'][x])
+
+        # get geometry for link IDs
+        routes = pd.merge(routes, gdf_links[['id', 'geometry']], left_on='route', right_on='id')
+        routes = routes.groupby('route_id').apply(combine_geometry).reset_index(drop=True)
+        return gpd.GeoDataFrame(routes)
 
     def node_id_exists(self, node_id):
         if node_id in [i for i, attribs in self.nodes()]:

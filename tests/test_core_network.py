@@ -10,12 +10,13 @@ import pandas as pd
 import geopandas as gpd
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
+from geopandas.testing import assert_geodataframe_equal
 from shapely.geometry import LineString, Polygon, Point
 
 from genet.core import Network
 from genet.inputs_handler import matsim_reader
 from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
-from genet.schedule_elements import Route, Service, Schedule
+from genet.schedule_elements import Route, Service, Schedule, Stop
 from genet.utils import plot, spatial
 from genet.inputs_handler import read
 from tests.fixtures import assert_semantically_equal, route, stop_epsg_27700, network_object_from_test_data, \
@@ -1855,6 +1856,39 @@ def test_read_matsim_network_with_duplicated_link_ids_records_reindexing_in_chan
     assert_frame_equal(network.change_log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
                        check_names=False,
                        check_dtype=False)
+
+
+def test_generating_pt_network_route_geodataframe():
+    n = Network('epsg:4326')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': '1', 'y': '1', 'lon': 1, 'lat': 1},
+        'n2': {'id': 'n2', 'x': '2', 'y': '2', 'lon': 2, 'lat': 2}
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2'}, 'l2': {'from': 'n2', 'to': 'n1'}})
+    n.schedule = Schedule(
+        n.epsg,
+        [Service(id='service',
+                 routes=[Route(route_short_name='route', mode='bus',
+                               stops=[Stop(id='0', x=1, y=1, epsg='epsg:4326'),
+                                      Stop(id='1', x=2, y=2, epsg='epsg:4326')],
+                               trips={'trip_id': ['trip-04:40:00'],
+                                      'trip_departure_time': ['04:40:00'],
+                                      'vehicle_id': ['veh_1_bus']},
+                               route=['l1', 'l2'],
+                               arrival_offsets=['00:00:00', '00:02:00', '00:04:00'],
+                               departure_offsets=['00:00:00', '00:02:00', '00:04:00'])])])
+
+    gdf = n.schedule_network_routes_geodataframe()
+    correct_gdf = gpd.GeoDataFrame(
+            {'service_id': {0: 'service'}, 'route_id': {0: 'service_0'}, 'mode': {0: 'bus'},
+             'route_short_name': {0: 'route'}, 'geometry': {0: LineString([(1,1), (2,2), (1,1)])}},
+        )
+    correct_gdf.columns.name = 0
+
+    assert_geodataframe_equal(
+        gdf.reindex(sorted(gdf.columns), axis=1),
+        correct_gdf.reindex(sorted(correct_gdf.columns), axis=1)
+    )
 
 
 def test_has_node_when_node_is_in_the_graph():
