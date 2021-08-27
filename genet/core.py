@@ -336,7 +336,7 @@ class Network:
         nodes = {self.link(link)['from'] for link in links} | {self.link(link)['to'] for link in links}
         return list(nodes)
 
-    def modal_subgraph(self, modes: Union[str, list]):
+    def modal_subgraph(self, modes: Union[str, set, list]):
         return self.subgraph_on_link_conditions(conditions={'modes': modes}, mixed_dtypes=True)
 
     def nodes_on_spatial_condition(self, region_input):
@@ -1007,7 +1007,14 @@ class Network:
         if not silent:
             logging.info(f'Removed {len(links)} links')
 
-    def connect_components(self, modes: Union[list, set] = None, weight: float = 1.0):
+    def connect_components(self, modes: Union[list, str, set] = None, weight: float = 1.0):
+        """
+        Connect disconnected subgraphs in the Network graph. Use modes variable to consider a modal subgraph.
+        For a strongly connected MATSim network use only a single (routable) mode at a time.
+        :param modes: str, list or set or network modes to use for computing strongly connected subgraphs
+        :param weight: weight to apply to `frespeed` and `capacity` for scaling, defaults to 1.
+        :return: None, or links and their details if they were added to the Network.
+        """
         if modes is None:
             g = self.graph
         else:
