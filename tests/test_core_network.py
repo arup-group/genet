@@ -1628,9 +1628,36 @@ def islands_network_in_circle():
     pass
 
 
-def test_connecting_components(islands_network_in_line):
+def test_connecting_components_mode_free_results_in_four_links_added(islands_network_in_line):
+    # because there are 3 components (2 x 2 directions links)
     added_links = islands_network_in_line.connect_components()
     assert len(added_links) == 4
+
+
+def test_connecting_components_specifying_mode_results_in_four_links_added(islands_network_in_line):
+    # because there are 3 components (2 x 2 directions links)
+    added_links = islands_network_in_line.connect_components(modes=['car'])
+    assert len(added_links) == 4
+
+
+def test_connecting_components_of_connected_graph_raises_warning_without_changes(network1, caplog):
+    # add link to connect it up >_> ....
+    network1.add_link('1', '101986', '101982',
+                attribs={'id': '1',
+                         'from': '101986',
+                         'to': '101982',
+                         'freespeed': 4.166666666666667,
+                         'capacity': 600.0,
+                         'permlanes': 1.0,
+                         'oneway': '1',
+                         'modes': ['car'],
+                         's2_from': 5221390329378179879,
+                         's2_to': 5221390328605860387,
+                         'length': 52.765151087870265})
+    added_links = network1.connect_components()
+    assert added_links is None
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'has only one strongly connected component' in caplog.records[0].message
 
 
 def test_number_of_multi_edges_counts_multi_edges_on_single_edge():
