@@ -1105,7 +1105,7 @@ class Network:
     def schedule_network_routes_geodataframe(self):
         if not self.schedule:
             logging.warning('Schedule in this Network is empty')
-            return gpd.GeoDataFrame()
+            return gpd.GeoDataFrame().set_crs(self.epsg)
 
         def combine_geometry(group):
             group = group.sort_values(by='route_sequence')
@@ -1131,7 +1131,7 @@ class Network:
         # get geometry for link IDs
         routes = pd.merge(routes, gdf_links[['id', 'geometry']], left_on='route', right_on='id')
         routes = routes.groupby('route_id').apply(combine_geometry).reset_index(drop=True)
-        return gpd.GeoDataFrame(routes)
+        return gpd.GeoDataFrame(routes).set_crs(self.epsg)
 
     def node_id_exists(self, node_id):
         if node_id in [i for i, attribs in self.nodes()]:
