@@ -1019,6 +1019,10 @@ class Network:
             g = self.graph
         else:
             g = self.modal_subgraph(modes)
+            if isinstance(modes, str):
+                modes = {modes}
+            else:
+                modes = set(modes)
         components = network_validation.find_connected_subgraphs(g)
 
         if len(components) == 1:
@@ -1050,7 +1054,10 @@ class Network:
                 ]
                 links_data = links_df.mean()
                 links_data = links_data * weight
-                links_data['modes'] = set().union(*links_df['modes'].tolist())
+                if modes is None:
+                    links_data['modes'] = set().union(*links_df['modes'].tolist())
+                else:
+                    links_data['modes'] = modes
                 links_data['permlanes'] = 1
                 links_data['length'] = dist
                 links_data['from'] = u
