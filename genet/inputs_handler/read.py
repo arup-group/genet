@@ -328,3 +328,12 @@ def read_osm(osm_file_path, osm_read_config, num_processes: int = 1, epsg=None):
     logging.info('Deleting isolated nodes which have no edges.')
     n.remove_nodes(list(nx.isolates(n.graph)))
     return n
+
+
+def read_matsim_road_pricing(path_to_file):
+    """
+    TODO: implement
+    :param path_to_file: path to MATSim's road_pricing.xml file
+    :return: genet.Cordon.. or other if applicable though not yet implemented (eg distance or area tolling)
+    """
+    pass
