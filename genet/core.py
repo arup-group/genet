@@ -1007,12 +1007,12 @@ class Network:
         if not silent:
             logging.info(f'Removed {len(links)} links')
 
-    def connect_components(self, modes: Union[list, set] = None, weight: float = 1.0, geojson_terminals: str = ''):
+    def connect_components(self, modes: Union[list, set] = None, weight: float = 1.0):
         if modes is None:
-            G = self.graph
+            g = self.graph
         else:
-            G = self.modal_subgraph(modes)
-        components = network_validation.find_connected_subgraphs(G)
+            g = self.modal_subgraph(modes)
+        components = network_validation.find_connected_subgraphs(g)
 
         if len(components) == 1:
             logging.warning('This Graph has only one strongly connected component. No links will be added.')
@@ -1020,10 +1020,6 @@ class Network:
             gdfs = self.to_geodataframe()
             gdf = gdfs['nodes'].to_crs('epsg:4326')
             components_gdfs = [gdf[gdf['id'].isin(component_nodes)] for component_nodes, len in components]
-
-            if geojson:
-                # subset the dataframes
-                pass
 
             closest_nodes = [
                 spatial.nearest_neighbor(components_gdfs[i], components_gdfs[j], return_dist=True) for i, j in
