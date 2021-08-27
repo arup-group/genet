@@ -1882,7 +1882,7 @@ def test_generating_pt_network_route_geodataframe():
     correct_gdf = gpd.GeoDataFrame(
             {'service_id': {0: 'service'}, 'route_id': {0: 'service_0'}, 'mode': {0: 'bus'},
              'route_short_name': {0: 'route'}, 'geometry': {0: LineString([(1,1), (2,2), (1,1)])}},
-        )
+        ).set_crs(n.epsg)
     correct_gdf.columns.name = 0
 
     assert_geodataframe_equal(
