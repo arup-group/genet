@@ -1026,8 +1026,10 @@ class Network:
                 # subset the dataframes
                 pass
 
-            closest_nodes = [spatial.nearest_neighbor(components_gdfs[i], components_gdfs[j], return_dist=True) for i, j in
-                             itertools.combinations(range(len(components_gdfs)), 2)]
+            closest_nodes = [
+                spatial.nearest_neighbor(components_gdfs[i], components_gdfs[j], return_dist=True) for i, j in
+                itertools.combinations(range(len(components_gdfs)), 2)
+            ]
             closest_nodes_idx = [df['distance'].idxmin() for df in closest_nodes]
             closest_nodes = [(idx, df.loc[idx, 'id'], df.loc[idx, 'distance']) for idx, df in
                              zip(closest_nodes_idx, closest_nodes)]
@@ -1041,9 +1043,9 @@ class Network:
             links_to_add = []
             for u, v, dist in closest_nodes:
                 links_df = gdf_links.loc[
-                    (gdf_links['from'].isin({u, v}) | gdf_links['to'].isin({u, v})), set(gdf_links.columns) & {'freespeed',
-                                                                                                               'capacity',
-                                                                                                               'modes'}]
+                    (gdf_links['from'].isin({u, v}) | gdf_links['to'].isin({u, v})),
+                    set(gdf_links.columns) & {'freespeed', 'capacity', 'modes'}
+                ]
                 links_data = links_df.mean()
                 links_data = links_data * weight
                 links_data['modes'] = set().union(*links_df['modes'].tolist())
