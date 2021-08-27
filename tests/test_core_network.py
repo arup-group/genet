@@ -1632,12 +1632,14 @@ def test_connecting_components_mode_free_results_in_four_links_added(islands_net
     # because there are 3 components (2 x 2 directions links)
     added_links = islands_network_in_line.connect_components()
     assert len(added_links) == 4
+    assert islands_network_in_line.is_strongly_connected()
 
 
 def test_connecting_components_specifying_mode_results_in_four_links_added(islands_network_in_line):
     # because there are 3 components (2 x 2 directions links)
     added_links = islands_network_in_line.connect_components(modes=['car'])
     assert len(added_links) == 4
+    assert islands_network_in_line.is_strongly_connected(modes='car')
 
 
 def test_connecting_components_of_connected_graph_raises_warning_without_changes(network1, caplog):

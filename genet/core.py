@@ -1007,6 +1007,19 @@ class Network:
         if not silent:
             logging.info(f'Removed {len(links)} links')
 
+    def is_strongly_connected(self, modes: Union[list, str, set] = None):
+        if modes is None:
+            g = self.graph
+        else:
+            g = self.modal_subgraph(modes)
+
+        components = network_validation.find_connected_subgraphs(g)
+
+        if len(components) == 1:
+            return True
+        else:
+            return False
+
     def connect_components(self, modes: Union[list, str, set] = None, weight: float = 1.0):
         """
         Connect disconnected subgraphs in the Network graph. Use modes variable to consider a modal subgraph.
