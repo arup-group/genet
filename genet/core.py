@@ -144,8 +144,7 @@ class Network:
         self.apply_attributes_to_nodes(new_nodes_attribs)
 
         # reproject geometries
-        gdf_geometries = gpd.GeoDataFrame(self.link_attribute_data_under_keys(['geometry']))
-        gdf_geometries.crs = self.epsg
+        gdf_geometries = gpd.GeoDataFrame(self.link_attribute_data_under_keys(['geometry']), crs=self.epsg)
         gdf_geometries = gdf_geometries.to_crs(new_epsg)
         new_link_attribs = gdf_geometries.T.to_dict()
         self.apply_attributes_to_links(new_link_attribs)
