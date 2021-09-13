@@ -54,8 +54,8 @@ py>=1.8.1
 Pygments==2.7.4
 pyparsing==2.4.7
 pyproj>=3.1.0
-pytest>=5.4.2
-pytest-cov>=2.8.1
+pytest==6.2.5
+pytest-cov==2.12.1
 pytest-mock==3.1.0
 pytest-xdist==2.3.0
 python-dateutil==2.8.1
