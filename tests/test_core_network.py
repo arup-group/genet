@@ -190,7 +190,7 @@ def test_reproject_delegates_reprojection_to_schedules_own_method(network1, rout
 
 def test_reproject_updates_graph_crs(network1):
     network1.reproject('epsg:4326')
-    assert network1.graph.graph['crs'] == {'init': 'epsg:4326'}
+    assert network1.graph.graph['crs'] == 'epsg:4326'
 
 
 def test_reprojecting_links_with_geometries():

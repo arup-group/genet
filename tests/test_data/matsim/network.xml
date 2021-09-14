@@ -2,7 +2,7 @@
 <!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v2.dtd">
 <network>
 	<attributes>
-		<attribute name="crs" class="java.lang.String">{'init': 'epsg:27700'}</attribute>
+		<attribute name="crs" class="java.lang.String">epsg:27700</attribute>
 		<attribute name="simplified" class="java.lang.String">False</attribute>
 	</attributes>
     <nodes>

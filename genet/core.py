@@ -35,7 +35,7 @@ class Network:
     def __init__(self, epsg):
         self.epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
-        self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg}, simplified=False)
+        self.graph = nx.MultiDiGraph(name='Network graph', crs=self.epsg, simplified=False)
         self.schedule = schedule_elements.Schedule(epsg)
         self.change_log = change_log.ChangeLog()
         self.spatial_tree = spatial.SpatialTree()
@@ -152,7 +152,7 @@ class Network:
         if self.schedule:
             self.schedule.reproject(new_epsg, processes)
         self.initiate_crs_transformer(new_epsg)
-        self.graph.graph['crs'] = {'init': self.epsg}
+        self.graph.graph['crs'] = self.epsg
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg

@@ -43,7 +43,7 @@ def read_matsim_network(path_to_network: str, epsg: str):
     n.graph, n.link_id_mapping, duplicated_nodes, duplicated_links = \
         matsim_reader.read_network(path_to_network, n.transformer)
     n.graph.graph['name'] = 'Network graph'
-    n.graph.graph['crs'] = {'init': n.epsg}
+    n.graph.graph['crs'] = n.epsg
     if 'simplified' not in n.graph.graph:
         n.graph.graph['simplified'] = False
 

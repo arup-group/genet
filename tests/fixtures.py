@@ -312,7 +312,7 @@ def correct_schedule_graph_edges_from_test_gtfs():
 
 @pytest.fixture()
 def correct_schedule_graph_data_from_test_gtfs():
-    return {'name': 'Schedule graph', 'crs': {'init': 'epsg:4326'},
+    return {'name': 'Schedule graph', 'crs': 'epsg:4326',
             'route_to_service_map': {'1001_0': '1001', '1002_0': '1002'},
             'service_to_route_map': {'1001': ['1001_0'], '1002': ['1002_0']}, 'change_log': change_log.ChangeLog(),
             'routes': {'1001_0': {'arrival_offsets': ['00:00:00', '00:02:00'], 'route_color': 'CE312D',

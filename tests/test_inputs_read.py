@@ -59,7 +59,7 @@ def test_reading_json():
                          'route': ['1', '10'],
                          'await_departure': [True, True],
                          'ordered_stops': ['490000235X.link:1', '490000235YB.link:10']}},
-         'services': {'20274': {'id': '20274', 'name': 'N55'}}, 'crs': {'init': 'epsg:27700'}}
+         'services': {'20274': {'id': '20274', 'name': 'N55'}}, 'crs': 'epsg:27700'}
     )
     assert_semantically_equal(
         dict(n.schedule._graph.nodes(data=True)),

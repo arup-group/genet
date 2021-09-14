@@ -44,10 +44,10 @@ class ScheduleElement:
     def __init__(self):
         # check if in graph first
         if 'crs' in self._graph.graph:
-            self.epsg = self._graph.graph['crs']['init']
+            self.epsg = self._graph.graph['crs']
         else:
             self.epsg = self.find_epsg()
-            self._graph.graph['crs'] = {'init': self.epsg}
+            self._graph.graph['crs'] = self.epsg
 
     def _surrender_to_graph(self):
         d = deepcopy(self.__dict__)
@@ -177,7 +177,7 @@ class ScheduleElement:
 
     def find_epsg(self):
         if 'crs' in self._graph.graph:
-            return self._graph.graph['crs']['init']
+            return self._graph.graph['crs']
         else:
             epsg = list({d for k, d in dict(self._graph.nodes(data='epsg', default='')).items()} - {''})
             if epsg:
@@ -1060,7 +1060,7 @@ class Schedule(ScheduleElement):
             self._graph = _graph
             if epsg == '':
                 try:
-                    epsg = self._graph.graph['crs']['init']
+                    epsg = self._graph.graph['crs']
                 except KeyError:
                     raise UndefinedCoordinateSystemError(
                         'You need to specify the coordinate system for the schedule')
@@ -1375,7 +1375,7 @@ class Schedule(ScheduleElement):
         :return:
         """
         ScheduleElement.reproject(self, new_epsg, processes=processes)
-        self._graph.graph['crs'] = {'init': new_epsg}
+        self._graph.graph['crs'] = new_epsg
 
     def find_epsg(self):
         return self.init_epsg
