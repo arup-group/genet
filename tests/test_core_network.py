@@ -1603,6 +1603,66 @@ def test_removing_multiple_links():
                        check_dtype=False)
 
 
+@pytest.fixture()
+def islands_network_in_line():
+    n = Network('epsg:4326')
+    n.add_nodes({
+        '1': {'x': 0, 'y': 0}, '2': {'x': 0, 'y': 0.5}, '3': {'x': 0, 'y': 1},
+        '4': {'x': 0, 'y': 2}, '5': {'x': 0, 'y': 2.5}, '6': {'x': 0, 'y': 3},
+        '7': {'x': 0, 'y': 4}, '8': {'x': 0, 'y': 4.5}, '9': {'x': 0, 'y': 5}
+    })
+    n.add_links({
+        '1_2': {'from': '1', 'to': '2', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '2_3': {'from': '2', 'to': '3', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '3_1': {'from': '3', 'to': '1', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '4_5': {'from': '4', 'to': '5', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '5_6': {'from': '5', 'to': '6', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '6_4': {'from': '6', 'to': '4', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '7_8': {'from': '7', 'to': '8', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '8_9': {'from': '8', 'to': '9', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '9_7': {'from': '9', 'to': '7', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+    })
+    return n
+
+@pytest.fixture()
+def islands_network_in_circle():
+    pass
+
+
+def test_connecting_components_mode_free_results_in_four_links_added(islands_network_in_line):
+    # because there are 3 components (2 x 2 directions links)
+    added_links = islands_network_in_line.connect_components()
+    assert len(added_links) == 4
+    assert islands_network_in_line.is_strongly_connected()
+
+
+def test_connecting_components_specifying_mode_results_in_four_links_added(islands_network_in_line):
+    # because there are 3 components (2 x 2 directions links)
+    added_links = islands_network_in_line.connect_components(modes=['car'])
+    assert len(added_links) == 4
+    assert islands_network_in_line.is_strongly_connected(modes='car')
+
+
+def test_connecting_components_of_connected_graph_raises_warning_without_changes(network1, caplog):
+    # add link to connect it up >_> ....
+    network1.add_link('1', '101986', '101982',
+                attribs={'id': '1',
+                         'from': '101986',
+                         'to': '101982',
+                         'freespeed': 4.166666666666667,
+                         'capacity': 600.0,
+                         'permlanes': 1.0,
+                         'oneway': '1',
+                         'modes': ['car'],
+                         's2_from': 5221390329378179879,
+                         's2_to': 5221390328605860387,
+                         'length': 52.765151087870265})
+    added_links = network1.connect_components()
+    assert added_links is None
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'has only one strongly connected component' in caplog.records[0].message
+
+
 def test_number_of_multi_edges_counts_multi_edges_on_single_edge():
     n = Network('epsg:27700')
     n.graph.add_edges_from([(1, 2), (2, 3), (3, 4)])
