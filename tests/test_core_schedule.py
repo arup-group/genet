@@ -1,19 +1,18 @@
-import os
-import sys
-import pytest
 from shapely.geometry import Polygon, GeometryCollection
 from pandas import DataFrame, Timestamp
 from pandas.testing import assert_frame_equal
-from tests.fixtures import *
-from tests.test_core_components_route import self_looping_route, route
-from tests.test_core_components_service import service
-from genet.inputs_handler import matsim_reader, gtfs_reader
+from shapely.geometry import Polygon, GeometryCollection
+
+from genet.exceptions import ServiceIndexError, ConflictingStopData, InconsistentVehicleModeError
 from genet.inputs_handler import read
 from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation
-from genet.exceptions import ServiceIndexError, RouteIndexError, StopIndexError, UndefinedCoordinateSystemError, \
-    ConflictingStopData, InconsistentVehicleModeError
+from tests.fixtures import *
+from tests.test_core_components_service import service
+from tests.test_core_components_route import self_looping_route, route
+
+import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_schedule_file = os.path.abspath(
@@ -1483,9 +1482,7 @@ def test_writing_schedule_to_json(schedule, json_schedule, tmpdir):
 
 def test_transforming_schedule_to_gtfs(schedule):
     gtfs = schedule.to_gtfs(gtfs_day='19700101')
-    assert_semantically_equal(
-        gtfs['stops'].to_dict(),
-        {'stop_id': {'5': '5', '6': '6', '7': '7', '8': '8', '3': '3', '2': '2', '4': '4', '1': '1'},
+    expected_stops = {'stop_id': {'5': '5', '6': '6', '7': '7', '8': '8', '3': '3', '2': '2', '4': '4', '1': '1'},
          'stop_name': {'5': '', '6': '', '7': '', '8': '', '3': '', '2': '', '4': '', '1': ''},
          'stop_lat': {'5': 49.76682779861249, '6': 49.766825803756994, '7': 49.76683608549253, '8': 49.766856648946295,
                       '3': 49.76683608549253, '2': 49.766825803756994, '4': 49.766856648946295, '1': 49.76682779861249},
@@ -1511,15 +1508,16 @@ def test_transforming_schedule_to_gtfs(schedule):
                       '2': float('nan'), '4': float('nan'), '1': float('nan')},
          'platform_code': {'5': float('nan'), '6': float('nan'), '7': float('nan'), '8': float('nan'),
                            '3': float('nan'), '2': float('nan'), '4': float('nan'), '1': float('nan')}}
-    )
-    assert_semantically_equal(
-        gtfs['routes'].to_dict(),
-        {'route_id': {0: 'service'}, 'route_short_name': {0: 'name_2'}, 'route_long_name': {0: ''},
-         'agency_id': {0: float('nan')}, 'route_desc': {0: float('nan')}, 'route_url': {0: float('nan')},
+    actual_stops = gtfs['stops'].to_dict()
+    assert_semantically_equal(expected_stops, actual_stops)
+    expected_routes = {'route_id': {0: 'service'}, 'route_short_name': {0: 'name_2'}, 'route_long_name': {0: ''},
+         'agency_id': {0: None}, 'route_desc': {0: None}, 'route_url': {0: None},
          'route_type': {0: 3},
-         'route_color': {0: float('nan')}, 'route_text_color': {0: float('nan')}, 'route_sort_order': {0: float('nan')},
-         'continuous_pickup': {0: float('nan')}, 'continuous_drop_off': {0: float('nan')}}
-    )
+         'route_color': {0: None}, 'route_text_color': {0: None}, 'route_sort_order': {0: None},
+         'continuous_pickup': {0: None}, 'continuous_drop_off': {0: None}}
+    actual_routes = gtfs['routes'].to_dict()
+    assert_semantically_equal(expected_routes, actual_routes)
+
     assert_semantically_equal(
         gtfs['trips'].to_dict(),
         {'route_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service'},

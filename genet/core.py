@@ -188,7 +188,8 @@ class Network:
             e.g. {'attributes': {'osm:way:name': 'text'}}
         :return: pandas.Series
         """
-        return pd.Series(graph_operations.get_attribute_data_under_key(self.nodes(), key))
+        data = graph_operations.get_attribute_data_under_key(self.nodes(), key)
+        return pd.Series(data, dtype=graph_operations.get_pandas_dtype(data))
 
     def node_attribute_data_under_keys(self, keys: Union[list, set], index_name=None):
         """
