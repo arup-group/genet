@@ -1,29 +1,32 @@
-import networkx as nx
-import pandas as pd
-import geopandas as gpd
-import uuid
+import itertools
+import json
 import logging
 import os
-import json
+import uuid
 from copy import deepcopy
 from typing import Union, List, Dict
+
+import geopandas as gpd
+import networkx as nx
+import pandas as pd
 from pyproj import Transformer
 from s2sphere import CellId
-import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
-import genet.outputs_handler.geojson as geojson
-import genet.outputs_handler.sanitiser as sanitiser
+
+import genet.auxiliary_files as auxiliary_files
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
-import genet.utils.spatial as spatial
-import genet.utils.persistence as persistence
+import genet.outputs_handler.geojson as geojson
+import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
+import genet.outputs_handler.sanitiser as sanitiser
+import genet.schedule_elements as schedule_elements
+import genet.utils.dict_support as dict_support
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
-import genet.utils.dict_support as dict_support
+import genet.utils.persistence as persistence
 import genet.utils.plot as plot
 import genet.utils.simplification as simplification
-import genet.schedule_elements as schedule_elements
+import genet.utils.spatial as spatial
 import genet.validate.network_validation as network_validation
-import genet.auxiliary_files as auxiliary_files
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -333,7 +336,7 @@ class Network:
         nodes = {self.link(link)['from'] for link in links} | {self.link(link)['to'] for link in links}
         return list(nodes)
 
-    def modal_subgraph(self, modes: Union[str, list]):
+    def modal_subgraph(self, modes: Union[str, set, list]):
         return self.subgraph_on_link_conditions(conditions={'modes': modes}, mixed_dtypes=True)
 
     def nodes_on_spatial_condition(self, region_input):
@@ -1003,6 +1006,91 @@ class Network:
         self.update_link_auxiliary_files(dict(zip(links, [None] * len(links))))
         if not silent:
             logging.info(f'Removed {len(links)} links')
+
+    def is_strongly_connected(self, modes: Union[list, str, set] = None):
+        if modes is None:
+            g = self.graph
+        else:
+            g = self.modal_subgraph(modes)
+
+        components = network_validation.find_connected_subgraphs(g)
+
+        if len(components) == 1:
+            return True
+        else:
+            return False
+
+    def connect_components(self, modes: Union[list, str, set] = None, weight: float = 1.0):
+        """
+        Connect disconnected subgraphs in the Network graph. Use modes variable to consider a modal subgraph.
+        For a strongly connected MATSim network use only a single (routable) mode at a time.
+        :param modes: str, list or set or network modes to use for computing strongly connected subgraphs
+        :param weight: weight to apply to `frespeed` and `capacity` for scaling, defaults to 1.
+        :return: None, or links and their details if they were added to the Network.
+        """
+        if modes is None:
+            g = self.graph
+        else:
+            g = self.modal_subgraph(modes)
+            if isinstance(modes, str):
+                modes = {modes}
+            else:
+                modes = set(modes)
+        components = network_validation.find_connected_subgraphs(g)
+
+        if len(components) == 1:
+            logging.warning('This Graph has only one strongly connected component. No links will be added.')
+        else:
+            gdfs = self.to_geodataframe()
+            gdf = gdfs['nodes'].to_crs('epsg:4326')
+            components_gdfs = [gdf[gdf['id'].isin(component_nodes)] for component_nodes, len in components]
+
+            closest_nodes = [
+                spatial.nearest_neighbor(components_gdfs[i], components_gdfs[j], return_dist=True) for i, j in
+                itertools.combinations(range(len(components_gdfs)), 2)
+            ]
+            closest_nodes_idx = [df['distance'].idxmin() for df in closest_nodes]
+            closest_nodes = [(idx, df.loc[idx, 'id'], df.loc[idx, 'distance']) for idx, df in
+                             zip(closest_nodes_idx, closest_nodes)]
+
+            # TODO instead of deleting the last largest distance connection, check that it isnt too far off the others
+            # some graphs may not be arranged in line or they could overlap
+            closest_nodes = sorted(closest_nodes, key=lambda tup: tup[2])[:-1]
+
+            # add links
+            gdf_links = gdfs['links']
+            links_to_add = []
+            for u, v, dist in closest_nodes:
+                links_df = gdf_links.loc[
+                    (gdf_links['from'].isin({u, v}) | gdf_links['to'].isin({u, v})),
+                    set(gdf_links.columns) & {'freespeed', 'capacity', 'modes'}
+                ]
+                links_data = links_df.mean()
+                links_data = links_data * weight
+                if modes is None:
+                    links_data['modes'] = set().union(*links_df['modes'].tolist())
+                else:
+                    links_data['modes'] = modes
+                links_data['permlanes'] = 1
+                links_data['length'] = dist
+                links_data['from'] = u
+                links_data['to'] = v
+
+                print(links_data)
+                links_to_add.append(links_data.to_dict())
+
+                links_data['from'] = v
+                links_data['to'] = u
+
+                print(links_data)
+                links_to_add.append(links_data.to_dict())
+
+            if links_to_add:
+                links_to_add = dict(zip(self.generate_indices_for_n_edges(len(links_to_add)), links_to_add))
+                self.add_links(links_to_add)
+                return links_to_add
+            else:
+                logging.warning('No links are being added')
 
     def number_of_multi_edges(self, u, v):
         """
