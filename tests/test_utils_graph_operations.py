@@ -662,7 +662,7 @@ def test_uses_int64_dtype_for_dictionary_with_integral_values():
     assert dtype is pd.Int64Dtype.type
 
 
-def test_uses_int64_dtype_for_dictionary_with_floating_point_values():
+def test_uses_float64_dtype_for_dictionary_with_floating_point_values():
     dtype = graph_operations.get_pandas_dtype({'number': 42.42})
     assert dtype is pd.Float64Dtype.type
 
