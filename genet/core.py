@@ -20,6 +20,7 @@ import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.sanitiser as sanitiser
 import genet.schedule_elements as schedule_elements
 import genet.utils.dict_support as dict_support
+import genet.utils.pandas_helpers as pd_helpers
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
 import genet.utils.persistence as persistence
@@ -189,7 +190,7 @@ class Network:
         :return: pandas.Series
         """
         data = graph_operations.get_attribute_data_under_key(self.nodes(), key)
-        return pd.Series(data, dtype=graph_operations.get_pandas_dtype(data))
+        return pd.Series(data, dtype=pd_helpers.get_pandas_dtype(data))
 
     def node_attribute_data_under_keys(self, keys: Union[list, set], index_name=None):
         """
@@ -622,7 +623,7 @@ class Network:
         # end with updated links_and_attributes dict
         add_to_link_id_mapping = df_links[['from', 'to', 'multi_edge_idx']].T.to_dict()
         df_links = df_links.drop('multi_edge_idx', axis=1)
-        links_and_attributes = {_id: {k: v for k, v in m.items() if dict_support.notna(v)} for _id, m in
+        links_and_attributes = {_id: {k: v for k, v in m.items() if pd_helpers.notna(v)} for _id, m in
                                 df_links.T.to_dict().items()}
 
         # update link_id_mapping

@@ -650,23 +650,3 @@ def test_convert_list_of_link_ids_to_network_nodes_with_disconnected_link_id_lis
     network_nodes = graph_operations.convert_list_of_link_ids_to_network_nodes(n, ['0', '2'])
 
     assert network_nodes == [[1, 2], [3, 4]]
-
-
-def test_uses_object_dtype_for_empty_dictionary():
-    dtype = graph_operations.get_pandas_dtype({})
-    assert dtype is object
-
-
-def test_uses_int64_dtype_for_dictionary_with_integral_values():
-    dtype = graph_operations.get_pandas_dtype({'number': 42})
-    assert dtype is pd.Int64Dtype.type
-
-
-def test_uses_float64_dtype_for_dictionary_with_floating_point_values():
-    dtype = graph_operations.get_pandas_dtype({'number': 42.42})
-    assert dtype is pd.Float64Dtype.type
-
-
-def test_uses_object_dtype_for_dictionary_with_list_values():
-    dtype = graph_operations.get_pandas_dtype({'numbers': [42, 101, -1]})
-    assert dtype is object

@@ -5,6 +5,7 @@ from typing import Union, Dict, Callable, Iterable
 import pandas as pd
 from anytree import Node, RenderTree
 
+from genet.utils import pandas_helpers as pd_helpers
 
 class Filter:
     """
@@ -260,7 +261,7 @@ def build_attribute_dataframe(iterator, keys: Union[list, str], index_name: str 
             name = key
 
         attribute_data = get_attribute_data_under_key(iterator, key)
-        col_series = pd.Series(attribute_data, dtype=get_pandas_dtype(attribute_data))
+        col_series = pd.Series(attribute_data, dtype=pd_helpers.get_pandas_dtype(attribute_data))
         col_series.name = name
 
         if df is not None:
@@ -270,18 +271,6 @@ def build_attribute_dataframe(iterator, keys: Union[list, str], index_name: str 
     if index_name:
         df.index = df.index.set_names([index_name])
     return df
-
-
-def get_pandas_dtype(dict):
-    pandas_dtype = object
-    if dict:
-        first_value = list(dict.values())[0]
-        python_type = type(first_value)
-        if python_type is int:
-            pandas_dtype = pd.Int64Dtype.type
-        if python_type is float:
-            pandas_dtype = pd.Float64Dtype.type
-    return pandas_dtype
 
 
 def apply_to_attributes(iterator, to_apply, location):
