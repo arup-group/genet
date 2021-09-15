@@ -7,6 +7,7 @@ from anytree import Node, RenderTree
 
 from genet.utils import pandas_helpers as pd_helpers
 
+
 class Filter:
     """
     Helps filtering on specified attributes

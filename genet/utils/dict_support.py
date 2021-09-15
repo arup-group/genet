@@ -1,6 +1,5 @@
-import pandas as pd
-from numpy import ndarray
 from typing import Union
+
 import genet.utils.graph_operations as graph_operations
 
 
