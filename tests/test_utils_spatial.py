@@ -200,12 +200,15 @@ def test_SpatialTree_adds_links(network):
 
 def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(network):
     spatial_tree = spatial.SpatialTree(network)
-    stops = GeoDataFrame({
-        'id': {0: 'stop_10m_to_link_1', 1: 'stop_15m_to_link_2', 2: 'stop_20m_to_link_1'},
-        'geometry': {0: Point(-0.15186089346604492, 51.51950409732838),
-                     1: Point(-0.15164747576623197, 51.520660715220636),
-                     2: Point(-0.1520233977548685, 51.51952913606585)}})
-    stops.crs = {'init': 'epsg:4326'}
+    stops = GeoDataFrame(
+        {
+            'id': {0: 'stop_10m_to_link_1', 1: 'stop_15m_to_link_2', 2: 'stop_20m_to_link_1'},
+            'geometry': {0: Point(-0.15186089346604492, 51.51950409732838),
+                         1: Point(-0.15164747576623197, 51.520660715220636),
+                         2: Point(-0.1520233977548685, 51.51952913606585)}
+        },
+        crs='epsg:4326'
+    )
 
     closest_links = spatial_tree.closest_links(stops, 30, modes='car')
     assert_semantically_equal(closest_links.reset_index().groupby('id')['link_id'].apply(list).to_dict(),
@@ -216,12 +219,15 @@ def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(networ
 
 def test_SpatialTree_closest_links_in_london_finds_a_link_within_13_metres(network):
     spatial_tree = spatial.SpatialTree(network)
-    stops = GeoDataFrame({
-        'id': {0: 'stop_10m_to_link_1', 1: 'stop_15m_to_link_2', 2: 'stop_20m_to_link_1'},
-        'geometry': {0: Point(-0.15186089346604492, 51.51950409732838),
-                     1: Point(-0.15164747576623197, 51.520660715220636),
-                     2: Point(-0.1520233977548685, 51.51952913606585)}})
-    stops.crs = {'init': 'epsg:4326'}
+    stops = GeoDataFrame(
+        {
+            'id': {0: 'stop_10m_to_link_1', 1: 'stop_15m_to_link_2', 2: 'stop_20m_to_link_1'},
+            'geometry': {0: Point(-0.15186089346604492, 51.51950409732838),
+                         1: Point(-0.15164747576623197, 51.520660715220636),
+                         2: Point(-0.1520233977548685, 51.51952913606585)}
+        },
+        crs='epsg:4326'
+    )
 
     closest_links = spatial_tree.closest_links(stops, 13, modes='car')
     closest_links = closest_links.dropna()
@@ -239,10 +245,10 @@ def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
                    'modes': ['car']
                })
     spatial_tree = spatial.SpatialTree(n)
-    stops = GeoDataFrame({'geometry': {
-        'stop_15m_to_link_1': Point(109.380607, 0.320333)
-    }})
-    stops.crs = {'init': 'epsg:4326'}
+    stops = GeoDataFrame(
+        {'geometry': {'stop_15m_to_link_1': Point(109.380607, 0.320333)}},
+        crs='epsg:4326'
+    )
 
     closest_links = spatial_tree.closest_links(stops, 20, modes='car')
     closest_links = closest_links.dropna()
@@ -260,10 +266,10 @@ def test_SpatialTree_closest_links_in_indonesia_doesnt_find_link_within_10_metre
                    'modes': ['car']
                })
     spatial_tree = spatial.SpatialTree(n)
-    stops = GeoDataFrame({'geometry': {
-        'stop_15m_to_link_1': Point(109.380607, 0.320333)
-    }})
-    stops.crs = {'init': 'epsg:4326'}
+    stops = GeoDataFrame(
+        {'geometry': {'stop_15m_to_link_1': Point(109.380607, 0.320333)}},
+        crs='epsg:4326'
+    )
 
     closest_links = spatial_tree.closest_links(stops, 10, modes='car')
     closest_links = closest_links.dropna()
@@ -280,10 +286,10 @@ def test_SpatialTree_closest_links_in_north_canada_finds_link_within_30_metres()
                    'modes': ['car']
                })
     spatial_tree = spatial.SpatialTree(n)
-    stops = GeoDataFrame({'geometry': {
-        'stop_15m_to_link_1': Point(-93.250971, 73.664114)
-    }})
-    stops.crs = {'init': 'epsg:4326'}
+    stops = GeoDataFrame(
+        {'geometry': {'stop_15m_to_link_1': Point(-93.250971, 73.664114)}},
+        crs='epsg:4326'
+    )
 
     closest_links = spatial_tree.closest_links(stops, 30, modes='car')
     assert_semantically_equal(closest_links.reset_index().groupby('index')['link_id'].apply(list).to_dict(),
@@ -300,10 +306,10 @@ def test_SpatialTree_closest_links_in_north_canada_doesnt_find_link_within_10_me
                    'modes': ['car']
                })
     spatial_tree = spatial.SpatialTree(n)
-    stops = GeoDataFrame({'geometry': {
-        'stop_15m_to_link_1': Point(-93.250971, 73.664114)
-    }})
-    stops.crs = {'init': 'epsg:4326'}
+    stops = GeoDataFrame(
+        {'geometry': {'stop_15m_to_link_1': Point(-93.250971, 73.664114)}},
+        crs='epsg:4326'
+    )
 
     closest_links = spatial_tree.closest_links(stops, 10, modes='car')
     closest_links = closest_links.dropna()

@@ -31,7 +31,7 @@ def generate_geodataframes(graph):
         return LineString(
             [(float(from_node['x']), float(from_node['y'])), (float(to_node['x']), float(to_node['y']))])
 
-    crs = graph.graph['crs']['init']
+    crs = graph.graph['crs']
 
     node_ids, data = zip(*graph.nodes(data=True))
     geometry = [Point(float(d['x']), float(d['y'])) for d in data]

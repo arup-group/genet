@@ -1,8 +1,11 @@
-from typing import Union, Dict, Callable, Iterable
-from anytree import Node, RenderTree
-import pandas as pd
 import logging
 from itertools import count, filterfalse
+from typing import Union, Dict, Callable, Iterable
+
+import pandas as pd
+from anytree import Node, RenderTree
+
+from genet.utils import pandas_helpers as pd_helpers
 
 
 class Filter:
@@ -213,7 +216,7 @@ def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
     :param iterator: list or iterator yielding (index, attribute_dictionary)
     :param key: either a string e.g. 'modes', or if accessing nested information, a dictionary
         e.g. {'attributes': {'osm:way:name': 'text'}}
-    :return: dictionary where keys are indicies and values are data stored under the key
+    :return: dictionary where keys are indices and values are data stored under the key
     """
 
     def get_the_data(attributes, key):
@@ -258,7 +261,8 @@ def build_attribute_dataframe(iterator, keys: Union[list, str], index_name: str 
         else:
             name = key
 
-        col_series = pd.Series(get_attribute_data_under_key(iterator, key))
+        attribute_data = get_attribute_data_under_key(iterator, key)
+        col_series = pd.Series(attribute_data, dtype=pd_helpers.get_pandas_dtype(attribute_data))
         col_series.name = name
 
         if df is not None:
