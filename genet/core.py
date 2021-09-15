@@ -8,6 +8,7 @@ from typing import Union, List, Dict
 
 import geopandas as gpd
 import networkx as nx
+import numpy as np
 import pandas as pd
 from pyproj import Transformer
 from s2sphere import CellId
@@ -1187,6 +1188,37 @@ class Network:
             if _route.route:
                 routes.append(_route.route)
         return routes
+
+    def schedule_network_routes_geodataframe(self):
+        if not self.schedule:
+            logging.warning('Schedule in this Network is empty')
+            return gpd.GeoDataFrame().set_crs(self.epsg)
+
+        def combine_geometry(group):
+            group = group.sort_values(by='route_sequence')
+            geom = spatial.merge_linestrings(list(group['geometry']))
+            group = group.iloc[0, :][{'route_id', 'route_short_name', 'mode', 'service_id'}]
+            group['geometry'] = geom
+            return group
+
+        gdf_links = self.to_geodataframe()['links']
+        routes = self.schedule.route_attribute_data(keys=['id', 'route_short_name', 'mode', 'route'])
+        routes = routes.rename(columns={'id': 'route_id'})
+        routes['route_sequence'] = routes['route'].apply(lambda x: list(range(len(x))))
+
+        # expand on network route link sequence
+        routes = pd.DataFrame({
+            col: np.repeat(routes[col].values, routes['route'].str.len())
+            for col in {'route_id', 'route_short_name', 'mode'}}
+        ).assign(route=np.concatenate(routes['route'].values),
+                 route_sequence=np.concatenate(routes['route_sequence'].values))
+        routes['service_id'] = routes['route_id'].apply(
+            lambda x: self.schedule.graph().graph['route_to_service_map'][x])
+
+        # get geometry for link IDs
+        routes = pd.merge(routes, gdf_links[['id', 'geometry']], left_on='route', right_on='id')
+        routes = routes.groupby('route_id').apply(combine_geometry).reset_index(drop=True)
+        return gpd.GeoDataFrame(routes).set_crs(self.epsg)
 
     def node_id_exists(self, node_id):
         if node_id in [i for i, attribs in self.nodes()]:

@@ -7,7 +7,7 @@ from pyproj import Geod
 from genet.utils import spatial
 from genet import Network
 from tests.fixtures import *
-from shapely.geometry import LineString, Polygon, Point
+from shapely.geometry import LineString, Polygon, Point, MultiLineString
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 test_geojson = os.path.abspath(
@@ -42,6 +42,16 @@ def test_decode_polyline_to_s2_points():
 
 def test_swaping_x_y_in_linestring():
     assert spatial.swap_x_y_in_linestring(LineString([(1, 2), (3, 4), (5, 6)])) == LineString([(2, 1), (4, 3), (6, 5)])
+
+
+def test_merging_contiguous_linestrings():
+    linestrings = [LineString([(1, 2), (3, 4), (5, 6)]), LineString([(5,6), (7, 8), (9, 10)])]
+    assert spatial.merge_linestrings(linestrings) == LineString([(1, 2), (3, 4), (5, 6), (7, 8), (9, 10)])
+
+
+def test_merging_noncontiguous_linestrings_results_in_multilinestring():
+    linestrings = [LineString([(1, 2), (3, 4), (5, 6)]), LineString([(7, 8), (9, 10)])]
+    assert spatial.merge_linestrings(linestrings) == MultiLineString([[(1, 2), (3, 4), (5, 6)],[(7, 8), (9, 10)]])
 
 
 def test_compute_average_proximity_to_polyline():
