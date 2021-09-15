@@ -206,3 +206,11 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
             gtfs_day=gtfs_day,
             include_shp_files=include_shp_files
         )
+
+        logging.info('Generating PT network routes')
+        save_geodataframe(
+            n.schedule_network_routes_geodataframe().to_crs('epsg:4326'),
+            filename='schedule_network_routes_geodataframe',
+            output_dir=os.path.join(output_dir, 'routing'),
+            include_shp_files=include_shp_files
+        )
