@@ -157,7 +157,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
 
 def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_files=False):
     logging.info(f'Generating geojson outputs for the entire network in {output_dir}')
-    n.write_to_geojson(output_dir)
+    n.write_to_geojson(output_dir, epsg='epsg:4326')
 
     graph_links = n.to_geodataframe()['links'].to_crs("epsg:4326")
 
