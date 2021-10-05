@@ -1283,7 +1283,10 @@ class Schedule(ScheduleElement):
         else:
             missing_vehicle_types = set(df_vehicles['type']) - set(self.vehicle_types.keys())
             missing_vehicles = df_vehicles[df_vehicles['type'].isin(missing_vehicle_types)].T.to_dict()
-            logging.warning('The following vehicle types are missing from the `vehicle_types` attribute: 'f'{missing_vehicle_types}')
+            logging.warning(
+                'The following vehicle types are missing from the `vehicle_types` attribute: 
+                'f'{missing_vehicle_types}'
+                )
             logging.warning('Vehicles affected by missing vehicle types: 'f"{missing_vehicles}")
 
             missing = {}
