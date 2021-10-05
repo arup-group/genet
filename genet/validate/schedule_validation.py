@@ -18,7 +18,7 @@ def generate_validation_report(schedule):
         }
 
     vehicle_check = schedule.validate_vehicle_definitions()
-    if vehicle_check == True:
+    if vehicle_check is True:
         report['vehicle_level'] = {
             'vehicle_definitions_valid': True}
         is_valid_vehicle_def = True
