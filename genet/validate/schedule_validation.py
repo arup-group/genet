@@ -21,14 +21,14 @@ def generate_validation_report(schedule):
     if vehicle_check == True:
         report['vehicle_level'] = {
             'vehicle_definitions_valid': True}
-        is_valid_vehicle_definition = True
+        is_valid_vehicle_def = True
     else:
         report['vehicle_level'] = {
             'vehicle_definitions_valid': False,
             'missing_vehicle_types': vehicle_check['vehicle_types'],
             'vehicles_affected': vehicle_check['vehicles_affected']
             }
-        is_valid_vehicle_definition = False
+        is_valid_vehicle_def = False
 
     for service_id in schedule.service_ids():
         invalid_stages = []
@@ -75,6 +75,6 @@ def generate_validation_report(schedule):
         'has_valid_services': has_valid_services,
         'invalid_services': invalid_services}
 
-    if not (is_valid_schedule == True & is_valid_vehicle_definition == True):
+    if not (is_valid_schedule is True & is_valid_vehicle_def is True):
         logging.warning('This schedule is not valid')
     return report
