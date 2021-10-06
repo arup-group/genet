@@ -1214,13 +1214,55 @@ class Schedule(ScheduleElement):
         # :param vehicles: dictionary of vehicle IDs from Route objects,
         # mapping them to vehicle types in vehicle_types.
         # Looks like this: {veh_id : {'type': 'bus'}}
+        # e.g.  {'fun_bus_1': {'type': 'bus'}, 'fun_bus_2': {'type': 'bus'}, 'some_bus_2': {'type': 'bus'}}
 
         existing_vehicles = self.vehicles
-
+        existing_vehicles = existing_vehicles.keys()
 
         used_vehicles = self.route_trips_to_dataframe()
         used_vehicles = used_vehicles['vehicle_id'].to_list()
 
+        unused_vehicle_list = []
+        for i in existing_vehicles:
+            if i not in used_vehicles:
+                unused_vehicle_list.append(i)
+
+        return unused_vehicle_list
+
+    def check_vehicle_uniqness(self):
+        trips_df = self.route_trips_to_dataframe()
+        trips_df = trips_df[['trip_id', 'vehicle_id']]
+
+        trips_dict = {}
+        for i in range(0, len(trips_df)):
+            key = trips_df[i]['trip_id']
+            value = trips_df[i]['vehicle_id']
+            trips_dict[key] = value
+
+        # finding duplicate values from dictionary using flip
+        flipped = {}
+        not_unique_list = []
+        
+        for k, v in trips_dict.items():
+            if v not in flipped:
+                flipped[v] = [k]
+            else:
+                not_unique_list.append(k)
+                flipped[v].append(k)
+        
+        duplicates_dict = {}
+        for key in not_unique_list:
+            values = flipped[key]
+            duplicates_dict[key] = values
+
+        if len(duplicates_dict) == 0:
+            logging.warning('No vehicles being used for multiple trips have been found.')
+        else:
+            non_unique_vehicles = duplicates_dict.keys()
+            printing_list = str(non_unique_vehicles)[11:-2]
+            logging.warning('Vehicles being used for multiple trips: ' + printing_list)
+            
+        return duplicates_dict
 
     def set_route_trips_dataframe(self, df):
         """
