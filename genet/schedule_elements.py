@@ -1210,6 +1210,18 @@ class Schedule(ScheduleElement):
         df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
         return df
 
+    def unused_vehicles(self):
+        # :param vehicles: dictionary of vehicle IDs from Route objects,
+        # mapping them to vehicle types in vehicle_types.
+        # Looks like this: {veh_id : {'type': 'bus'}}
+
+        existing_vehicles = self.vehicles
+
+
+        used_vehicles = self.route_trips_to_dataframe()
+        used_vehicles = used_vehicles['vehicle_id'].to_list()
+
+
     def set_route_trips_dataframe(self, df):
         """
         Option to replace trips data currently stored under routes by an updated `route_trips_to_dataframe`.
@@ -1284,15 +1296,23 @@ class Schedule(ScheduleElement):
             missing_vehicle_types = set(df_vehicles['type']) - set(self.vehicle_types.keys())
             missing_vehicles = df_vehicles[df_vehicles['type'].isin(missing_vehicle_types)].T.to_dict()
             logging.warning(
-                'The following vehicle types are missing from the `vehicle_types` attribute: ' +
-                ''f'{missing_vehicle_types}')
+                'The following vehicle types are missing from the `vehicle_types` ' +
+                ' attribute: 'f'{missing_vehicle_types}')
             logging.warning('Vehicles affected by missing vehicle types: 'f"{missing_vehicles}")
 
-            missing = {}
-            missing['vehicle_types'] = missing_vehicle_types
-            missing['vehicles_affected'] = missing_vehicles
+            return False
+            
 
-            return missing
+    def get_missing_vehicle_types(self):
+        df_vehicles = graph_operations.build_attribute_dataframe(iterator=self.vehicles.items(), keys=['type'])
+        missing_vehicle_types = set(df_vehicles['type']) - set(self.vehicle_types.keys())
+        missing_vehicles = df_vehicles[df_vehicles['type'].isin(missing_vehicle_types)].T.to_dict()
+        
+        missing = {}
+        missing['vehicle_types'] = missing_vehicle_types
+        missing['vehicles_affected'] = missing_vehicles
+
+        return missing
 
     def reference_nodes(self):
         return set(self._graph.nodes())

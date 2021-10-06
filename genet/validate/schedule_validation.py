@@ -20,13 +20,17 @@ def generate_validation_report(schedule):
     vehicle_check = schedule.validate_vehicle_definitions()
     if vehicle_check is True:
         report['vehicle_level'] = {
-            'vehicle_definitions_valid': True}
+            'vehicle_definitions_valid': True,
+            'missing_vehicle_types': {},
+            'vehicles_affected': {}
+            }
         is_valid_vehicle_def = True
     else:
+        missing_vehicle_types = schedule.get_missing_vehicle_types()
         report['vehicle_level'] = {
             'vehicle_definitions_valid': False,
-            'missing_vehicle_types': vehicle_check['vehicle_types'],
-            'vehicles_affected': vehicle_check['vehicles_affected']
+            'missing_vehicle_types': missing_vehicle_types['vehicle_types'],
+            'vehicles_affected': missing_vehicle_types['vehicles_affected']
             }
         is_valid_vehicle_def = False
 
