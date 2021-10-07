@@ -17,22 +17,19 @@ def generate_validation_report(schedule):
             'invalid_stages': invalid_stages
         }
 
-    vehicle_check = schedule.validate_vehicle_definitions()
-    if vehicle_check is True:
-        report['vehicle_level'] = {
-            'vehicle_definitions_valid': True,
-            'missing_vehicle_types': {},
-            'vehicles_affected': {}
-            }
-        is_valid_vehicle_def = True
-    else:
-        missing_vehicle_types = schedule.get_missing_vehicle_types()
-        report['vehicle_level'] = {
-            'vehicle_definitions_valid': False,
-            'missing_vehicle_types': missing_vehicle_types['vehicle_types'],
-            'vehicles_affected': missing_vehicle_types['vehicles_affected']
-            }
-        is_valid_vehicle_def = False
+    is_valid_vehicle_def = schedule.validate_vehicle_definitions()
+    missing_vehicle_types = schedule.get_missing_vehicle_information()
+    unused_vehicles = schedule.unused_vehicles()
+    multiple_use_vehicles = schedule.duplicates_dict()
+    # make more nested dictionary ?
+
+    report['vehicle_level'] = {
+        'vehicle_definitions_valid': is_valid_vehicle_def,
+        'missing_vehicle_types': missing_vehicle_types['missing_vehicle_types'],
+        'vehicles_affected': missing_vehicle_types['vehicles_affected'],
+        'unused_vehicles': unused_vehicles,
+        'multiple_use_vehicles': multiple_use_vehicles
+        }
 
     for service_id in schedule.service_ids():
         invalid_stages = []
@@ -81,4 +78,5 @@ def generate_validation_report(schedule):
 
     if not (is_valid_schedule is True & is_valid_vehicle_def is True):
         logging.warning('This schedule is not valid')
+
     return report

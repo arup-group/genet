@@ -1211,14 +1211,18 @@ class Schedule(ScheduleElement):
         return df
 
     def unused_vehicles(self):
-        # :param vehicles: dictionary of vehicle IDs from Route objects,
-        # mapping them to vehicle types in vehicle_types.
+        """
+        A scenario change to the network may result in changes to vehicle assignments, with some vehicles not 
+        being used anymore. This method checks if any of the vehicles are missing (i.e. exist in Schedule.vehicles, 
+        but are not used by services) and returns a list of these vehicles' IDs, if there are any. 
+        It also logs a warning which says whether any unused vehicles have been found.
+        """
+        # :param vehicles = dictionary of vehicle IDs from Route objects
         # Looks like this: {veh_id : {'type': 'bus'}}
         # e.g.  {'fun_bus_1': {'type': 'bus'}, 'fun_bus_2': {'type': 'bus'}, 'some_bus_2': {'type': 'bus'}}
 
         existing_vehicles = self.vehicles
         existing_vehicles = existing_vehicles.keys()
-
         used_vehicles = self.route_trips_to_dataframe()
         used_vehicles = used_vehicles['vehicle_id'].to_list()
 
@@ -1226,10 +1230,23 @@ class Schedule(ScheduleElement):
         for i in existing_vehicles:
             if i not in used_vehicles:
                 unused_vehicle_list.append(i)
+        
+        if len(unused_vehicle_list) == 0:
+            logging.warning('All vehicles are being used.')
+        else:
+            logging.warning(str(len(unused_vehicle_list)) + ' unused vehicles have been found.')
 
         return unused_vehicle_list
 
     def check_vehicle_uniqness(self):
+        """
+        In MATSim, trips can share vehicles, but his may or may not be intended, e.g. it could result from a 
+        scenario change and be undesirable, leading to simulation not working correctly.
+        This method checks if a vehicle ID is being used by two or more different trips, and then returns
+        a dictionary of vehicle IDs together with trips for which they are being used.
+        It also logs a warning which says whether any vehicles are being used for multiple trips.
+
+        """
         trips_df = self.route_trips_to_dataframe()
         trips_df = trips_df[['trip_id', 'vehicle_id']]
 
@@ -1239,7 +1256,7 @@ class Schedule(ScheduleElement):
             value = trips_df[i]['vehicle_id']
             trips_dict[key] = value
 
-        # finding duplicate values from dictionary using flip
+        # finding duplicate values from dictionary by flipping keys and values
         flipped = {}
         not_unique_list = []
         
@@ -1341,18 +1358,17 @@ class Schedule(ScheduleElement):
                 'The following vehicle types are missing from the `vehicle_types` ' +
                 ' attribute: 'f'{missing_vehicle_types}')
             logging.warning('Vehicles affected by missing vehicle types: 'f"{missing_vehicles}")
-
             return False
             
 
-    def get_missing_vehicle_types(self):
+    def get_missing_vehicle_information(self):
         df_vehicles = graph_operations.build_attribute_dataframe(iterator=self.vehicles.items(), keys=['type'])
         missing_vehicle_types = set(df_vehicles['type']) - set(self.vehicle_types.keys())
-        missing_vehicles = df_vehicles[df_vehicles['type'].isin(missing_vehicle_types)].T.to_dict()
+        vehicles_affected = df_vehicles[df_vehicles['type'].isin(missing_vehicle_types)].T.to_dict()
         
         missing = {}
-        missing['vehicle_types'] = missing_vehicle_types
-        missing['vehicles_affected'] = missing_vehicles
+        missing['missing_vehicle_types'] = missing_vehicle_types
+        missing['vehicles_affected'] = vehicles_affected
 
         return missing
 
