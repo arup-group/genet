@@ -1,33 +1,35 @@
-from abc import abstractmethod
-from typing import Union, Dict, List
-from pyproj import Transformer, Geod
-import networkx as nx
-import numpy as np
+import io
+import itertools
+import json
 import logging
 import os
-import io
-import yaml
 import pkgutil
-import json
-from datetime import datetime
-from pandas import DataFrame, Series
-from copy import deepcopy
+from abc import abstractmethod
 from collections import defaultdict
-import itertools
+from copy import deepcopy
+from datetime import datetime
+from typing import Union, Dict, List
+
 import dictdiffer
+import networkx as nx
+import numpy as np
+import yaml
+from pandas import DataFrame, Series
+from pyproj import Transformer, Geod
 from s2sphere import CellId
-import genet.utils.plot as plot
-import genet.utils.spatial as spatial
-import genet.utils.dict_support as dict_support
+
+import genet.modify.change_log as change_log
+import genet.modify.schedule as mod_schedule
+import genet.outputs_handler.geojson as gngeojson
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
-import genet.utils.persistence as persistence
+import genet.use.schedule as use_schedule
+import genet.utils.dict_support as dict_support
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
-import genet.modify.schedule as mod_schedule
-import genet.modify.change_log as change_log
-import genet.use.schedule as use_schedule
+import genet.utils.persistence as persistence
+import genet.utils.plot as plot
+import genet.utils.spatial as spatial
 import genet.validate.schedule_validation as schedule_validation
-import genet.outputs_handler.geojson as gngeojson
 from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisationError, ServiceInitialisationError, \
     UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData, \
     InconsistentVehicleModeError
@@ -1212,9 +1214,9 @@ class Schedule(ScheduleElement):
 
     def unused_vehicles(self):
         """
-        A scenario change to the network may result in changes to vehicle assignments, with some vehicles not 
-        being used anymore. This method checks if any of the vehicles are missing (i.e. exist in Schedule.vehicles, 
-        but are not used by services) and returns a list of these vehicles' IDs, if there are any. 
+        A scenario change to the network may result in changes to vehicle assignments, with some vehicles not
+        being used anymore. This method checks if any of the vehicles are missing (i.e. exist in Schedule.vehicles,
+        but are not used by services) and returns a list of these vehicles' IDs, if there are any.
         It also logs a warning which says whether any unused vehicles have been found.
         """
         # :param vehicles = dictionary of vehicle IDs from Route objects
@@ -1230,7 +1232,7 @@ class Schedule(ScheduleElement):
         for i in existing_vehicles:
             if i not in used_vehicles:
                 unused_vehicle_list.append(i)
-        
+
         if len(unused_vehicle_list) == 0:
             logging.warning('All vehicles are being used.')
         else:
@@ -1240,12 +1242,11 @@ class Schedule(ScheduleElement):
 
     def check_vehicle_uniqness(self):
         """
-        In MATSim, trips can share vehicles, but his may or may not be intended, e.g. it could result from a 
+        In MATSim, trips can share vehicles, but his may or may not be intended, e.g. it could result from a
         scenario change and be undesirable, leading to simulation not working correctly.
         This method checks if a vehicle ID is being used by two or more different trips, and then returns
         a dictionary of vehicle IDs together with trips for which they are being used.
         It also logs a warning which says whether any vehicles are being used for multiple trips.
-
         """
         trips_df = self.route_trips_to_dataframe()
         trips_df = trips_df[['trip_id', 'vehicle_id']]
@@ -1259,14 +1260,14 @@ class Schedule(ScheduleElement):
         # finding duplicate values from dictionary by flipping keys and values
         flipped = {}
         not_unique_list = []
-        
+
         for k, v in trips_dict.items():
             if v not in flipped:
                 flipped[v] = [k]
             else:
                 not_unique_list.append(k)
                 flipped[v].append(k)
-        
+
         duplicates_dict = {}
         for key in not_unique_list:
             values = flipped[key]
@@ -1278,7 +1279,7 @@ class Schedule(ScheduleElement):
             non_unique_vehicles = duplicates_dict.keys()
             printing_list = str(non_unique_vehicles)[11:-2]
             logging.warning('Vehicles being used for multiple trips: ' + printing_list)
-            
+
         return duplicates_dict
 
     def set_route_trips_dataframe(self, df):
@@ -1364,7 +1365,7 @@ class Schedule(ScheduleElement):
         df_vehicles = graph_operations.build_attribute_dataframe(iterator=self.vehicles.items(), keys=['type'])
         missing_vehicle_types = set(df_vehicles['type']) - set(self.vehicle_types.keys())
         vehicles_affected = df_vehicles[df_vehicles['type'].isin(missing_vehicle_types)].T.to_dict()
-        
+
         missing = {}
         missing['missing_vehicle_types'] = missing_vehicle_types
         missing['vehicles_affected'] = vehicles_affected
