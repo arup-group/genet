@@ -1359,7 +1359,6 @@ class Schedule(ScheduleElement):
                 ' attribute: 'f'{missing_vehicle_types}')
             logging.warning('Vehicles affected by missing vehicle types: 'f"{missing_vehicles}")
             return False
-            
 
     def get_missing_vehicle_information(self):
         df_vehicles = graph_operations.build_attribute_dataframe(iterator=self.vehicles.items(), keys=['type'])
