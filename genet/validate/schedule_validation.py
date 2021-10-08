@@ -20,7 +20,7 @@ def generate_validation_report(schedule):
     is_valid_vehicle_def = schedule.validate_vehicle_definitions()
     missing_vehicle_types = schedule.get_missing_vehicle_information()
     unused_vehicles = schedule.unused_vehicles()
-    multiple_use_vehicles = schedule.duplicates_dict()
+    multiple_use_vehicles = schedule.check_vehicle_uniqness()
     # make more nested dictionary ?
 
     report['vehicle_level'] = {
