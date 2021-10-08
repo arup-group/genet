@@ -1238,7 +1238,7 @@ class Schedule(ScheduleElement):
 
         return unused_vehicle_list
 
-    def check_vehicle_uniqness(self):
+    def check_vehicle_uniqueness(self):
         """
         In MATSim, trips can share vehicles, but his may or may not be intended, e.g. it could result from a 
         scenario change and be undesirable, leading to simulation not working correctly.
