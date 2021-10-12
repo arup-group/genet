@@ -27,8 +27,8 @@ def generate_validation_report(schedule):
         'vehicle_definitions_valid': is_valid_vehicle_def,
         'missing_vehicle_types': missing_vehicle_types['missing_vehicle_types'],
         'vehicles_affected': missing_vehicle_types['vehicles_affected'],
-        'unused_vehicles': unused_vehicles
-        # 'multiple_use_vehicles': multiple_use_vehicles
+        'unused_vehicles': unused_vehicles,
+        'multiple_use_vehicles': multiple_use_vehicles
         }
 
     for service_id in schedule.service_ids():

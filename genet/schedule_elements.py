@@ -1253,8 +1253,8 @@ class Schedule(ScheduleElement):
 
         trips_dict = {}
         for i in range(0, len(trips_df)):
-            key = trips_df[i]['trip_id']
-            value = trips_df[i]['vehicle_id']
+            key = trips_df['trip_id'].iloc[i]
+            value = trips_df['vehicle_id'].iloc[i]
             trips_dict[key] = value
 
         # finding duplicate values from dictionary by flipping keys and values
