@@ -1223,22 +1223,21 @@ class Schedule(ScheduleElement):
         # Looks like this: {veh_id : {'type': 'bus'}}
         # e.g.  {'fun_bus_1': {'type': 'bus'}, 'fun_bus_2': {'type': 'bus'}, 'some_bus_2': {'type': 'bus'}}
 
-        existing_vehicles = self.vehicles
-        existing_vehicles = existing_vehicles.keys()
+        existing_vehicles = set(self.vehicles.keys())
         used_vehicles = self.route_trips_to_dataframe()
-        used_vehicles = used_vehicles['vehicle_id'].to_list()
+        used_vehicles = set(used_vehicles['vehicle_id'])
 
-        unused_vehicle_list = []
-        for i in existing_vehicles:
-            if i not in used_vehicles:
-                unused_vehicle_list.append(i)
+        unused_vehicles = existing_vehicles - used_vehicles
+        # for i in existing_vehicles:
+        #     if i not in used_vehicles:
+        #         unused_vehicle_list.append(i)
 
-        if len(unused_vehicle_list) == 0:
-            logging.warning('All vehicles are being used.')
+        if len(unused_vehicles) == 0:
+            logging.info('All vehicles are being used.')
         else:
-            logging.warning(str(len(unused_vehicle_list)) + ' unused vehicles have been found.')
+            logging.warning(str(len(unused_vehicles)) + ' unused vehicles have been found.')
 
-        return unused_vehicle_list
+        return unused_vehicles
 
     def check_vehicle_uniqueness(self):
         """
