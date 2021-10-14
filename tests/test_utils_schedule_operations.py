@@ -1,8 +1,37 @@
 import pytest
 
-from genet import Schedule, Service, Route, Stop
+from genet import Schedule, Service, Route, Stop, schedule_elements
 from genet.validate import schedule_validation
-from tests.fixtures import correct_schedule, test_schedule, assert_semantically_equal
+from tests.fixtures import test_schedule, assert_semantically_equal
+
+@pytest.fixture()
+def correct_schedule():
+    return Schedule(epsg='epsg:27700', services=[
+        Service(id='service',
+                routes=[
+                    Route(id='1', route_short_name='route', mode='bus',
+                          stops=[
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='1'),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')],
+
+                          trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+                                 'trip_departure_time': ['04:40:00'],
+                                 'vehicle_id': ['veh_1_bus']},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00'],
+                          route=['1', '2']),
+                    Route(id='2', route_short_name='route1', mode='bus',
+                          stops=[
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700', linkRefId='1'),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700', linkRefId='2')],
+                          trips={'trip_id': ['Blep_04:40:00'],
+                                 'trip_departure_time': ['05:40:00'],
+                                 'vehicle_id': ['veh_2_bus']},
+                          arrival_offsets=['00:00:00', '00:03:00'],
+                          departure_offsets=['00:00:00', '00:05:00'],
+                          route=['1', '2'])
+                ])
+    ])
 
 
 def test_generate_validation_report_with_correct_schedule(correct_schedule):
@@ -100,3 +129,89 @@ def test_generate_validation_report_with_schedule_missing_vehicle_definitions(sc
     assert_semantically_equal(report, correct_report)
 
 
+
+def test_schedule_with_no_unused_vehicles(correct_schedule):
+    correct_output = set()
+    actual_output = correct_schedule.unused_vehicles()
+
+    assert_semantically_equal(correct_output, actual_output)
+
+
+@pytest.fixture()
+def schedule_with_unused_vehicles():
+    s = Schedule(epsg='epsg:27700', services=[
+        Service(id='service',
+                routes=[
+                    Route(route_short_name='route', mode='bus',
+                          stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                                 Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                          trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+                                 'trip_departure_time': ['04:40:00'],
+                                 'vehicle_id': ['veh_1_bus']},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00']),
+                    Route(route_short_name='route1', mode='bus',
+                          stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                                 Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                          trips={'trip_id': ['Blep_04:40:00'],
+                                 'trip_departure_time': ['05:40:00'],
+                                 'vehicle_id': ['veh_2_bus']},
+                          arrival_offsets=['00:00:00', '00:03:00'],
+                          departure_offsets=['00:00:00', '00:05:00'])
+                ])
+    ])
+    # s.vehicles.pop('veh_2_bus')
+    return s
+
+
+@pytest.mark.skip(reason="TBC")
+def test_schedule_with_unused_vehicles(schedule_with_unused_vehicles):
+    veh = schedule_with_unused_vehicles.vehicles.keys()
+    unused_correct = set({'veh_2_bus'})
+    unused_actual = schedule_with_unused_vehicles.unused_vehicles()
+
+    assert_semantically_equal(unused_correct, unused_actual)
+
+
+def test_schedule_with_no_multiple_use_vehicles(correct_schedule):
+    correct_output = {}
+    actual_output = correct_schedule.check_vehicle_uniqueness()
+
+    assert_semantically_equal(correct_output, actual_output)
+
+
+
+@pytest.fixture()
+def schedule_with_multiple_use_vehicles():
+    s = Schedule(epsg='epsg:27700', services=[
+        Service(id='service',
+                routes=[
+                    Route(route_short_name='route', mode='bus',
+                          stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                                 Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                          trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_044000'],
+                                 'trip_departure_time': ['04:40:00'],
+                                 'vehicle_id': ['veh_1_bus']},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00']),
+                    Route(route_short_name='route1', mode='bus',
+                          stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                                 Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                          trips={'trip_id': ['Blep_044000'],
+                                 'trip_departure_time': ['05:40:00'],
+                                 'vehicle_id': ['veh_1_bus']},
+                          arrival_offsets=['00:00:00', '00:03:00'],
+                          departure_offsets=['00:00:00', '00:05:00'])
+                ])
+    ])
+    return s
+
+
+def test_schedule_with_no_multiple_use_vehicles(schedule_with_multiple_use_vehicles):
+    correct_output = {}
+    correct_output['veh_1_bus'] = []
+    correct_output['veh_1_bus'].append('VJ00938baa194cee94700312812d208fe79f3297ee_044000')
+    correct_output['veh_1_bus'].append('Blep_044000')
+    actual_output = schedule_with_multiple_use_vehicles.check_vehicle_uniqueness()
+
+    assert_semantically_equal(correct_output, actual_output)

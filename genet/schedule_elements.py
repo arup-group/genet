@@ -1261,13 +1261,15 @@ class Schedule(ScheduleElement):
             if v not in flipped:
                 flipped[v] = [k]
             else:
-                not_unique_list.append(k)
+                not_unique_list.append(v)
                 flipped[v].append(k)
 
         duplicates_dict = {}
         for key in not_unique_list:
             values = flipped[key]
-            duplicates_dict[key] = values
+            duplicates_dict[key] = []
+            for val in values:
+                duplicates_dict[key].append(val)
 
         if len(duplicates_dict) == 0:
             logging.info('No vehicles being used for multiple trips have been found.')
