@@ -1228,9 +1228,6 @@ class Schedule(ScheduleElement):
         used_vehicles = set(used_vehicles['vehicle_id'])
 
         unused_vehicles = existing_vehicles - used_vehicles
-        # for i in existing_vehicles:
-        #     if i not in used_vehicles:
-        #         unused_vehicle_list.append(i)
 
         if len(unused_vehicles) == 0:
             logging.info('All vehicles are being used.')
@@ -1273,7 +1270,7 @@ class Schedule(ScheduleElement):
             duplicates_dict[key] = values
 
         if len(duplicates_dict) == 0:
-            logging.warning('No vehicles being used for multiple trips have been found.')
+            logging.info('No vehicles being used for multiple trips have been found.')
         else:
             non_unique_vehicles = duplicates_dict.keys()
             printing_list = str(non_unique_vehicles)[11:-2]
