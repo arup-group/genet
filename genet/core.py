@@ -92,16 +92,23 @@ class Network:
     def info(self):
         return f"Graph info: {nx.info(self.graph)} \nSchedule info: {self.schedule.info()}"
 
-    def plot(self, show=True, save=False, output_dir=''):
+    def plot(self, output_dir=''):
         """
-        Plots the network graph and schedule
-        :param show: whether to display the plot
-        :param save: whether to save the plot
-        :param output_dir: output directory for the image
+        Plots the network graph and schedule on kepler map.
+        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
+        :param output_dir: output directory for the image, if passed, will save plot to html
         :return:
         """
-        return plot.plot_graph_routes(self.graph, self.schedule_routes_nodes(), 'network_route_graph', show=show,
-                                      save=save, output_dir=output_dir)
+        network_links = self.to_geodataframe()['links']
+        schedule_routes = self.schedule_network_routes_geodataframe()
+        m = plot.plot_geodataframes_on_kepler_map(
+            {'network_links': sanitiser.sanitise_geodataframe(network_links),
+             'schedule_routes': sanitiser.sanitise_geodataframe(schedule_routes)},
+            kepler_config='network_with_pt'
+        )
+        if output_dir:
+            m.save_to_html(output_dir)
+        return m
 
     def plot_graph(self, show=True, save=False, output_dir=''):
         """
