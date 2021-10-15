@@ -1218,10 +1218,10 @@ class Schedule(ScheduleElement):
         being used anymore. This method checks if any of the vehicles are missing (i.e. exist in Schedule.vehicles,
         but are not used by services) and returns a list of these vehicles' IDs, if there are any.
         It also logs a warning which says whether any unused vehicles have been found.
+
+        :param vehicles = dictionary of vehicle IDs from Route objects, in form {veh_id : {'type': 'bus'}}
+        e.g.  {'fun_bus_1': {'type': 'bus'}, 'fun_bus_2': {'type': 'bus'}, 'some_bus_2': {'type': 'bus'}}
         """
-        # :param vehicles = dictionary of vehicle IDs from Route objects
-        # Looks like this: {veh_id : {'type': 'bus'}}
-        # e.g.  {'fun_bus_1': {'type': 'bus'}, 'fun_bus_2': {'type': 'bus'}, 'some_bus_2': {'type': 'bus'}}
 
         existing_vehicles = set(self.vehicles.keys())
         used_vehicles = self.route_trips_to_dataframe()

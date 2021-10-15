@@ -79,7 +79,7 @@ def test_generate_validation_report_with_incorrect_schedule(test_schedule):
 
 
 @pytest.fixture()
-def schedule_with_missing_vehicle_information():
+def schedule_with_incomplete_vehicle_definition():
     s = Schedule(epsg='epsg:27700', services=[
         Service(id='service',
                 routes=[
@@ -105,7 +105,7 @@ def schedule_with_missing_vehicle_information():
     return s
 
 
-def test_generate_validation_report_with_schedule_missing_vehicle_definitions(schedule_with_missing_vehicle_information):
+def test_generate_validation_report_with_schedule_incomplete_vehicle_definitions(schedule_with_incomplete_vehicle_definition):
     correct_report = {
         'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
                            'has_valid_services': False, 'invalid_services': ['service']},
@@ -125,7 +125,7 @@ def test_generate_validation_report_with_schedule_missing_vehicle_definitions(sc
             'unused_vehicles': set(),
             'multiple_use_vehicles': {}}}
 
-    report = schedule_validation.generate_validation_report(schedule_with_missing_vehicle_information)
+    report = schedule_validation.generate_validation_report(schedule_with_incomplete_vehicle_definition)
     assert_semantically_equal(report, correct_report)
 
 
@@ -142,7 +142,7 @@ def schedule_with_unused_vehicles():
     s = Schedule(epsg='epsg:27700', services=[
         Service(id='service',
                 routes=[
-                    Route(route_short_name='route', mode='bus',
+                    Route(id = 'r1',route_short_name='route', mode='bus',
                           stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
                                  Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
                           trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
@@ -150,7 +150,7 @@ def schedule_with_unused_vehicles():
                                  'vehicle_id': ['veh_1_bus']},
                           arrival_offsets=['00:00:00', '00:02:00'],
                           departure_offsets=['00:00:00', '00:02:00']),
-                    Route(route_short_name='route1', mode='bus',
+                    Route(id = 'r2', route_short_name='route1', mode='bus',
                           stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
                                  Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
                           trips={'trip_id': ['Blep_04:40:00'],
@@ -160,13 +160,14 @@ def schedule_with_unused_vehicles():
                           departure_offsets=['00:00:00', '00:05:00'])
                 ])
     ])
-    # s.vehicles.pop('veh_2_bus')
+
+    s.remove_route('r2')
+
     return s
 
 
-@pytest.mark.skip(reason="TBC")
+
 def test_schedule_with_unused_vehicles(schedule_with_unused_vehicles):
-    veh = schedule_with_unused_vehicles.vehicles.keys()
     unused_correct = set({'veh_2_bus'})
     unused_actual = schedule_with_unused_vehicles.unused_vehicles()
 
