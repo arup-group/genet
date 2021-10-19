@@ -43,7 +43,7 @@ def read_matsim_network(path_to_network: str, epsg: str):
     n.graph, n.link_id_mapping, duplicated_nodes, duplicated_links = \
         matsim_reader.read_network(path_to_network, n.transformer)
     n.graph.graph['name'] = 'Network graph'
-    n.graph.graph['crs'] = {'init': n.epsg}
+    n.graph.graph['crs'] = n.epsg
     if 'simplified' not in n.graph.graph:
         n.graph.graph['simplified'] = False
 
@@ -337,3 +337,12 @@ def read_osm(osm_file_path, osm_read_config, num_processes: int = 1, epsg=None):
     logging.info('Deleting isolated nodes which have no edges.')
     n.remove_nodes(list(nx.isolates(n.graph)))
     return n
+
+
+def read_matsim_road_pricing(path_to_file):
+    """
+    TODO: implement
+    :param path_to_file: path to MATSim's road_pricing.xml file
+    :return: genet.Cordon.. or other if applicable though not yet implemented (eg distance or area tolling)
+    """
+    pass

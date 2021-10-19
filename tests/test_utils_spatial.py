@@ -7,7 +7,7 @@ from pyproj import Geod
 from genet.utils import spatial
 from genet import Network
 from tests.fixtures import *
-from shapely.geometry import LineString, Polygon, Point
+from shapely.geometry import LineString, Polygon, Point, MultiLineString
 from genet.exceptions import EmptySpatialTree
 
 
@@ -44,6 +44,16 @@ def test_decode_polyline_to_s2_points():
 
 def test_swaping_x_y_in_linestring():
     assert spatial.swap_x_y_in_linestring(LineString([(1, 2), (3, 4), (5, 6)])) == LineString([(2, 1), (4, 3), (6, 5)])
+
+
+def test_merging_contiguous_linestrings():
+    linestrings = [LineString([(1, 2), (3, 4), (5, 6)]), LineString([(5,6), (7, 8), (9, 10)])]
+    assert spatial.merge_linestrings(linestrings) == LineString([(1, 2), (3, 4), (5, 6), (7, 8), (9, 10)])
+
+
+def test_merging_noncontiguous_linestrings_results_in_multilinestring():
+    linestrings = [LineString([(1, 2), (3, 4), (5, 6)]), LineString([(7, 8), (9, 10)])]
+    assert spatial.merge_linestrings(linestrings) == MultiLineString([[(1, 2), (3, 4), (5, 6)],[(7, 8), (9, 10)]])
 
 
 def test_compute_average_proximity_to_polyline():
@@ -227,8 +237,10 @@ def test_SpatialTree_closest_links_in_london_finds_a_link_within_13_metres(netwo
         'id': {0: 'stop_10m_to_link_1', 1: 'stop_15m_to_link_2', 2: 'stop_20m_to_link_1'},
         'geometry': {0: Point(-0.15186089346604492, 51.51950409732838),
                      1: Point(-0.15164747576623197, 51.520660715220636),
-                     2: Point(-0.1520233977548685, 51.51952913606585)}})
-    stops.crs = {'init': 'epsg:4326'}
+                     2: Point(-0.1520233977548685, 51.51952913606585)}
+        },
+        crs='epsg:4326'
+    )
 
     closest_links = spatial_tree.closest_links(stops, 13)
     closest_links = closest_links.dropna()
@@ -246,10 +258,10 @@ def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
                    'modes': ['car']
                })
     spatial_tree = spatial.SpatialTree(n).modal_subtree(modes='car')
-    stops = GeoDataFrame({'geometry': {
-        'stop_15m_to_link_1': Point(109.380607, 0.320333)
-    }})
-    stops.crs = {'init': 'epsg:4326'}
+    stops = GeoDataFrame(
+        {'geometry': {'stop_15m_to_link_1': Point(109.380607, 0.320333)}},
+        crs='epsg:4326'
+    )
 
     closest_links = spatial_tree.closest_links(stops, 20)
     closest_links = closest_links.dropna()
@@ -267,10 +279,10 @@ def test_SpatialTree_closest_links_in_indonesia_doesnt_find_link_within_10_metre
                    'modes': ['car']
                })
     spatial_tree = spatial.SpatialTree(n).modal_subtree(modes='car')
-    stops = GeoDataFrame({'geometry': {
-        'stop_15m_to_link_1': Point(109.380607, 0.320333)
-    }})
-    stops.crs = {'init': 'epsg:4326'}
+    stops = GeoDataFrame(
+        {'geometry': {'stop_15m_to_link_1': Point(109.380607, 0.320333)}},
+        crs='epsg:4326'
+    )
 
     closest_links = spatial_tree.closest_links(stops, 10)
     closest_links = closest_links.dropna()
@@ -287,10 +299,10 @@ def test_SpatialTree_closest_links_in_north_canada_finds_link_within_30_metres()
                    'modes': ['car']
                })
     spatial_tree = spatial.SpatialTree(n).modal_subtree(modes='car')
-    stops = GeoDataFrame({'geometry': {
-        'stop_15m_to_link_1': Point(-93.250971, 73.664114)
-    }})
-    stops.crs = {'init': 'epsg:4326'}
+    stops = GeoDataFrame(
+        {'geometry': {'stop_15m_to_link_1': Point(-93.250971, 73.664114)}},
+        crs='epsg:4326'
+    )
 
     closest_links = spatial_tree.closest_links(stops, 30)
     assert_semantically_equal(closest_links.reset_index().groupby('index')['link_id'].apply(list).to_dict(),
@@ -307,10 +319,10 @@ def test_SpatialTree_closest_links_in_north_canada_doesnt_find_link_within_10_me
                    'modes': ['car']
                })
     spatial_tree = spatial.SpatialTree(n).modal_subtree(modes='car')
-    stops = GeoDataFrame({'geometry': {
-        'stop_15m_to_link_1': Point(-93.250971, 73.664114)
-    }})
-    stops.crs = {'init': 'epsg:4326'}
+    stops = GeoDataFrame(
+        {'geometry': {'stop_15m_to_link_1': Point(-93.250971, 73.664114)}},
+        crs='epsg:4326'
+    )
 
     closest_links = spatial_tree.closest_links(stops, 10)
     closest_links = closest_links.dropna()

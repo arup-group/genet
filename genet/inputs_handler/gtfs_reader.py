@@ -184,7 +184,7 @@ def gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, serv
     df = df.groupby(['service_id']).apply(generate_routes)
 
     g = nx.DiGraph(name='Schedule graph')
-    g.graph['crs'] = {'init': 'epsg:4326'}
+    g.graph['crs'] = 'epsg:4326'
     g.graph['route_to_service_map'] = df.set_index('route_id')['service_id'].T.to_dict()
     g.graph['service_to_route_map'] = df.groupby('service_id')['route_id'].apply(list).to_dict()
     g.graph['change_log'] = change_log.ChangeLog()

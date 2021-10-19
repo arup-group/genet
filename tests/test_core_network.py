@@ -10,12 +10,13 @@ import pandas as pd
 import geopandas as gpd
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
+from geopandas.testing import assert_geodataframe_equal
 from shapely.geometry import LineString, Polygon, Point
 
 from genet.core import Network
 from genet.inputs_handler import matsim_reader
 from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
-from genet.schedule_elements import Route, Service, Schedule
+from genet.schedule_elements import Route, Service, Schedule, Stop
 from genet.utils import plot, spatial
 from genet.inputs_handler import read
 from tests.fixtures import assert_semantically_equal, route, stop_epsg_27700, network_object_from_test_data, \
@@ -190,7 +191,7 @@ def test_reproject_delegates_reprojection_to_schedules_own_method(network1, rout
 
 def test_reproject_updates_graph_crs(network1):
     network1.reproject('epsg:4326')
-    assert network1.graph.graph['crs'] == {'init': 'epsg:4326'}
+    assert network1.graph.graph['crs'] == 'epsg:4326'
 
 
 def test_reprojecting_links_with_geometries():
@@ -1602,6 +1603,66 @@ def test_removing_multiple_links():
                        check_dtype=False)
 
 
+@pytest.fixture()
+def islands_network_in_line():
+    n = Network('epsg:4326')
+    n.add_nodes({
+        '1': {'x': 0, 'y': 0}, '2': {'x': 0, 'y': 0.5}, '3': {'x': 0, 'y': 1},
+        '4': {'x': 0, 'y': 2}, '5': {'x': 0, 'y': 2.5}, '6': {'x': 0, 'y': 3},
+        '7': {'x': 0, 'y': 4}, '8': {'x': 0, 'y': 4.5}, '9': {'x': 0, 'y': 5}
+    })
+    n.add_links({
+        '1_2': {'from': '1', 'to': '2', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '2_3': {'from': '2', 'to': '3', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '3_1': {'from': '3', 'to': '1', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '4_5': {'from': '4', 'to': '5', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '5_6': {'from': '5', 'to': '6', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '6_4': {'from': '6', 'to': '4', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '7_8': {'from': '7', 'to': '8', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '8_9': {'from': '8', 'to': '9', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+        '9_7': {'from': '9', 'to': '7', 'freespeed': 10, 'capacity': 5, 'modes': {'car'}},
+    })
+    return n
+
+@pytest.fixture()
+def islands_network_in_circle():
+    pass
+
+
+def test_connecting_components_mode_free_results_in_four_links_added(islands_network_in_line):
+    # because there are 3 components (2 x 2 directions links)
+    added_links = islands_network_in_line.connect_components()
+    assert len(added_links) == 4
+    assert islands_network_in_line.is_strongly_connected()
+
+
+def test_connecting_components_specifying_mode_results_in_four_links_added(islands_network_in_line):
+    # because there are 3 components (2 x 2 directions links)
+    added_links = islands_network_in_line.connect_components(modes=['car'])
+    assert len(added_links) == 4
+    assert islands_network_in_line.is_strongly_connected(modes='car')
+
+
+def test_connecting_components_of_connected_graph_raises_warning_without_changes(network1, caplog):
+    # add link to connect it up >_> ....
+    network1.add_link('1', '101986', '101982',
+                attribs={'id': '1',
+                         'from': '101986',
+                         'to': '101982',
+                         'freespeed': 4.166666666666667,
+                         'capacity': 600.0,
+                         'permlanes': 1.0,
+                         'oneway': '1',
+                         'modes': ['car'],
+                         's2_from': 5221390329378179879,
+                         's2_to': 5221390328605860387,
+                         'length': 52.765151087870265})
+    added_links = network1.connect_components()
+    assert added_links is None
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'has only one strongly connected component' in caplog.records[0].message
+
+
 def test_number_of_multi_edges_counts_multi_edges_on_single_edge():
     n = Network('epsg:27700')
     n.graph.add_edges_from([(1, 2), (2, 3), (3, 4)])
@@ -1855,6 +1916,39 @@ def test_read_matsim_network_with_duplicated_link_ids_records_reindexing_in_chan
     assert_frame_equal(network.change_log[cols_to_compare].tail(1), correct_change_log_df[cols_to_compare],
                        check_names=False,
                        check_dtype=False)
+
+
+def test_generating_pt_network_route_geodataframe():
+    n = Network('epsg:4326')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': '1', 'y': '1', 'lon': 1, 'lat': 1},
+        'n2': {'id': 'n2', 'x': '2', 'y': '2', 'lon': 2, 'lat': 2}
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2'}, 'l2': {'from': 'n2', 'to': 'n1'}})
+    n.schedule = Schedule(
+        n.epsg,
+        [Service(id='service',
+                 routes=[Route(route_short_name='route', mode='bus',
+                               stops=[Stop(id='0', x=1, y=1, epsg='epsg:4326'),
+                                      Stop(id='1', x=2, y=2, epsg='epsg:4326')],
+                               trips={'trip_id': ['trip-04:40:00'],
+                                      'trip_departure_time': ['04:40:00'],
+                                      'vehicle_id': ['veh_1_bus']},
+                               route=['l1', 'l2'],
+                               arrival_offsets=['00:00:00', '00:02:00', '00:04:00'],
+                               departure_offsets=['00:00:00', '00:02:00', '00:04:00'])])])
+
+    gdf = n.schedule_network_routes_geodataframe()
+    correct_gdf = gpd.GeoDataFrame(
+            {'service_id': {0: 'service'}, 'route_id': {0: 'service_0'}, 'mode': {0: 'bus'},
+             'route_short_name': {0: 'route'}, 'geometry': {0: LineString([(1,1), (2,2), (1,1)])}},
+        ).set_crs(n.epsg)
+    correct_gdf.columns.name = 0
+
+    assert_geodataframe_equal(
+        gdf.reindex(sorted(gdf.columns), axis=1),
+        correct_gdf.reindex(sorted(correct_gdf.columns), axis=1)
+    )
 
 
 def test_has_node_when_node_is_in_the_graph():

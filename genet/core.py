@@ -1,3 +1,4 @@
+import itertools
 import json
 import logging
 import os
@@ -8,6 +9,7 @@ from typing import Union, List, Dict
 
 import geopandas as gpd
 import networkx as nx
+import numpy as np
 import pandas as pd
 from pyproj import Transformer
 from s2sphere import CellId
@@ -22,6 +24,7 @@ import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.sanitiser as sanitiser
 import genet.schedule_elements as schedule_elements
 import genet.utils.dict_support as dict_support
+import genet.utils.pandas_helpers as pd_helpers
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
 import genet.utils.persistence as persistence
@@ -37,7 +40,7 @@ class Network:
     def __init__(self, epsg):
         self.epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
-        self.graph = nx.MultiDiGraph(name='Network graph', crs={'init': self.epsg}, simplified=False)
+        self.graph = nx.MultiDiGraph(name='Network graph', crs=self.epsg, simplified=False)
         self.schedule = schedule_elements.Schedule(epsg)
         self.change_log = change_log.ChangeLog()
         self.auxiliary_files = {'node': {}, 'link': {}}
@@ -145,8 +148,7 @@ class Network:
         self.apply_attributes_to_nodes(new_nodes_attribs)
 
         # reproject geometries
-        gdf_geometries = gpd.GeoDataFrame(self.link_attribute_data_under_keys(['geometry']))
-        gdf_geometries.crs = self.epsg
+        gdf_geometries = gpd.GeoDataFrame(self.link_attribute_data_under_keys(['geometry']), crs=self.epsg)
         gdf_geometries = gdf_geometries.to_crs(new_epsg)
         new_link_attribs = gdf_geometries.T.to_dict()
         self.apply_attributes_to_links(new_link_attribs)
@@ -154,7 +156,7 @@ class Network:
         if self.schedule:
             self.schedule.reproject(new_epsg, processes)
         self.initiate_crs_transformer(new_epsg)
-        self.graph.graph['crs'] = {'init': self.epsg}
+        self.graph.graph['crs'] = self.epsg
 
     def initiate_crs_transformer(self, epsg):
         self.epsg = epsg
@@ -190,7 +192,8 @@ class Network:
             e.g. {'attributes': {'osm:way:name': 'text'}}
         :return: pandas.Series
         """
-        return pd.Series(graph_operations.get_attribute_data_under_key(self.nodes(), key))
+        data = graph_operations.get_attribute_data_under_key(self.nodes(), key)
+        return pd.Series(data, dtype=pd_helpers.get_pandas_dtype(data))
 
     def node_attribute_data_under_keys(self, keys: Union[list, set], index_name=None):
         """
@@ -337,7 +340,7 @@ class Network:
         nodes = {self.link(link)['from'] for link in links} | {self.link(link)['to'] for link in links}
         return list(nodes)
 
-    def modal_subgraph(self, modes: Union[str, list, set]):
+    def modal_subgraph(self, modes: Union[str, set, list]):
         return self.subgraph_on_link_conditions(conditions={'modes': modes}, mixed_dtypes=True)
 
     def nodes_on_spatial_condition(self, region_input):
@@ -509,7 +512,7 @@ class Network:
         if ('to' not in df_edges.columns) or (df_edges['to'].isnull().any()):
             raise RuntimeError('You are trying to add edges which are missing `to` (destination) nodes')
 
-        df_edges['id'] = self.generate_indices_for_n_edges(len(df_edges))
+        df_edges['id'] = list(self.generate_indices_for_n_edges(len(df_edges)))
         df_edges = df_edges.set_index('id', drop=False)
 
         return self.add_links(df_edges.T.to_dict(), silent=silent, ignore_change_log=ignore_change_log)
@@ -623,7 +626,7 @@ class Network:
         # end with updated links_and_attributes dict
         add_to_link_id_mapping = df_links[['from', 'to', 'multi_edge_idx']].T.to_dict()
         df_links = df_links.drop('multi_edge_idx', axis=1)
-        links_and_attributes = {_id: {k: v for k, v in m.items() if dict_support.notna(v)} for _id, m in
+        links_and_attributes = {_id: {k: v for k, v in m.items() if pd_helpers.notna(v)} for _id, m in
                                 df_links.T.to_dict().items()}
 
         # update link_id_mapping
@@ -997,6 +1000,7 @@ class Network:
         :param silent: whether to mute stdout logging messages
         :return:
         """
+        links = list(links)
         if not ignore_change_log:
             self.change_log = self.change_log.remove_bunch(
                 object_type='link', id_bunch=links, attributes_bunch=[self.link(link_id) for link_id in links])
@@ -1006,6 +1010,91 @@ class Network:
         self.update_link_auxiliary_files(dict(zip(links, [None] * len(links))))
         if not silent:
             logging.info(f'Removed {len(links)} links')
+
+    def is_strongly_connected(self, modes: Union[list, str, set] = None):
+        if modes is None:
+            g = self.graph
+        else:
+            g = self.modal_subgraph(modes)
+
+        components = network_validation.find_connected_subgraphs(g)
+
+        if len(components) == 1:
+            return True
+        else:
+            return False
+
+    def connect_components(self, modes: Union[list, str, set] = None, weight: float = 1.0):
+        """
+        Connect disconnected subgraphs in the Network graph. Use modes variable to consider a modal subgraph.
+        For a strongly connected MATSim network use only a single (routable) mode at a time.
+        :param modes: str, list or set or network modes to use for computing strongly connected subgraphs
+        :param weight: weight to apply to `frespeed` and `capacity` for scaling, defaults to 1.
+        :return: None, or links and their details if they were added to the Network.
+        """
+        if modes is None:
+            g = self.graph
+        else:
+            g = self.modal_subgraph(modes)
+            if isinstance(modes, str):
+                modes = {modes}
+            else:
+                modes = set(modes)
+        components = network_validation.find_connected_subgraphs(g)
+
+        if len(components) == 1:
+            logging.warning('This Graph has only one strongly connected component. No links will be added.')
+        else:
+            gdfs = self.to_geodataframe()
+            gdf = gdfs['nodes'].to_crs('epsg:4326')
+            components_gdfs = [gdf[gdf['id'].isin(component_nodes)] for component_nodes, len in components]
+
+            closest_nodes = [
+                spatial.nearest_neighbor(components_gdfs[i], components_gdfs[j], return_dist=True) for i, j in
+                itertools.combinations(range(len(components_gdfs)), 2)
+            ]
+            closest_nodes_idx = [df['distance'].idxmin() for df in closest_nodes]
+            closest_nodes = [(idx, df.loc[idx, 'id'], df.loc[idx, 'distance']) for idx, df in
+                             zip(closest_nodes_idx, closest_nodes)]
+
+            # TODO instead of deleting the last largest distance connection, check that it isnt too far off the others
+            # some graphs may not be arranged in line or they could overlap
+            closest_nodes = sorted(closest_nodes, key=lambda tup: tup[2])[:-1]
+
+            # add links
+            gdf_links = gdfs['links']
+            links_to_add = []
+            for u, v, dist in closest_nodes:
+                links_df = gdf_links.loc[
+                    (gdf_links['from'].isin({u, v}) | gdf_links['to'].isin({u, v})),
+                    set(gdf_links.columns) & {'freespeed', 'capacity', 'modes'}
+                ]
+                links_data = links_df.mean()
+                links_data = links_data * weight
+                if modes is None:
+                    links_data['modes'] = set().union(*links_df['modes'].tolist())
+                else:
+                    links_data['modes'] = modes
+                links_data['permlanes'] = 1
+                links_data['length'] = dist
+                links_data['from'] = u
+                links_data['to'] = v
+
+                print(links_data)
+                links_to_add.append(links_data.to_dict())
+
+                links_data['from'] = v
+                links_data['to'] = u
+
+                print(links_data)
+                links_to_add.append(links_data.to_dict())
+
+            if links_to_add:
+                links_to_add = dict(zip(self.generate_indices_for_n_edges(len(links_to_add)), links_to_add))
+                self.add_links(links_to_add)
+                return links_to_add
+            else:
+                logging.warning('No links are being added')
 
     def number_of_multi_edges(self, u, v):
         """
@@ -1463,6 +1552,37 @@ class Network:
             if _route.route:
                 routes.append(_route.route)
         return routes
+
+    def schedule_network_routes_geodataframe(self):
+        if not self.schedule:
+            logging.warning('Schedule in this Network is empty')
+            return gpd.GeoDataFrame().set_crs(self.epsg)
+
+        def combine_geometry(group):
+            group = group.sort_values(by='route_sequence')
+            geom = spatial.merge_linestrings(list(group['geometry']))
+            group = group.iloc[0, :][{'route_id', 'route_short_name', 'mode', 'service_id'}]
+            group['geometry'] = geom
+            return group
+
+        gdf_links = self.to_geodataframe()['links']
+        routes = self.schedule.route_attribute_data(keys=['id', 'route_short_name', 'mode', 'route'])
+        routes = routes.rename(columns={'id': 'route_id'})
+        routes['route_sequence'] = routes['route'].apply(lambda x: list(range(len(x))))
+
+        # expand on network route link sequence
+        routes = pd.DataFrame({
+            col: np.repeat(routes[col].values, routes['route'].str.len())
+            for col in {'route_id', 'route_short_name', 'mode'}}
+        ).assign(route=np.concatenate(routes['route'].values),
+                 route_sequence=np.concatenate(routes['route_sequence'].values))
+        routes['service_id'] = routes['route_id'].apply(
+            lambda x: self.schedule.graph().graph['route_to_service_map'][x])
+
+        # get geometry for link IDs
+        routes = pd.merge(routes, gdf_links[['id', 'geometry']], left_on='route', right_on='id')
+        routes = routes.groupby('route_id').apply(combine_geometry).reset_index(drop=True)
+        return gpd.GeoDataFrame(routes).set_crs(self.epsg)
 
     def node_id_exists(self, node_id):
         if node_id in [i for i, attribs in self.nodes()]:

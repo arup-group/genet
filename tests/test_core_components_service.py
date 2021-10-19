@@ -123,7 +123,7 @@ def test_initiating_service(service):
                                    'service': {'id': 'service', 'name': 'name'}},
                                'route_to_service_map': {'1': 'service', '2': 'service'},
                                'service_to_route_map': {'service': ['1', '2']},
-                               'crs': {'init': 'epsg:27700'}})
+                               'crs': 'epsg:27700'})
 
 
 def test__repr__shows_route_length(service):

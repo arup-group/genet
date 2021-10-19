@@ -99,7 +99,7 @@ def schedule_graph():
                   'service1': {'id': 'service1', 'name': 'route1'}},
         route_to_service_map={'1': 'service1', '2': 'service1', '3': 'service2', '4': 'service2'},
         service_to_route_map={'service1': ['1', '2'], 'service2': ['3', '4']},
-        crs={'init': 'epsg:27700'}
+        crs='epsg:27700'
     )
     nodes = {'4': {'services': ['service2'], 'routes': ['3', '4'], 'id': '4', 'x': 529350.7866124967,
                    'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,

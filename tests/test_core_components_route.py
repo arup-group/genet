@@ -79,7 +79,7 @@ def test_initiating_route(route):
               'arrival_offsets': ['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
               'departure_offsets': ['00:00:00', '00:05:00', '00:09:00', '00:15:00'], 'route_long_name': '', 'id': '1',
               'route': ['1', '2', '3', '4'], 'await_departure': [], 'ordered_stops': ['1', '2', '3', '4']}},
-                                               'services': {}, 'crs': {'init': 'epsg:27700'}})
+                                               'services': {}, 'crs': 'epsg:27700'})
 
 
 def test__repr__shows_stops_and_trips_length(route):

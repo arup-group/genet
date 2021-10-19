@@ -31,7 +31,7 @@ def generate_geodataframes(graph):
         return LineString(
             [(float(from_node['x']), float(from_node['y'])), (float(to_node['x']), float(to_node['y']))])
 
-    crs = graph.graph['crs']['init']
+    crs = graph.graph['crs']
 
     node_ids, data = zip(*graph.nodes(data=True))
     geometry = [Point(float(d['x']), float(d['y'])) for d in data]
@@ -157,7 +157,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
 
 def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_files=False):
     logging.info(f'Generating geojson outputs for the entire network in {output_dir}')
-    n.write_to_geojson(output_dir)
+    n.write_to_geojson(output_dir, epsg='epsg:4326')
 
     graph_links = n.to_geodataframe()['links'].to_crs("epsg:4326")
 
@@ -204,5 +204,13 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
             n.schedule,
             output_dir=os.path.join(output_dir, 'schedule'),
             gtfs_day=gtfs_day,
+            include_shp_files=include_shp_files
+        )
+
+        logging.info('Generating PT network routes')
+        save_geodataframe(
+            n.schedule_network_routes_geodataframe().to_crs('epsg:4326'),
+            filename='schedule_network_routes_geodataframe',
+            output_dir=os.path.join(output_dir, 'routing'),
             include_shp_files=include_shp_files
         )
