@@ -259,7 +259,7 @@ class MaxStableSet:
             # Solution parse
             # --------------------------------------------------------
 
-            selected = [str(v).strip('x[]') for v in model.component_data_objects(Var) if  # noqa: F405
+            selected = [str(v).strip("x[\\']") for v in model.component_data_objects(Var) if  # noqa: F405
                         float(v.value) == 1.0]
             # solution maps Stop IDs to Link IDs
             self.solution = {self.problem_graph.nodes[node]['id']: self.problem_graph.nodes[node]['link_id'] for
