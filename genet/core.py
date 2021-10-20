@@ -99,6 +99,9 @@ class Network:
         :param output_dir: output directory for the image, if passed, will save plot to html
         :return:
         """
+        if not self.schedule:
+            logging.warning('This Netowrk does not have a PT schedule. Only the graph will be visualised.')
+            return self.plot_graph(output_dir=output_dir)
         network_links = self.to_geodataframe()['links']
         schedule_routes = self.schedule_network_routes_geodataframe()
         m = plot.plot_geodataframes_on_kepler_map(
@@ -107,36 +110,46 @@ class Network:
             kepler_config='network_with_pt'
         )
         if output_dir:
-            m.save_to_html(output_dir)
+            persistence.ensure_dir(output_dir)
+            m.save_to_html(file_name=os.path.join(output_dir, 'network_with_pt_routes.html'))
         return m
 
-    def plot_graph(self, show=True, save=False, output_dir=''):
+    def plot_graph(self, output_dir=''):
         """
-        Plots the network graph only
-        :param show: whether to display the plot
-        :param save: whether to save the plot
-        :param output_dir: output directory for the image
+        Plots the network graph only on kepler map.
+        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
+        :param output_dir: output directory for the image, if passed, will save plot to html
         :return:
         """
-        return plot.plot_graph(self.graph, 'network_graph', show=show, save=save, output_dir=output_dir)
-
-    def plot_schedule(self, show=True, save=False, output_dir=''):
-        """
-        Plots original stop connections in the network's schedule over the network graph
-        :param show: whether to display the plot
-        :param save: whether to save the plot
-        :param output_dir: output directory for the image
-        :return:
-        """
-        fig, ax = self.plot_graph(show=False)
-        return plot.plot_non_routed_schedule_graph(
-            nx.MultiDiGraph(self.schedule.graph()),
-            'network_schedule.png',
-            ax=ax,
-            show=show,
-            save=save,
-            output_dir=output_dir
+        network_links = self.to_geodataframe()['links']
+        m = plot.plot_geodataframes_on_kepler_map(
+            {'network_links': sanitiser.sanitise_geodataframe(network_links)},
+            kepler_config='network_with_pt'
         )
+        if output_dir:
+            persistence.ensure_dir(output_dir)
+            m.save_to_html(file_name=os.path.join(output_dir, 'network_graph.html'))
+        return m
+
+    def plot_schedule(self, output_dir=''):
+        """
+        Plots original stop connections in the network's schedule over the network graph on kepler map.
+        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
+        :param output_dir: output directory for the image, if passed, will save plot to html
+        :return:
+        """
+        network_links = self.to_geodataframe()['links']
+        schedule_gdf = self.schedule.to_geodataframe()
+        m = plot.plot_geodataframes_on_kepler_map(
+            {'network_links': sanitiser.sanitise_geodataframe(network_links),
+             'schedule_links': sanitiser.sanitise_geodataframe(schedule_gdf['links']),
+             'schedule_stops': sanitiser.sanitise_geodataframe(schedule_gdf['nodes'])},
+        kepler_config='network_and_schedule'
+        )
+        if output_dir:
+            persistence.ensure_dir(output_dir)
+            m.save_to_html(file_name=os.path.join(output_dir, 'network_and_schedule.html'))
+        return m
 
     def reproject(self, new_epsg, processes=1):
         """

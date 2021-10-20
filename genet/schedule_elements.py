@@ -20,6 +20,7 @@ import genet.utils.plot as plot
 import genet.utils.spatial as spatial
 import genet.utils.dict_support as dict_support
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
+import genet.outputs_handler.sanitiser as sanitiser
 import genet.utils.persistence as persistence
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
@@ -186,6 +187,22 @@ class ScheduleElement:
                 else:
                     return epsg
         return None
+
+    def to_geodataframe(self):
+        """
+        Generates GeoDataFrames of the Schedule graph in Schedule's crs
+        :return: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and edges
+        """
+        return gngeojson.generate_geodataframes(self.graph())
+
+    def kepler_map(self):
+        gdf = self.to_geodataframe()
+        return plot.plot_geodataframes_on_kepler_map(
+            {'schedule_links': sanitiser.sanitise_geodataframe(gdf['links']),
+             'schedule_stops': sanitiser.sanitise_geodataframe(gdf['nodes'])
+             },
+            kepler_config='schedule'
+        )
 
 
 class Stop:
@@ -494,16 +511,18 @@ class Route(ScheduleElement):
             self.__class__.__name__, self.id, self.route_short_name, len(self.ordered_stops),
             len(self.trips['trip_id']))
 
-    def plot(self, show=True, save=False, output_dir=''):
-        if self.ordered_stops:
-            return plot.plot_graph(
-                nx.MultiGraph(self.graph()),
-                filename='route_{}_graph'.format(self.id),
-                show=show,
-                save=save,
-                output_dir=output_dir,
-                e_c='#EC7063'
-            )
+    def plot(self, output_dir=''):
+        """
+        Plots the route on kepler map.
+        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
+        :param output_dir: output directory for the image, if passed, will save plot to html
+        :return:
+        """
+        m = self.kepler_map()
+        if output_dir:
+            persistence.ensure_dir(output_dir)
+            m.save_to_html(file_name=os.path.join(output_dir, f'route_{self.id}_map.html'))
+        return m
 
     def stops(self):
         """
@@ -925,16 +944,18 @@ class Service(ScheduleElement):
         return '{} ID: {}\nName: {}\nNumber of routes: {}\nNumber of stops: {}'.format(
             self.__class__.__name__, self.id, self.name, len(self), len(self.reference_nodes()))
 
-    def plot(self, show=True, save=False, output_dir=''):
-        if self.reference_nodes():
-            return plot.plot_graph(
-                nx.MultiGraph(self.graph()),
-                filename='service_{}_graph'.format(self.id),
-                show=show,
-                save=save,
-                output_dir=output_dir,
-                e_c='#EC7063'
-            )
+    def plot(self, output_dir=''):
+        """
+        Plots the service on kepler map.
+        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
+        :param output_dir: output directory for the image, if passed, will save plot to html
+        :return:
+        """
+        m = self.kepler_map()
+        if output_dir:
+            persistence.ensure_dir(output_dir)
+            m.save_to_html(file_name=os.path.join(output_dir, f'service_{self.id}_map.html'))
+        return m
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
@@ -1380,15 +1401,18 @@ class Schedule(ScheduleElement):
     def find_epsg(self):
         return self.init_epsg
 
-    def plot(self, show=True, save=False, output_dir=''):
-        return plot.plot_graph(
-            nx.MultiGraph(self.graph()),
-            filename='schedule_graph',
-            show=show,
-            save=save,
-            output_dir=output_dir,
-            e_c='#EC7063'
-        )
+    def plot(self, output_dir=''):
+        """
+        Plots the schedule on kepler map.
+        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
+        :param output_dir: output directory for the image, if passed, will save plot to html
+        :return:
+        """
+        m = self.kepler_map()
+        if output_dir:
+            persistence.ensure_dir(output_dir)
+            m.save_to_html(file_name=os.path.join(output_dir, 'schedule_map.html'))
+        return m
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
@@ -2189,13 +2213,6 @@ class Schedule(ScheduleElement):
 
     def write_extras(self, output_dir):
         self.change_log().export(os.path.join(output_dir, 'schedule_change_log.csv'))
-
-    def to_geodataframe(self):
-        """
-        Generates GeoDataFrames of the Schedule graph in Schedule's crs
-        :return: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and edges
-        """
-        return gngeojson.generate_geodataframes(self._graph)
 
     def to_json(self):
         stop_keys = {d.name for d in graph_operations.get_attribute_schema(self._graph.nodes(data=True)).children}
