@@ -144,7 +144,7 @@ class Network:
             {'network_links': sanitiser.sanitise_geodataframe(network_links),
              'schedule_links': sanitiser.sanitise_geodataframe(schedule_gdf['links']),
              'schedule_stops': sanitiser.sanitise_geodataframe(schedule_gdf['nodes'])},
-        kepler_config='network_and_schedule'
+            kepler_config='network_and_schedule'
         )
         if output_dir:
             persistence.ensure_dir(output_dir)

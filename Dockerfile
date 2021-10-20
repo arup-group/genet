@@ -6,8 +6,7 @@ apt-get -y install gcc git libspatialindex-dev curl &&  \
 rm -rf /var/lib/apt/lists/*
 
 RUN curl -sL https://deb.nodesource.com/setup_17.x | bash -
-RUN apt-get -y install nodejs
-RUN node --version && npm --version
+RUN apt-get -y install nodejs && node --version && npm --version
 RUN /usr/local/bin/python -m pip install --upgrade pip
 
 COPY ./scripts .

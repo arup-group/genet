@@ -267,18 +267,18 @@ KEPLER_CONFIGS['network_with_pt'] = deepcopy(KEPLER_CONFIGS['base_config'])
 KEPLER_CONFIGS['network_with_pt']['config']['visState']['layers'] = [LAYERS['network_links']['layer'],
                                                                      LAYERS['schedule_routes']['layer']]
 KEPLER_CONFIGS['network_with_pt']['config']['visState']['interactionConfig']['tooltip']['fieldsToShow'] = {
-**LAYERS['network_links']['fieldsToShow'], **LAYERS['schedule_routes']['fieldsToShow']}
+    **LAYERS['network_links']['fieldsToShow'], **LAYERS['schedule_routes']['fieldsToShow']}
 
 KEPLER_CONFIGS['schedule'] = deepcopy(KEPLER_CONFIGS['base_config'])
 KEPLER_CONFIGS['schedule']['config']['visState']['layers'] = [LAYERS['schedule_links']['layer'],
                                                               LAYERS['schedule_stops']['layer']]
 KEPLER_CONFIGS['schedule']['config']['visState']['interactionConfig']['tooltip']['fieldsToShow'] = {
-**LAYERS['schedule_links']['fieldsToShow'], **LAYERS['schedule_stops']['fieldsToShow']}
+    **LAYERS['schedule_links']['fieldsToShow'], **LAYERS['schedule_stops']['fieldsToShow']}
 
 KEPLER_CONFIGS['network_and_schedule'] = deepcopy(KEPLER_CONFIGS['base_config'])
 KEPLER_CONFIGS['network_and_schedule']['config']['visState']['layers'] = [LAYERS['network_links']['layer'],
                                                                           LAYERS['schedule_links']['layer'],
                                                                           LAYERS['schedule_stops']['layer']]
 KEPLER_CONFIGS['network_and_schedule']['config']['visState']['interactionConfig']['tooltip']['fieldsToShow'] = {
-**LAYERS['network_links']['fieldsToShow'], **LAYERS['schedule_links']['fieldsToShow'],
-**LAYERS['schedule_stops']['fieldsToShow']}
+    **LAYERS['network_links']['fieldsToShow'], **LAYERS['schedule_links']['fieldsToShow'],
+    **LAYERS['schedule_stops']['fieldsToShow']}
