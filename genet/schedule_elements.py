@@ -1091,7 +1091,12 @@ class Schedule(ScheduleElement):
         Defaults to reading `genet/configs/vehicles/vehicle_definitions.yml`
     """
 
-    def __init__(self, epsg: str = '', services: List[Service] = None, _graph: nx.DiGraph = None, vehicles=None,
+    def __init__(self,
+                 epsg: str = '',
+                 services: List[Service] = None,
+                 _graph: nx.DiGraph = None,
+                 minimal_transfer_times = None,
+                 vehicles=None,
                  vehicle_types: Union[str, dict] = pkgutil.get_data(__name__, os.path.join("configs", "vehicles",
                                                                                            "vehicle_definitions.yml"))):
         if isinstance(vehicle_types, dict):
@@ -1138,7 +1143,10 @@ class Schedule(ScheduleElement):
             self._graph = self._build_graph(services)
         self.init_epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
-        self.minimal_transfer_times = {}
+        if minimal_transfer_times is not None:
+            self.minimal_transfer_times = minimal_transfer_times
+        else:
+            self.minimal_transfer_times = {}
         if vehicles is None:
             self.vehicles = {}
             self.generate_vehicles()
