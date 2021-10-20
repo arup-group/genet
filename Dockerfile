@@ -5,8 +5,6 @@ RUN apt-get update &&  apt-get upgrade -y &&  apt-get install -y git
 RUN apt-get install -y libspatialindex-dev
 RUN /usr/local/bin/python -m pip install --upgrade pip
 
-RUN apt-get clean
-RUN apt-get update; apt-get install curl -y
 RUN curl -sL https://deb.nodesource.com/setup_17.x | bash -
 RUN apt-get install -y nodejs
 RUN node --version
