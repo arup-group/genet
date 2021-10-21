@@ -1,15 +1,13 @@
 FROM python:3.7-slim-stretch
 
-RUN apt-get update &&  apt-get -y install gcc mono-mcs &&  rm -rf /var/lib/apt/lists/*
-RUN apt-get update &&  apt-get upgrade -y &&  apt-get install -y git
-RUN apt-get install -y libspatialindex-dev
-RUN /usr/local/bin/python -m pip install --upgrade pip
+RUN apt-get update && \
+apt-get upgrade -y && \
+apt-get -y install gcc git libspatialindex-dev curl &&  \
+rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update; apt-get install curl -y
 RUN curl -sL https://deb.nodesource.com/setup_17.x | bash -
-RUN apt-get install -y nodejs
-RUN node --version
-RUN npm --version
+RUN apt-get -y install nodejs && node --version && npm --version
+RUN /usr/local/bin/python -m pip install --upgrade pip
 
 COPY ./scripts .
 COPY . .
