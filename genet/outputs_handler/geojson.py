@@ -1,12 +1,14 @@
-import os
 import logging
+import os
 from itertools import chain
-from shapely.geometry import Point, LineString
+
 import geopandas as gpd
+from pandas.api.types import is_datetime64_any_dtype as is_datetime
+from shapely.geometry import Point, LineString
+
+import genet.outputs_handler.sanitiser as sanitiser
 import genet.use.schedule as use_schedule
 import genet.utils.persistence as persistence
-import genet.outputs_handler.sanitiser as sanitiser
-from pandas.api.types import is_datetime64_any_dtype as is_datetime
 
 
 def modal_subset(row, modes):
@@ -163,7 +165,7 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
 
     logging.info('Generating geojson outputs for car/driving modal subgraph')
     graph_output_dir = os.path.join(output_dir, 'graph')
-    gdf_car = graph_links.loc[graph_links.apply(lambda x: modal_subset(x, {'car'}), axis=1), :]
+    gdf_car = graph_links.loc[graph_links.apply(lambda x: modal_subset(x, {'car'}), axis=1), :]  # noqa: E231
     for attribute in ['freespeed', 'capacity', 'permlanes']:
         try:
             save_geodataframe(
