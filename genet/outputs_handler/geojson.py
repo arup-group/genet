@@ -163,7 +163,7 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
 
     logging.info('Generating geojson outputs for car/driving modal subgraph')
     graph_output_dir = os.path.join(output_dir, 'graph')
-    gdf_car = graph_links[graph_links.apply(lambda x: modal_subset(x, {'car'}), axis=1)]
+    gdf_car = graph_links.loc[graph_links.apply(lambda x: modal_subset(x, {'car'}), axis=1), :]
     for attribute in ['freespeed', 'capacity', 'permlanes']:
         try:
             save_geodataframe(

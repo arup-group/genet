@@ -55,7 +55,7 @@ class MaxStableSet:
         while (set(nodes.index) != stops) and (distance < self.distance_threshold):
             distance += self.step_size
             _df = self.cast_catchment(
-                df_stops=self.stops[self.stops['id'].isin(stops - set(nodes.index))][['id', 'geometry']].copy(),
+                df_stops=self.stops.loc[self.stops['id'].isin(stops - set(nodes.index)), ['id', 'geometry']].copy(),
                 distance=distance)
             _df['catchment'] = distance
             nodes = nodes.append(_df)
@@ -285,7 +285,7 @@ class MaxStableSet:
         self.pt_edges['linkRefId_u'] = self.pt_edges['u'].map(self.solution)
         self.pt_edges['linkRefId_v'] = self.pt_edges['v'].map(self.solution)
         pt_edges = self.network_spatial_tree.shortest_paths(
-            df_pt_edges=self.pt_edges[['linkRefId_u', 'linkRefId_v']].dropna(),
+            df_pt_edges=self.pt_edges.loc[self.pt_edges.notna().all(axis=1), ('linkRefId_u', 'linkRefId_v')],
             from_col='linkRefId_u',
             to_col='linkRefId_v',
             weight='length'
@@ -401,15 +401,15 @@ class ChangeSet:
         # update stops and generate routed paths
         df_route_data.loc[:, 'route'] = df_route_data.loc[:, 'ordered_stops'].apply(
             lambda x: max_stable_set.routed_path(x))
-        map = max_stable_set.stops_to_artificial_stops_map()
+        _map = max_stable_set.stops_to_artificial_stops_map()
         df_route_data.loc[:, 'ordered_stops'] = df_route_data.loc[:, 'ordered_stops'].map(
-            lambda x: [map[stop] for stop in x])
+            lambda x: [_map[stop] for stop in x])
         return df_route_data
 
     def generate_additional_links_modes(self, max_stable_set):
         link_ids = {link_id for route_list in self.df_route_data['route'].values for link_id in route_list}
         links = max_stable_set.network_spatial_tree.links.copy()
-        links = links[links['link_id'].isin(link_ids)][['link_id', 'modes']]
+        links = links.loc[links['link_id'].isin(link_ids), ['link_id', 'modes']]
         links['modes'] = links['modes'].apply(lambda x: x.__class__(set(x) | max_stable_set.service_modes))
         return links.set_index('link_id').T.to_dict()
 

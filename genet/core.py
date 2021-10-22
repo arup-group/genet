@@ -1218,7 +1218,7 @@ class Network:
             service_modes['service_id'] = service_modes['route_id'].map(
                 self.schedule.graph().graph['route_to_service_map'])
             if services is not None:
-                service_modes = service_modes[service_modes['service_id'].isin(services)]
+                service_modes = service_modes.loc[service_modes['service_id'].isin(services), :]
             service_modes = service_modes.groupby('service_id')['mode'].apply(set).apply(list).reset_index()
             service_modes['mode'] = service_modes['mode'].apply(lambda x: tuple(sorted(x)))
             service_modes = service_modes.groupby('mode')['service_id'].apply(set).T.to_dict()
@@ -1231,7 +1231,7 @@ class Network:
                     buffed_modes |= additional_modes[m]
 
                 try:
-                    logging.info(f'Extracting Modal SubTree for modes: `{modes}`')
+                    logging.info(f'Extracting Modal SubTree for modes: {modes}')
                     sub_tree = spatial_tree.modal_subtree(buffed_modes)
                 except exceptions.EmptySpatialTree:
                     sub_tree = None
@@ -1263,9 +1263,9 @@ class Network:
                                     distance_threshold=distance_threshold,
                                     step_size=step_size)
                                 if changeset is None:
-                                    changeset = mss.to_changeset(route_data[route_data.index.isin(route_group)])
+                                    changeset = mss.to_changeset(route_data.loc[route_group, :])
                                 else:
-                                    changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
+                                    changeset += mss.to_changeset(route_data.loc[route_group, :])
                             except Exception as e:  # noqa: F841
                                 logging.error(f'\nRouting Service: `{service_id}` resulted in the following Exception:'
                                               f'\n{traceback.format_exc()}')
@@ -1345,9 +1345,9 @@ class Network:
                     distance_threshold=distance_threshold,
                     step_size=step_size)
                 if changeset is None:
-                    changeset = mss.to_changeset(route_data[route_data.index.isin(route_group)])
+                    changeset = mss.to_changeset(route_data.loc[route_group, :])
                 else:
-                    changeset += mss.to_changeset(route_data[route_data.index.isin(route_group)])
+                    changeset += mss.to_changeset(route_data.loc[route_group, :])
             self._apply_max_stable_changes(changeset)
         except exceptions.EmptySpatialTree:
             logging.warning(f'Service {service.id} cannot be snapped to the Network with modes = {modes}. The '
