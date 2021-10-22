@@ -272,9 +272,7 @@ def read_schedule(schedule_path, epsg):
                     attribs = elem.attrib
                     minimalTransferTimes = dict_support.merge_complex_dictionaries(
                         minimalTransferTimes,
-                        {attribs['fromStop']: {
-                            attribs['toStop']: float(attribs['transferTime'])}
-                        }
+                        {attribs['fromStop']: {attribs['toStop']: float(attribs['transferTime'])}}
                     )
             if elem.tag == 'transitLine':
                 if transitLine:

@@ -1099,7 +1099,7 @@ class Schedule(ScheduleElement):
                  epsg: str = '',
                  services: List[Service] = None,
                  _graph: nx.DiGraph = None,
-                 minimal_transfer_times = None,
+                 minimal_transfer_times: Dict[str, Dict[str, float]] = None,
                  vehicles=None,
                  vehicle_types: Union[str, dict] = pkgutil.get_data(__name__, os.path.join("configs", "vehicles",
                                                                                            "vehicle_definitions.yml"))):
