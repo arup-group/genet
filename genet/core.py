@@ -1406,7 +1406,7 @@ class Network:
         reference_links = {}
         stop_linkrefids = {}
         for stop, data in g.nodes(data=True):
-            if 'linkRefId' not in data:
+            if ('linkRefId' not in data) or (not self.has_link(data['linkRefId'])):
                 nodes[stop] = {k: v for k, v in data.items() if k not in {'services', 'routes', 'epsg'}}
 
                 link_id = f'artificial_link===from:{stop}===to:{stop}'
