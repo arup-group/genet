@@ -1,32 +1,34 @@
-from abc import abstractmethod
-from typing import Union, Dict, List, Set, Tuple
-from pyproj import Transformer, Geod
-import networkx as nx
-import numpy as np
+import io
+import itertools
+import json
 import logging
 import os
-import io
-import yaml
 import pkgutil
-import json
-from datetime import datetime
-from pandas import DataFrame, Series
-from copy import deepcopy
+from abc import abstractmethod
 from collections import defaultdict
-import itertools
+from copy import deepcopy
+from datetime import datetime
+from typing import Union, Dict, List, Set, Tuple
+
 import dictdiffer
+import networkx as nx
+import numpy as np
+import yaml
+from pandas import DataFrame, Series
+from pyproj import Transformer, Geod
 from s2sphere import CellId
-import genet.utils.plot as plot
-import genet.utils.spatial as spatial
-import genet.utils.dict_support as dict_support
-import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
+
+import genet.modify.change_log as change_log
+import genet.modify.schedule as mod_schedule
 import genet.outputs_handler.geojson as gngeojson
-import genet.utils.persistence as persistence
+import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
+import genet.use.schedule as use_schedule
+import genet.utils.dict_support as dict_support
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
-import genet.modify.schedule as mod_schedule
-import genet.modify.change_log as change_log
-import genet.use.schedule as use_schedule
+import genet.utils.persistence as persistence
+import genet.utils.plot as plot
+import genet.utils.spatial as spatial
 import genet.validate.schedule_validation as schedule_validation
 from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisationError, ServiceInitialisationError, \
     UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData, \
@@ -1073,6 +1075,8 @@ class Schedule(ScheduleElement):
     :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     :param services: list of Service class objects
     :param _graph: Schedule graph, used for re-instantiating the object, passed without `services`
+    :param minimal_transfer_times: {'stop_id_1': {'stop_id_2': 0.0}} seconds_to_transfer between stop_id_1 and
+        stop_id_2
     :param vehicles: dictionary of vehicle IDs from Route objects, mapping them to vehicle types in vehicle_types.
         Looks like this: {veh_id : {'type': 'bus'}}
         Defaults to None and generates itself from the vehicles IDs in Routes, maps to the mode of the Route.
@@ -1393,7 +1397,8 @@ class Schedule(ScheduleElement):
                                 **other._graph.graph['route_to_service_map']}
         service_to_route_map = {**self._graph.graph['service_to_route_map'],
                                 **other._graph.graph['service_to_route_map']}
-        self.minimal_transfer_times = {**other.minimal_transfer_times, **self.minimal_transfer_times}
+        self.minimal_transfer_times = dict_support.merge_complex_dictionaries(
+            other.minimal_transfer_times, self.minimal_transfer_times)
         # todo assuming separate schedules, with non conflicting ids, nodes and edges
         self._graph.update(other._graph)
         self._graph.graph['route_to_service_map'] = route_to_service_map
@@ -2216,9 +2221,15 @@ class Schedule(ScheduleElement):
         services_affected = stop_data.pop('services')
         self._graph.remove_node(stop_id)
         # remove from minimal transfer times if relevant
-        self.minimal_transfer_times = {(from_s, to_s): time for (from_s, to_s), time in
-                                       self.minimal_transfer_times.items() if
-                                       (stop_id != from_s and stop_id != to_s)}
+        try:
+            del self.minimal_transfer_times[stop_id]
+        except KeyError:
+            pass
+        for val in self.minimal_transfer_times.values():
+            try:
+                del val[stop_id]
+            except KeyError:
+                pass
         self._graph.graph['change_log'].remove(object_type='stop', object_id=stop_id, object_attributes=stop_data)
         logging.info(f'Removed Stop with index `{stop_id}`, data={stop_data}. '
                      f'Routes affected: {routes_affected}. Services affected: {services_affected}.')

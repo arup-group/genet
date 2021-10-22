@@ -948,16 +948,15 @@ def test_removing_stop(schedule):
 
 def test_removing_stop_updates_minimal_tranfer_times(schedule):
     schedule.minimal_transfer_times = {
-        ('5', '2'): 0.0,
-        ('2', '5'): 0.0,
-        ('3', '2'): 0.0,
-        ('2', '3'): 0.0
+        '5': {'2': 0.0},
+        '2': {'5': 0.0, '3': 0.0},
+        '3': {'2': 0.0},
     }
     schedule.remove_stop('5')
     assert_semantically_equal(schedule.minimal_transfer_times,
                               {
-                                  ('3', '2'): 0.0,
-                                  ('2', '3'): 0.0
+                                  '2': {'3': 0.0},
+                                  '3': {'2': 0.0},
                               })
 
 
@@ -969,20 +968,18 @@ def test_removing_unused_stops(schedule):
 
 def test_unused_stops_featured_in_minimal_transfer_times_are_kept(schedule):
     schedule.minimal_transfer_times = {
-        ('5', '2'): 0.0,
-        ('2', '5'): 0.0,
-        ('3', '2'): 0.0,
-        ('2', '3'): 0.0
+        '5': {'2': 0.0},
+        '2': {'5': 0.0, '3': 0.0},
+        '3': {'2': 0.0},
     }
     schedule.remove_route('1')
     schedule.remove_unsused_stops()
     assert {stop.id for stop in schedule.stops()} == {'5', '2', '3', '6', '8', '7'}
     assert_semantically_equal(schedule.minimal_transfer_times,
                               {
-                                  ('5', '2'): 0.0,
-                                  ('2', '5'): 0.0,
-                                  ('3', '2'): 0.0,
-                                  ('2', '3'): 0.0
+                                  '5': {'2': 0.0},
+                                  '2': {'5': 0.0, '3': 0.0},
+                                  '3': {'2': 0.0},
                               })
 
 
@@ -1030,8 +1027,7 @@ def test_read_matsim_schedule_returns_expected_schedule():
                               {'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
                                'trip_departure_time': ['04:40:00'], 'vehicle_id': ['veh_0_bus']})
     assert_semantically_equal(schedule.minimal_transfer_times,
-                              {('26997928P', '26997928P.link:1'): 0.0,
-                               ('26997928P.link:1', '26997928P'): 0.0})
+                              {'26997928P': {'26997928P.link:1': 0.0}, '26997928P.link:1': {'26997928P': 0.0}})
 
 
 pt2matsim_schedule_extra_stop_file = os.path.abspath(
@@ -1060,7 +1056,7 @@ def test_reading_schedule_with_stops_unused_by_services():
                                               's2_id': 5221390302759871369,
                                               'isBlocking': 'false', 'routes': set(), 'services': set()}})
     assert_semantically_equal(schedule.minimal_transfer_times,
-                              {('26997928P', 'extra_stop'): 0.0, ('extra_stop', '26997928P'): 0.0})
+                              {'26997928P': {'extra_stop': 0.0}, 'extra_stop': {'26997928P': 0.0}})
 
 
 def test_reading_vehicles_with_a_schedule():

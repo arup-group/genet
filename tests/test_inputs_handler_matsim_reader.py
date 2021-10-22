@@ -319,10 +319,8 @@ def test_read_schedule_reads_the_data_correctly(correct_services_from_test_pt2ma
     services, minimalTransferTimes, transit_stop_id_mapping = matsim_reader.read_schedule(
         pt2matsim_schedule_file, 'epsg:27700')
 
-    correct_minimalTransferTimes = {
-        ('26997928P', '26997928P.link:1'): 0.0,
-        ('26997928P.link:1', '26997928P'): 0.0,
-    }
+    correct_minimalTransferTimes = {'26997928P': {'26997928P.link:1': 0.0},
+                                    '26997928P.link:1': {'26997928P': 0.0}}
 
     assert correct_services_from_test_pt2matsim_schedule == services
     assert_semantically_equal(minimalTransferTimes, correct_minimalTransferTimes)

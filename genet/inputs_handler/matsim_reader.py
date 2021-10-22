@@ -1,10 +1,13 @@
-import re
 import logging
-import networkx as nx
+import re
 import xml.etree.cElementTree as ET
+
+import networkx as nx
 from pyproj import Transformer, Proj
-from genet.utils import spatial
+
 from genet.schedule_elements import Route, Stop, Service
+from genet.utils import dict_support
+from genet.utils import spatial
 
 
 def read_node(elem, g, node_id_mapping, transformer):
@@ -249,7 +252,7 @@ def read_schedule(schedule_path, epsg):
     transportMode = {}
     transit_stop_id_mapping = {}
     is_minimalTransferTimes = False
-    minimalTransferTimes = {}  # {('stop_id_1': 'stop_id_2'): 0.0} -- (from_Stop,to_Stop): seconds_to_transfer
+    minimalTransferTimes = {}  # {'stop_id_1': {'stop_id_2': 0.0}} seconds_to_transfer between stop_id_1 and stop_id_2
 
     # transitLines
     for event, elem in ET.iterparse(schedule_path, events=('start', 'end')):
@@ -267,7 +270,12 @@ def read_schedule(schedule_path, epsg):
             if elem.tag == 'relation':
                 if is_minimalTransferTimes:
                     attribs = elem.attrib
-                    minimalTransferTimes[(attribs['fromStop'], attribs['toStop'])] = float(attribs['transferTime'])
+                    minimalTransferTimes = dict_support.merge_complex_dictionaries(
+                        minimalTransferTimes,
+                        {attribs['fromStop']: {
+                            attribs['toStop']: float(attribs['transferTime'])}
+                        }
+                    )
             if elem.tag == 'transitLine':
                 if transitLine:
                     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
