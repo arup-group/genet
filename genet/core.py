@@ -1181,9 +1181,9 @@ class Network:
         :param services: you can specify a list of services within the schedule to be snapped, defaults to all services
         :param solver: you can specify different mathematical solvers. Defaults to GLPK, open source solver which can
         be found here: https://www.gnu.org/software/glpk/. Another good open source choice is CBC:
-        https://projects.coin-or.org/Cbc. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'. It needs to support
-        MILP - mixed integer linear programming
-        :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and
+        https://projects.coin-or.org/Cbc. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'. The solver needs to
+        support MILP - mixed integer linear programming
+        :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and,
         under modal conditions, an artificial self-loop link will be created as well as any connecting links to that
         unsnapped stop. If set to False and the problem is partial, it will raise PartialMaxStableSetProblem error
         instead.
@@ -1296,8 +1296,8 @@ class Network:
         the network obejct in the following way: genet.utils.spatial.SpatialTree(network_object)
         :param solver: you can specify different mathematical solvers. Defaults to GLPK, open source solver which can
         be found here: https://www.gnu.org/software/glpk/. Another good open source choice is CBC:
-        https://projects.coin-or.org/Cbc. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'. It needs to support
-        MILP - mixed integer linear programming
+        https://projects.coin-or.org/Cbc. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'. The solver needs to
+        support MILP - mixed integer linear programming
         :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and
         under modal conditions, an artificial self-loop link will be created as well as any connecting links to that
         unsnapped stop. If set to False and the problem is partial, it will raise PartialMaxStableSetProblem error
