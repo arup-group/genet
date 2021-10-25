@@ -1201,7 +1201,7 @@ class Network:
         results in stops snapping to multiple links. Routes' stops and their network routes are updated based on
         direction too. You may like to investigate directional split for different services using a Service object
         method: `split_graph`.
-        :return: None, updates Network object and the Schedule object within.
+        :return: set of unsnapped services, empty if all snapped, updates Network object and the Schedule object within.
         """
         if self.schedule:
             logging.info('Building Spatial Tree')
@@ -1314,7 +1314,8 @@ class Network:
         results in stops snapping to multiple links. Routes' stops and their network routes are updated based on
         direction too. You may like to investigate directional split for different services using a Service object
         method: `split_graph`.
-        :return: None, updates Network object and the Schedule object within.
+        :return: None if successful, updates Network object and the Schedule object within. Returns service ID if
+        unsuccesful.
         """
         if spatial_tree is None:
             spatial_tree = spatial.SpatialTree(self)
