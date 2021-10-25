@@ -1,13 +1,15 @@
-from pyomo.environ import *  # noqa: F403
 import itertools
 import logging
 from copy import deepcopy
-import networkx as nx
-import genet.outputs_handler.geojson as gngeojson
-import genet.utils.graph_operations as graph_operations
-import genet.utils.dict_support as dict_support
-from genet.exceptions import InvalidMaxStableSetProblem
+
 import matplotlib.pyplot as plt
+import networkx as nx
+from pyomo.environ import *  # noqa: F403
+
+import genet.outputs_handler.geojson as gngeojson
+import genet.utils.dict_support as dict_support
+import genet.utils.graph_operations as graph_operations
+from genet.exceptions import InvalidMaxStableSetProblem
 
 
 def exists(coeff_attrib):
@@ -23,7 +25,7 @@ class MaxStableSet:
         self.pt_graph = pt_graph
         _gdf = gngeojson.generate_geodataframes(pt_graph)
         self.stops, self.pt_edges = _gdf['nodes'].to_crs('epsg:4326'), _gdf['links'].to_crs('epsg:4326')
-        self.edges = self.pt_edges[['u', 'v', 'geometry']].copy()
+        self.edges = self.pt_edges.loc[:, ['u', 'v', 'geometry']].copy()
         self.nodes = self.find_closest_links()
         if self.nodes.empty or len(set(self.nodes['id'])) == 1:
             logging.info('The problem did not find closest links for enough stops. If partial solution is allowed,'
@@ -49,8 +51,8 @@ class MaxStableSet:
     def find_closest_links(self):
         # increase distance by step size until all stops have closest links or reached threshold
         distance = self.step_size
-        nodes = self.cast_catchment(df_stops=self.stops[['id', 'geometry']].copy(), distance=distance)
-        nodes['catchment'] = distance
+        nodes = self.cast_catchment(df_stops=self.stops.loc[:, ['id', 'geometry']].copy(), distance=distance)
+        nodes.loc[:, 'catchment'] = distance
         stops = set(self.stops['id'])
         while (set(nodes.index) != stops) and (distance < self.distance_threshold):
             distance += self.step_size
@@ -75,7 +77,7 @@ class MaxStableSet:
     def generate_problem_graph(self):
         # build the problem graph
         # build up the nodes, edges and shortest path lengths (will be used to compute weight coefficient later on)
-        self.nodes['problem_nodes'] = self.nodes['id'] + '.link:' + self.nodes['link_id']
+        self.nodes.loc[:, 'problem_nodes'] = self.nodes.loc[:, 'id'] + '.link:' + self.nodes.loc[:, 'link_id']
         self.edges = self.edges.merge(
             self.nodes[['id', 'link_id', 'problem_nodes']].rename(
                 columns={'link_id': 'link_id_u', 'problem_nodes': 'problem_nodes_u'}),
@@ -95,9 +97,9 @@ class MaxStableSet:
         problem_graph = nx.DiGraph()
         problem_nodes = self.nodes.set_index('problem_nodes').T.to_dict()
         problem_graph.add_nodes_from(problem_nodes)
-        path_length_coeff = self.edges[self.edges['path_lengths'].notna()].groupby('problem_nodes_u').mean()
+        path_length_coeff = self.edges.loc[self.edges['path_lengths'].notna(), :].groupby('problem_nodes_u').mean()
         path_length_coeff = path_length_coeff.rename(columns={'path_lengths': 'path_lengths_u'}).merge(
-            self.edges[self.edges['path_lengths'].notna()].rename(
+            self.edges.loc[self.edges['path_lengths'].notna(), :].rename(
                 columns={'path_lengths': 'path_lengths_v'}).groupby('problem_nodes_v').mean(),
             how='outer',
             left_index=True,
@@ -108,7 +110,7 @@ class MaxStableSet:
         nx.set_node_attributes(problem_graph, problem_nodes)
         nx.set_node_attributes(problem_graph, path_length_coeff, 'coeff')
 
-        problem_edges = self.edges[self.edges['path_lengths'].isna()]
+        problem_edges = self.edges.loc[self.edges['path_lengths'].isna(), :]
         problem_graph.add_edges_from(zip(problem_edges['problem_nodes_u'], problem_edges['problem_nodes_v']))
         # connect all catchment pools
         [problem_graph.add_edges_from(itertools.combinations(group['problem_nodes'], 2)) for name, group in

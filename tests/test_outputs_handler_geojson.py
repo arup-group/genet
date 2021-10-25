@@ -153,10 +153,10 @@ def test_generating_standard_outputs(network, tmpdir):
                 ]),
         Service(id='rail_service',
                 routes=[Route(
-                    route_short_name="RTR_I/love\_being//difficult",
+                    route_short_name=r"RTR_I/love\_being//difficult",
                     mode='rail',
                     stops=[
-                        Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326', name="I/love\_being//difficult"),
+                        Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326', name=r"I/love\_being//difficult"),
                         Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
                     trips={'trip_id': ['RT1', 'RT2', 'RT3', 'RT4'],
                            'trip_departure_time': ['03:21:00', '03:31:00', '03:41:00', '03:51:00'],
