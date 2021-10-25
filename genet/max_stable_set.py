@@ -195,7 +195,7 @@ class MaxStableSet:
         ax.set_title('Stops, their catchments, the underlying network and route')
         return fig, ax
 
-    def solve(self, solver='glpk'):
+    def solve(self, solver='cbc'):
         if nx.is_empty(self.problem_graph):
             logging.info('Empty problem graph passed to the solver. No stops will find a solution.')
             self.unsolved_stops = set(self.stops['id'])

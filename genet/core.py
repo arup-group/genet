@@ -1164,7 +1164,7 @@ class Network:
         elif value is None:
             return set()
 
-    def route_schedule(self, services: Union[list, set] = None, solver='glpk', allow_partial=True,
+    def route_schedule(self, services: Union[list, set] = None, solver='cbc', allow_partial=True,
                        distance_threshold=30, step_size=10, additional_modes=None, allow_directional_split=False):
         """
         Method to find relationship between all Services in Schedule and the Network. It finds closest
@@ -1179,10 +1179,10 @@ class Network:
         by setting allow_partial=False. It will raise PartialMaxStableSetProblem error instead.
 
         :param services: you can specify a list of services within the schedule to be snapped, defaults to all services
-        :param solver: you can specify different mathematical solvers. Defaults to GLPK, open source solver which can
-        be found here: https://www.gnu.org/software/glpk/. Another good open source choice is CBC:
-        https://projects.coin-or.org/Cbc. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'. The solver needs to
-        support MILP - mixed integer linear programming
+        :param solver: you can specify different mathematical solvers. Defaults to CBC, open source solver which can
+        be found here: https://projects.coin-or.org/Cbc . Another good open source choice is GLPK:
+        https://www.gnu.org/software/glpk/. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'.
+        The solver needs to support MILP - mixed integer linear programming.
         :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and,
         under modal conditions, an artificial self-loop link will be created as well as any connecting links to that
         unsnapped stop. If set to False and the problem is partial, it will raise PartialMaxStableSetProblem error
@@ -1276,7 +1276,7 @@ class Network:
         else:
             logging.warning('Schedule object not found')
 
-    def route_service(self, service_id, spatial_tree=None, solver='glpk', allow_partial=True, distance_threshold=30,
+    def route_service(self, service_id, spatial_tree=None, solver='cbc', allow_partial=True, distance_threshold=30,
                       step_size=10, additional_modes=None, allow_directional_split=False):
         """
         Method to find relationship between the Service with ID 'service_id' in the Schedule and the Network.
@@ -1293,11 +1293,11 @@ class Network:
         :param service_id: ID of the Service object to snap and route
         :param spatial_tree: optional, if snapping more than one Service, it may be beneficcial to build the spatial
         tree which is used for snapping separately and pass it here. This is done simply by importing genet and passing
-        the network obejct in the following way: genet.utils.spatial.SpatialTree(network_object)
-        :param solver: you can specify different mathematical solvers. Defaults to GLPK, open source solver which can
-        be found here: https://www.gnu.org/software/glpk/. Another good open source choice is CBC:
-        https://projects.coin-or.org/Cbc. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'. The solver needs to
-        support MILP - mixed integer linear programming
+        the network object in the following way: genet.utils.spatial.SpatialTree(network_object)
+        :param solver: you can specify different mathematical solvers. Defaults to CBC, open source solver which can
+        be found here: https://projects.coin-or.org/Cbc . Another good open source choice is GLPK:
+        https://www.gnu.org/software/glpk/. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'.
+        The solver needs to support MILP - mixed integer linear programming.
         :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and
         under modal conditions, an artificial self-loop link will be created as well as any connecting links to that
         unsnapped stop. If set to False and the problem is partial, it will raise PartialMaxStableSetProblem error

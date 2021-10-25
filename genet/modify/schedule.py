@@ -22,7 +22,7 @@ def reproj_stops(schedule_element_nodes: dict, new_epsg):
     return reprojected_node_attribs
 
 
-def route_pt_graph(pt_graph, network_spatial_tree, modes, solver='glpk', allow_partial=False, distance_threshold=30,
+def route_pt_graph(pt_graph, network_spatial_tree, modes, solver='cbc', allow_partial=False, distance_threshold=30,
                    step_size=10):
     logging.info(f'Building Maximum Stable Set for PT graph with {pt_graph.number_of_nodes()} stops and '
                  f'{pt_graph.number_of_edges()} edges')
