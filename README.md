@@ -85,7 +85,10 @@ for linux:
 Finally install `GeNet` dependencies
 
     pip install -e .
-    
+
+Please follow [kepler's installation instructions](https://docs.kepler.gl/docs/keplergl-jupyter#install) to be able to 
+use visualisation methods.
+
 ### Unit Testing
 
 #### Run the unit tests (from root dir)

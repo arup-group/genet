@@ -100,7 +100,7 @@ class Network:
         :return:
         """
         if not self.schedule:
-            logging.warning('This Netowrk does not have a PT schedule. Only the graph will be visualised.')
+            logging.warning('This Network does not have a PT schedule. Only the graph will be visualised.')
             return self.plot_graph(output_dir=output_dir)
         network_links = self.to_geodataframe()['links']
         schedule_routes = self.schedule_network_routes_geodataframe()

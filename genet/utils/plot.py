@@ -19,8 +19,7 @@ def plot_geodataframes_on_kepler_map(gdfs: Dict[str, gpd.GeoDataFrame], height=7
         kepler_config = kepler_config
     else:
         kepler_config = {}
-    m = keplergl.KeplerGl(data=gdfs, height=height, config=kepler_config)
-    return m
+    return keplergl.KeplerGl(data=gdfs, height=height, config=kepler_config)
 
 
 KEPLER_CONFIGS = {

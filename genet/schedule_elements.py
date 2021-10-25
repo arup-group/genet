@@ -195,14 +195,18 @@ class ScheduleElement:
         """
         return gngeojson.generate_geodataframes(self.graph())
 
-    def kepler_map(self):
+    def kepler_map(self, output_dir='', file_name='kepler_map'):
         gdf = self.to_geodataframe()
-        return plot.plot_geodataframes_on_kepler_map(
+        m = plot.plot_geodataframes_on_kepler_map(
             {'schedule_links': sanitiser.sanitise_geodataframe(gdf['links']),
              'schedule_stops': sanitiser.sanitise_geodataframe(gdf['nodes'])
              },
             kepler_config='schedule'
         )
+        if output_dir:
+            persistence.ensure_dir(output_dir)
+            m.save_to_html(file_name=os.path.join(output_dir, f'{file_name}.html'))
+        return m
 
 
 class Stop:
@@ -518,11 +522,7 @@ class Route(ScheduleElement):
         :param output_dir: output directory for the image, if passed, will save plot to html
         :return:
         """
-        m = self.kepler_map()
-        if output_dir:
-            persistence.ensure_dir(output_dir)
-            m.save_to_html(file_name=os.path.join(output_dir, f'route_{self.id}_map.html'))
-        return m
+        return self.kepler_map(output_dir, f'route_{self.id}_map')
 
     def stops(self):
         """
@@ -951,11 +951,7 @@ class Service(ScheduleElement):
         :param output_dir: output directory for the image, if passed, will save plot to html
         :return:
         """
-        m = self.kepler_map()
-        if output_dir:
-            persistence.ensure_dir(output_dir)
-            m.save_to_html(file_name=os.path.join(output_dir, f'service_{self.id}_map.html'))
-        return m
+        return self.kepler_map(output_dir, f'service_{self.id}_map')
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
@@ -1408,11 +1404,7 @@ class Schedule(ScheduleElement):
         :param output_dir: output directory for the image, if passed, will save plot to html
         :return:
         """
-        m = self.kepler_map()
-        if output_dir:
-            persistence.ensure_dir(output_dir)
-            m.save_to_html(file_name=os.path.join(output_dir, 'schedule_map.html'))
-        return m
+        return self.kepler_map(output_dir, 'schedule_map')
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
