@@ -23,7 +23,7 @@ jobs:
         python -m pip install --upgrade pip
         sudo apt-get install -y python3-pip libgdal-dev locales
         sudo apt-get install -y libspatialindex-dev
-        sudo apt-get install -y glpk-utils libglpk-dev glpk-doc
+        sudo apt-get install -y coinor-cbc
         export CPLUS_INCLUDE_PATH=/usr/include/gdal
         export C_INCLUDE_PATH=/usr/include/gdal
         sudo apt-get install ca-certificates
