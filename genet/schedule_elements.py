@@ -197,7 +197,7 @@ class ScheduleElement:
 
     def kepler_map(self, output_dir='', file_name='kepler_map', data=False):
         gdf = self.to_geodataframe()
-        if data != True:
+        if data is not True:
             gdf['links'] = sanitiser._subset_plot_gdf(data, gdf['links'], base_keys={'u', 'v', 'geometry'})
             gdf['nodes'] = sanitiser._subset_plot_gdf(data, gdf['nodes'], base_keys={'id', 'lat', 'lon'})
 

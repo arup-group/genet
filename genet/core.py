@@ -108,7 +108,7 @@ class Network:
         network_links = self.to_geodataframe()['links']
         schedule_routes = self.schedule_network_routes_geodataframe()
 
-        if data != True:
+        if data is not True:
             network_links = sanitiser._subset_plot_gdf(data, network_links, base_keys={'id', 'geometry'})
             schedule_routes = sanitiser._subset_plot_gdf(data, schedule_routes, base_keys={'route_id', 'geometry'})
 
@@ -134,7 +134,7 @@ class Network:
         """
         network_links = self.to_geodataframe()['links']
 
-        if data != True:
+        if data is not True:
             network_links = sanitiser._subset_plot_gdf(data, network_links, base_keys={'id', 'geometry'})
 
         m = plot.plot_geodataframes_on_kepler_map(
@@ -159,7 +159,7 @@ class Network:
         network_links = self.to_geodataframe()['links']
         schedule_gdf = self.schedule.to_geodataframe()
 
-        if data != True:
+        if data is not True:
             network_links = sanitiser._subset_plot_gdf(data, network_links, base_keys={'id', 'geometry'})
             schedule_gdf['links'] = sanitiser._subset_plot_gdf(data, schedule_gdf['links'],
                                                                base_keys={'route_id', 'geometry'})
