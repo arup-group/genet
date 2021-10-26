@@ -21,8 +21,8 @@ import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.sanitiser as sanitiser
 import genet.schedule_elements as schedule_elements
 import genet.utils.dict_support as dict_support
-import genet.utils.pandas_helpers as pd_helpers
 import genet.utils.graph_operations as graph_operations
+import genet.utils.pandas_helpers as pd_helpers
 import genet.utils.parallel as parallel
 import genet.utils.persistence as persistence
 import genet.utils.plot as plot
@@ -92,11 +92,14 @@ class Network:
     def info(self):
         return f"Graph info: {nx.info(self.graph)} \nSchedule info: {self.schedule.info()}"
 
-    def plot(self, output_dir=''):
+    def plot(self, output_dir='', data=False):
         """
         Plots the network graph and schedule on kepler map.
         Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
         :param output_dir: output directory for the image, if passed, will save plot to html
+        :param data: Defaults to False, only the geometry and ID will be visible.
+            True will visualise all data on the map (not suitable for large networks)
+            A set of keys e.g. {'freespeed', 'capacity'}
         :return:
         """
         if not self.schedule:
@@ -104,6 +107,11 @@ class Network:
             return self.plot_graph(output_dir=output_dir)
         network_links = self.to_geodataframe()['links']
         schedule_routes = self.schedule_network_routes_geodataframe()
+
+        if data != True:
+            network_links = sanitiser._subset_plot_gdf(data, network_links, base_keys={'id', 'geometry'})
+            schedule_routes = sanitiser._subset_plot_gdf(data, schedule_routes, base_keys={'route_id', 'geometry'})
+
         m = plot.plot_geodataframes_on_kepler_map(
             {'network_links': sanitiser.sanitise_geodataframe(network_links),
              'schedule_routes': sanitiser.sanitise_geodataframe(schedule_routes)},
@@ -114,14 +122,21 @@ class Network:
             m.save_to_html(file_name=os.path.join(output_dir, 'network_with_pt_routes.html'))
         return m
 
-    def plot_graph(self, output_dir=''):
+    def plot_graph(self, output_dir='', data=False):
         """
         Plots the network graph only on kepler map.
         Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
         :param output_dir: output directory for the image, if passed, will save plot to html
+        :param data: Defaults to False, only the geometry and ID will be visible.
+            True will visualise all data on the map (not suitable for large networks)
+            A set of keys e.g. {'freespeed', 'capacity'}
         :return:
         """
         network_links = self.to_geodataframe()['links']
+
+        if data != True:
+            network_links = sanitiser._subset_plot_gdf(data, network_links, base_keys={'id', 'geometry'})
+
         m = plot.plot_geodataframes_on_kepler_map(
             {'network_links': sanitiser.sanitise_geodataframe(network_links)},
             kepler_config='network_with_pt'
@@ -131,15 +146,26 @@ class Network:
             m.save_to_html(file_name=os.path.join(output_dir, 'network_graph.html'))
         return m
 
-    def plot_schedule(self, output_dir=''):
+    def plot_schedule(self, output_dir='', data=False):
         """
         Plots original stop connections in the network's schedule over the network graph on kepler map.
         Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
         :param output_dir: output directory for the image, if passed, will save plot to html
+        :param data: Defaults to False, only the geometry and ID will be visible.
+            True will visualise all data on the map (not suitable for large networks)
+            A set of keys e.g. {'freespeed', 'capacity'}
         :return:
         """
         network_links = self.to_geodataframe()['links']
         schedule_gdf = self.schedule.to_geodataframe()
+
+        if data != True:
+            network_links = sanitiser._subset_plot_gdf(data, network_links, base_keys={'id', 'geometry'})
+            schedule_gdf['links'] = sanitiser._subset_plot_gdf(data, schedule_gdf['links'],
+                                                               base_keys={'route_id', 'geometry'})
+            schedule_gdf['nodes'] = sanitiser._subset_plot_gdf(data, schedule_gdf['nodes'],
+                                                               base_keys={'id', 'geometry'})
+
         m = plot.plot_geodataframes_on_kepler_map(
             {'network_links': sanitiser.sanitise_geodataframe(network_links),
              'schedule_links': sanitiser.sanitise_geodataframe(schedule_gdf['links']),

@@ -195,8 +195,12 @@ class ScheduleElement:
         """
         return gngeojson.generate_geodataframes(self.graph())
 
-    def kepler_map(self, output_dir='', file_name='kepler_map'):
+    def kepler_map(self, output_dir='', file_name='kepler_map', data=False):
         gdf = self.to_geodataframe()
+        if data != True:
+            gdf['links'] = sanitiser._subset_plot_gdf(data, gdf['links'], base_keys={'u', 'v', 'geometry'})
+            gdf['nodes'] = sanitiser._subset_plot_gdf(data, gdf['nodes'], base_keys={'id', 'lat', 'lon'})
+
         m = plot.plot_geodataframes_on_kepler_map(
             {'schedule_links': sanitiser.sanitise_geodataframe(gdf['links']),
              'schedule_stops': sanitiser.sanitise_geodataframe(gdf['nodes'])
@@ -515,14 +519,17 @@ class Route(ScheduleElement):
             self.__class__.__name__, self.id, self.route_short_name, len(self.ordered_stops),
             len(self.trips['trip_id']))
 
-    def plot(self, output_dir=''):
+    def plot(self, output_dir='', data=False):
         """
         Plots the route on kepler map.
         Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
         :param output_dir: output directory for the image, if passed, will save plot to html
+        :param data: Defaults to False, only the geometry and ID will be visible.
+            True will visualise all data on the map (not suitable for large networks)
+            A set of keys e.g. {'name'}
         :return:
         """
-        return self.kepler_map(output_dir, f'route_{self.id}_map')
+        return self.kepler_map(output_dir, f'route_{self.id}_map', data=data)
 
     def stops(self):
         """
@@ -944,14 +951,17 @@ class Service(ScheduleElement):
         return '{} ID: {}\nName: {}\nNumber of routes: {}\nNumber of stops: {}'.format(
             self.__class__.__name__, self.id, self.name, len(self), len(self.reference_nodes()))
 
-    def plot(self, output_dir=''):
+    def plot(self, output_dir='', data=False):
         """
         Plots the service on kepler map.
         Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
         :param output_dir: output directory for the image, if passed, will save plot to html
+        :param data: Defaults to False, only the geometry and ID will be visible.
+            True will visualise all data on the map (not suitable for large networks)
+            A set of keys e.g. {'name'}
         :return:
         """
-        return self.kepler_map(output_dir, f'service_{self.id}_map')
+        return self.kepler_map(output_dir, f'service_{self.id}_map', data=data)
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
@@ -1397,14 +1407,17 @@ class Schedule(ScheduleElement):
     def find_epsg(self):
         return self.init_epsg
 
-    def plot(self, output_dir=''):
+    def plot(self, output_dir='', data=False):
         """
         Plots the schedule on kepler map.
         Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
         :param output_dir: output directory for the image, if passed, will save plot to html
+        :param data: Defaults to False, only the geometry and ID will be visible.
+            True will visualise all data on the map (not suitable for large networks)
+            A set of keys e.g. {'name'}
         :return:
         """
-        return self.kepler_map(output_dir, 'schedule_map')
+        return self.kepler_map(output_dir, 'schedule_map', data=data)
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
