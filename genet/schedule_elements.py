@@ -1219,13 +1219,13 @@ class Schedule(ScheduleElement):
         but are not used by services) and returns a list of these vehicles' IDs, if there are any.
         It also logs a warning which says whether any unused vehicles have been found.
 
-        :param vehicles = dictionary of vehicle IDs from Route objects, in form {veh_id : {'type': 'bus'}}
+        self.vehicles = dictionary of vehicle IDs from Route objects, in form {veh_id : {'type': 'bus'}}
         e.g.  {'fun_bus_1': {'type': 'bus'}, 'fun_bus_2': {'type': 'bus'}, 'some_bus_2': {'type': 'bus'}}
         """
 
         existing_vehicles = set(self.vehicles.keys())
         used_vehicles = self.route_trips_to_dataframe()
-        used_vehicles = set(used_vehicles['vehicle_id'])
+        used_vehicles = set(used_vehicles['vehicle_id'].to_list())
 
         unused_vehicles = existing_vehicles - used_vehicles
 
@@ -1247,36 +1247,30 @@ class Schedule(ScheduleElement):
         trips_df = self.route_trips_to_dataframe()
         trips_df = trips_df[['trip_id', 'vehicle_id']]
 
-        trips_dict = {}
-        for i in range(0, len(trips_df)):
-            key = trips_df['trip_id'].iloc[i]
-            value = trips_df['vehicle_id'].iloc[i]
-            trips_dict[key] = value
+        trips_dict = trips_df.set_index('trip_id')['vehicle_id'].to_dict()
 
         # finding duplicate values from dictionary by flipping keys and values
         flipped = {}
         not_unique_list = []
 
-        for k, v in trips_dict.items():
-            if v not in flipped:
-                flipped[v] = [k]
+        for trip_id, vehicle_id in trips_dict.items():
+            if vehicle_id not in flipped:
+                flipped[vehicle_id] = [trip_id]
             else:
-                not_unique_list.append(v)
-                flipped[v].append(k)
+                not_unique_list.append(vehicle_id)
+                flipped[vehicle_id].append(trip_id)
 
         duplicates_dict = {}
-        for key in not_unique_list:
-            values = flipped[key]
-            duplicates_dict[key] = []
-            for val in values:
-                duplicates_dict[key].append(val)
+        for vehicle_id in not_unique_list:
+            trip_ids = flipped[vehicle_id]
+            duplicates_dict[vehicle_id] = []
+            for id in trip_ids:
+                duplicates_dict[vehicle_id].append(id)
 
         if len(duplicates_dict) == 0:
             logging.info('No vehicles being used for multiple trips have been found.')
         else:
-            non_unique_vehicles = duplicates_dict.keys()
-            printing_list = str(non_unique_vehicles)[11:-2]
-            logging.warning('Vehicles being used for multiple trips: ' + printing_list)
+            logging.warning('Vehicles being used for multiple trips: {}'.format(list(duplicates_dict.keys())))
 
         return duplicates_dict
 
