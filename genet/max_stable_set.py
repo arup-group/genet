@@ -52,7 +52,7 @@ class MaxStableSet:
         # increase distance by step size until all stops have closest links or reached threshold
         distance = self.step_size
         nodes = self.cast_catchment(df_stops=self.stops.loc[:, ['id', 'geometry']].copy(), distance=distance)
-        nodes.loc[:, 'catchment'] = distance
+        nodes['catchment'] = distance
         stops = set(self.stops['id'])
         while (set(nodes.index) != stops) and (distance < self.distance_threshold):
             distance += self.step_size
