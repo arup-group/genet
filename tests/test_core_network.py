@@ -414,25 +414,56 @@ def test_print_shows_info(mocker):
     n.info.assert_called_once()
 
 
-def test_plot_delegates_to_util_plot_plot_graph_routes(mocker):
-    mocker.patch.object(plot, 'plot_graph_routes')
-    n = Network('epsg:27700')
-    n.plot()
-    plot.plot_graph_routes.assert_called_once()
+def test_plot_delegates_to_plot_kepler(mocker, network_object_from_test_data):
+    mocker.patch.object(plot, 'plot_geodataframes_on_kepler_map')
+    network_object_from_test_data.plot()
+    plot.plot_geodataframes_on_kepler_map.assert_called_once()
 
 
-def test_plot_graph_delegates_to_util_plot_plot_graph(mocker):
-    mocker.patch.object(plot, 'plot_graph')
-    n = Network('epsg:27700')
-    n.plot_graph()
-    plot.plot_graph.assert_called_once()
+def test_plot_saves_to_the_specified_directory(tmpdir, network_object_from_test_data):
+    filename = 'network_with_pt_routes'
+    expected_plot_path = os.path.join(tmpdir, filename+'.html')
+    assert not os.path.exists(expected_plot_path)
+
+    network_object_from_test_data.plot(output_dir=tmpdir)
+
+    assert os.path.exists(expected_plot_path)
 
 
-def test_plot_schedule_delegates_to_util_plot_plot_non_routed_schedule_graph(mocker, network_object_from_test_data):
-    mocker.patch.object(plot, 'plot_non_routed_schedule_graph')
-    n = network_object_from_test_data
-    n.plot_schedule()
-    plot.plot_non_routed_schedule_graph.assert_called_once()
+def test_plot_graph_delegates_to_plot_kepler(mocker, network_object_from_test_data):
+    mocker.patch.object(plot, 'plot_geodataframes_on_kepler_map')
+
+    network_object_from_test_data.plot_graph()
+
+    plot.plot_geodataframes_on_kepler_map.assert_called_once()
+
+
+def test_plot_graph_saves_to_the_specified_directory(tmpdir, network_object_from_test_data):
+    filename = 'network_graph'
+    expected_plot_path = os.path.join(tmpdir, filename+'.html')
+    assert not os.path.exists(expected_plot_path)
+
+    network_object_from_test_data.plot_graph(output_dir=tmpdir)
+
+    assert os.path.exists(expected_plot_path)
+
+
+def test_plot_schedule_delegates_to_plot_kepler(mocker, network_object_from_test_data):
+    mocker.patch.object(plot, 'plot_geodataframes_on_kepler_map')
+
+    network_object_from_test_data.plot_schedule()
+
+    plot.plot_geodataframes_on_kepler_map.assert_called_once()
+
+
+def test_plot_schedule_saves_to_the_specified_directory(tmpdir, network_object_from_test_data):
+    filename = 'network_and_schedule'
+    expected_plot_path = os.path.join(tmpdir, filename+'.html')
+    assert not os.path.exists(expected_plot_path)
+
+    network_object_from_test_data.plot_schedule(output_dir=tmpdir)
+
+    assert os.path.exists(expected_plot_path)
 
 
 def test_attempt_to_simplify_already_simplified_network_throws_error():

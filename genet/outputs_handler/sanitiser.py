@@ -44,3 +44,10 @@ def sanitise_dictionary(d):
         if isinstance(v, dict):
             sanitise_dictionary(v)
     return d
+
+
+def _subset_plot_gdf(data, df, base_keys={'id', 'route_id', 'geometry'}):
+    data_keys = base_keys
+    if isinstance(data, set):
+        data_keys |= data
+    return df[data_keys & set(df.columns)]

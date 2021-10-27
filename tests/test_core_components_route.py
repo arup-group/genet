@@ -1,4 +1,5 @@
 import pytest
+import os
 from pandas import DataFrame, Timestamp
 from pandas.testing import assert_frame_equal
 from genet.schedule_elements import Route, Stop
@@ -107,9 +108,19 @@ def test_info_shows_id_name_and_len_of_stops_and_trips(route):
 
 
 def test_plot_delegates_to_util_plot_plot_graph_routes(mocker, route):
-    mocker.patch.object(plot, 'plot_graph')
+    mocker.patch.object(plot, 'plot_geodataframes_on_kepler_map')
     route.plot()
-    plot.plot_graph.assert_called_once()
+    plot.plot_geodataframes_on_kepler_map.assert_called_once()
+
+
+def test_plot_saves_to_the_specified_directory(tmpdir, route):
+    filename = f'route_{route.id}_map'
+    expected_plot_path = os.path.join(tmpdir, filename+'.html')
+    assert not os.path.exists(expected_plot_path)
+
+    route.plot(output_dir=tmpdir)
+
+    assert os.path.exists(expected_plot_path)
 
 
 def test_build_graph_builds_correct_graph():

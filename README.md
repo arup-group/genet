@@ -86,6 +86,14 @@ Finally install `GeNet`'s Python dependencies
 
     pip install -e .
 
+##### Install Kepler dependencies 
+
+Please follow [kepler's installation instructions](https://docs.kepler.gl/docs/keplergl-jupyter#install) to be able to 
+use the visualisation methods. To see the maps in a jupyter notebook, make sure you enable widgets.
+```
+jupyter nbextension enable --py widgetsnbextension
+```
+
 ##### Install Mathematical Solver  
 
 **Note**: The default CBC solver is installed inside GeNet's Docker image.
