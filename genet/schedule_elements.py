@@ -1341,15 +1341,16 @@ class Schedule(ScheduleElement):
         :return: returns True if the vehicle types in the `vehicles` attribute exist in the `vehicle_types` attribute.
             But useful even just for the logging messages.
         """
-        df_vehicles = graph_operations.build_attribute_dataframe(iterator=self.vehicles.items(), keys=['type'])
-        if set(df_vehicles['type']).issubset(set(self.vehicle_types.keys())):
+
+        missing_vehicle_information = self.get_missing_vehicle_information()
+        missing_vehicles = len(missing_vehicle_information)
+
+        if missing_vehicles == 0:
             return True
         else:
-            missing_vehicle_types = set(df_vehicles['type']) - set(self.vehicle_types.keys())
-            missing_vehicles = df_vehicles[df_vehicles['type'].isin(missing_vehicle_types)].T.to_dict()
             logging.warning(
                 'The following vehicle types are missing from the `vehicle_types` ' +
-                ' attribute: 'f'{missing_vehicle_types}')
+                ' attribute: 'f'{missing_vehicle_information["missing_vehicle_types"]}')
             logging.warning('Vehicles affected by missing vehicle types: 'f"{missing_vehicles}")
             return False
 
