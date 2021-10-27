@@ -85,7 +85,13 @@ for linux:
 Finally install `GeNet` dependencies
 
     pip install -e .
-    
+
+Please follow [kepler's installation instructions](https://docs.kepler.gl/docs/keplergl-jupyter#install) to be able to 
+use the visualisation methods. To see the maps in a jupyter notebook, make sure you enable widgets.
+```
+jupyter nbextension enable --py widgetsnbextension
+```
+
 ### Unit Testing
 
 #### Run the unit tests (from root dir)
