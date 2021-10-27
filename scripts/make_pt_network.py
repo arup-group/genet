@@ -80,11 +80,19 @@ if __name__ == '__main__':
     if osm is not None:
         logging.info(f'Reading in network at {osm}')
         n = gn.read_osm(osm, osm_config, num_processes=processes)
-        logging.info('Connecting components for the graph')
-        links_added = n.connect_components()
-        logging.info('Connecting components for walk, bike and car')
-        with open(os.path.join(output_dir, 'connecting_links.json'), 'w', encoding='utf-8') as f:
-            json.dump(links_added, f, ensure_ascii=False, indent=4)
+        # logging.info('Connecting components for the graph')
+        # links_added = n.connect_components()
+        # logging.info('Connecting components for walk, bike and car')
+        # with open(os.path.join(output_dir, 'connecting_links.json'), 'w', encoding='utf-8') as f:
+        #     json.dump(links_added, f, ensure_ascii=False, indent=4)
+        logging.info(f'Simplifying network')
+        n.simplify(no_processes=processes)
+        logging.info(
+            f'Simplification resulted in {len(n.link_simplification_map)} links being simplified.')
+        with open(os.path.join(output_dir, 'link_simp_map.json'), 'w', encoding='utf-8') as f:
+            json.dump(n.link_simplification_map, f, ensure_ascii=False, indent=4)
+
+        n.write_to_matsim(output_dir)
     elif network is not None:
         logging.info(f'Reading in network at {network}')
         n = gn.read_matsim_network(network, projection)
@@ -97,14 +105,13 @@ if __name__ == '__main__':
     n.schedule = gn.read_gtfs(gtfs, day=gtfs_day, epsg=projection)
 
     logging.info(f'Snapping and routing the schedule onto the network with distance threshold {snapping_distance}')
-    unsnapped_services = n.route_schedule(snapping_distance, additional_modes={'bus': 'car'})
-
-    n.simplify(no_processes=processes)
-
-    logging.info(
-        f'Simplification resulted in {len(n.link_simplification_map)} links being simplified.')
-    with open(os.path.join(output_dir, 'link_simp_map.json'), 'w', encoding='utf-8') as f:
-        json.dump(n.link_simplification_map, f, ensure_ascii=False, indent=4)
+    unsnapped_services = n.route_schedule(distance_threshold=snapping_distance, additional_modes={'bus': 'car'})
+    logging.info(f'Snapping resulted in {len(unsnapped_services)} unsnapped services: {unsnapped_services}. Trying them again.')
+    unsnapped_services = n.route_schedule(distance_threshold=snapping_distance, additional_modes={'bus': 'car'},
+                                          services=unsnapped_services)
+    logging.info(f'Second snapping attempt resulted in {len(unsnapped_services)} unsnapped services: {unsnapped_services}'
+                 'They will be teleported')
+    n.teleport_service(service_ids=unsnapped_services)
 
     logging.info('Generating validation report')
     report = n.generate_validation_report()
