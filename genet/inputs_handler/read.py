@@ -313,7 +313,7 @@ def read_osm(osm_file_path, osm_read_config, num_processes: int = 1, epsg=None):
         epsg=epsg,
         processes=num_processes
     )
-    reindexing_dict, nodes_and_attributes = n.add_nodes(nodes_and_attributes)
+    reindexing_dict, nodes_and_attributes = n.add_nodes(nodes_and_attributes, ignore_change_log=True)
 
     edges_attributes = parallel.multiprocess_wrap(
         data=edges,
@@ -325,7 +325,7 @@ def read_osm(osm_file_path, osm_read_config, num_processes: int = 1, epsg=None):
         config_path=osm_read_config,
         processes=num_processes
     )
-    n.add_edges(edges_attributes)
+    n.add_edges(edges_attributes, ignore_change_log=True)
 
     logging.info('Deleting isolated nodes which have no edges.')
     n.remove_nodes(list(nx.isolates(n.graph)))
