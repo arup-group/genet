@@ -1364,7 +1364,7 @@ def test_validate_vehicle_definitions_warns_of_missing_vehicle_types(schedule, c
 def test_correct_schedule_does_not_have_missing_vehicles(schedule):
     vehicle_information = schedule.get_missing_vehicle_information()
     assert vehicle_information == {
-        'missing_vehicle_types' : set(),
+        'missing_vehicle_types': set(),
         'vehicles_affected': {}
     }
 

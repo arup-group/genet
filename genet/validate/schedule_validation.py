@@ -22,11 +22,13 @@ def generate_validation_report(schedule):
 
     report['vehicle_level'] = {
         'vehicle_definitions_valid': is_valid_vehicle_def,
-        'missing_vehicle_types': missing_vehicle_types['missing_vehicle_types'],
-        'vehicles_affected': missing_vehicle_types['vehicles_affected'],
-        'unused_vehicles': schedule.unused_vehicles(),
-        'multiple_use_vehicles': schedule.check_vehicle_uniqueness()
-        }
+        'vehicle_definitions_validity_components': {
+            'missing_vehicles': {
+                'missing_vehicles_types': missing_vehicle_types['missing_vehicle_types'],
+                'vehicles_affected': missing_vehicle_types['vehicles_affected']},
+            'unused_vehicles': schedule.unused_vehicles(),
+            'multiple_use_vehicles': schedule.check_vehicle_uniqueness()}
+    }
 
     for service_id in schedule.service_ids():
         invalid_stages = []
