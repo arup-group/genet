@@ -44,12 +44,12 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
         'route_level': {
             'service': {'1': {'is_valid_route': True, 'invalid_stages': []},
                         '2': {'is_valid_route': True, 'invalid_stages': []}}},
-        'vehicle_level': {
-            'vehicle_definitions_valid': True,
-            'missing_vehicle_types': set(),
-            'vehicles_affected': {},
-            'unused_vehicles': set(),
-            'multiple_use_vehicles': {}}}
+        'vehicle_level': {'vehicle_definitions_valid': True,
+                          'vehicle_definitions_validity_components': {
+                              'missing_vehicles': {'missing_vehicles_types': set(),
+                                                   'vehicles_affected': {}},
+                              'multiple_use_vehicles': {},
+                              'unused_vehicles': set()}}}
 
     report = schedule_validation.generate_validation_report(correct_schedule)
     assert_semantically_equal(report, correct_report)
@@ -68,12 +68,12 @@ def test_generate_validation_report_with_incorrect_schedule(test_schedule):
                                     'service_1': {'is_valid_route': False,
                                                   'invalid_stages': ['not_has_correctly_ordered_route',
                                                                      'has_self_loops']}}},
-        'vehicle_level': {
-            'vehicle_definitions_valid': True,
-            'missing_vehicle_types': set(),
-            'vehicles_affected': {},
-            'unused_vehicles': set(),
-            'multiple_use_vehicles': {}}}
+        'vehicle_level': {'vehicle_definitions_valid': True,
+                          'vehicle_definitions_validity_components': {
+                              'missing_vehicles': {'missing_vehicles_types': set(),
+                                                   'vehicles_affected': {}},
+                              'multiple_use_vehicles': {},
+                              'unused_vehicles': set()}}}
     report = schedule_validation.generate_validation_report(test_schedule)
     assert_semantically_equal(report, correct_report)
 
@@ -106,26 +106,30 @@ def schedule_with_incomplete_vehicle_definition():
 
 
 def test_generate_validation_report_with_schedule_incomplete_vehicle_definitions(schedule_with_incomplete_vehicle_definition):
-    correct_report = {
-        'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
-                           'has_valid_services': False, 'invalid_services': ['service']},
-        'service_level': {'service': {'is_valid_service': False,
-                        'invalid_stages': ['not_has_valid_routes'],
-                        'has_valid_routes': False, 'invalid_routes': ['service_0', 'service_1']}},
-        'route_level': {'service': {'service_0': {'is_valid_route': False,
-                                                  'invalid_stages': ['not_has_correctly_ordered_route',
-                                                                     'has_self_loops']},
-                                    'service_1': {'is_valid_route': False,
-                                                  'invalid_stages': ['not_has_correctly_ordered_route',
-                                                                     'has_self_loops']}}},
-        'vehicle_level': {
-            'vehicle_definitions_valid': False,
-            'missing_vehicle_types': {'bus'},
-            'vehicles_affected': {'veh_2_bus': {'type': 'bus'}, 'veh_1_bus': {'type': 'bus'}},
-            'unused_vehicles': set(),
-            'multiple_use_vehicles': {}}}
+    correct_report = {'route_level': {'service': {'service_0': {'invalid_stages': ['not_has_correctly_ordered_route',
+                                                                      'has_self_loops'],
+                                                   'is_valid_route': False},
+                                     'service_1': {'invalid_stages': ['not_has_correctly_ordered_route',
+                                                                      'has_self_loops'],
+                                                   'is_valid_route': False}}},
+         'schedule_level': {'has_valid_services': False,
+                            'invalid_services': ['service'],
+                            'invalid_stages': ['not_has_valid_services'],
+                            'is_valid_schedule': False},
+         'service_level': {'service': {'has_valid_routes': False,
+                                       'invalid_routes': ['service_0', 'service_1'],
+                                       'invalid_stages': ['not_has_valid_routes'],
+                                       'is_valid_service': False}},
+         'vehicle_level': {'vehicle_definitions_valid': False,
+                           'vehicle_definitions_validity_components': {
+                               'missing_vehicles': {'missing_vehicles_types': {'bus'},
+                                                    'vehicles_affected': {'veh_1_bus': {'type': 'bus'},
+                                                                          'veh_2_bus': {'type': 'bus'}}},
+                               'multiple_use_vehicles': {},
+                               'unused_vehicles': set()}}}
 
     report = schedule_validation.generate_validation_report(schedule_with_incomplete_vehicle_definition)
+    print(report)
     assert_semantically_equal(report, correct_report)
 
 
