@@ -1,34 +1,38 @@
-from abc import abstractmethod
-from typing import Union, Dict, List
-from pyproj import Transformer, Geod
-import networkx as nx
-import numpy as np
+import io
+import itertools
+import json
 import logging
 import os
-import io
-import yaml
 import pkgutil
-import json
-from datetime import datetime
-from pandas import DataFrame, Series
-from copy import deepcopy
+from abc import abstractmethod
 from collections import defaultdict
-import itertools
+from copy import deepcopy
+from datetime import datetime
+from typing import Union, Dict, List
+
 import dictdiffer
+import networkx as nx
+import numpy as np
+import yaml
+from pandas import DataFrame, Series
+from pyproj import Transformer, Geod
 from s2sphere import CellId
-import genet.utils.plot as plot
-import genet.utils.spatial as spatial
-import genet.utils.dict_support as dict_support
+
+import genet.modify.change_log as change_log
+import genet.modify.schedule as mod_schedule
+import genet.outputs_handler.geojson as gngeojson
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
+
+import genet.use.schedule as use_schedule
+import genet.utils.dict_support as dict_support
 import genet.outputs_handler.sanitiser as sanitiser
-import genet.utils.persistence as persistence
+
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
-import genet.modify.schedule as mod_schedule
-import genet.modify.change_log as change_log
-import genet.use.schedule as use_schedule
+import genet.utils.persistence as persistence
+import genet.utils.plot as plot
+import genet.utils.spatial as spatial
 import genet.validate.schedule_validation as schedule_validation
-import genet.outputs_handler.geojson as gngeojson
 from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisationError, ServiceInitialisationError, \
     UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData, \
     InconsistentVehicleModeError
@@ -1237,6 +1241,68 @@ class Schedule(ScheduleElement):
         df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
         return df
 
+    def unused_vehicles(self):
+        """
+        A scenario change to the network may result in changes to vehicle assignments, with some vehicles not
+        being used anymore. This method checks if any of the vehicles are missing (i.e. exist in Schedule.vehicles,
+        but are not used by services) and returns a list of these vehicles' IDs, if there are any.
+        It also logs a warning which says whether any unused vehicles have been found.
+
+        self.vehicles = dictionary of vehicle IDs from Route objects, in form {veh_id : {'type': 'bus'}}
+        e.g.  {'fun_bus_1': {'type': 'bus'}, 'fun_bus_2': {'type': 'bus'}, 'some_bus_2': {'type': 'bus'}}
+        """
+
+        existing_vehicles = set(self.vehicles.keys())
+        used_vehicles = self.route_trips_to_dataframe()
+        used_vehicles = set(used_vehicles['vehicle_id'].to_list())
+
+        unused_vehicles = existing_vehicles - used_vehicles
+
+        if len(unused_vehicles) == 0:
+            logging.info('All vehicles are being used.')
+        else:
+            logging.warning(str(len(unused_vehicles)) + ' unused vehicles have been found.')
+
+        return unused_vehicles
+
+    def check_vehicle_uniqueness(self):
+        """
+        In MATSim, trips can share vehicles, but his may or may not be intended, e.g. it could result from a
+        scenario change and be undesirable, leading to simulation not working correctly.
+        This method checks if a vehicle ID is being used by two or more different trips, and then returns
+        a dictionary of vehicle IDs together with trips for which they are being used.
+        It also logs a warning which says whether any vehicles are being used for multiple trips.
+        """
+        trips_df = self.route_trips_to_dataframe()
+        trips_df = trips_df[['trip_id', 'vehicle_id']]
+
+        trips_dict = trips_df.set_index('trip_id')['vehicle_id'].to_dict()
+
+        # finding duplicate values from dictionary by flipping keys and values
+        flipped = {}
+        not_unique_list = []
+
+        for trip_id, vehicle_id in trips_dict.items():
+            if vehicle_id not in flipped:
+                flipped[vehicle_id] = [trip_id]
+            else:
+                not_unique_list.append(vehicle_id)
+                flipped[vehicle_id].append(trip_id)
+
+        duplicates_dict = {}
+        for vehicle_id in not_unique_list:
+            trip_ids = flipped[vehicle_id]
+            duplicates_dict[vehicle_id] = []
+            for id in trip_ids:
+                duplicates_dict[vehicle_id].append(id)
+
+        if len(duplicates_dict) == 0:
+            logging.info('No vehicles being used for multiple trips have been found.')
+        else:
+            logging.warning('Vehicles being used for multiple trips: {}'.format(list(duplicates_dict.keys())))
+
+        return duplicates_dict
+
     def set_route_trips_dataframe(self, df):
         """
         Option to replace trips data currently stored under routes by an updated `route_trips_to_dataframe`.
@@ -1304,16 +1370,30 @@ class Schedule(ScheduleElement):
         :return: returns True if the vehicle types in the `vehicles` attribute exist in the `vehicle_types` attribute.
             But useful even just for the logging messages.
         """
-        df_vehicles = graph_operations.build_attribute_dataframe(iterator=self.vehicles.items(), keys=['type'])
-        if set(df_vehicles['type']).issubset(set(self.vehicle_types.keys())):
+
+        missing_vehicle_information = self.get_missing_vehicle_information()
+        missing_vehicles = len(missing_vehicle_information["missing_vehicle_types"])
+
+        if missing_vehicles == 0:
             return True
         else:
-            missing_vehicle_types = set(df_vehicles['type']) - set(self.vehicle_types.keys())
-            logging.warning('The following vehicle types are missing from the `vehicle_types` attribute: '
-                            f'{missing_vehicle_types}')
-            logging.warning('Vehicles affected by missing vehicle types: '
-                            f"{df_vehicles[df_vehicles['type'].isin(missing_vehicle_types)].T.to_dict()}")
-        return False
+            logging.warning(
+                'The following vehicle types are missing from the `vehicle_types` ' +
+                ' attribute: 'f'{missing_vehicle_information["missing_vehicle_types"]}')
+            logging.warning('Vehicles affected by missing vehicle'
+                            ' types: 'f"{missing_vehicle_information['vehicles_affected']}")
+            return False
+
+    def get_missing_vehicle_information(self):
+        df_vehicles = graph_operations.build_attribute_dataframe(iterator=self.vehicles.items(), keys=['type'])
+        missing_vehicle_types = set(df_vehicles['type']) - set(self.vehicle_types.keys())
+        vehicles_affected = df_vehicles[df_vehicles['type'].isin(missing_vehicle_types)].T.to_dict()
+
+        missing = {}
+        missing['missing_vehicle_types'] = missing_vehicle_types
+        missing['vehicles_affected'] = vehicles_affected
+
+        return missing
 
     def reference_nodes(self):
         return set(self._graph.nodes())
