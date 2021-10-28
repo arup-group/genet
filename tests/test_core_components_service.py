@@ -149,10 +149,20 @@ def test_info_shows_id_name_and_len(service):
     assert str(len(service)) in info
 
 
-def test_plot_delegates_to_util_plot_plot_graph_routes(mocker, route):
-    mocker.patch.object(plot, 'plot_graph')
-    route.plot()
-    plot.plot_graph.assert_called_once()
+def test_plot_delegates_to_util_plot_plot_graph_routes(mocker, service):
+    mocker.patch.object(plot, 'plot_geodataframes_on_kepler_map')
+    service.plot()
+    plot.plot_geodataframes_on_kepler_map.assert_called_once()
+
+
+def test_plot_saves_to_the_specified_directory(tmpdir, service):
+    filename = f'service_{service.id}_map'
+    expected_plot_path = os.path.join(tmpdir, filename+'.html')
+    assert not os.path.exists(expected_plot_path)
+
+    service.plot(output_dir=tmpdir)
+
+    assert os.path.exists(expected_plot_path)
 
 
 def test_services_equal(route, similar_non_exact_test_route):

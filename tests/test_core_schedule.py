@@ -224,9 +224,19 @@ def test_info_shows_number_of_services_and_routes(mocker):
 
 
 def test_plot_delegates_to_util_plot_plot_graph_routes(mocker, schedule):
-    mocker.patch.object(plot, 'plot_graph')
+    mocker.patch.object(plot, 'plot_geodataframes_on_kepler_map')
     schedule.plot()
-    plot.plot_graph.assert_called_once()
+    plot.plot_geodataframes_on_kepler_map.assert_called_once()
+
+
+def test_plot_saves_to_the_specified_directory(tmpdir, schedule):
+    filename = 'schedule_map'
+    expected_plot_path = os.path.join(tmpdir, filename+'.html')
+    assert not os.path.exists(expected_plot_path)
+
+    schedule.plot(output_dir=tmpdir)
+
+    assert os.path.exists(expected_plot_path)
 
 
 def test_reproject_changes_projection_for_all_stops_in_route():
