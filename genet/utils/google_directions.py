@@ -224,6 +224,7 @@ def parse_results(api_requests):
         path_polyline = api_requests_attribs['path_polyline']
         request = api_requests_attribs['request']
         del api_requests_attribs['request']
+        api_requests_attribs['request_payload'] = request.result().json()
         api_requests_attribs['parsed_response'] = parse_routes(request.result(), path_polyline)
         api_requests_with_response[node_request_pair] = api_requests_attribs
     return api_requests_with_response
