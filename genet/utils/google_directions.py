@@ -1,16 +1,17 @@
 import ast
 import itertools
+import json
 import logging
-import polyline
 import os
 import time
-import json
-from requests_futures.sessions import FuturesSession
-import genet.utils.secrets_vault as secrets_vault
-import genet.utils.spatial as spatial
-import genet.utils.persistence as persistence
-import genet.utils.simplification as simplification
+
 import genet.outputs_handler.geojson as geojson
+import genet.utils.persistence as persistence
+import genet.utils.secrets_vault as secrets_vault
+import genet.utils.simplification as simplification
+import genet.utils.spatial as spatial
+import polyline
+from requests_futures.sessions import FuturesSession
 
 session = FuturesSession(max_workers=2)
 
@@ -161,7 +162,15 @@ def send_requests(api_requests: dict, key: str = None, secret_name: str = None, 
 def parse_route(route: dict):
     def compute_speed():
         total_distance = sum([leg['distance']['value'] for leg in legs])
-        total_duration = sum([leg['duration']['value'] for leg in legs])
+        total_duration = 0
+        for leg in legs:
+            if 'duration_in_traffic' in leg:
+                total_duration += leg['duration_in_traffic']['value']
+            else:
+                logging.warning(
+                    f'duration_in_traffic was not found for leg: from: {leg["start_location"]} '
+                    f'to: {leg["end_location"]}')
+                total_duration += leg['duration']['value']
         if total_duration == 0:
             logging.warning('Duration of 0 detected. Route polyline: {}'.format(route['overview_polyline']['points']))
             return 0

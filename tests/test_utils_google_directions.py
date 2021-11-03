@@ -84,6 +84,102 @@ def google_directions_api_response():
                             "text": "1 min",
                             "value": 71
                         },
+                        "duration_in_traffic": {
+                            "text": "1 min",
+                            "value": 35
+                        },
+                        "end_address": "65 Cleveland St, Fitzrovia, London W1T 4JZ, UK",
+                        "end_location": {
+                            "lat": 51.5208376,
+                            "lng": -0.1391098
+                        },
+                        "start_address": "49 Newman St, Fitzrovia, London W1T 3DZ, UK",
+                        "start_location": {
+                            "lat": 51.5188908,
+                            "lng": -0.1369381
+                        },
+                        "steps": [
+                            {
+                                "distance": {
+                                    "text": "0.3 km",
+                                    "value": 264
+                                },
+                                "duration": {
+                                    "text": "1 min",
+                                    "value": 71
+                                },
+                                "end_location": {
+                                    "lat": 51.5208376,
+                                    "lng": -0.1391098
+                                },
+                                "html_instructions": "Head \u003cb\u003enorth-west\u003c/b\u003e on \u003cb\u003eCleveland St\u003c/b\u003e towards \u003cb\u003eTottenham St\u003c/b\u003e",
+                                "polyline": {
+                                    "points": "ahmyHzvYCBCFs@t@oAtAaAdAy@bAA@WX_AjAc@f@"
+                                },
+                                "start_location": {
+                                    "lat": 51.5188908,
+                                    "lng": -0.1369381
+                                },
+                                "travel_mode": "DRIVING"
+                            }
+                        ],
+                        "traffic_speed_entry": [],
+                        "via_waypoint": []
+                    }
+                ],
+                "overview_polyline": {
+                    "points": "ahmyHzvYkCvCuCdDcBrB"
+                },
+                "summary": "Cleveland St",
+                "warnings": [],
+                "waypoint_order": []
+            }
+        ],
+        "status": "OK"
+    }).encode('utf-8')
+    return response
+
+
+@pytest.fixture()
+def google_directions_api_response_without_traffic_info():
+    response = Response()
+    response.status_code = 200
+    response._content = json.dumps({
+        "geocoded_waypoints": [
+            {
+                "geocoder_status": "OK",
+                "place_id": "ChIJQbcuHzwbdkgRamIMZzZGjxg",
+                "types": ["cafe", "establishment", "food", "point_of_interest"]
+            },
+            {
+                "geocoder_status": "OK",
+                "place_id": "ChIJi8rZjSkbdkgRBluJBmAZK1w",
+                "types": ["street_address"]
+            }
+        ],
+        "routes": [
+            {
+                "bounds": {
+                    "northeast": {
+                        "lat": 51.5208376,
+                        "lng": -0.1369381
+                    },
+                    "southwest": {
+                        "lat": 51.5188908,
+                        "lng": -0.1391098
+                    }
+                },
+                "copyrights": "Map data ©2020 Google",
+                "legs": [
+                    {
+                        "distance": {
+                            "text": "0.3 km",
+                            "value": 264
+                        },
+                        "duration": {
+                            "text": "1 min",
+                            "value": 71
+                        },
                         "end_address": "65 Cleveland St, Fitzrovia, London W1T 4JZ, UK",
                         "end_location": {
                             "lat": 51.5208376,
@@ -176,6 +272,10 @@ def google_directions_api_response_multiple_legs():
                             "text": "1 min",
                             "value": 44
                         },
+                        "duration_in_traffic": {
+                            "text": "1 min",
+                            "value": 35
+                        },
                         "end_address": "49 Newman St, Fitzrovia, London W1T 3DZ, UK",
                         "end_location": {
                             "lat": 51.5188908,
@@ -222,6 +322,10 @@ def google_directions_api_response_multiple_legs():
                         "duration": {
                             "text": "1 min",
                             "value": 44
+                        },
+                        "duration_in_traffic": {
+                            "text": "1 min",
+                            "value": 35
                         },
                         "end_address": "49 Newman St, Fitzrovia, London W1T 3DZ, UK",
                         "end_location": {
@@ -461,13 +565,19 @@ def test_sending_requests_throws_error_if_key_not_found(mocker):
 
 def test_parsing_routes_with_a_good_response(google_directions_api_response, generated_request):
     data = google_directions.parse_routes(google_directions_api_response, generated_request['path_polyline'])
+    assert_semantically_equal(data, {'google_speed': 7.542857142857143, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'})
+
+
+def test_parsing_routes_with_a_response_without_traffic_info(google_directions_api_response_without_traffic_info, generated_request, caplog):
+    data = google_directions.parse_routes(google_directions_api_response_without_traffic_info, generated_request['path_polyline'])
     assert_semantically_equal(data, {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'})
+    assert_logging_warning_caught_with_message_containing(caplog, 'duration_in_traffic was not found')
 
 
 def test_parsing_routes_with_multiple_legs_response(google_directions_api_response_multiple_legs, generated_request):
     data = google_directions.parse_routes(google_directions_api_response_multiple_legs,
                                           generated_request['path_polyline'])
-    assert_semantically_equal(data, {'google_speed': 2.3636363636363638, 'google_polyline': 'ekmyH~nYbBzFblahblah'})
+    assert_semantically_equal(data, {'google_speed': 2.9714285714285715, 'google_polyline': 'ekmyH~nYbBzFblahblah'})
 
 
 def test_parsing_routes_with_a_bad_response(caplog, request_denied_google_directions_api_response, generated_request):
@@ -497,7 +607,7 @@ def test_parsing_routes_with_bad_request(caplog, bad_request_google_directions_a
     assert_logging_warning_caught_with_message_containing(caplog, 'Request was not successful.')
 
 
-def test_parse_results(mocker, tmpdir, generated_request, google_directions_api_response):
+def test_parse_results(mocker, generated_request, google_directions_api_response):
     request = FuturesSession(max_workers=1).get('http://hello.com')
     mocker.patch.object(request, 'result', return_value=google_directions_api_response)
     o_d = generated_request['path_nodes'][0], generated_request['path_nodes'][-1]
@@ -511,7 +621,9 @@ def test_parse_results(mocker, tmpdir, generated_request, google_directions_api_
                        '2503102618', '107351', '5411344775', '2440651577', '2440651556', '2440651552', '107352'],
         'path_polyline': 'ahmyHzvYGJyBbCGHq@r@EDIJGBu@~@SToAzAEFEDIJ', 'origin': {'lat': 51.5188864, 'lon': -0.1369442},
         'destination': {'lat': 51.5208299, 'lon': -0.1391027}, 'timestamp': 12345,
-        'parsed_response': {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}}})
+        'parsed_response': {'google_speed': 7.542857142857143, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        'request_payload': google_directions_api_response.json()
+    }})
 
 
 def test_mapping_results_to_edges_with_singular_route_data():
