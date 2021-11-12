@@ -2347,7 +2347,14 @@ def test_generate_validation_report_with_pt2matsim_network(network_object_from_t
                           'has_valid_routes': False, 'invalid_routes': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']}},
             'route_level': {'10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'is_valid_route': False,
                                                                                      'invalid_stages': [
-                                                                                         'not_has_correctly_ordered_route']}}}},
+                                                                                         'not_has_correctly_ordered_route']}}},
+        'vehicle_level': {'vehicle_definitions_valid': True,
+                          'vehicle_definitions_validity_components': {
+                              'missing_vehicles': {'missing_vehicles_types': set(),
+                                                   'vehicles_affected': {}},
+                              'multiple_use_vehicles': {},
+                              'unused_vehicles': set()}}},
+
         'routing': {'services_have_routes_in_the_graph': False,
                     'service_routes_with_invalid_network_route': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
                     'route_to_crow_fly_ratio': {
@@ -2373,11 +2380,17 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
             'link_attributes': {'links_over_1km_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
                                 'zero_attributes': {}}},
         'schedule': {'schedule_level': {'is_valid_schedule': True, 'invalid_stages': [], 'has_valid_services': True,
-                                        'invalid_services': []}, 'service_level': {
-            'service': {'is_valid_service': True, 'invalid_stages': [], 'has_valid_routes': True,
-                        'invalid_routes': []}}, 'route_level': {
-            'service': {'1': {'is_valid_route': True, 'invalid_stages': []},
-                        '2': {'is_valid_route': True, 'invalid_stages': []}}}},
+                                        'invalid_services': []},
+                     'service_level': {
+                         'service': {'is_valid_service': True, 'invalid_stages': [], 'has_valid_routes': True, 'invalid_routes': []}},
+                     'route_level': {
+                         'service': {'1': {'is_valid_route': True, 'invalid_stages': []},'2': {'is_valid_route': True, 'invalid_stages': []}}},
+        'vehicle_level': {'vehicle_definitions_valid': True,
+                       'vehicle_definitions_validity_components': {
+                           'missing_vehicles': {'missing_vehicles_types': set(),
+                                                'vehicles_affected': {}},
+                           'multiple_use_vehicles': {},
+                           'unused_vehicles': set()}}},
         'routing': {'services_have_routes_in_the_graph': True, 'service_routes_with_invalid_network_route': [],
                     'route_to_crow_fly_ratio': {'service': {'1': 0.037918141839160244, '2': 0.037918141839160244}}}}
     assert_semantically_equal(report, correct_report)

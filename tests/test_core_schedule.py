@@ -1371,6 +1371,47 @@ def test_validate_vehicle_definitions_warns_of_missing_vehicle_types(schedule, c
     assert "{'type': 'bus'}" in caplog.records[1].message
 
 
+def test_correct_schedule_does_not_have_missing_vehicles(schedule):
+    vehicle_information = schedule.get_missing_vehicle_information()
+    assert vehicle_information == {
+        'missing_vehicle_types': set(),
+        'vehicles_affected': {}
+    }
+
+
+def test_schedule_with_missing_vehicle_type_returns_expected_information():
+    route_1 = Route(route_short_name='name',
+                    mode='bus', id='1',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['13:00:00', '13:30:00'],
+                           'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    route_2 = Route(route_short_name='name_2',
+                    mode='bus', id='2',
+                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['11:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    service = Service(id='service', routes=[route_1, route_2])
+    schedule = Schedule(epsg='epsg:27700', services=[service])
+    del schedule.vehicle_types['bus']
+
+    vehicle_information = schedule.get_missing_vehicle_information()
+    assert vehicle_information == {
+        'missing_vehicle_types': {'bus'},
+        'vehicles_affected': {'veh_1_bus': {'type': 'bus'},
+                              'veh_2_bus': {'type': 'bus'},
+                              'veh_3_bus': {'type': 'bus'},
+                              'veh_4_bus': {'type': 'bus'}}
+    }
+
+
 def test_reading_vehicle_types_from_a_yml_config(vehicle_definitions_config_path):
     vehicle_types = read_vehicle_types(vehicle_definitions_config_path)
     assert_semantically_equal(vehicle_types, {
