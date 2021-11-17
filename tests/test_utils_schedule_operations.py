@@ -34,7 +34,7 @@ def correct_schedule():
     ])
 
 
-def test_generate_validation_report_with_correct_schedule(correct_schedule):
+def test_generate_validation_report_for_correct_schedule(correct_schedule):
     correct_report = {
         'schedule_level': {'is_valid_schedule': True, 'invalid_stages': [], 'has_valid_services': True,
                            'invalid_services': []},
@@ -55,7 +55,7 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
     assert_semantically_equal(report, correct_report)
 
 
-def test_generate_validation_report_with_incorrect_schedule(test_schedule):
+def test_generate_validation_report_for_incorrect_schedule(test_schedule):
     correct_report = {
         'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
                            'has_valid_services': False, 'invalid_services': ['service']},
