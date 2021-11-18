@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import pkgutil
+import pandas as pd
 from abc import abstractmethod
 from collections import defaultdict
 from copy import deepcopy
@@ -1240,6 +1241,50 @@ class Schedule(ScheduleElement):
                  vehicle_id=np.concatenate(df['vehicle_id'].values))
         df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
         return df
+
+    def route_trips_headways(self, from_time=None, to_time=None, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        Adds two columns: headway and headway_mins by calculating the time difference in ordered trip departures for
+        each unique route.
+        This can also be done for a specific time frame by specifying from_time and to_time (or just one of them).
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
+        df = self.route_trips_to_dataframe(gtfs_day=gtfs_day).sort_values(['route_id', 'trip_departure_time']).reset_index(drop=True)
+
+        year = int(gtfs_day[:4])
+        month = int(gtfs_day[4:6])
+        day = int(gtfs_day[6:8])
+        if from_time is not None:
+            hour, minute, second = list(map(int, from_time.split(':')))
+            df = df[df['trip_departure_time'] >= datetime(year, month, day, hour, minute, second)]
+        if to_time is not None:
+            hour, minute, second = list(map(int, to_time.split(':')))
+            df = df[df['trip_departure_time'] <= datetime(year, month, day, hour, minute, second)]
+
+        df = df.groupby('route_id').apply(get_headway)
+        df['headway_mins'] = (pd.to_timedelta(df['headway']).dt.total_seconds() / 60).fillna(0)
+        return df
+
+
+    def route_average_headways(self, from_time=None, to_time=None, gtfs_day='19700101'):
+        """
+        Generates a DataFrame calculating mean headway in minutes for all routes, with their service ID.
+        This can also be done for a specific time frame by specifying from_time and to_time (or just one of them).
+        :param from_time: "HH:MM:SS" format, used as lower time bound for subsetting
+        :param to_time: "HH:MM:SS" format, used as upper time bound for subsetting
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
+        df = self.route_trips_headways(from_time=from_time, to_time=to_time, gtfs_day=gtfs_day)
+
+        df = df.groupby(['service_id', 'route_id']).describe()['headway_mins']['mean'].reset_index()
+        df = df.rename(columns={'mean': 'mean_headway_mins'})
+
+        return df
+
 
     def unused_vehicles(self):
         """
@@ -2486,3 +2531,8 @@ def read_vehicle_types(yml):
     if persistence.is_yml(yml):
         yml = io.open(yml, mode='r')
     return yaml.load(yml, Loader=yaml.FullLoader)['VEHICLE_TYPES']
+
+
+def get_headway(group):
+    group['headway'] = group['trip_departure_time'].diff().fillna(pd.Timedelta(seconds=0))
+    return group

@@ -1,5 +1,5 @@
 from shapely.geometry import Polygon, GeometryCollection
-from pandas import DataFrame, Timestamp
+from pandas import DataFrame, Timestamp, Timedelta
 from pandas.testing import assert_frame_equal
 from shapely.geometry import Polygon, GeometryCollection
 
@@ -1233,6 +1233,91 @@ def test_applying_route_trips_dataframe(schedule):
         df_to_change.sort_values(by=['route_id', 'trip_id']).sort_index(axis=1),
         schedule.route_trips_to_dataframe(gtfs_day='19700101').sort_values(by=['route_id', 'trip_id']).sort_index(
             axis=1))
+
+
+def test_generating_route_trips_headways(schedule):
+    df = schedule.route_trips_headways(gtfs_day='19700102')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service'},
+         'route_id': {0: '1', 1: '1', 2: '2', 3: '2'}, 'trip_id': {0: '1', 1: '2', 2: '1', 3: '2'},
+         'trip_departure_time': {0: Timestamp('1970-01-02 13:00:00'), 1: Timestamp('1970-01-02 13:30:00'),
+                                 2: Timestamp('1970-01-02 11:00:00'), 3: Timestamp('1970-01-02 13:00:00')},
+         'vehicle_id': {0: 'veh_1_bus', 1: 'veh_2_bus', 2: 'veh_3_bus', 3: 'veh_4_bus'},
+         'headway': {0: Timedelta('0 days 00:00:00'), 1: Timedelta('0 days 00:30:00'),
+                     2: Timedelta('0 days 00:00:00'), 3: Timedelta('0 days 02:00:00')},
+         'headway_mins': {0: 0.0, 1: 30.0, 2: 0.0, 3: 120.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_route_trips_headways_with_a_time_bound_finds_only_one_trip(schedule):
+    df = schedule.route_trips_headways(gtfs_day='19700102', from_time='10:00:00', to_time='12:00:00')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'route_id': {2: '2'}, 'service_id': {2: 'service'}, 'trip_id': {2: '1'},
+         'trip_departure_time': {2: Timestamp('1970-01-02 11:00:00')}, 'vehicle_id': {2: 'veh_3_bus'},
+         'headway': {2: Timedelta('0 days 00:00:00')}, 'headway_mins': {2: 0.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_route_trips_headways_with_a_lower_time_bound_misses_one_trip(schedule):
+    df = schedule.route_trips_headways(gtfs_day='19700102', from_time='12:00:00')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'service_id': {0: 'service', 1: 'service', 3: 'service'}, 'route_id': {0: '1', 1: '1', 3: '2'},
+         'trip_id': {0: '1', 1: '2', 3: '2'},
+         'trip_departure_time': {0: Timestamp('1970-01-02 13:00:00'), 1: Timestamp('1970-01-02 13:30:00'),
+                                 3: Timestamp('1970-01-02 13:00:00')},
+         'vehicle_id': {0: 'veh_1_bus', 1: 'veh_2_bus', 3: 'veh_4_bus'},
+         'headway': {0: Timedelta('0 days 00:00:00'), 1: Timedelta('0 days 00:30:00'), 3: Timedelta('0 days 00:00:00')},
+         'headway_mins': {0: 0.0, 1: 30.0, 3: 0.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_route_trips_headways_with_an_upper_time_bound_misses_one_trip(schedule):
+    df = schedule.route_trips_headways(gtfs_day='19700102', to_time='13:00:00')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'service_id': {0: 'service', 2: 'service', 3: 'service'}, 'route_id': {0: '1', 2: '2', 3: '2'},
+         'trip_id': {0: '1', 2: '1', 3: '2'},
+         'trip_departure_time': {0: Timestamp('1970-01-02 13:00:00'), 2: Timestamp('1970-01-02 11:00:00'),
+                                 3: Timestamp('1970-01-02 13:00:00')},
+         'vehicle_id': {0: 'veh_1_bus', 2: 'veh_3_bus', 3: 'veh_4_bus'},
+         'headway': {0: Timedelta('0 days 00:00:00'), 2: Timedelta('0 days 00:00:00'), 3: Timedelta('0 days 02:00:00')},
+         'headway_mins': {0: 0.0, 2: 0.0, 3: 120.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_route_average_headways(schedule):
+    df = schedule.route_average_headways(gtfs_day='19700102')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'service_id': {0: 'service', 1: 'service'},
+         'route_id': {0: '1', 1: '2'},
+         'mean_headway_mins': {0: 15.0, 1: 60.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_route_average_headways_with_a_time_bound_finds_only_one_trip(schedule):
+    df = schedule.route_average_headways(gtfs_day='19700102', from_time='10:00:00', to_time='12:00:00')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'service_id': {0: 'service'},
+         'route_id': {0: '2'},
+         'mean_headway_mins': {0: 0.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_route_average_headways_with_a_lower_time_bound_misses_one_trip(schedule):
+    df = schedule.route_average_headways(gtfs_day='19700102', from_time='12:00:00')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'service_id': {0: 'service', 1: 'service'},
+         'route_id': {0: '1', 1: '2'},
+         'mean_headway_mins': {0: 15.0, 1: 0.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_route_average_headways_with_an_upper_time_bound_misses_one_trip(schedule):
+    df = schedule.route_average_headways(gtfs_day='19700102', to_time='13:00:00')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'service_id': {0: 'service', 1: 'service'},
+         'route_id': {0: '1', 1: '2'},
+         'mean_headway_mins': {0: 0.0, 1: 60.0}}
+    ).sort_index(axis=1))
 
 
 def test_overlapping_vehicles(schedule):
