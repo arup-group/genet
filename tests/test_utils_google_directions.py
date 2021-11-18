@@ -413,10 +413,10 @@ def test_send_requests_for_road_network(mocker, tmpdir, generated_request, googl
     mocker.patch.object(Future, 'result', return_value=google_directions_api_response)
 
     n = Network('epsg:27700')
-    google_directions.send_requests_for_network(n, 10, tmpdir)
+    google_directions.send_requests_for_network(n, 10, tmpdir, 'now')
     google_directions.generate_requests.assert_called_once_with(n)
-    google_directions.send_requests.assert_called_once_with(google_directions.generate_requests.return_value, None,
-                                                            None, None, False)
+    google_directions.send_requests.assert_called_once_with(google_directions.generate_requests.return_value,
+                                                            'now', None, None, None, None)
 
 
 def test_read_saved_api_results():
@@ -431,28 +431,30 @@ def test_read_saved_api_results():
                                     'parsed_response': {'google_speed': 6.8, 'google_polyline': 'mvmyHpqYb@pA'}}})
 
 
-def test_queries_build_correctly_without_traffic():
+def test_queries_build_correctly_without_traffic_model_specified():
     request = google_directions.make_request(
         origin_attributes={'lat': 1, 'lon': 2},
         destination_attributes={'lat': 3, 'lon': 4},
         key='super_awesome_key',
-        traffic=False
-    )
-    result = request.result()
-    assert result.status_code == 200
-    assert result.url == 'https://maps.googleapis.com/maps/api/directions/json?origin=1%2C2&destination=3%2C4&key=super_awesome_key'
-
-
-def test_queries_build_correctly_with_traffic():
-    request = google_directions.make_request(
-        origin_attributes={'lat': 1, 'lon': 2},
-        destination_attributes={'lat': 3, 'lon': 4},
-        key='super_awesome_key',
-        traffic=True
+        departure_time='now',
+        traffic_model=None
     )
     result = request.result()
     assert result.status_code == 200
     assert result.url == 'https://maps.googleapis.com/maps/api/directions/json?origin=1%2C2&destination=3%2C4&key=super_awesome_key&departure_time=now'
+
+
+def test_queries_build_correctly_with_optimistic_traffic_model():
+    request = google_directions.make_request(
+        origin_attributes={'lat': 1, 'lon': 2},
+        destination_attributes={'lat': 3, 'lon': 4},
+        key='super_awesome_key',
+        departure_time='now',
+        traffic_model='optimistic'
+    )
+    result = request.result()
+    assert result.status_code == 200
+    assert result.url == 'https://maps.googleapis.com/maps/api/directions/json?origin=1%2C2&destination=3%2C4&key=super_awesome_key&traffic_model=optimistic&departure_time=now'
 
 
 def test_generating_requests_on_non_simplified_graphs():
@@ -542,7 +544,7 @@ def test_sending_requests(mocker, google_directions_api_response):
         (5, 3): {'path_nodes': [5, 4, 3], 'path_polyline': '_ibE_seK????', 'origin': {'lat': 1, 'lon': 2},
                  'destination': {'lat': 1, 'lon': 2}}}
 
-    api_requests = google_directions.send_requests(api_requests)
+    api_requests = google_directions.send_requests(api_requests, 'now')
 
     assert_semantically_equal(api_requests, {
         (1, 10): {'path_nodes': (1, 10), 'path_polyline': '_ibE_seK??', 'origin': {'lat': 1, 'lon': 2},
@@ -559,7 +561,7 @@ def test_sending_requests(mocker, google_directions_api_response):
 def test_sending_requests_throws_error_if_key_not_found(mocker):
     mocker.patch.object(secrets_vault, 'get_google_directions_api_key', return_value=None)
     with pytest.raises(RuntimeError) as e:
-        google_directions.send_requests({})
+        google_directions.send_requests({}, 'now')
     assert 'API key was not found' in str(e.value)
 
 

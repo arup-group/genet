@@ -16,7 +16,7 @@ from requests_futures.sessions import FuturesSession
 session = FuturesSession(max_workers=2)
 
 
-def send_requests_for_network(n, request_number_threshold: int, output_dir, traffic: bool = False,
+def send_requests_for_network(n, request_number_threshold: int, output_dir, departure_time, traffic_model: str = None,
                               max_workers: int = 4, key: str = None, secret_name: str = None, region_name: str = None):
     """
     Generates, sends and parses results from Google Directions API for the car modal subgraph for network n.
@@ -41,7 +41,7 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir, traf
         raise RuntimeError(f'Number of requests exceeded the threshold. Number of requests: {len(api_requests)}')
 
     logging.info('Sending API requests')
-    api_requests = send_requests(api_requests, key, secret_name, region_name, traffic)
+    api_requests = send_requests(api_requests, departure_time, traffic_model, key, secret_name, region_name)
     logging.info('Parsing API requests')
     api_requests = parse_results(api_requests)
 
@@ -68,16 +68,41 @@ def read_saved_api_results(file_path):
     return api_requests
 
 
-def make_request(origin_attributes, destination_attributes, key, traffic):
+def make_request(origin_attributes, destination_attributes, key, departure_time, traffic_model):
     base_url = 'https://maps.googleapis.com/maps/api/directions/json'
-    params = {
-        'origin': '{},{}'.format(origin_attributes['lat'], origin_attributes['lon']),
-        'destination': '{},{}'.format(destination_attributes['lat'], destination_attributes['lon']),
-        'key': key
-    }
-    if traffic:
+    params = {'origin': '{},{}'.format(origin_attributes['lat'], origin_attributes['lon']),
+              'destination': '{},{}'.format(destination_attributes['lat'], destination_attributes['lon']), 'key': key,
+              'traffic_model': traffic_model}
+    current_unix_time = time.time()
+    if departure_time == 'now':
         params['departure_time'] = 'now'
+    elif (type(departure_time) == int) & (departure_time > current_unix_time) & (departure_time < 2147483646):
+        params['departure_time'] = departure_time
+    else:
+        raise RuntimeError('The departure_time parameter value not recognised. The departure_time must be set to "now",'
+                           ' or some time in the future. If setting the departure_time to some time in the future, then'
+                           ' it needs to be specified as an integer in seconds since midnight, January 1, 1970 UTC. It '
+                           'cannot be in the past.')
     return session.get(base_url, params=params)
+
+
+def send_requests(api_requests: dict, departure_time, traffic_model: str = None,
+                  key: str = None, secret_name: str = None, region_name: str = None):
+    if key is None:
+        key = secrets_vault.get_google_directions_api_key(secret_name, region_name)
+        if key is None:
+            raise RuntimeError('API key was not found. Make sure you are authenticated and pointing in the correct '
+                               'location if using AWS secrets manager, or that you have passed the correct key. '
+                               'If using `GOOGLE_DIR_API_KEY` environmental variable, make sure you have spelled it '
+                               'correctly. You can check this using `echo $GOOGLE_DIR_API_KEY` in the terminal you\'re '
+                               'using or  `!echo $GOOGLE_DIR_API_KEY` if using jupyter notebook cells. To export the '
+                               'key use: `export GOOGLE_DIR_API_KEY=key` (again, use ! at the beginning of the line in '
+                               'jupyter).')
+    for request_nodes, api_request_attribs in api_requests.items():
+        api_request_attribs['timestamp'] = time.time()
+        api_request_attribs['request'] = make_request(
+            api_request_attribs['origin'], api_request_attribs['destination'], key, departure_time, traffic_model)
+    return api_requests
 
 
 def generate_requests(n):
@@ -138,25 +163,6 @@ def _generate_requests_for_simplified_network(n):
     gdf_links['destination'] = gdf_links['to'].apply(lambda x: n.node(x))
 
     return gdf_links.set_index(['from', 'to'])[['path_polyline', 'path_nodes', 'origin', 'destination']].T.to_dict()
-
-
-def send_requests(api_requests: dict, key: str = None, secret_name: str = None, region_name: str = None,
-                  traffic: bool = False):
-    if key is None:
-        key = secrets_vault.get_google_directions_api_key(secret_name, region_name)
-        if key is None:
-            raise RuntimeError('API key was not found. Make sure you are authenticated and pointing in the correct '
-                               'location if using AWS secrets manager, or that you have passed the correct key. '
-                               'If using `GOOGLE_DIR_API_KEY` environmental variable, make sure you have spelled it '
-                               'correctly. You can check this using `echo $GOOGLE_DIR_API_KEY` in the terminal you\'re '
-                               'using or  `!echo $GOOGLE_DIR_API_KEY` if using jupyter notebook cells. To export the '
-                               'key use: `export GOOGLE_DIR_API_KEY=key` (again, use ! at the beginning of the line in '
-                               'jupyter).')
-    for request_nodes, api_request_attribs in api_requests.items():
-        api_request_attribs['timestamp'] = time.time()
-        api_request_attribs['request'] = make_request(
-            api_request_attribs['origin'], api_request_attribs['destination'], key, traffic)
-    return api_requests
 
 
 def parse_route(route: dict):
