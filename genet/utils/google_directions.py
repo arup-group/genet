@@ -16,7 +16,8 @@ from requests_futures.sessions import FuturesSession
 session = FuturesSession(max_workers=2)
 
 
-def send_requests_for_network(n, request_number_threshold: int, output_dir, departure_time, traffic_model: str = None,
+def send_requests_for_network(n, request_number_threshold: int, output_dir,
+                              departure_time: int = -1, traffic_model: str = None,
                               max_workers: int = 4, key: str = None, secret_name: str = None, region_name: str = None):
     """
     Generates, sends and parses results from Google Directions API for the car modal subgraph for network n.
@@ -74,7 +75,7 @@ def make_request(origin_attributes, destination_attributes, key, departure_time,
               'destination': '{},{}'.format(destination_attributes['lat'], destination_attributes['lon']), 'key': key,
               'traffic_model': traffic_model}
     current_unix_time = time.time()
-    if departure_time == 'now':
+    if departure_time == -1:
         params['departure_time'] = 'now'
     elif (type(departure_time) == int) & (departure_time > current_unix_time) & (departure_time < 2147483646):
         params['departure_time'] = departure_time
@@ -86,7 +87,7 @@ def make_request(origin_attributes, destination_attributes, key, departure_time,
     return session.get(base_url, params=params)
 
 
-def send_requests(api_requests: dict, departure_time, traffic_model: str = None,
+def send_requests(api_requests: dict, departure_time: int = -1, traffic_model: str = None,
                   key: str = None, secret_name: str = None, region_name: str = None):
     if key is None:
         key = secrets_vault.get_google_directions_api_key(secret_name, region_name)
