@@ -1347,7 +1347,8 @@ class Schedule(ScheduleElement):
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
         :return:
         """
-        df = self.trips_to_dataframe(gtfs_day=gtfs_day).sort_values(['route_id', 'trip_departure_time']).reset_index(drop=True)
+        df = self.trips_to_dataframe(gtfs_day=gtfs_day).sort_values(
+            ['route_id', 'trip_departure_time']).reset_index(drop=True)
 
         year = int(gtfs_day[:4])
         month = int(gtfs_day[4:6])
@@ -1419,13 +1420,13 @@ class Schedule(ScheduleElement):
         """
         df = self.trips_headways(from_time=from_time, to_time=to_time, gtfs_day=gtfs_day)
 
-        df = df.groupby(['service_id', 'route_id', 'mode']).describe()['headway_mins'][['mean', 'std', 'max', 'min', 'count']].reset_index()
+        df = df.groupby(['service_id', 'route_id', 'mode']).describe()
+        df = df['headway_mins'][['mean', 'std', 'max', 'min', 'count']].reset_index()
         df = df.rename(
             columns={'mean': 'mean_headway_mins', 'std': 'std_headway_mins', 'max': 'max_headway_mins',
                      'min': 'min_headway_mins', 'count': 'trip_count'}
         )
         return df
-
 
     def unused_vehicles(self):
         """
@@ -1752,7 +1753,8 @@ class Schedule(ScheduleElement):
             for col in set(df.columns) - {'trips'}}
         ).assign(trip_id=trips[:, 0],
                  trip_dep_time=trips[:, 1],
-                 vehicle_id=trips[:, 2]).sort_values(by=['route_id', 'trip_id', 'departure_time']).reset_index(drop=True)
+                 vehicle_id=trips[:, 2]).sort_values(
+            by=['route_id', 'trip_id', 'departure_time']).reset_index(drop=True)
 
         df['departure_time'] = df['trip_dep_time'] + df['departure_time']
         df['arrival_time'] = df['trip_dep_time'] + df['arrival_time']
