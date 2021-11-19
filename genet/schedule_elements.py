@@ -1260,6 +1260,8 @@ class Schedule(ScheduleElement):
         Adds two columns: headway and headway_mins by calculating the time difference in ordered trip departures for
         each unique route.
         This can also be done for a specific time frame by specifying from_time and to_time (or just one of them).
+        :param from_time: "HH:MM:SS" format, used as lower time bound for subsetting
+        :param to_time: "HH:MM:SS" format, used as upper time bound for subsetting
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
         :return:
         """
@@ -1290,7 +1292,7 @@ class Schedule(ScheduleElement):
         :return:
         """
         df = self.trips_headways(from_time=from_time, to_time=to_time, gtfs_day=gtfs_day)
-        
+
         df = df.groupby(['service_id', 'route_id']).describe()['headway_mins']['mean'].reset_index()
         df = df.rename(columns={'mean': 'mean_headway_mins'})
         return df
