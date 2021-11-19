@@ -419,3 +419,19 @@ def test_building_trips_dataframe(service):
                                              6: 'name', 7: 'name', 8: 'name', 9: 'name', 10: 'name', 11: 'name'}})
 
     assert_frame_equal(df, correct_df)
+
+
+def test_generating_trips_dataframe(service):
+    df = service.trips_to_dataframe()
+
+    assert_frame_equal(
+        df,
+        DataFrame(
+            {'trip_id': {0: '1', 1: '2', 2: '1', 3: '2'},
+             'trip_departure_time': {0: Timestamp('1970-01-01 13:00:00'), 1: Timestamp('1970-01-01 13:30:00'),
+                                     2: Timestamp('1970-01-01 11:00:00'), 3: Timestamp('1970-01-01 13:00:00')},
+             'vehicle_id': {0: 'veh_1_bus', 1: 'veh_2_bus', 2: 'veh_3_bus', 3: 'veh_4_bus'},
+             'route_id': {0: '1', 1: '1', 2: '2', 3: '2'},
+             'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service'}}
+        )
+    )

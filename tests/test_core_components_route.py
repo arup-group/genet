@@ -373,7 +373,7 @@ def test_is_valid_with_single_stop_network():
     assert not route.is_valid_route()
 
 
-def test_building_trips_dataframe(route):
+def test_building_trips_dataframe_with_stops(route):
     df = route.route_trips_with_stops_to_dataframe()
 
     correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 10:00:00'), 1: Timestamp('1970-01-01 10:05:00'),
@@ -395,3 +395,17 @@ def test_building_trips_dataframe(route):
                             'to_stop_name': {0: '', 1: '', 2: '', 3: '', 4: '', 5: ''}})
 
     assert_frame_equal(df, correct_df)
+
+
+def test_generating_trips_dataframe(route):
+    df = route.trips_to_dataframe()
+
+    assert_frame_equal(
+        df,
+        DataFrame(
+            {'trip_id': {0: '1', 1: '2'},
+             'trip_departure_time': {0: Timestamp('1970-01-01 10:00:00'), 1: Timestamp('1970-01-01 20:00:00')},
+             'vehicle_id': {0: 'veh_1_bus', 1: 'veh_2_bus'},
+             'route_id': {0: '1', 1: '1'}}
+        )
+    )

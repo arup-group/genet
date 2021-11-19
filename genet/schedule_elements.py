@@ -597,6 +597,20 @@ class Route(ScheduleElement):
         df = df.reset_index(drop=True)
         return df
 
+    def trips_to_dataframe(self, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        Check out also `route_trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
+        over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
+        df = pd.DataFrame(self.trips)
+        df['route_id'] = self.id
+        df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
+        return df
+
     def is_exact(self, other):
         same_route_name = self.route_short_name == other.route_short_name
         same_mode = self.mode.lower() == other.mode.lower()
@@ -984,6 +998,26 @@ class Service(ScheduleElement):
                 df = df.append(_df)
         df['service'] = self.id
         df['service_name'] = self.name.replace("\\", "_").replace("/", "_")
+        df = df.reset_index(drop=True)
+        return df
+
+    def trips_to_dataframe(self, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        Check out also `route_trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
+        over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
+        df = None
+        for route in self.routes():
+            _df = route.trips_to_dataframe(gtfs_day=gtfs_day)
+            if df is None:
+                df = _df
+            else:
+                df = df.append(_df)
+        df['service_id'] = self.id
         df = df.reset_index(drop=True)
         return df
 
