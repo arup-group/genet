@@ -1025,7 +1025,7 @@ class Service(ScheduleElement):
         """
         Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
         if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        Check out also `route_trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
+        Check out also `trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
         over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
         :return:
