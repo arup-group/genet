@@ -590,7 +590,7 @@ class Route(ScheduleElement):
         for trip_id, trip_dep_time, veh_id in zip(self.trips['trip_id'], self.trips['trip_departure_time'],
                                                   self.trips['vehicle_id']):
             trip_df = _df.copy()
-            trip_df['trip'] = trip_id
+            trip_df['trip_id'] = trip_id
             trip_df['vehicle_id'] = veh_id
             trip_dep_time = use_schedule.sanitise_time(trip_dep_time, gtfs_day=gtfs_day)
             trip_df['departure_time'] = trip_dep_time + trip_df['departure_time']
@@ -599,7 +599,7 @@ class Route(ScheduleElement):
                 df = trip_df
             else:
                 df = df.append(trip_df)
-        df['route'] = self.id
+        df['route_id'] = self.id
         df['route_name'] = self.route_short_name.replace("\\", "_").replace("/", "_")
         df['mode'] = self.mode
         df['from_stop_name'] = df['from_stop'].apply(lambda x: self.stop(x).name.replace("\\", "_").replace("/", "_"))
@@ -619,6 +619,7 @@ class Route(ScheduleElement):
         df = pd.DataFrame(self.trips)
         df['route_id'] = self.id
         df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
+        df['mode'] = self.mode
         return df
 
     def is_exact(self, other):
@@ -1016,7 +1017,7 @@ class Service(ScheduleElement):
                 df = _df
             else:
                 df = df.append(_df)
-        df['service'] = self.id
+        df['service_id'] = self.id
         df['service_name'] = self.name.replace("\\", "_").replace("/", "_")
         df = df.reset_index(drop=True)
         return df
@@ -1295,6 +1296,7 @@ class Schedule(ScheduleElement):
             index_name='route_id')
         df = df.reset_index()
         df['service_id'] = df['route_id'].apply(lambda x: self._graph.graph['route_to_service_map'][x])
+        df['mode'] = df['route_id'].apply(lambda x: self.graph().graph['routes'][x]['mode'])
         df = df.rename(columns={'trips::trip_id': 'trip_id', 'trips::trip_departure_time': 'trip_departure_time',
                                 'trips::vehicle_id': 'vehicle_id'})
         df = DataFrame({
@@ -1346,7 +1348,7 @@ class Schedule(ScheduleElement):
         """
         df = self.trips_headways(from_time=from_time, to_time=to_time, gtfs_day=gtfs_day)
 
-        df = df.groupby(['service_id', 'route_id']).describe()['headway_mins']['mean'].reset_index()
+        df = df.groupby(['service_id', 'route_id', 'mode']).describe()['headway_mins']['mean'].reset_index()
         df = df.rename(columns={'mean': 'mean_headway_mins'})
         return df
 
@@ -1639,10 +1641,10 @@ class Schedule(ScheduleElement):
         """
         df = self.route_attribute_data(
             keys=['route_short_name', 'mode', 'trips', 'arrival_offsets', 'departure_offsets', 'ordered_stops', 'id'])
-        df = df.rename(columns={'id': 'route', 'route_short_name': 'route_name'})
+        df = df.rename(columns={'id': 'route_id', 'route_short_name': 'route_name'})
         df['route_name'] = df['route_name'].apply(lambda x: x.replace("\\", "_").replace("/", "_"))
-        df['service'] = df['route'].apply(lambda x: self._graph.graph['route_to_service_map'][x])
-        df['service_name'] = df['service'].apply(
+        df['service_id'] = df['route_id'].apply(lambda x: self._graph.graph['route_to_service_map'][x])
+        df['service_name'] = df['service_id'].apply(
             lambda x: self._graph.graph['services'][x]['name'].replace("\\", "_").replace("/", "_"))
         df['ordered_stops'] = df['ordered_stops'].apply(lambda x: list(zip(x[:-1], x[1:])))
         df['departure_offsets'] = df['departure_offsets'].apply(lambda x: list(map(use_schedule.get_offset, x[:-1])))
@@ -1674,9 +1676,9 @@ class Schedule(ScheduleElement):
         df = DataFrame({
             col: np.repeat(df[col].values, df['trips'].str['trip_id'].str.len())
             for col in set(df.columns) - {'trips'}}
-        ).assign(trip=trips[:, 0],
+        ).assign(trip_id=trips[:, 0],
                  trip_dep_time=trips[:, 1],
-                 vehicle_id=trips[:, 2]).sort_values(by=['route', 'trip', 'departure_time']).reset_index(drop=True)
+                 vehicle_id=trips[:, 2]).sort_values(by=['route_id', 'trip_id', 'departure_time']).reset_index(drop=True)
 
         df['departure_time'] = df['trip_dep_time'] + df['departure_time']
         df['arrival_time'] = df['trip_dep_time'] + df['arrival_time']

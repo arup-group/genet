@@ -130,7 +130,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
     logging.info('Generating csv for vehicles per hour for each service')
     use_schedule.vehicles_per_hour(
         df,
-        aggregate_by=['service', 'service_name', 'mode'],
+        aggregate_by=['service_id', 'service_name', 'mode'],
         output_path=os.path.join(vph_dir, 'vph_per_service.csv'))
 
     logging.info('Generating csv for vehicles per hour per stop')

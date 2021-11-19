@@ -173,7 +173,7 @@ def test_generating_trips_per_day_per_service(schedule):
     df_trips = use_schedule.trips_per_day_per_service(schedule.trips_with_stops_to_dataframe())
 
     correct_df = DataFrame(
-        {'service': {0: 'service'},
+        {'service_id': {0: 'service'},
          'service_name': {0: 'name'},
          'mode': {0: 'bus'},
          'number_of_trips': {0: 4}})
@@ -185,7 +185,7 @@ def test_generating_trips_per_day_per_route(schedule):
     df_trips = use_schedule.trips_per_day_per_route(schedule.trips_with_stops_to_dataframe())
 
     correct_df = DataFrame(
-        {'route': {0: '1', 1: '2'},
+        {'route_id': {0: '1', 1: '2'},
          'route_name': {0: 'name', 1: 'name_2'},
          'mode': {0: 'bus', 1: 'bus'},
          'number_of_trips': {0: 2, 1: 2}})

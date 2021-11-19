@@ -392,10 +392,10 @@ def test_building_trips_dataframe_with_stops(route):
                                              4: Timestamp('1970-01-01 20:07:00'), 5: Timestamp('1970-01-01 20:13:00')},
                             'from_stop': {0: '1', 1: '2', 2: '3', 3: '1', 4: '2', 5: '3'},
                             'to_stop': {0: '2', 1: '3', 2: '4', 3: '2', 4: '3', 5: '4'},
-                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
+                            'trip_id': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
                             'vehicle_id': {0: 'veh_1_bus', 1: 'veh_1_bus', 2: 'veh_1_bus', 3: 'veh_2_bus',
                                            4: 'veh_2_bus', 5: 'veh_2_bus'},
-                            'route': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1'},
+                            'route_id': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1'},
                             'route_name': {0: 'name', 1: 'name', 2: 'name', 3: 'name', 4: 'name', 5: 'name'},
                             'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus'},
                             'from_stop_name': {0: '', 1: '', 2: '', 3: '', 4: '', 5: ''},
@@ -413,6 +413,7 @@ def test_generating_trips_dataframe(route):
             {'trip_id': {0: '1', 1: '2'},
              'trip_departure_time': {0: Timestamp('1970-01-01 10:00:00'), 1: Timestamp('1970-01-01 20:00:00')},
              'vehicle_id': {0: 'veh_1_bus', 1: 'veh_2_bus'},
-             'route_id': {0: '1', 1: '1'}}
+             'route_id': {0: '1', 1: '1'},
+             'mode': {0: 'bus', 1: 'bus'}}
         )
     )
