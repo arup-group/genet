@@ -1311,43 +1311,39 @@ def test_generating_route_trips_headways_with_an_upper_time_bound_misses_one_tri
     ).sort_index(axis=1))
 
 
-def test_generating_route_average_headways(schedule):
-    df = schedule.average_headways(gtfs_day='19700102')
+def test_generating_headways(schedule):
+    df = schedule.headway_stats(gtfs_day='19700102')
     assert_frame_equal(df.sort_index(axis=1), DataFrame(
-        {'mode': {0: 'bus', 1: 'bus'},
-         'service_id': {0: 'service', 1: 'service'},
-         'route_id': {0: '1', 1: '2'},
-         'mean_headway_mins': {0: 15.0, 1: 60.0}}
+        {'service_id': {0: 'service', 1: 'service'}, 'route_id': {0: '1', 1: '2'}, 'mode': {0: 'bus', 1: 'bus'},
+         'mean_headway_mins': {0: 15.0, 1: 60.0}, 'std_headway_mins': {0: 21.213203435596427, 1: 84.8528137423857},
+         'max_headway_mins': {0: 30.0, 1: 120.0}, 'min_headway_mins': {0: 0.0, 1: 0.0}, 'trip_count': {0: 2.0, 1: 2.0}}
     ).sort_index(axis=1))
 
 
-def test_generating_route_average_headways_with_a_time_bound_finds_only_one_trip(schedule):
-    df = schedule.average_headways(gtfs_day='19700102', from_time='10:00:00', to_time='12:00:00')
+def test_generating_headways_with_a_time_bound_finds_only_one_trip(schedule):
+    df = schedule.headway_stats(gtfs_day='19700102', from_time='10:00:00', to_time='12:00:00')
     assert_frame_equal(df.sort_index(axis=1), DataFrame(
-        {'mode': {0: 'bus'},
-         'service_id': {0: 'service'},
-         'route_id': {0: '2'},
-         'mean_headway_mins': {0: 0.0}}
+        {'service_id': {0: 'service'}, 'route_id': {0: '2'}, 'mode': {0: 'bus'}, 'mean_headway_mins': {0: 0.0},
+         'std_headway_mins': {0: float('nan')}, 'max_headway_mins': {0: 0.0}, 'min_headway_mins': {0: 0.0},
+         'trip_count': {0: 1.0}}
     ).sort_index(axis=1))
 
 
-def test_generating_route_average_headways_with_a_lower_time_bound_misses_one_trip(schedule):
-    df = schedule.average_headways(gtfs_day='19700102', from_time='12:00:00')
+def test_generating_headways_with_a_lower_time_bound_misses_one_trip(schedule):
+    df = schedule.headway_stats(gtfs_day='19700102', from_time='12:00:00')
     assert_frame_equal(df.sort_index(axis=1), DataFrame(
-        {'mode': {0: 'bus', 1: 'bus'},
-         'service_id': {0: 'service', 1: 'service'},
-         'route_id': {0: '1', 1: '2'},
-         'mean_headway_mins': {0: 15.0, 1: 0.0}}
+        {'service_id': {0: 'service', 1: 'service'}, 'route_id': {0: '1', 1: '2'}, 'mode': {0: 'bus', 1: 'bus'},
+         'mean_headway_mins': {0: 15.0, 1: 0.0}, 'std_headway_mins': {0: 21.213203435596427, 1: float('nan')},
+         'max_headway_mins': {0: 30.0, 1: 0.0}, 'min_headway_mins': {0: 0.0, 1: 0.0}, 'trip_count': {0: 2.0, 1: 1.0}}
     ).sort_index(axis=1))
 
 
-def test_generating_route_average_headways_with_an_upper_time_bound_misses_one_trip(schedule):
-    df = schedule.average_headways(gtfs_day='19700102', to_time='13:00:00')
+def test_generating_headways_with_an_upper_time_bound_misses_one_trip(schedule):
+    df = schedule.headway_stats(gtfs_day='19700102', to_time='13:00:00')
     assert_frame_equal(df.sort_index(axis=1), DataFrame(
-        {'mode': {0: 'bus', 1: 'bus'},
-         'service_id': {0: 'service', 1: 'service'},
-         'route_id': {0: '1', 1: '2'},
-         'mean_headway_mins': {0: 0.0, 1: 60.0}}
+        {'service_id': {0: 'service', 1: 'service'}, 'route_id': {0: '1', 1: '2'}, 'mode': {0: 'bus', 1: 'bus'},
+         'mean_headway_mins': {0: 0.0, 1: 60.0}, 'std_headway_mins': {0: float('nan'), 1: 84.8528137423857},
+         'max_headway_mins': {0: 0.0, 1: 120.0}, 'min_headway_mins': {0: 0.0, 1: 0.0}, 'trip_count': {0: 1.0, 1: 2.0}}
     ).sort_index(axis=1))
 
 

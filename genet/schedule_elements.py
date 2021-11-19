@@ -1337,7 +1337,7 @@ class Schedule(ScheduleElement):
         return df
 
 
-    def average_headways(self, from_time=None, to_time=None, gtfs_day='19700101'):
+    def headway_stats(self, from_time=None, to_time=None, gtfs_day='19700101'):
         """
         Generates a DataFrame calculating mean headway in minutes for all routes, with their service ID.
         This can also be done for a specific time frame by specifying from_time and to_time (or just one of them).
@@ -1348,8 +1348,11 @@ class Schedule(ScheduleElement):
         """
         df = self.trips_headways(from_time=from_time, to_time=to_time, gtfs_day=gtfs_day)
 
-        df = df.groupby(['service_id', 'route_id', 'mode']).describe()['headway_mins']['mean'].reset_index()
-        df = df.rename(columns={'mean': 'mean_headway_mins'})
+        df = df.groupby(['service_id', 'route_id', 'mode']).describe()['headway_mins'][['mean', 'std', 'max', 'min', 'count']].reset_index()
+        df = df.rename(
+            columns={'mean': 'mean_headway_mins', 'std': 'std_headway_mins', 'max': 'max_headway_mins',
+                     'min': 'min_headway_mins', 'count': 'trip_count'}
+        )
         return df
 
 
