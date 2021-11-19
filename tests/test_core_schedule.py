@@ -1360,7 +1360,7 @@ def test_generating_trips_dataframe_from_headway(schedule):
     df = schedule.generate_trips_dataframe_from_headway(
         '1', {('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
     assert_frame_equal(
-        df,
+        df.sort_values(by='trip_id').reset_index(drop=True),
         DataFrame(
             {'trip_id': {0: '1_01:20:00', 1: '1_02:00:00', 2: '1_03:00:00', 3: '1_02:30:00', 4: '1_01:40:00',
                          5: '1_01:00:00'},
@@ -1371,7 +1371,7 @@ def test_generating_trips_dataframe_from_headway(schedule):
                             3: 'veh_bus_1_02:30:00', 4: 'veh_bus_1_01:40:00', 5: 'veh_bus_1_01:00:00'},
              'route_id': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1'},
              'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service', 5: 'service'}}
-        )
+        ).sort_values(by='trip_id').reset_index(drop=True)
     )
 
 
