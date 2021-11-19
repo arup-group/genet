@@ -83,6 +83,27 @@ def test_initiating_route(route):
                                                'services': {}, 'crs': 'epsg:27700'})
 
 
+def test_initiating_route_with_headway_spec():
+    r = Route(
+        id='route_ID',
+        route_short_name='name',
+        mode='bus',
+        stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='1', x=4, y=2, epsg='epsg:27700'),
+               Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+        headway_spec={('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30},
+        arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+        departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+
+    assert_semantically_equal(
+        r.trips,
+        {'trip_id': ['route_ID_01:00:00', 'route_ID_01:20:00', 'route_ID_01:40:00', 'route_ID_02:00:00',
+                     'route_ID_02:30:00', 'route_ID_03:00:00'],
+         'trip_departure_time': ['01:00:00', '01:20:00', '01:40:00', '02:00:00', '02:30:00', '03:00:00'],
+         'vehicle_id': ['veh_bus_route_ID_01:00:00', 'veh_bus_route_ID_01:20:00', 'veh_bus_route_ID_01:40:00',
+                        'veh_bus_route_ID_02:00:00', 'veh_bus_route_ID_02:30:00', 'veh_bus_route_ID_03:00:00']}
+    )
+
+
 def test__repr__shows_stops_and_trips_length(route):
     assert str(len(route.ordered_stops)) in route.__repr__()
     assert str(len(route.trips['trip_id'])) in route.__repr__()

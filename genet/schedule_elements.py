@@ -356,16 +356,20 @@ class Route(ScheduleElement):
     ----------
     :param route_short_name: route's short name
     :param mode: mode
-    :param trips: dictionary with keys: 'trip_id', 'trip_departure_time', 'vehicle_id'. Each value is a list
-        e.g. : {'trip_id': ['trip_1', 'trip_2'],  - IDs of trips, unique within the Route
-                'trip_departure_time': ['HH:MM:SS', 'HH:MM:SS'],  - departure time from first stop for each trip_id
-                'vehicle_id': [veh_1, veh_2]} - vehicle IDs for each trip_id, don't need to be unique
-                    (i.e. vehicles can be shared between trips, but it's up to you to make this physically possible)
     :param arrival_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
     :param departure_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
 
     Optional Parameters (note, not providing some of the parameters may result in the object failing validation)
     ----------
+    :param trips: Provide either detailed trip information of headway specification
+    dictionary with keys: 'trip_id', 'trip_departure_time', 'vehicle_id'. Each value is a list
+    e.g. : {'trip_id': ['trip_1', 'trip_2'],  - IDs of trips, unique within the Route
+            'trip_departure_time': ['HH:MM:SS', 'HH:MM:SS'],  - departure time from first stop for each trip_id
+            'vehicle_id': [veh_1, veh_2]} - vehicle IDs for each trip_id, don't need to be unique
+                (i.e. vehicles can be shared between trips, but it's up to you to make this physically possible)
+    :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
+         {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
+
     :param stops: ordered list of Stop class objects or Stop IDs already present in a Schedule, if generating a Route
         to add
     :param route_long_name: optional, verbose name for the route if exists
@@ -375,18 +379,25 @@ class Route(ScheduleElement):
     :param kwargs: additional attributes
     """
 
-    def __init__(self, route_short_name: str, mode: str, trips: Dict[str, List[str]], arrival_offsets: List[str],
-                 departure_offsets: List[str], route: list = None, route_long_name: str = '', id: str = '',
-                 await_departure: list = None, stops: List[Union[Stop, str]] = None, **kwargs):
+    def __init__(self, route_short_name: str, mode: str, arrival_offsets: List[str], departure_offsets: List[str],
+                 trips: Dict[str, List[str]] = None, headway_spec: Dict[tuple, int] = None, route: list = None,
+                 route_long_name: str = '', id: str = '', await_departure: list = None,
+                 stops: List[Union[Stop, str]] = None, **kwargs):
         self.route_short_name = route_short_name
         self.mode = mode
-        self.trips = trips
         self.arrival_offsets = arrival_offsets
         self.departure_offsets = departure_offsets
         self.route_long_name = route_long_name
         self.id = id
         ordered_stops = None
         _graph = None
+        if trips is not None:
+            self.trips = trips
+        elif headway_spec is not None:
+            self.generate_trips_from_headway(headway_spec)
+        else:
+            raise RouteInitialisationError('Please provide trip of headway information to initialise Route object')
+
         if route is None:
             self.route = []
         else:
@@ -619,6 +630,24 @@ class Route(ScheduleElement):
         df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
         df['mode'] = self.mode
         return df
+
+    def generate_trips_from_headway(self, headway_spec: dict):
+        """
+        Generates new trips for the route.
+        All newly generated trips get unique vehicles with this method.
+        :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
+         {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
+        :return:
+        """
+        new_trip_departures = list(generate_trip_departures_from_headway(headway_spec))
+        new_trip_departures.sort()
+        new_trip_departures = [t.strftime("%H:%M:%S") for t in new_trip_departures]
+
+        self.trips = {
+            'trip_id': [f'{self.id}_{t}' for t in new_trip_departures],
+            'trip_departure_time': new_trip_departures,
+            'vehicle_id': [f'veh_{self.mode}_{self.id}_{t}' for t in new_trip_departures]
+        }
 
     def is_exact(self, other):
         same_route_name = self.route_short_name == other.route_short_name
