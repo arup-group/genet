@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import pkgutil
-import pandas as pd
 from abc import abstractmethod
 from collections import defaultdict
 from copy import deepcopy
@@ -14,6 +13,7 @@ from typing import Union, Dict, List
 import dictdiffer
 import networkx as nx
 import numpy as np
+import pandas as pd
 import yaml
 from pandas import DataFrame, Series
 from pyproj import Transformer, Geod
@@ -23,11 +23,9 @@ import genet.modify.change_log as change_log
 import genet.modify.schedule as mod_schedule
 import genet.outputs_handler.geojson as gngeojson
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
-
+import genet.outputs_handler.sanitiser as sanitiser
 import genet.use.schedule as use_schedule
 import genet.utils.dict_support as dict_support
-import genet.outputs_handler.sanitiser as sanitiser
-
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
 import genet.utils.persistence as persistence
@@ -1336,6 +1334,50 @@ class Schedule(ScheduleElement):
         df['headway_mins'] = (pd.to_timedelta(df['headway']).dt.total_seconds() / 60).fillna(0)
         return df
 
+    def generate_trips_dataframe_from_headway(self, route_id, headway_spec: dict):
+        """
+        Generates new trips and vehicles for the specified route.
+        Inherits one of the existing vehicle types - if the vehicle types vary for a route, you will
+        need to generate your own trips dataframe and add those vehicles yourself.
+        All newly generated trips get unique vehicles with this method.
+        :param route_id: existing route
+        :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
+         {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
+        :return:
+        """
+        veh_type = self.vehicles[self.route(route_id).trips['vehicle_id'][0]]
+        new_trip_departures = list(generate_trip_departures_from_headway(headway_spec))
+        new_trip_departures.sort()
+
+        new_trips = pd.DataFrame(
+            {
+                'trip_id': [f'{route_id}_{t.strftime("%H:%M:%S")}' for t in new_trip_departures],
+                'trip_departure_time': new_trip_departures,
+                'vehicle_id': [f'veh_{veh_type["type"]}_{route_id}_{t.strftime("%H:%M:%S")}' for t in
+                               new_trip_departures]
+            }
+        )
+        new_trips['route_id'] = route_id
+        new_trips['service_id'] = self._graph.graph['route_to_service_map'][route_id]
+        return new_trips
+
+    def generate_trips_from_headway(self, route_id, headway_spec: dict):
+        """
+        Generates new trips and vehicles for the specified route.
+        Inherits one of the existing vehicle types - if the vehicle types vary for a route, you will
+        need to generate your own trips dataframe and add those vehicles yourself.
+        All newly generated trips get unique vehicles with this method.
+        :param route_id: existing route
+        :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
+         {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
+        :return:
+        """
+        veh_type = self.vehicles[self.route(route_id).trips['vehicle_id'][0]]
+        old_vehicles = set(self.route(route_id).trips['vehicle_id'])
+        new_trips = self.generate_trips_dataframe_from_headway(route_id, headway_spec)
+        self.set_trips_dataframe(new_trips)
+        self.vehicles = {**{veh_id: veh_type for veh_id in new_trips['vehicle_id']}, **self.vehicles}
+        list(map(self.vehicles.pop, old_vehicles))
 
     def headway_stats(self, from_time=None, to_time=None, gtfs_day='19700101'):
         """
@@ -2625,3 +2667,16 @@ def read_vehicle_types(yml):
 def get_headway(group):
     group['headway'] = group['trip_departure_time'].diff().fillna(pd.Timedelta(seconds=0))
     return group
+
+
+def generate_trip_departures_from_headway(headway_spec: dict):
+    """
+    Generates new trip departure times
+    :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
+     {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
+    :return:
+    """
+    trip_departures = set()
+    for (from_time, to_time), headway_mins in headway_spec.items():
+        trip_departures |= set(pd.date_range(from_time, to_time, freq=f'{headway_mins}min'))
+    return trip_departures

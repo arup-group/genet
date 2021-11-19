@@ -5,7 +5,7 @@ from shapely.geometry import Polygon, GeometryCollection
 
 from genet.exceptions import ServiceIndexError, ConflictingStopData, InconsistentVehicleModeError
 from genet.inputs_handler import read
-from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
+from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types, generate_trip_departures_from_headway
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation
 from tests.fixtures import *
@@ -1345,6 +1345,56 @@ def test_generating_headways_with_an_upper_time_bound_misses_one_trip(schedule):
          'mean_headway_mins': {0: 0.0, 1: 60.0}, 'std_headway_mins': {0: float('nan'), 1: 84.8528137423857},
          'max_headway_mins': {0: 0.0, 1: 120.0}, 'min_headway_mins': {0: 0.0, 1: 0.0}, 'trip_count': {0: 1.0, 1: 2.0}}
     ).sort_index(axis=1))
+
+
+def test_generating_trip_departures():
+    trip_deps = generate_trip_departures_from_headway(
+        {('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30}
+    )
+    assert trip_deps == {Timestamp('2021-11-19 01:40:00', freq='20T'), Timestamp('2021-11-19 01:20:00', freq='20T'),
+                         Timestamp('2021-11-19 03:00:00', freq='30T'), Timestamp('2021-11-19 02:30:00', freq='30T'),
+                         Timestamp('2021-11-19 01:00:00', freq='20T'), Timestamp('2021-11-19 02:00:00', freq='20T')}
+
+
+def test_generating_trips_dataframe_from_headway(schedule):
+    df = schedule.generate_trips_dataframe_from_headway(
+        '1', {('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
+    assert_frame_equal(
+        df,
+        DataFrame(
+            {'trip_id': {0: '1_01:20:00', 1: '1_02:00:00', 2: '1_03:00:00', 3: '1_02:30:00', 4: '1_01:40:00',
+                         5: '1_01:00:00'},
+             'trip_departure_time': {0: Timestamp('2021-11-19 01:20:00'), 1: Timestamp('2021-11-19 02:00:00'),
+                                     2: Timestamp('2021-11-19 03:00:00'), 3: Timestamp('2021-11-19 02:30:00'),
+                                     4: Timestamp('2021-11-19 01:40:00'), 5: Timestamp('2021-11-19 01:00:00')},
+             'vehicle_id': {0: 'veh_bus_1_01:20:00', 1: 'veh_bus_1_02:00:00', 2: 'veh_bus_1_03:00:00',
+                            3: 'veh_bus_1_02:30:00', 4: 'veh_bus_1_01:40:00', 5: 'veh_bus_1_01:00:00'},
+             'route_id': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1'},
+             'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service', 5: 'service'}}
+        )
+    )
+
+
+def test_generating_trips_from_headway(schedule):
+    schedule.generate_trips_from_headway('1', {('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
+    assert_semantically_equal(
+        schedule.route('1').trips,
+        {'trip_id': ['1_01:00:00', '1_01:20:00', '1_01:40:00', '1_02:00:00', '1_02:30:00', '1_03:00:00'],
+         'trip_departure_time': ['01:00:00', '01:20:00', '01:40:00', '02:00:00', '02:30:00', '03:00:00'],
+         'vehicle_id': ['veh_bus_1_01:00:00', 'veh_bus_1_01:20:00', 'veh_bus_1_01:40:00', 'veh_bus_1_02:00:00',
+                        'veh_bus_1_02:30:00', 'veh_bus_1_03:00:00']}
+    )
+    assert_semantically_equal(
+        schedule.vehicles,
+        {'veh_bus_1_01:00:00': {'type': 'bus'},
+         'veh_bus_1_02:00:00': {'type': 'bus'},
+         'veh_bus_1_01:40:00': {'type': 'bus'},
+         'veh_bus_1_01:20:00': {'type': 'bus'},
+         'veh_bus_1_03:00:00': {'type': 'bus'},
+         'veh_bus_1_02:30:00': {'type': 'bus'},
+         'veh_3_bus': {'type': 'bus'},
+         'veh_4_bus': {'type': 'bus'}}
+    )
 
 
 def test_overlapping_vehicles(schedule):
