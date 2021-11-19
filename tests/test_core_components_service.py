@@ -375,8 +375,15 @@ def test_is_valid_with_non_network_route(service):
     assert not service.is_valid_service()
 
 
+def test_building_trips_dataframe_with_stops_accepts_backwards_compatibility(service, mocker, caplog):
+    mocker.patch.object(Service, 'trips_with_stops_to_dataframe')
+    service.trips_with_stops_to_dataframe(service.trips_to_dataframe())
+    service.trips_with_stops_to_dataframe.assert_called_once()
+    assert_logging_warning_caught_with_message_containing(caplog, '`route_trips_with_stops_to_dataframe` method is deprecated')
+
+
 def test_building_trips_dataframe(service):
-    df = service.route_trips_with_stops_to_dataframe()
+    df = service.trips_with_stops_to_dataframe()
 
     correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 13:00:00'), 1: Timestamp('1970-01-01 13:05:00'),
                                                2: Timestamp('1970-01-01 13:09:00'), 3: Timestamp('1970-01-01 13:30:00'),

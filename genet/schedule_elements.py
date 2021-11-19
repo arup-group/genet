@@ -563,6 +563,16 @@ class Route(ScheduleElement):
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
+        This method exists for backwards compatibility only
+        Please use trips_with_stops_to_dataframe
+        :return:
+        """
+        logging.warning('`route_trips_with_stops_to_dataframe` method is deprecated and will be replaced by '
+                        '`trips_to_dataframe` in later versions.')
+        return self.trips_with_stops_to_dataframe(gtfs_day)
+
+    def trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
+        """
         Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
         if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
@@ -601,7 +611,7 @@ class Route(ScheduleElement):
         """
         Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
         if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        Check out also `route_trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
+        Check out also `trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
         over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
         :return:
@@ -984,6 +994,16 @@ class Service(ScheduleElement):
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
+        This method exists for backwards compatibility only
+        Please use trips_with_stops_to_dataframe
+        :return:
+        """
+        logging.warning('`route_trips_with_stops_to_dataframe` method is deprecated and will be replaced by '
+                        '`trips_to_dataframe` in later versions.')
+        return self.trips_with_stops_to_dataframe(gtfs_day)
+
+    def trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
+        """
         Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
         if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
@@ -991,7 +1011,7 @@ class Service(ScheduleElement):
         """
         df = None
         for route in self.routes():
-            _df = route.route_trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
+            _df = route.trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
             if df is None:
                 df = _df
             else:
@@ -1251,22 +1271,21 @@ class Schedule(ScheduleElement):
             else:
                 self.vehicles = {**df.T.to_dict(), **self.vehicles}
 
-    def route_trips_to_dataframe(self, **kwargs):
+    def route_trips_to_dataframe(self, gtfs_day='19700101'):
         """
         This method exists for backwards compatibility only
         Please use trips_to_dataframe
-        :param kwargs:
         :return:
         """
         logging.warning('`route_trips_to_dataframe` method is deprecated and will be replaced by `trips_to_dataframe`'
                         'in later versions.')
-        return self.trips_to_dataframe(**kwargs)
+        return self.trips_to_dataframe(gtfs_day)
 
     def trips_to_dataframe(self, gtfs_day='19700101'):
         """
         Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
         if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        Check out also `route_trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
+        Check out also `trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
         over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
         :return:
@@ -1396,11 +1415,20 @@ class Schedule(ScheduleElement):
 
     def set_route_trips_dataframe(self, df):
         """
-        Option to replace trips data currently stored under routes by an updated `route_trips_to_dataframe`.
+        This method exists for backwards compatibility only
+        Please use set_trips_dataframe
+        """
+        logging.warning('`set_route_trips_dataframe` method is deprecated and will be replaced by `set_trips_dataframe`'
+                        'in later versions.')
+        return self.set_trips_dataframe(df)
+
+    def set_trips_dataframe(self, df):
+        """
+        Option to replace trips data currently stored under routes by an updated `trips_to_dataframe`.
         Need not be exhaustive in terms of routes. I.e. trips for some of the routes can be omitted if no changes are
         required. Needs to be exhaustive in terms of trips. I.e. if there are changes to a route, all of the trips
         required to be in that trip need to be present, it overwrites route.trips attribute.
-        :param df: DataFrame generated by `route_trips_to_dataframe` (or of the same format)
+        :param df: DataFrame generated by `trips_to_dataframe` (or of the same format)
         :return:
         """
         # convert route trips dataframe to apply dictionary shape and give to apply to routes method
@@ -1592,9 +1620,19 @@ class Schedule(ScheduleElement):
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
+        This method exists for backwards compatibility only
+        Please use trips_with_stops_to_dataframe
+        :return:
+        """
+        logging.warning('`route_trips_with_stops_to_dataframe` method is deprecated and will be replaced by '
+                        '`trips_to_dataframe` in later versions.')
+        return self.trips_with_stops_to_dataframe(gtfs_day)
+
+    def trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
+        """
         Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
         if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        Check out also `route_trips_to_dataframe` for a simplified version (trips, their departure times and vehicles
+        Check out also `trips_to_dataframe` for a simplified version (trips, their departure times and vehicles
         only)
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
         :return:

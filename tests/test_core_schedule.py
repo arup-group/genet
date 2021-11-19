@@ -1101,8 +1101,15 @@ def test_build_graph_builds_correct_graph(strongly_connected_schedule):
                                '3': {'4': {'services': {'service'}, 'routes': {'1'}}}})
 
 
-def test_building_trips_dataframe(schedule):
-    df = schedule.route_trips_with_stops_to_dataframe()
+def test_building_trips_dataframe_with_stops_accepts_backwards_compatibility(schedule, mocker, caplog):
+    mocker.patch.object(Schedule, 'trips_with_stops_to_dataframe')
+    schedule.trips_with_stops_to_dataframe(schedule.trips_to_dataframe())
+    schedule.trips_with_stops_to_dataframe.assert_called_once()
+    assert_logging_warning_caught_with_message_containing(caplog, '`route_trips_with_stops_to_dataframe` method is deprecated')
+
+
+def test_building_trips_dataframe_with_stops(schedule):
+    df = schedule.trips_with_stops_to_dataframe()
 
     correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 13:00:00'), 1: Timestamp('1970-01-01 13:05:00'),
                                                2: Timestamp('1970-01-01 13:09:00'), 3: Timestamp('1970-01-01 13:30:00'),
@@ -1208,15 +1215,11 @@ def test_rejects_inconsistent_modes_when_generating_vehicles(mocker, schedule):
     assert "{'v_1': ['bus', 'rail']}" in str(e.value)
 
 
-def test_generating_route_trips_dataframe_is_backwards_compatible(schedule):
-    df = schedule.route_trips_to_dataframe(gtfs_day='19700102')
-    assert_frame_equal(df.sort_index(axis=1), DataFrame(
-        {'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service'},
-         'route_id': {0: '2', 1: '2', 2: '1', 3: '1'}, 'trip_id': {0: '1', 1: '2', 2: '1', 3: '2'},
-         'trip_departure_time': {0: Timestamp('1970-01-02 11:00:00'), 1: Timestamp('1970-01-02 13:00:00'),
-                                 2: Timestamp('1970-01-02 13:00:00'), 3: Timestamp('1970-01-02 13:30:00')},
-         'vehicle_id': {0: 'veh_3_bus', 1: 'veh_4_bus', 2: 'veh_1_bus', 3: 'veh_2_bus'}}
-    ).sort_index(axis=1))
+def test_generating_route_trips_dataframe_is_backwards_compatible(schedule, mocker, caplog):
+    mocker.patch.object(Schedule, 'trips_to_dataframe')
+    schedule.route_trips_to_dataframe(gtfs_day='19700102')
+    schedule.trips_to_dataframe.assert_called_once_with('19700102')
+    assert_logging_warning_caught_with_message_containing(caplog, '`route_trips_to_dataframe` method is deprecated')
 
 
 def test_generating_trips_dataframe(schedule):
@@ -1230,6 +1233,13 @@ def test_generating_trips_dataframe(schedule):
     ).sort_index(axis=1))
 
 
+def test_applying_trips_dataframe_accepts_backwards_compatibility(schedule, mocker, caplog):
+    mocker.patch.object(Schedule, 'set_trips_dataframe')
+    schedule.set_route_trips_dataframe(schedule.trips_to_dataframe())
+    schedule.set_trips_dataframe.assert_called_once()
+    assert_logging_warning_caught_with_message_containing(caplog, '`set_route_trips_dataframe` method is deprecated')
+
+
 def test_applying_trips_dataframe(schedule):
     df_to_change = DataFrame(
         {'service_id': {0: 'service', 1: 'service', 2: 'service'},
@@ -1238,7 +1248,7 @@ def test_applying_trips_dataframe(schedule):
                                  2: Timestamp('1970-01-01 13:23:00')},
          'vehicle_id': {0: 'veh_3_bus', 1: 'veh_1_bus', 2: 'veh_1_bus'}}
     )
-    schedule.set_route_trips_dataframe(df_to_change.copy())
+    schedule.set_trips_dataframe(df_to_change.copy())
 
     assert_frame_equal(
         df_to_change.sort_values(by=['route_id', 'trip_id']).sort_index(axis=1),

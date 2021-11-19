@@ -4,7 +4,7 @@ from pandas import DataFrame, Timestamp
 from pandas.testing import assert_frame_equal
 from genet.schedule_elements import Route, Stop
 from genet.utils import plot
-from tests.fixtures import stop_epsg_27700, assert_semantically_equal
+from tests.fixtures import stop_epsg_27700, assert_semantically_equal, assert_logging_warning_caught_with_message_containing
 
 
 @pytest.fixture()
@@ -373,8 +373,15 @@ def test_is_valid_with_single_stop_network():
     assert not route.is_valid_route()
 
 
+def test_building_trips_dataframe_with_stops_accepts_backwards_compatibility(route, mocker, caplog):
+    mocker.patch.object(Route, 'trips_with_stops_to_dataframe')
+    route.trips_with_stops_to_dataframe(route.trips_to_dataframe())
+    route.trips_with_stops_to_dataframe.assert_called_once()
+    assert_logging_warning_caught_with_message_containing(caplog, '`route_trips_with_stops_to_dataframe` method is deprecated')
+
+
 def test_building_trips_dataframe_with_stops(route):
-    df = route.route_trips_with_stops_to_dataframe()
+    df = route.trips_with_stops_to_dataframe()
 
     correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 10:00:00'), 1: Timestamp('1970-01-01 10:05:00'),
                                                2: Timestamp('1970-01-01 10:09:00'), 3: Timestamp('1970-01-01 20:00:00'),
