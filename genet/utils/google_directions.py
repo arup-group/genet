@@ -52,9 +52,10 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir,
     return api_requests
 
 
-def read_saved_api_results(file_path):
+def read_api_requests(file_path):
     """
-    Read parsed Google Directions API requests in `file_path` JSON file
+    Read the Google Directions API requests, generated to be sent and received back from the API, in the `file_path`
+    JSON file.
     :param file_path: path to the JSON file where the google directions api requests were saved
     :return:
     """
