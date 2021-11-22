@@ -419,8 +419,8 @@ def test_send_requests_for_road_network(mocker, tmpdir, generated_request, googl
                                                             None , None, None, None, None)
 
 
-def test_read_saved_api_results():
-    api_requests = google_directions.read_saved_api_results(example_google_speed_data)
+def test_read_api_requests():
+    api_requests = google_directions.read_api_requests(example_google_speed_data)
     assert_semantically_equal(api_requests, {
         ('9791490', '4698712638'): {'path_nodes': ('9791490', '4698712638'), 'path_polyline': 'mvmyHpqYb@lA',
                                     'origin': {'id': '9791490', 'x': 529414.5591563961, 'y': 181898.4902840198,
