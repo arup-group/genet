@@ -270,13 +270,16 @@ def map_results_to_edges(api_requests):
     return google_dir_api_edge_data
 
 
-def dump_all_api_requests_to_json(api_requests, output_dir):
+def dump_all_api_requests_to_json(api_requests, output_dir, output_file_name=None):
     # sanitise tuple keys
     new_d = {}
     for k, v in api_requests.items():
         new_d['{}'.format(k)] = '{}'.format(v)
 
+    if output_file_name is None:
+        output_file_name = 'api_requests.json'
+
     persistence.ensure_dir(output_dir)
     logging.info(f'Saving Google Directions API requests to {output_dir}')
-    with open(os.path.join(output_dir, 'api_requests.json'), 'w') as fp:
+    with open(os.path.join(output_dir, output_file_name), 'w') as fp:
         json.dump(new_d, fp)
