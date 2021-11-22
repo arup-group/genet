@@ -17,7 +17,7 @@ session = FuturesSession(max_workers=2)
 
 
 def send_requests_for_network(n, request_number_threshold: int, output_dir,
-                              departure_time: int = -1, traffic_model: str = None,
+                              departure_time, traffic_model: str = None,
                               max_workers: int = 4, key: str = None, secret_name: str = None, region_name: str = None):
     """
     Generates, sends and parses results from Google Directions API for the car modal subgraph for network n.
@@ -27,11 +27,13 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir,
     :param n: genet.Network
     :param request_number_threshold: max number of requests
     :param output_dir: output directory where to save the google directions api parsed data
-    :param traffic: bool, whether to request traffic based information from the directions api
+    :param departure_time: specifies the desired time of departure, in seconds since midnight, January 1, 1970 UTC,
+    i.e. unix time; if set to None, API will return results for average time-independent traffic conditions
+    :param traffic_model: str, specifies the assumptions to use when calculating time in traffic
     :param key: API key
     :param secret_name: if using aws secrets manager, the name where your directions api key is stored
     :param region_name: the aws region you operate in
-    :return:
+    :return: api requests
     """
     logging.info('Generating Google Directions API requests')
     api_requests = generate_requests(n)
@@ -72,22 +74,28 @@ def read_saved_api_results(file_path):
 def make_request(origin_attributes, destination_attributes, key, departure_time, traffic_model):
     base_url = 'https://maps.googleapis.com/maps/api/directions/json'
     params = {'origin': '{},{}'.format(origin_attributes['lat'], origin_attributes['lon']),
-              'destination': '{},{}'.format(destination_attributes['lat'], destination_attributes['lon']), 'key': key,
-              'traffic_model': traffic_model}
+              'destination': '{},{}'.format(destination_attributes['lat'], destination_attributes['lon']),
+              'key': key,
+              'traffic_model': traffic_model
+              }
     current_unix_time = time.time()
-    if departure_time == -1:
+    end_of_unix_time = 2147483646
+    if departure_time is None:
+        pass
+    elif departure_time == 'now':
         params['departure_time'] = 'now'
-    elif (type(departure_time) == int) & (departure_time > current_unix_time) & (departure_time < 2147483646):
+    elif (type(departure_time) == int) & (departure_time > current_unix_time) & (departure_time < end_of_unix_time):
         params['departure_time'] = departure_time
     else:
-        raise RuntimeError('The departure_time parameter value not recognised. The departure_time must be set to "now",'
-                           ' or some time in the future. If setting the departure_time to some time in the future, then'
-                           ' it needs to be specified as an integer in seconds since midnight, January 1, 1970 UTC. It '
-                           'cannot be in the past.')
+        raise RuntimeError('The departure_time parameter value not recognised. The departure_time can be set '
+                           'to None (meaning API will return results for average time-independent traffic conditions)'
+                           ', "now", or some time in the future. If setting the departure_time to '
+                           'some time in the future, then it needs to be specified as an integer in seconds since '
+                           'midnight, January 1, 1970 UTC (i.e. unix time). It cannot be in the past.')
     return session.get(base_url, params=params)
 
 
-def send_requests(api_requests: dict, departure_time: int = -1, traffic_model: str = None,
+def send_requests(api_requests: dict, departure_time, traffic_model: str = None,
                   key: str = None, secret_name: str = None, region_name: str = None):
     if key is None:
         key = secrets_vault.get_google_directions_api_key(secret_name, region_name)
