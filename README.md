@@ -82,9 +82,11 @@ for linux:
     
     sudo apt-get install -y libspatialindex-dev
     
-Finally install `GeNet` dependencies
+Finally install `GeNet`'s Python dependencies
 
     pip install -e .
+
+##### Install Kepler dependencies 
 
 Please follow [kepler's installation instructions](https://docs.kepler.gl/docs/keplergl-jupyter#install) to be able to 
 use the visualisation methods. To see the maps in a jupyter notebook, make sure you enable widgets.
@@ -92,6 +94,15 @@ use the visualisation methods. To see the maps in a jupyter notebook, make sure 
 jupyter nbextension enable --py widgetsnbextension
 ```
 
+##### Install Mathematical Solver  
+
+**Note**: The default CBC solver is installed inside GeNet's Docker image.
+
+To use methods which snap public transit to the graph, you will also need to install a mathematical solver. 
+Methods default to CBC, an open source solver which can be found [here](https://projects.coin-or.org/Cbc). 
+Another good open source choice is [GLPK](https://www.gnu.org/software/glpk/). 
+The solver needs to support MILP - mixed integer linear programming.
+    
 ### Unit Testing
 
 #### Run the unit tests (from root dir)

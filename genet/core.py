@@ -2,6 +2,7 @@ import itertools
 import json
 import logging
 import os
+import traceback
 import uuid
 from copy import deepcopy
 from typing import Union, List, Dict
@@ -14,8 +15,10 @@ from pyproj import Transformer
 from s2sphere import CellId
 
 import genet.auxiliary_files as auxiliary_files
+import genet.exceptions as exceptions
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
+import genet.modify.schedule as modify_schedule
 import genet.outputs_handler.geojson as geojson
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.sanitiser as sanitiser
@@ -40,7 +43,6 @@ class Network:
         self.graph = nx.MultiDiGraph(name='Network graph', crs=self.epsg, simplified=False)
         self.schedule = schedule_elements.Schedule(epsg)
         self.change_log = change_log.ChangeLog()
-        self.spatial_tree = spatial.SpatialTree()
         self.auxiliary_files = {'node': {}, 'link': {}}
         # link_id_mapping maps between (usually string literal) index per edge to the from and to nodes that are
         # connected by the edge
@@ -756,8 +758,8 @@ class Network:
                 pass
         return modes
 
-    def find_shortest_path(self, from_node, to_node, modes: Union[str, list] = None, subgraph: nx.MultiDiGraph = None,
-                           return_nodes=False):
+    def find_shortest_path(self, from_node, to_node, modes: Union[str, list, set] = None,
+                           subgraph: nx.MultiDiGraph = None, return_nodes=False):
         """
         Finds shortest path between from and to nodes in the graph. If modes specified, finds shortest path in the
         modal subgraph (using links which have given modes stored under 'modes' key in link attributes). If computing
@@ -1124,13 +1126,11 @@ class Network:
                 links_data['from'] = u
                 links_data['to'] = v
 
-                print(links_data)
                 links_to_add.append(links_data.to_dict())
 
                 links_data['from'] = v
                 links_data['to'] = u
 
-                print(links_data)
                 links_to_add.append(links_data.to_dict())
 
             if links_to_add:
@@ -1199,6 +1199,369 @@ class Network:
         """
         u, v, multi_idx = self.edge_tuple_from_link_id(link_id)
         return dict(self.graph[u][v][multi_idx])
+
+    def _setify(self, value: Union[str, list, set]):
+        if isinstance(value, str):
+            return {value}
+        elif isinstance(value, (list, set)):
+            return set(value)
+        elif value is None:
+            return set()
+
+    def route_schedule(self, services: Union[list, set] = None, solver='cbc', allow_partial=True,
+                       distance_threshold=30, step_size=10, additional_modes=None, allow_directional_split=False):
+        """
+        Method to find relationship between all Services in Schedule and the Network. It finds closest
+        links in the Network for all stops and finds a network route (ordered list of links in the network) for all
+        Route objects within each Service.
+
+        It creates new stops: 'old_id:link:link_id' for an 'old_stop' which snapped to 'link_id'. It does not delete
+        old stops.
+
+        If there isn't a link available for snapping within threshold and under modal conditions, an artificial
+        self-loop link will be created as well as any connecting links to that unsnapped stop. This can be switched off
+        by setting allow_partial=False. It will raise PartialMaxStableSetProblem error instead.
+
+        :param services: you can specify a list of services within the schedule to be snapped, defaults to all services
+        :param solver: you can specify different mathematical solvers. Defaults to CBC, open source solver which can
+        be found here: https://projects.coin-or.org/Cbc . Another good open source choice is GLPK:
+        https://www.gnu.org/software/glpk/. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'.
+        The solver needs to support MILP - mixed integer linear programming.
+        :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and,
+        under modal conditions, an artificial self-loop link will be created as well as any connecting links to that
+        unsnapped stop. If set to False and the problem is partial, it will raise PartialMaxStableSetProblem error
+        instead.
+        :param distance_threshold: in metres, upper bound for how far too look for links to snap to stops.
+        Defaults to 30
+        :param step_size: in metres, how much to increase search area for links (making this smaller than the distance
+        threshold makes the problem less computationally heavy)
+        :param additional_modes: By default the network subgraph considered for snapping and routing will be matching
+        the service modes exactly e.g. just 'bus' mode. You can relax it by adding extra modes
+        e.g. {'tram': {'car', 'rail'}, 'bus': 'car'} - either a set, list of just a single additional mode for a mode
+        in the Schedule. This dictionary need not be exhaustive. Any other modes will be handled in the default way.
+        Referencing modes present under 'modes' attribute of Network links.
+        :param allow_directional_split: Defaults to False i.e. one link will be related to a stop in each Service.
+        For some modes, e.g. rail, it may be beneficial to split this problem based on direction of travel. This usually
+        results in stops snapping to multiple links. Routes' stops and their network routes are updated based on
+        direction too. You may like to investigate directional split for different services using a Service object
+        method: `split_graph`.
+        :return: set of unsnapped services, empty if all snapped, updates Network object and the Schedule object within.
+        """
+        if self.schedule:
+            logging.info('Building Spatial Tree')
+            spatial_tree = spatial.SpatialTree(self)
+            if additional_modes is None:
+                additional_modes = {}
+            else:
+                for k, v in additional_modes.items():
+                    additional_modes[k] = self._setify(v)
+
+            changeset = None
+            route_data = self.schedule.route_attribute_data(keys=['ordered_stops'])
+            service_modes = self.schedule.route_attribute_data(keys=['mode'], index_name='route_id').reset_index()
+            service_modes['service_id'] = service_modes['route_id'].map(
+                self.schedule.graph().graph['route_to_service_map'])
+            if services is not None:
+                service_modes = service_modes.loc[service_modes['service_id'].isin(services), :]
+            service_modes = service_modes.groupby('service_id')['mode'].apply(set).apply(list).reset_index()
+            service_modes['mode'] = service_modes['mode'].apply(lambda x: tuple(sorted(x)))
+            service_modes = service_modes.groupby('mode')['service_id'].apply(set).T.to_dict()
+
+            unsnapped_services = set()
+            for modes, service_ids in service_modes.items():
+                modes = set(modes)
+                buffed_modes = modes.copy()
+                for m in modes & set(additional_modes.keys()):
+                    buffed_modes |= additional_modes[m]
+
+                try:
+                    logging.info(f'Extracting Modal SubTree for modes: {modes}')
+                    sub_tree = spatial_tree.modal_subtree(buffed_modes)
+                except exceptions.EmptySpatialTree:
+                    sub_tree = None
+                    logging.warning(f'Services {service_ids} cannot be snapped to the Network with modes = {modes}. '
+                                    'The modal graph is empty for those modes. Consider teleporting.')
+                    unsnapped_services |= service_ids
+
+                if sub_tree is not None:
+                    for service_id in service_ids:
+                        service = self.schedule[service_id]
+                        logging.info(f'Routing Service {service.id} with modes = {modes}')
+                        if allow_directional_split:
+                            logging.info('Splitting Service graph')
+                            routes, graph_groups = service.split_graph()
+                            logging.info(f'Split Problem into {len(routes)}')
+                        else:
+                            routes = [set(service.route_ids())]
+                            graph_groups = [service.reference_edges()]
+                        service_g = service.graph()
+
+                        for route_group, graph_group in zip(routes, graph_groups):
+                            try:
+                                mss = modify_schedule.route_pt_graph(
+                                    pt_graph=nx.edge_subgraph(service_g, graph_group),
+                                    network_spatial_tree=sub_tree,
+                                    modes=modes,
+                                    solver=solver,
+                                    allow_partial=allow_partial,
+                                    distance_threshold=distance_threshold,
+                                    step_size=step_size)
+                                if changeset is None:
+                                    changeset = mss.to_changeset(route_data.loc[route_group, :])
+                                else:
+                                    changeset += mss.to_changeset(route_data.loc[route_group, :])
+                            except Exception as e:  # noqa: F841
+                                logging.error(f'\nRouting Service: `{service_id}` resulted in the following Exception:'
+                                              f'\n{traceback.format_exc()}')
+                                unsnapped_services.add(service_id)
+            if changeset is not None:
+                self._apply_max_stable_changes(changeset)
+            return unsnapped_services
+        else:
+            logging.warning('Schedule object not found')
+
+    def route_service(self, service_id, spatial_tree=None, solver='cbc', allow_partial=True, distance_threshold=30,
+                      step_size=10, additional_modes=None, allow_directional_split=False):
+        """
+        Method to find relationship between the Service with ID 'service_id' in the Schedule and the Network.
+        It finds closest links in the Network for all stops and finds a network route (ordered list of links in the
+        network) for all Route objects within this Service.
+
+        It creates new stops: 'old_id:link:link_id' for an 'old_stop' which snapped to 'link_id'. It does not delete
+        old stops.
+
+        If there isn't a link available for snapping within threshold and under modal conditions, an artificial
+        self-loop link will be created as well as any connecting links to that unsnapped stop. This can be switched off
+        by setting allow_partial=False. It will raise PartialMaxStableSetProblem error instead.
+
+        :param service_id: ID of the Service object to snap and route
+        :param spatial_tree: optional, if snapping more than one Service, it may be beneficcial to build the spatial
+        tree which is used for snapping separately and pass it here. This is done simply by importing genet and passing
+        the network object in the following way: genet.utils.spatial.SpatialTree(network_object)
+        :param solver: you can specify different mathematical solvers. Defaults to CBC, open source solver which can
+        be found here: https://projects.coin-or.org/Cbc . Another good open source choice is GLPK:
+        https://www.gnu.org/software/glpk/. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'.
+        The solver needs to support MILP - mixed integer linear programming.
+        :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and
+        under modal conditions, an artificial self-loop link will be created as well as any connecting links to that
+        unsnapped stop. If set to False and the problem is partial, it will raise PartialMaxStableSetProblem error
+        instead.
+        :param distance_threshold: in metres, upper bound for how far too look for links to snap to stops.
+        Defaults to 30
+        :param step_size: in metres, how much to increase search area for links (making this smaller than the distance
+        threshold makes the problem less computationally heavy)
+        :param additional_modes: string, set or list. By default the network subgraph considered for snapping and
+        routing will be matching the service modes exactly e.g. just 'bus' mode. You can relax it by adding extra modes
+        e.g. 'car' or {'car', 'rail'}. Referencing modes present under 'modes' attribute of Network links.
+        :param allow_directional_split: Defaults to False i.e. one link will be related to a stop in each Service.
+        For some modes, e.g. rail, it may be beneficial to split this problem based on direction of travel. This usually
+        results in stops snapping to multiple links. Routes' stops and their network routes are updated based on
+        direction too. You may like to investigate directional split for different services using a Service object
+        method: `split_graph`.
+        :return: None if successful, updates Network object and the Schedule object within. Returns service ID if
+        unsuccesful.
+        """
+        if spatial_tree is None:
+            spatial_tree = spatial.SpatialTree(self)
+        additional_modes = self._setify(additional_modes)
+
+        service = self.schedule[service_id]
+        if allow_directional_split:
+            routes, graph_groups = service.split_graph()
+            logging.info(f'Splitting Problem into {len(routes)}')
+        else:
+            routes = [set(service.route_ids())]
+            graph_groups = [service.reference_edges()]
+        service_g = service.graph()
+        changeset = None
+        route_data = self.schedule.route_attribute_data(keys=['ordered_stops'])
+
+        modes = service.modes()
+        logging.info(f'Routing Service {service.id} with modes = {modes}')
+        try:
+            sub_tree = spatial_tree.modal_subtree(modes | additional_modes)
+            for route_group, graph_group in zip(routes, graph_groups):
+                mss = modify_schedule.route_pt_graph(
+                    pt_graph=nx.edge_subgraph(service_g, graph_group),
+                    network_spatial_tree=sub_tree,
+                    modes=modes,
+                    solver=solver,
+                    allow_partial=allow_partial,
+                    distance_threshold=distance_threshold,
+                    step_size=step_size)
+                if changeset is None:
+                    changeset = mss.to_changeset(route_data.loc[route_group, :])
+                else:
+                    changeset += mss.to_changeset(route_data.loc[route_group, :])
+            self._apply_max_stable_changes(changeset)
+        except exceptions.EmptySpatialTree:
+            logging.warning(f'Service {service.id} cannot be snapped to the Network with modes = {modes}. The '
+                            f'modal graph is empty for those modes. Consider teleporting.')
+            return service.id
+
+    def teleport_service(self, service_ids: Union[str, list, set]):
+        """
+        Teleports service(s) of ID(s) given in `service_ids`
+        :param service_ids: a Service ID or collection of them
+        :return: None, updates Network and Schedule objects
+        """
+
+        def route_path(ordered_stops):
+            path = []
+            for u, v in zip(ordered_stops[:-1], ordered_stops[1:]):
+                from_linkrefid = stop_linkrefids[u]['linkRefId']
+                to_linkrefid = stop_linkrefids[v]['linkRefId']
+                f_node = reference_links[from_linkrefid]['to']
+                t_node = reference_links[to_linkrefid]['from']
+                f_node_data = nodes[f_node]
+                t_node_data = nodes[t_node]
+
+                connecting_link = f'artificial_link===from:{f_node}===to:{t_node}'
+                reference_links[connecting_link] = {
+                    'id': connecting_link,
+                    'from': f_node,
+                    'to': t_node,
+                    'modes': {routes_to_mode_map[route_id]['mode'] for route_id in g.nodes[u]['routes']} | {
+                        routes_to_mode_map[route_id]['mode'] for route_id in g.nodes[v]['routes']},
+                    'length': spatial.distance_between_s2cellids(f_node_data['s2_id'], t_node_data['s2_id']),
+                    'freespeed': 44.44,
+                    'capacity': 9999.0,
+                    'permlanes': 1
+                }
+
+                pairwise_path = [from_linkrefid, connecting_link, to_linkrefid]
+                if path:
+                    if path[-1] == pairwise_path[0]:
+                        path += pairwise_path[1:]
+                    else:
+                        path += pairwise_path
+                else:
+                    path.extend(pairwise_path)
+            return path
+
+        if isinstance(service_ids, str):
+            service_ids = {service_ids}
+        sub_graph_edges = set()
+        for service_id in service_ids:
+            sub_graph_edges |= self.schedule.service_reference_edges(service_id)
+        g = nx.DiGraph(nx.edge_subgraph(self.schedule.graph(), sub_graph_edges))
+
+        routes_to_mode_map = self.schedule.route_attribute_data(keys=['mode']).T.to_dict()
+        nodes = {}
+        reference_links = {}
+        stop_linkrefids = {}
+        for stop, data in g.nodes(data=True):
+            if ('linkRefId' not in data) or (not self.has_link(data['linkRefId'])):
+                nodes[stop] = {k: v for k, v in data.items() if k not in {'services', 'routes', 'epsg'}}
+
+                link_id = f'artificial_link===from:{stop}===to:{stop}'
+                reference_links[link_id] = {
+                    'id': link_id,
+                    'from': stop,
+                    'to': stop,
+                    'modes': {routes_to_mode_map[route_id]['mode'] for route_id in data['routes']},
+                    'length': 1,
+                    'freespeed': 44.44,
+                    'capacity': 9999.0,
+                    'permlanes': 1
+                }
+
+                stop_linkrefids[stop] = {'linkRefId': link_id}
+            else:
+                link_id = data['linkRefId']
+                link_data = self.link(link_id)
+                stop_linkrefids[stop] = {'linkRefId': link_id}
+                reference_links[link_id] = link_data
+                nodes[link_data['from']] = self.node(link_data['from'])
+                nodes[link_data['to']] = self.node(link_data['to'])
+
+        routes = self.schedule.route_attribute_data(keys='ordered_stops')
+        _rs = [self.schedule.service_to_route_map()[service_id] for service_id in service_ids]
+        routes = routes[routes.index.to_series().isin({item for sublist in _rs for item in sublist})]
+        routes['route'] = routes['ordered_stops'].apply(lambda x: route_path(x))
+        routes = routes.drop('ordered_stops', axis=1).T.to_dict()
+
+        self.add_nodes({node: nodes[node] for node in set(nodes) - set(self.graph.nodes)})
+        self.add_links({link: reference_links[link] for link in set(reference_links) - set(self.link_id_mapping)})
+        self.schedule.apply_attributes_to_stops(stop_linkrefids)
+        self.schedule.apply_attributes_to_routes(routes)
+
+    def _apply_max_stable_changes(self, max_stable_set_changeset):
+        self.schedule._graph.add_nodes_from(max_stable_set_changeset.new_stops.items())
+        self.schedule._graph.add_edges_from(max_stable_set_changeset.new_pt_edges)
+
+        self.schedule.apply_attributes_to_routes(max_stable_set_changeset.df_route_data.T.to_dict())
+
+        if max_stable_set_changeset.new_nodes:
+            self.add_nodes(max_stable_set_changeset.new_nodes)
+        if max_stable_set_changeset.new_links:
+            # generate some basic data
+            for link, data in max_stable_set_changeset.new_links.items():
+                _from = self.node(data['from'])
+                _to = self.node(data['to'])
+                data['length'] = spatial.distance_between_s2cellids(_from['s2_id'], _to['s2_id'])
+                if data['length'] == 0:
+                    data['length'] = 1
+                data['freespeed'] = 44.44
+                data['capacity'] = 9999.0
+                data['permlanes'] = 1
+            self.add_links(max_stable_set_changeset.new_links)
+        self.apply_attributes_to_links(max_stable_set_changeset.additional_links_modes)
+
+    def reroute(self, _id, additional_modes=None):
+        """
+        Finds network route for a Service of ID=_id or Route of ID=_id, if the Stops for that Route or Service are
+        already snapped to the network (have linkRefId attributes). Checks that those linkRefIds are still in the
+        network, logs a warning if not.
+        :param _id: ID of Route or Service object. If Service, updated route attribute of all Routes contained within
+        the Service object
+        :param additional_modes: string, set or list. By default the network subgraph considered for snapping and
+        routing will be matching the service modes exactly e.g. just 'bus' mode. You can relax it by adding extra modes
+        e.g. 'car' or {'car', 'rail'}. Referencing modes present under 'modes' attribute of Network links.
+        :return: None, updates the `route` attribute of `Route` object(s)
+        """
+        try:
+            self._reroute_service(_id, additional_modes)
+        except exceptions.ServiceIndexError:
+            try:
+                self._reroute_route(_id, additional_modes)
+            except exceptions.RouteIndexError:
+                logging.warning(f'Object of ID: `{_id}` was not found as a Route or Service in the Schedule')
+                raise IndexError(f'Unrecognised Index `{_id}` in this context.')
+
+    def _reroute_service(self, _id, additional_modes=None):
+        service = self.schedule[_id]
+        logging.info(f'Rerouting Service `{_id}`')
+        for route_id in service.route_ids():
+            self._reroute_route(route_id, additional_modes)
+
+    def _reroute_route(self, _id, additional_modes=None):
+        route = self.schedule.route(_id)
+        logging.info(f'Checking `linkRefId`s of the Route: `{_id}` are present in the graph')
+        linkrefids = [stop.linkRefId for stop in route.stops()]
+        unrecognised_linkrefids = set(linkrefids) - set(self.link_id_mapping.keys())
+        if not unrecognised_linkrefids:
+            logging.info(f'Rerouting Route `{_id}`')
+            modes = {route.mode} | self._setify(additional_modes)
+            subgraph = self.modal_subgraph(modes)
+            network_route = [linkrefids[0]]
+            for from_stop_link_id, to_stop_link_id in zip(linkrefids[:-1], linkrefids[1:]):
+                network_route += self.find_shortest_path(
+                    self.link(from_stop_link_id)['to'],
+                    self.link(to_stop_link_id)['from'],
+                    subgraph=subgraph)
+                network_route.append(to_stop_link_id)
+            self.schedule.apply_attributes_to_routes({_id: {'route': network_route}})
+            links_for_mode_add = {link_id for link_id in set(network_route) if
+                                  not {route.mode}.issubset(self._setify(self.link(link_id)['modes']))}
+            if links_for_mode_add:
+                self.apply_attributes_to_links(
+                    {link_id: {'modes': self._setify(self.link(link_id)['modes']) | {route.mode}} for link_id in
+                     links_for_mode_add})
+        else:
+            logging.warning(f'Could not reroute Route of ID: `{_id}` due to some stops having unrecognised '
+                            f'`linkRefId`s. Unrecognised link IDs: {unrecognised_linkrefids}. You will need to '
+                            'use a different method to snap and route the Service object containing this Route.')
 
     def services(self):
         """
@@ -1574,7 +1937,8 @@ class Network:
 
     def to_json(self):
         _network = self.to_encoded_geometry_dataframe()
-        return {'nodes': _network['nodes'].T.to_dict(), 'links': _network['links'].T.to_dict()}
+        return {'nodes': dict_support.dataframe_to_dict(_network['nodes'].T),
+                'links': dict_support.dataframe_to_dict(_network['links'].T)}
 
     def write_to_json(self, output_dir):
         """
