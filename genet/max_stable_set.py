@@ -12,7 +12,9 @@ import genet.utils.graph_operations as graph_operations
 from genet.exceptions import InvalidMaxStableSetProblem
 
 
-def exists(coeff_attrib):
+def has_attrib(attrib_value):
+    # used with a method to extract graph elements with a specific attribute key regardless of the value, if the key
+    # exists, this function evaluates to True.
     return True
 
 
@@ -118,7 +120,7 @@ class MaxStableSet:
 
         nodes_without_paths = set(problem_graph.nodes()) - set(
             graph_operations.extract_on_attributes(problem_graph.nodes(data=True),
-                                                   conditions={'coeff': exists}))
+                                                   conditions={'coeff': has_attrib}))
         problem_graph.remove_nodes_from(nodes_without_paths)
         return problem_graph
 
@@ -137,14 +139,12 @@ class MaxStableSet:
     def has_a_completely_connected_catchment(self):
         stop_id_groups = self.nodes.groupby('id')
         for u, v in self.pt_graph.edges():
-            try:
+            u_group = None
+            v_group = None
+            if u in stop_id_groups.groups:
                 u_group = stop_id_groups.get_group(u)
-            except KeyError:
-                u_group = None
-            try:
+            if v in stop_id_groups.groups:
                 v_group = stop_id_groups.get_group(v)
-            except KeyError:
-                v_group = None
             if (u_group is not None) and (v_group is not None):
                 node_degrees = [self.in_out_degree(n) for n in u_group['problem_nodes']]
                 node_degrees += [self.in_out_degree(n) for n in v_group['problem_nodes']]

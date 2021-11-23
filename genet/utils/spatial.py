@@ -1,4 +1,5 @@
 import polyline
+import logging
 import s2sphere as s2
 import networkx as nx
 import numpy as np
@@ -339,6 +340,7 @@ class SpatialTree(nx.DiGraph):
                     lambda x: self.path(G=self, source=x[from_col], target=x[to_col], weight=weight),
                     axis=1)
             except EmptySpatialTree:
+                logging.warning('Shortest path could not be found due to an empty SpatialTree')
                 df_pt_edges['shortest_path'] = None
         return df_pt_edges
 
