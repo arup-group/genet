@@ -697,6 +697,7 @@ def test_removing_service(schedule):
 
 
 def test_removing_service_updates_vehicles(schedule):
+    assert schedule.has_service('service')
     schedule.remove_service('service')
     assert schedule.vehicles == {}
 

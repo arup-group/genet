@@ -1,10 +1,9 @@
 import pytest
 from pandas import DataFrame
-from networkx import is_empty
+
 import genet.utils.spatial as spatial
 from genet import MaxStableSet, Network, Schedule, Service, Route, Stop
 from tests.fixtures import assert_semantically_equal
-from genet.exceptions import EmptySpatialTree
 
 
 @pytest.fixture()
@@ -108,7 +107,7 @@ def network_spatial_tree(network):
     return spatial.SpatialTree(network)
 
 
-def test_all_stops_have_nearest_links_returns_False_with_missing_closest_links(mocker, network, network_spatial_tree):
+def test_detects_stops_that_lack_nearest_links(mocker, network, network_spatial_tree):
     closest_links = DataFrame({
         'id': {0: 'stop_2', 1: 'stop_2', 2: 'stop_3', 3: 'stop_3'},
         'link_id': {0: 'link_4_5_car', 1: 'link_5_6_car', 2: 'link_7_8_car', 3: 'link_8_9_car'},
@@ -416,7 +415,7 @@ def partial_mss(network):
     return mss
 
 
-def test_generating_changeset_from_partial_mss_problem(partial_mss):
+def test_partial_mss_problem_generates_correct_network_routes(partial_mss):
     changeset = partial_mss.to_changeset(
         DataFrame({'ordered_stops': {'service_1_route_2': ['stop_3', 'stop_2', 'stop_1'],
                                      'service_1_route_1': ['stop_1', 'stop_2', 'stop_3']}})
@@ -434,21 +433,49 @@ def test_generating_changeset_from_partial_mss_problem(partial_mss):
             'service_1_route_2': ['link_7_8_car', 'link_8_7_car', 'link_7_6_car', 'link_6_5_car', 'link_5_6_car',
                                   'artificial_link===from:node_6===to:stop_1',
                                   'artificial_link===from:stop_1===to:stop_1']}})
+
+
+def test_partial_mss_problem_generates_updated_modes_for_links(partial_mss):
+    changeset = partial_mss.to_changeset(
+        DataFrame({'ordered_stops': {'service_1_route_2': ['stop_3', 'stop_2', 'stop_1'],
+                                     'service_1_route_1': ['stop_1', 'stop_2', 'stop_3']}})
+    )
     assert_semantically_equal(
         changeset.additional_links_modes,
         {'link_5_6_car': {'modes': ['bus', 'car']}, 'link_6_5_car': {'modes': ['bus', 'car']},
          'link_6_7_car': {'modes': ['bus', 'car']}, 'link_7_6_car': {'modes': ['bus', 'car']},
          'link_7_8_car': {'modes': ['bus', 'car']}, 'link_8_7_car': {'modes': ['bus', 'car']}}
     )
+
+
+def test_partial_mss_problem_generates_new_artificial_links(partial_mss):
+    changeset = partial_mss.to_changeset(
+        DataFrame({'ordered_stops': {'service_1_route_2': ['stop_3', 'stop_2', 'stop_1'],
+                                     'service_1_route_1': ['stop_1', 'stop_2', 'stop_3']}})
+    )
     assert_semantically_equal(
         changeset.new_links,
         {'artificial_link===from:stop_1===to:stop_1': {'from': 'stop_1', 'to': 'stop_1', 'modes': {'bus'}},
          'artificial_link===from:node_6===to:stop_1': {'from': 'node_6', 'to': 'stop_1', 'modes': {'bus'}},
          'artificial_link===from:stop_1===to:node_5': {'from': 'stop_1', 'to': 'node_5', 'modes': {'bus'}}})
+
+
+def test_partial_mss_problem_generates_new_network_nodes_from_unsnapped_stops(partial_mss):
+    changeset = partial_mss.to_changeset(
+        DataFrame({'ordered_stops': {'service_1_route_2': ['stop_3', 'stop_2', 'stop_1'],
+                                     'service_1_route_1': ['stop_1', 'stop_2', 'stop_3']}})
+    )
     assert_semantically_equal(
         changeset.new_nodes,
         {'stop_1': {'id': 'stop_1', 'x': 1.0, 'y': 2.5, 'name': '', 'lon': -7.557148552832129, 'lat': 49.76683027967191,
                     's2_id': 5205973754090340691}})
+
+
+def test_partial_mss_problem_genrates_new_stops_with_linkrefids(partial_mss):
+    changeset = partial_mss.to_changeset(
+        DataFrame({'ordered_stops': {'service_1_route_2': ['stop_3', 'stop_2', 'stop_1'],
+                                     'service_1_route_1': ['stop_1', 'stop_2', 'stop_3']}})
+    )
     assert_semantically_equal(
         changeset.new_stops,
         {'stop_2.link:link_5_6_car': {'services': {'bus_service'}, 'routes': {'service_1_route_1', 'service_1_route_2'},
@@ -470,6 +497,13 @@ def test_generating_changeset_from_partial_mss_problem(partial_mss):
                                                                    'additional_attributes': set(),
                                                                    'linkRefId': 'artificial_link===from:stop_1===to:stop_1',
                                                                    'stop_id': 'stop_1'}})
+
+
+def test_partial_mss_problem_generates_edge_update_for_schedule(partial_mss):
+    changeset = partial_mss.to_changeset(
+        DataFrame({'ordered_stops': {'service_1_route_2': ['stop_3', 'stop_2', 'stop_1'],
+                                     'service_1_route_1': ['stop_1', 'stop_2', 'stop_3']}})
+    )
     changeset.new_pt_edges.sort()
     assert changeset.new_pt_edges == [('stop_1.link:artificial_link===from:stop_1===to:stop_1',
                                        'stop_2.link:link_5_6_car',
