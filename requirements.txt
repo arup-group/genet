@@ -32,6 +32,7 @@ kiwisolver==1.2.0
 lxml>=4.6.2
 matplotlib==3.2.1
 memory-profiler==0.57.0
+momepy==0.5.1
 more-itertools==8.3.0
 munch==2.5.0
 nbconvert==6.0.7
