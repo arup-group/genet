@@ -65,6 +65,7 @@ if __name__ == '__main__':
     logging.info(f'Graph validation: {report["graph"]["graph_connectivity"]}')
     if n.schedule:
         logging.info(f'Schedule level validation: {report["schedule"]["schedule_level"]["is_valid_schedule"]}')
+        logging.info(f'Schedule level validation: {report["schedule"]["vehicle_level"]["vehicle_definitions_valid"]}')
         logging.info(f'Routing validation: {report["routing"]["services_have_routes_in_the_graph"]}')
 
     with open(os.path.join(output_dir, 'validation_report.json'), 'w', encoding='utf-8') as f:
