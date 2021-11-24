@@ -1269,6 +1269,29 @@ class Schedule(ScheduleElement):
             else:
                 self.vehicles = {**df.T.to_dict(), **self.vehicles}
 
+    def scale_vehicle_capacity(self, capacity_scale, pce_scale, output_dir):
+        """
+        This method scales the vehicle capacities and pce to user defined scales and writes a new vehicle.xml. 
+        :param capacity_scale: vehicle capacity scale (float)
+        :param pce_scale: passenger car equivalents scale (float)
+        :return:
+        :example invocation: scale_vehicle_capacity(0.05, 0.05,"") 
+        """
+        vehicle_types_dict = deepcopy(self.vehicle_types)
+
+        for mode, mode_dict in self.vehicle_types.items():
+            mode_dict['capacity']['seats']['persons'] = str(round(float(mode_dict['capacity']['seats']['persons'])*capacity_scale))
+            mode_dict['passengerCarEquivalents']['pce'] = str(round(float(mode_dict['passengerCarEquivalents']['pce'])*pce_scale,3))
+
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
+        
+        matsim_xml_writer.write_vehicles(output_dir, self.vehicles, self.vehicle_types, f"{int(capacity_scale*100)}_perc_vehicles.xml")
+        self.vehicle_types = vehicle_types_dict 
+
+        logging.info(f'Created scaled vehicle file for {int(capacity_scale*100)}% capacity & {int(pce_scale*100)}% pce.')
+
+
     def route_trips_to_dataframe(self, gtfs_day='19700101'):
         """
         Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
