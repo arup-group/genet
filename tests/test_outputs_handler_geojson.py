@@ -77,7 +77,6 @@ def test_generating_schedule_graph_geodataframe(network):
                      'lat': {'0': 51.525696033239186, '1': 51.52560003323918},
                      'lon': {'0': -0.13530998708775874, '1': -0.13682698708848137},
                      's2_id': {'0': 5221390668020036699, '1': 5221390668558830581},
-                     'additional_attributes': {'0': {'linkRefId'}, '1': {'linkRefId'}},
                      'linkRefId': {'0': '1', '1': '2'},
                      'name': {'0': '', '1': ''}
                      }
@@ -154,10 +153,10 @@ def test_generating_standard_outputs(network, tmpdir):
                 ]),
         Service(id='rail_service',
                 routes=[Route(
-                    route_short_name="RTR_I/love\_being//difficult",
+                    route_short_name=r"RTR_I/love\_being//difficult",
                     mode='rail',
                     stops=[
-                        Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326', name="I/love\_being//difficult"),
+                        Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326', name=r"I/love\_being//difficult"),
                         Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
                     trips={'trip_id': ['RT1', 'RT2', 'RT3', 'RT4'],
                            'trip_departure_time': ['03:21:00', '03:31:00', '03:41:00', '03:51:00'],

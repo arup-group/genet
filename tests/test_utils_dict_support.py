@@ -1,4 +1,5 @@
 import pytest
+from pandas import DataFrame
 import genet.utils.dict_support as dict_support
 from tests.fixtures import assert_semantically_equal
 
@@ -128,3 +129,16 @@ def test_merging_dicts_with_lists_when_one_dict_is_empty():
     d = dict_support.merge_complex_dictionaries({'1': [''], '2': []}, {})
 
     assert_semantically_equal(d, {'1': [''], '2': []})
+
+
+def test_dataframe_to_dict_returns_dictionary_ignoring_nan_values():
+    df = DataFrame(
+        {
+            'id' : [1,2,3],
+            'value': ['6', float('nan'), 5]
+        }
+    )
+    assert_semantically_equal(
+        dict_support.dataframe_to_dict(df.T),
+        {0: {'id': 1, 'value': '6'}, 1: {'id': 2}, 2: {'id': 3, 'value': 5}}
+    )

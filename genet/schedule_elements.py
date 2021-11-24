@@ -8,7 +8,7 @@ from abc import abstractmethod
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
-from typing import Union, Dict, List
+from typing import Union, Dict, List, Set, Tuple
 
 import dictdiffer
 import networkx as nx
@@ -23,9 +23,9 @@ import genet.modify.change_log as change_log
 import genet.modify.schedule as mod_schedule
 import genet.outputs_handler.geojson as gngeojson
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
-import genet.outputs_handler.sanitiser as sanitiser
 import genet.use.schedule as use_schedule
 import genet.utils.dict_support as dict_support
+import genet.outputs_handler.sanitiser as sanitiser
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
 import genet.utils.persistence as persistence
@@ -120,6 +120,48 @@ class ScheduleElement:
         :return: graph edges for the service with ID: service_id
         """
         return {(u, v) for u, v, edge_services in self._graph.edges(data='services') if service_id in edge_services}
+
+    def _remove_routes_from_nodes(self, nodes: Set[str], route_ids: Set[str]):
+        for node in nodes:
+            self._graph.nodes[node]['routes'] = self._graph.nodes[node]['routes'] - route_ids
+
+    def _remove_routes_from_edges(self, edges: Set[Tuple[str, str]], route_ids: Set[str]):
+        for u, v in edges:
+            self._graph[u][v]['routes'] = self._graph[u][v]['routes'] - route_ids
+
+    def _add_routes_to_nodes(self, nodes: Set[str], route_ids: Set[str]):
+        for node in nodes:
+            self._graph.nodes[node]['routes'] = self._graph.nodes[node]['routes'] | route_ids
+
+    def _add_routes_to_edges(self, edges: Set[Tuple[str, str]], route_ids: Set[str]):
+        for u, v in edges:
+            self._graph[u][v]['routes'] = self._graph[u][v]['routes'] | route_ids
+
+    def _remove_services_from_nodes(self, nodes: Set[str], service_ids: Set[str]):
+        for node in nodes:
+            self._graph.nodes[node]['services'] = self._graph.nodes[node]['services'] - service_ids
+
+    def _remove_services_from_edges(self, edges: Set[Tuple[str, str]], service_ids: Set[str]):
+        for u, v in edges:
+            self._graph[u][v]['services'] = self._graph[u][v]['services'] - service_ids
+
+    def _add_services_to_nodes(self, nodes: Set[str], service_ids: Set[str]):
+        for node in nodes:
+            self._graph.nodes[node]['services'] = self._graph.nodes[node]['services'] | service_ids
+
+    def _add_services_to_edges(self, edges: Set[Tuple[str, str]], service_ids: Set[str]):
+        for u, v in edges:
+            self._graph[u][v]['services'] = self._graph[u][v]['services'] | service_ids
+
+    def _generate_services_on_nodes(self, nodes: Set[str]):
+        for node in nodes:
+            self._graph.nodes[node]['services'] = {self._graph.graph['route_to_service_map'][r_id] for r_id in
+                                                   self._graph.nodes[node]['routes']}
+
+    def _generate_services_on_edges(self, edges: Set[Tuple[str, str]]):
+        for u, v in edges:
+            self._graph[u][v]['services'] = {self._graph.graph['route_to_service_map'][r_id] for r_id in
+                                             self._graph[u][v]['routes']}
 
     def stop(self, stop_id):
         stop_data = {k: v for k, v in dict(self._graph.nodes[stop_id]).items() if k not in {'routes', 'services'}}
@@ -258,7 +300,6 @@ class Stop:
         else:
             self.s2_id = spatial.generate_index_s2(lat=self.lat, lng=self.lon)
 
-        self.additional_attributes = set()
         if kwargs:
             self.add_additional_attributes(kwargs)
 
@@ -314,13 +355,8 @@ class Stop:
         :return:
         """
         for k, v in attribs.items():
-            if k not in self.__dict__ or (not self.__dict__[k] and k != "additional_attributes"):
+            if k not in self.__dict__ or (not self.__dict__[k]):
                 setattr(self, k, v)
-                self.additional_attributes.add(k)
-
-    def iter_through_additional_attributes(self):
-        for attr_key in self.additional_attributes:
-            yield attr_key, self.__dict__[attr_key]
 
     def additional_attribute(self, attrib_name):
         return self.__dict__[attrib_name]
@@ -487,6 +523,9 @@ class Route(ScheduleElement):
     def modes(self):
         return {self.mode}
 
+    def vehicles(self):
+        return set(self.trips['vehicle_id'])
+
     def _index_unique(self, idx):
         return idx not in self._graph.graph['routes']
 
@@ -500,12 +539,12 @@ class Route(ScheduleElement):
             raise RouteIndexError(f'Route of index {new_id} already exists')
         if self.id != new_id:
             # change data on graph
-            g = self.graph()
-            for stop in self.reference_nodes():
-                g.nodes[stop]['routes'] = (g.nodes[stop]['routes'] - {self.id}) | {new_id}
-            for u, v in self.reference_edges():
-                g[u][v]['routes'] = (g[u][v]['routes'] - {self.id}) | {new_id}
-            self._graph.update(g)
+            nodes = self.reference_nodes()
+            self._remove_routes_from_nodes(nodes=nodes, route_ids={self.id})
+            self._add_routes_to_nodes(nodes=nodes, route_ids={new_id})
+            edges = self.reference_edges()
+            self._remove_routes_from_edges(edges=edges, route_ids={self.id})
+            self._add_routes_to_edges(edges=edges, route_ids={new_id})
             self._graph.graph['routes'][new_id] = self._graph.graph['routes'][self.id]
             self._graph.graph['routes'][new_id]['id'] = new_id
             del self._graph.graph['routes'][self.id]
@@ -701,6 +740,9 @@ class Route(ScheduleElement):
             if len(stops_linkrefids) != len(self.ordered_stops):
                 logging.warning('Not all stops reference network link ids.')
                 return False
+            # consecutive stops can snap to the same link but it only needs to be mentioned once
+            stops_linkrefids = [stops_linkrefids[0]] + [stops_linkrefids[i] for i in range(1, len(stops_linkrefids)) if
+                                                        stops_linkrefids[i - 1] != stops_linkrefids[i]]
             for link_id in self.route:
                 if link_id == stops_linkrefids[0]:
                     stops_linkrefids = stops_linkrefids[1:]
@@ -965,6 +1007,9 @@ class Service(ScheduleElement):
     def modes(self):
         return {r.mode for r in self.routes()}
 
+    def vehicles(self):
+        return set().union(*[r_dat['trips']['vehicle_id'] for r_id, r_dat in self.graph().graph['routes'].items()])
+
     def _index_unique(self, idx):
         return idx not in self._graph.graph['services']
 
@@ -978,12 +1023,12 @@ class Service(ScheduleElement):
             raise ServiceIndexError(f'Service of index {new_id} already exists')
         if self.id != new_id:
             # change data on graph
-            g = self.graph()
-            for stop in self.reference_nodes():
-                g.nodes[stop]['services'] = (g.nodes[stop]['services'] - {self.id}) | {new_id}
-            for u, v in self.reference_edges():
-                g[u][v]['services'] = (g[u][v]['services'] - {self.id}) | {new_id}
-            self._graph.update(g)
+            nodes = self.reference_nodes()
+            self._remove_services_from_nodes(nodes=nodes, service_ids={self.id})
+            self._add_services_to_nodes(nodes=nodes, service_ids={new_id})
+            edges = self.reference_edges()
+            self._remove_services_from_edges(edges=edges, service_ids={self.id})
+            self._add_services_to_edges(edges=edges, service_ids={new_id})
             self._graph.graph['services'][new_id] = self._graph.graph['services'][self.id]
             self._graph.graph['services'][new_id]['id'] = new_id
             del self._graph.graph['services'][self.id]
@@ -1142,6 +1187,8 @@ class Schedule(ScheduleElement):
     :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
     :param services: list of Service class objects
     :param _graph: Schedule graph, used for re-instantiating the object, passed without `services`
+    :param minimal_transfer_times: {'stop_id_1': {'stop_id_2': 0.0}} seconds_to_transfer between stop_id_1 and
+        stop_id_2
     :param vehicles: dictionary of vehicle IDs from Route objects, mapping them to vehicle types in vehicle_types.
         Looks like this: {veh_id : {'type': 'bus'}}
         Defaults to None and generates itself from the vehicles IDs in Routes, maps to the mode of the Route.
@@ -1160,7 +1207,12 @@ class Schedule(ScheduleElement):
         Defaults to reading `genet/configs/vehicles/vehicle_definitions.yml`
     """
 
-    def __init__(self, epsg: str = '', services: List[Service] = None, _graph: nx.DiGraph = None, vehicles=None,
+    def __init__(self,
+                 epsg: str = '',
+                 services: List[Service] = None,
+                 _graph: nx.DiGraph = None,
+                 minimal_transfer_times: Dict[str, Dict[str, float]] = None,
+                 vehicles=None,
                  vehicle_types: Union[str, dict] = pkgutil.get_data(__name__, os.path.join("configs", "vehicles",
                                                                                            "vehicle_definitions.yml"))):
         if isinstance(vehicle_types, dict):
@@ -1207,7 +1259,10 @@ class Schedule(ScheduleElement):
             self._graph = self._build_graph(services)
         self.init_epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
-        self.minimal_transfer_times = {}
+        if minimal_transfer_times is not None:
+            self.minimal_transfer_times = minimal_transfer_times
+        else:
+            self.minimal_transfer_times = {}
         if vehicles is None:
             self.vehicles = {}
             self.generate_vehicles()
@@ -1639,13 +1694,16 @@ class Schedule(ScheduleElement):
             other._graph.graph['services'], self._graph.graph['services'])
         self._graph.graph['routes'] = dict_support.merge_complex_dictionaries(
             other._graph.graph['routes'], self._graph.graph['routes'])
-        self._graph.graph['route_to_service_map'] = \
-            {**self._graph.graph['route_to_service_map'], **other._graph.graph['route_to_service_map']}
-        self._graph.graph['service_to_route_map'] = \
-            {**self._graph.graph['service_to_route_map'], **other._graph.graph['service_to_route_map']}
-        self.minimal_transfer_times = {**other.minimal_transfer_times, **self.minimal_transfer_times}
+        route_to_service_map = {**self._graph.graph['route_to_service_map'],
+                                **other._graph.graph['route_to_service_map']}
+        service_to_route_map = {**self._graph.graph['service_to_route_map'],
+                                **other._graph.graph['service_to_route_map']}
+        self.minimal_transfer_times = dict_support.merge_complex_dictionaries(
+            other.minimal_transfer_times, self.minimal_transfer_times)
         # todo assuming separate schedules, with non conflicting ids, nodes and edges
         self._graph.update(other._graph)
+        self._graph.graph['route_to_service_map'] = route_to_service_map
+        self._graph.graph['service_to_route_map'] = service_to_route_map
 
         # merge change_log DataFrames
         self._graph.graph['change_log'] = self.change_log().merge_logs(other.change_log())
@@ -2161,6 +2219,30 @@ class Schedule(ScheduleElement):
         :return:
         """
         self._verify_no_id_change(new_attributes)
+        # check for stop changes
+        stop_changes = {id for id, change_dict in new_attributes.items() if ('ordered_stops' in change_dict) and (
+                change_dict['ordered_stops'] != self._graph.graph['routes'][id]['ordered_stops'])}
+        if stop_changes:
+            logging.warning(f'Stop ID changes detected for Routes: {stop_changes}')
+            nodes = {n for id in stop_changes for n in self.route_reference_nodes(id)}
+            edges = {e for id in stop_changes for e in self.route_reference_edges(id)}
+            self._remove_routes_from_nodes(nodes=nodes, route_ids=stop_changes)
+            self._remove_routes_from_edges(edges=edges, route_ids=stop_changes)
+            all_new_nodes = set()
+            all_new_edges = set()
+            for id in stop_changes:
+                new_nodes = set(new_attributes[id]['ordered_stops'])
+                all_new_nodes |= new_nodes
+                new_edges = {(u, v) for u, v in
+                             zip(new_attributes[id]['ordered_stops'][:-1], new_attributes[id]['ordered_stops'][1:])}
+                all_new_edges |= new_edges
+                self._add_routes_to_nodes(nodes=new_nodes, route_ids={id})
+                self._add_routes_to_edges(
+                    edges=new_edges,
+                    route_ids={id})
+            self._generate_services_on_nodes(all_new_nodes | nodes)
+            self._generate_services_on_edges(all_new_edges | edges)
+
         routes = list(new_attributes.keys())
         old_attribs = [deepcopy(self._graph.graph['routes'][route]) for route in routes]
         new_attribs = [{**self._graph.graph['routes'][route], **new_attributes[route]} for route in routes]
@@ -2306,6 +2388,7 @@ class Schedule(ScheduleElement):
         self._graph.graph['change_log'].add(object_type='service', object_id=service.id, object_attributes=service_data)
         logging.info(f'Added Service with index `{service.id}`, data={service_data} and Routes: {route_ids}')
         service._graph = self._graph
+        self.generate_vehicles(overwrite=False)
         return service
 
     def remove_service(self, service_id):
@@ -2320,12 +2403,12 @@ class Schedule(ScheduleElement):
         service = self[service_id]
         service_data = self._graph.graph['services'][service_id]
         route_ids = set(self._graph.graph['service_to_route_map'][service_id])
-        for stop in service.reference_nodes():
-            self._graph.nodes[stop]['routes'] = list(set(self._graph.nodes[stop]['routes']) - route_ids)
-            self._graph.nodes[stop]['services'] = list(set(self._graph.nodes[stop]['services']) - {service_id})
-        for u, v in service.reference_edges():
-            self._graph[u][v]['routes'] = list(set(self._graph[u][v]['routes']) - route_ids)
-            self._graph[u][v]['services'] = list(set(self._graph[u][v]['services']) - {service_id})
+        ref_nodes = service.reference_nodes()
+        ref_edges = service.reference_edges()
+        self._remove_routes_from_nodes(nodes=ref_nodes, route_ids=route_ids)
+        self._remove_services_from_nodes(nodes=ref_nodes, service_ids={service_id})
+        self._remove_routes_from_edges(edges=ref_edges, route_ids=route_ids)
+        self._remove_services_from_edges(edges=ref_edges, service_ids={service_id})
 
         del self._graph.graph['services'][service_id]
         del self._graph.graph['service_to_route_map'][service_id]
@@ -2334,6 +2417,12 @@ class Schedule(ScheduleElement):
             del self._graph.graph['routes'][r_id]
         self._graph.graph['change_log'].remove(object_type='service', object_id=service_id,
                                                object_attributes=service_data)
+
+        # update vehicles
+        old_vehicles = deepcopy(self.vehicles)
+        self.vehicles = {}
+        self.generate_vehicles()
+        self.vehicles = {**self.vehicles, **{k: v for k, v in old_vehicles.items() if k in self.vehicles}}
         logging.info(f'Removed Service with index `{service_id}`, data={service_data} and Routes: {route_ids}')
 
     def add_route(self, service_id, route: Route, force=False):
@@ -2391,6 +2480,7 @@ class Schedule(ScheduleElement):
         logging.info(f'Added Route with index `{route.id}`, data={route_data} to Service `{service_id}` within the '
                      f'Schedule')
         route._graph = self._graph
+        self.generate_vehicles(overwrite=False)
         return route
 
     def remove_route(self, route_id):
@@ -2421,6 +2511,12 @@ class Schedule(ScheduleElement):
         del self._graph.graph['route_to_service_map'][route_id]
         del self._graph.graph['routes'][route_id]
         self._graph.graph['change_log'].remove(object_type='route', object_id=route_id, object_attributes=route_data)
+
+        # update vehicles
+        old_vehicles = deepcopy(self.vehicles)
+        self.vehicles = {}
+        self.generate_vehicles()
+        self.vehicles = {**self.vehicles, **{k: v for k, v in old_vehicles.items() if k in self.vehicles}}
         logging.info(f'Removed Route with index `{route_id}`, data={route_data}. '
                      f'It was linked to Service `{service_id}`.')
 
@@ -2438,18 +2534,32 @@ class Schedule(ScheduleElement):
         routes_affected = stop_data.pop('routes')
         services_affected = stop_data.pop('services')
         self._graph.remove_node(stop_id)
+        # remove from minimal transfer times if relevant
+        try:
+            del self.minimal_transfer_times[stop_id]
+        except KeyError:
+            pass
+        for val in self.minimal_transfer_times.values():
+            try:
+                del val[stop_id]
+            except KeyError:
+                pass
         self._graph.graph['change_log'].remove(object_type='stop', object_id=stop_id, object_attributes=stop_data)
         logging.info(f'Removed Stop with index `{stop_id}`, data={stop_data}. '
                      f'Routes affected: {routes_affected}. Services affected: {services_affected}.')
 
     def remove_unsused_stops(self):
-        stops_to_remove = []
+        stops_to_remove = set()
         for stop, data in self._graph.nodes(data='routes'):
             if not data:
-                stops_to_remove.append(stop)
+                stops_to_remove.add(stop)
+        # but leave those stops that have transfers
+        stops_to_remove = stops_to_remove - {stop for from_to_tuple in self.minimal_transfer_times.keys() for stop in
+                                             from_to_tuple}
         for stop in stops_to_remove:
             self.remove_stop(stop)
-        logging.info(f'Removed Stops with indecies `{stops_to_remove}` which were not used by any Routes.')
+        logging.info(f'Removed Stops with indecies `{stops_to_remove}` which were not used by any Routes or part of '
+                     f'minimal transfer times.')
 
     def is_strongly_connected(self):
         if nx.number_strongly_connected_components(self.graph()) == 1:
@@ -2514,7 +2624,8 @@ class Schedule(ScheduleElement):
         for service_id, data in services.items():
             data['routes'] = {route_id: self._graph.graph['routes'][route_id] for route_id in
                               self._graph.graph['service_to_route_map'][service_id]}
-        d = {'stops': stops.T.to_dict(), 'services': services}
+        d = {'stops': dict_support.dataframe_to_dict(stops.T),
+             'services': services}
         if self.minimal_transfer_times:
             d['minimal_transfer_times'] = self.minimal_transfer_times
         return {'schedule': d, 'vehicles': {'vehicle_types': self.vehicle_types, 'vehicles': self.vehicles}}

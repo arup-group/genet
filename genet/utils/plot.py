@@ -102,7 +102,6 @@ LAYERS = {
                                'heightScale': 'linear',
                                'radiusField': None,
                                'radiusScale': 'linear'}
-
         }
     },
     'schedule_routes': {

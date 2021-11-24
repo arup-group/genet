@@ -1,0 +1,5 @@
+trip_id,arrival_time,departure_time,stop_id,stop_sequence,stop_headsign,pickup_type,drop_off_type,timepoint,stop_direction_name
+BT 1,03:21:00,03:21:00,BS E,0,,0,1,1,
+BT 1,03:23:00,03:23:00,BS N,1,,0,0,0,
+RT 1,03:21:00,03:21:00,RS N,0,,0,0,0,
+RT 1,03:23:00,03:23:00,RS E,1,,0,1,1,

@@ -1,10 +1,13 @@
-import re
 import logging
-import networkx as nx
+import re
 import xml.etree.cElementTree as ET
+
+import networkx as nx
 from pyproj import Transformer, Proj
-from genet.utils import spatial
+
 from genet.schedule_elements import Route, Stop, Service
+from genet.utils import dict_support
+from genet.utils import spatial
 
 
 def read_node(elem, g, node_id_mapping, transformer):
@@ -247,30 +250,30 @@ def read_schedule(schedule_path, epsg):
     transitLine = {}
     transitRoutes = {}
     transportMode = {}
-    transitStops = {}
     transit_stop_id_mapping = {}
     is_minimalTransferTimes = False
-    minimalTransferTimes = {}  # {'stop_id_1': {stop: 'stop_id_2', transfer_time: 0.0}}
+    minimalTransferTimes = {}  # {'stop_id_1': {'stop_id_2': 0.0}} seconds_to_transfer between stop_id_1 and stop_id_2
 
     # transitLines
     for event, elem in ET.iterparse(schedule_path, events=('start', 'end')):
         if event == 'start':
             if elem.tag == 'stopFacility':
                 attribs = elem.attrib
-                if attribs['id'] not in transitStops:
-                    transitStops[attribs['id']] = attribs
+                attribs['epsg'] = epsg
+                attribs['x'] = float(attribs['x'])
+                attribs['y'] = float(attribs['y'])
                 if attribs['id'] not in transit_stop_id_mapping:
-                    transit_stop_id_mapping[attribs['id']] = elem.attrib
+                    transit_stop_id_mapping[attribs['id']] = attribs
+
             if elem.tag == 'minimalTransferTimes':
                 is_minimalTransferTimes = not is_minimalTransferTimes
             if elem.tag == 'relation':
                 if is_minimalTransferTimes:
-                    if not elem.attrib['toStop'] in minimalTransferTimes:
-                        attribs = elem.attrib
-                        minimalTransferTimes[attribs['fromStop']] = {
-                            'stop': attribs['toStop'],
-                            'transferTime': float(attribs['transferTime'])
-                        }
+                    attribs = elem.attrib
+                    minimalTransferTimes = dict_support.merge_complex_dictionaries(
+                        minimalTransferTimes,
+                        {attribs['fromStop']: {attribs['toStop']: float(attribs['transferTime'])}}
+                    )
             if elem.tag == 'transitLine':
                 if transitLine:
                     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
@@ -308,7 +311,7 @@ def read_schedule(schedule_path, epsg):
     # add the last one
     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
 
-    return services, minimalTransferTimes
+    return services, minimalTransferTimes, transit_stop_id_mapping
 
 
 def read_vehicles(vehicles_path):
@@ -317,7 +320,7 @@ def read_vehicles(vehicles_path):
     v = {'capacity': {}}
     read_capacity = False
     for event, elem in ET.iterparse(vehicles_path):
-        tag = re.sub('{http://www\.matsim\.org/files/dtd}', '', elem.tag)  # noqa: W605
+        tag = re.sub(r'{http://www\.matsim\.org/files/dtd}', '', elem.tag)  # noqa: W605
         if tag == 'vehicle':
             _id = elem.attrib.pop('id')
             vehicles[_id] = elem.attrib

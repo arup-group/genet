@@ -59,16 +59,16 @@ def test_initiating_route(route):
     assert_semantically_equal(dict(r._graph.nodes(data=True)), {
         '1': {'routes': {'1'}, 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
-              'additional_attributes': {'linkRefId'}, 'linkRefId': '1'},
+              'linkRefId': '1'},
         '2': {'routes': {'1'}, 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
-              'additional_attributes': {'linkRefId'}, 'linkRefId': '2'},
+              'linkRefId': '2'},
         '3': {'routes': {'1'}, 'id': '3', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.76683608549253, 'lon': -7.557121424907424, 's2_id': 5205973754090203369,
-              'additional_attributes': {'linkRefId'}, 'linkRefId': '3'},
+              'linkRefId': '3'},
         '4': {'routes': {'1'}, 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700', 'name': '',
               'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
-              'additional_attributes': {'linkRefId'}, 'linkRefId': '4'}})
+              'linkRefId': '4'}})
     assert_semantically_equal(r._graph.edges(data=True)._adjdict,
                               {'1': {'2': {'routes': {'1'}}}, '2': {'3': {'routes': {'1'}}},
                                '3': {'4': {'routes': {'1'}}}, '4': {}})
@@ -157,16 +157,16 @@ def test_build_graph_builds_correct_graph():
     assert_semantically_equal(dict(g.nodes(data=True)),
                               {'1': {'routes': {''}, 'id': '1', 'x': 4.0, 'y': 2.0, 'epsg': 'epsg:27700',
                                      'lat': 49.76682779861249, 'lon': -7.557106577683727, 's2_id': 5205973754090531959,
-                                     'name': '', 'additional_attributes': set()},
+                                     'name': ''},
                                '2': {'routes': {''}, 'id': '2', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700',
                                      'lat': 49.766825803756994, 'lon': -7.557148039524952, 's2_id': 5205973754090365183,
-                                     'name': '', 'additional_attributes': set()},
+                                     'name': ''},
                                '3': {'routes': {''}, 'id': '3', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700',
                                      'lat': 49.76683608549253, 'lon': -7.557121424907424, 's2_id': 5205973754090203369,
-                                     'name': '', 'additional_attributes': set()},
+                                     'name': ''},
                                '4': {'routes': {''}, 'id': '4', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700',
                                      'lat': 49.766856648946295, 'lon': -7.5570681956375, 's2_id': 5205973754097123809,
-                                     'name': '', 'additional_attributes': set()}})
+                                     'name': ''}})
     assert_semantically_equal(g.edges(data=True)._adjdict,
                               {'1': {'2': {'routes': {''}}}, '2': {'3': {'routes': {''}}}, '3': {'4': {'routes': {''}}},
                                '4': {}})
@@ -438,3 +438,7 @@ def test_generating_trips_dataframe(route):
              'mode': {0: 'bus', 1: 'bus'}}
         )
     )
+
+
+def test_vehicles(route):
+    assert route.vehicles() == {'veh_1_bus', 'veh_2_bus'}

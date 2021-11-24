@@ -3,6 +3,7 @@ from networkx import Graph, DiGraph, set_node_attributes
 from genet.schedule_elements import Schedule, Service, Route, Stop, verify_graph_schema
 from genet.exceptions import ServiceIndexError, RouteIndexError, ScheduleElementGraphSchemaError
 from tests.fixtures import assert_semantically_equal
+from genet.inputs_handler import gtfs_reader
 
 
 def assert_all_elements_share_graph(elem):
@@ -136,6 +137,80 @@ def schedule_graph():
 
 def test_all_elements_in_schedule_share_the_same_graph(schedule):
     assert_all_elements_share_graph(schedule)
+
+
+def test_removing_routes_from_nodes(schedule):
+    schedule._remove_routes_from_nodes(nodes={'1'}, route_ids={'2'})
+    assert_semantically_equal(dict(schedule._graph.nodes(data='routes')),
+                              {'4': {'4', '3'}, '5': {'4'}, '3': {'3'}, '0': {'1'}, '1': {'1'}, '2': {'2'}})
+
+
+def test_removing_routes_from_edges(schedule):
+    schedule._remove_routes_from_edges(edges={('1', '2')}, route_ids={'2'})
+    assert_semantically_equal(
+        schedule._graph.edges._adjdict,
+        {'4': {'5': {'services': {'service2'}, 'routes': {'4'}}},
+         '5': {},
+         '3': {'4': {'services': {'service2'}, 'routes': {'3'}}},
+         '0': {'1': {'services': {'service1'}, 'routes': {'1'}}},
+         '1': {'2': {'services': {'service1'}, 'routes': set()}},
+         '2': {}}
+    )
+
+def test_adding_routes_to_nodes(schedule):
+    schedule._add_routes_to_nodes(nodes={'1'}, route_ids={'new_route'})
+    assert_semantically_equal(
+        dict(schedule._graph.nodes(data='routes')),
+        {'4': {'3', '4'}, '5': {'4'}, '3': {'3'}, '0': {'1'}, '2': {'2'}, '1': {'2', '1', 'new_route'}}
+    )
+
+
+def test_adding_routes_to_edges(schedule):
+    schedule._add_routes_to_edges(edges={('1', '2')}, route_ids={'new_route'})
+    assert_semantically_equal(
+        schedule._graph.edges._adjdict,
+        {'4': {'5': {'services': {'service2'}, 'routes': {'4'}}}, '5': {},
+         '3': {'4': {'services': {'service2'}, 'routes': {'3'}}}, '2': {},
+         '1': {'2': {'services': {'service1'}, 'routes': {'2', 'new_route'}}},
+         '0': {'1': {'services': {'service1'}, 'routes': {'1'}}}}
+    )
+
+
+def test_removing_services_from_nodes(schedule):
+    schedule._remove_services_from_nodes(nodes={'2'}, service_ids={'service1'})
+    assert_semantically_equal(dict(schedule._graph.nodes(data='services')),
+                              {'4': {'service2'}, '5': {'service2'}, '3': {'service2'}, '1': {'service1'},
+                               '2': set(), '0': {'service1'}})
+
+
+def test_removing_services_from_edges(schedule):
+    schedule._remove_services_from_edges(edges={('1', '2')}, service_ids={'service1'})
+    assert_semantically_equal(
+        schedule._graph.edges._adjdict,
+        {'4': {'5': {'services': {'service2'}, 'routes': {'4'}}}, '5': {},
+         '3': {'4': {'services': {'service2'}, 'routes': {'3'}}}, '2': {},
+         '1': {'2': {'services': set(), 'routes': {'2'}}}, '0': {'1': {'services': {'service1'}, 'routes': {'1'}}}}
+    )
+
+
+def test_adding_services_to_nodes(schedule):
+    schedule._add_services_to_nodes(nodes={'2'}, service_ids={'new_service'})
+    assert_semantically_equal(
+        dict(schedule._graph.nodes(data='services')),
+        {'4': {'service2'}, '5': {'service2'}, '3': {'service2'}, '0': {'service1'}, '2': {'service1', 'new_service'},
+         '1': {'service1'}}
+    )
+
+
+def test_adding_services_to_edges(schedule):
+    schedule._add_services_to_edges(edges={('1', '2')}, service_ids={'new_service'})
+    assert_semantically_equal(
+        schedule._graph.edges._adjdict,
+        {'4': {'5': {'services': {'service2'}, 'routes': {'4'}}}, '5': {},
+         '3': {'4': {'services': {'service2'}, 'routes': {'3'}}},
+         '0': {'1': {'services': {'service1'}, 'routes': {'1'}}},
+         '1': {'2': {'services': {'service1', 'new_service'}, 'routes': {'2'}}}, '2': {}}
+    )
 
 
 def test_generating_reference_nodes_for_route(schedule):
@@ -437,14 +512,16 @@ def service_with_routes_that_have_non_overlapping_graph_edges():
                                 departure_offsets=['', '', '']),
                       ])
 
-def test_splitting_service_on_direction_with_non_overlapping_graph_edges_produces_two_directions(service_with_routes_that_have_non_overlapping_graph_edges):
+def test_splitting_service_on_direction_with_non_overlapping_graph_edges_produces_two_directions(
+        service_with_routes_that_have_non_overlapping_graph_edges):
     service_split = service_with_routes_that_have_non_overlapping_graph_edges.split_by_direction()
     assert_semantically_equal(service_split,
                               {'North Bound': ['1_dir_1', '2_dir_1'],
                                'South Bound': ['3_dir_2', '4_dir_2']})
 
 
-def test_splitting_service_graph_with_non_overlapping_graph_edges_produces_two_directions(service_with_routes_that_have_non_overlapping_graph_edges):
+def test_splitting_service_graph_with_non_overlapping_graph_edges_produces_two_directions(
+        service_with_routes_that_have_non_overlapping_graph_edges):
     routes, graph_groups = service_with_routes_that_have_non_overlapping_graph_edges.split_graph()
     assert routes == [{'1_dir_1', '2_dir_1'}, {'3_dir_2', '4_dir_2'}]
     assert graph_groups == [{('A', 'C'), ('C', 'D'), ('B', 'C'), ('A', 'B')},
@@ -509,7 +586,8 @@ def service_edge_case_loopy_and_non_overlapping_graph():
                                 departure_offsets=['', '', '']),
                       ])
 
-def test_splitting_service_edge_case_on_direction_results_in_two_directions(service_edge_case_loopy_and_non_overlapping_graph):
+def test_splitting_service_edge_case_on_direction_results_in_two_directions(
+        service_edge_case_loopy_and_non_overlapping_graph):
     service_split = service_edge_case_loopy_and_non_overlapping_graph.split_by_direction()
     assert_semantically_equal(service_split,
                               {'West Bound': ['1_dir_1', '3_dir_1', '4_dir_1'],
@@ -518,7 +596,8 @@ def test_splitting_service_edge_case_on_direction_results_in_two_directions(serv
 
 # this one is a right mess, result varies based on order in with routes are specified.
 @pytest.mark.xfail()
-def test_splitting_service_edge_case_on_direction_results_in_two_directions(service_edge_case_loopy_and_non_overlapping_graph):
+def test_splitting_service_edge_case_on_direction_results_in_two_directions(
+        service_edge_case_loopy_and_non_overlapping_graph):
     routes, graph_groups = service_edge_case_loopy_and_non_overlapping_graph.split_graph()
     assert routes == [{'1_dir_1', '3_dir_1', '4_dir_1'}, {'2_dir_2'}]
     assert graph_groups == [{('A', 'C'), ('E', 'F'), ('C', 'D'), ('B', 'C'), ('D', 'E'), ('A', 'B')},
@@ -639,16 +718,13 @@ def test_schedule_subgraph(schedule):
                               {'0': {'services': {'service1'}, 'routes': {'1'}, 'id': '0', 'x': 529455.7452394223,
                                      'y': 182401.37630677427, 'epsg': 'epsg:27700', 'name': '',
                                      'lat': 51.525696033239186, 'lon': -0.13530998708775874,
-                                     's2_id': 5221390668020036699, 'additional_attributes': {'linkRefId'},
-                                     'linkRefId': '0'},
+                                     's2_id': 5221390668020036699, 'linkRefId': '0'},
                                '1': {'services': {'service1'}, 'routes': {'1', '2'}, 'id': '1', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
-                                     'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
-                                     'additional_attributes': {'linkRefId'}, 'linkRefId': '1'},
+                                     'lon': -0.13682698708848137, 's2_id': 5221390668558830581, 'linkRefId': '1'},
                                '2': {'services': {'service1'}, 'routes': {'2'}, 'id': '2', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
-                                     'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
-                                     'additional_attributes': {'linkRefId'}, 'linkRefId': '2'}})
+                                     'lon': -0.13682698708848137, 's2_id': 5221390668558830581, 'linkRefId': '2'}})
 
 
 def test_service_subgraph(schedule):
@@ -661,12 +737,10 @@ def test_service_subgraph(schedule):
                               {'0': {'services': {'service1'}, 'routes': {'1'}, 'id': '0', 'x': 529455.7452394223,
                                      'y': 182401.37630677427, 'epsg': 'epsg:27700', 'name': '',
                                      'lat': 51.525696033239186, 'lon': -0.13530998708775874,
-                                     's2_id': 5221390668020036699, 'additional_attributes': {'linkRefId'},
-                                     'linkRefId': '0'},
+                                     's2_id': 5221390668020036699, 'linkRefId': '0'},
                                '1': {'services': {'service1'}, 'routes': {'1', '2'}, 'id': '1', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
-                                     'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
-                                     'additional_attributes': {'linkRefId'}, 'linkRefId': '1'}})
+                                     'lon': -0.13682698708848137, 's2_id': 5221390668558830581, 'linkRefId': '1'}})
 
 
 def test_route_subgraph(schedule):
@@ -678,12 +752,12 @@ def test_route_subgraph(schedule):
     assert_semantically_equal(dict(sub_g.nodes(data=True)),
                               {'1': {'services': {'service1'}, 'routes': {'2', '1'}, 'id': '1', 'x': 529350.7866124967,
                                      'y': 182388.0201078112, 'epsg': 'epsg:27700', 'lat': 51.52560003323918,
-                                     'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
-                                     'additional_attributes': {'linkRefId'}, 'linkRefId': '1', 'name': ''},
+                                     'lon': -0.13682698708848137, 's2_id': 5221390668558830581, 'linkRefId': '1',
+                                     'name': ''},
                                '0': {'services': {'service1'}, 'routes': {'1'}, 'id': '0', 'x': 529455.7452394223,
                                      'y': 182401.37630677427, 'epsg': 'epsg:27700', 'lat': 51.525696033239186,
-                                     'lon': -0.13530998708775874, 's2_id': 5221390668020036699,
-                                     'additional_attributes': {'linkRefId'}, 'linkRefId': '0', 'name': ''}})
+                                     'lon': -0.13530998708775874, 's2_id': 5221390668020036699, 'linkRefId': '0',
+                                     'name': ''}})
 
 
 def test_building_route_from_graph(schedule_graph):
