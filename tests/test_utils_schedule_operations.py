@@ -34,7 +34,7 @@ def correct_schedule():
     ])
 
 
-def test_generate_validation_report_with_correct_schedule(correct_schedule):
+def test_generate_validation_report_for_correct_schedule(correct_schedule):
     correct_report = {
         'schedule_level': {'is_valid_schedule': True, 'invalid_stages': [], 'has_valid_services': True,
                            'invalid_services': []},
@@ -55,7 +55,7 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
     assert_semantically_equal(report, correct_report)
 
 
-def test_generate_validation_report_with_incorrect_schedule(test_schedule):
+def test_generate_validation_report_for_incorrect_schedule(test_schedule):
     correct_report = {
         'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
                            'has_valid_services': False, 'invalid_services': ['service']},
@@ -153,19 +153,11 @@ def schedule_with_unused_vehicles():
                                  'trip_departure_time': ['04:40:00'],
                                  'vehicle_id': ['veh_1_bus']},
                           arrival_offsets=['00:00:00', '00:02:00'],
-                          departure_offsets=['00:00:00', '00:02:00']),
-                    Route(id = 'r2', route_short_name='route1', mode='bus',
-                          stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
-                                 Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
-                          trips={'trip_id': ['Blep_04:40:00'],
-                                 'trip_departure_time': ['05:40:00'],
-                                 'vehicle_id': ['veh_2_bus']},
-                          arrival_offsets=['00:00:00', '00:03:00'],
-                          departure_offsets=['00:00:00', '00:05:00'])
+                          departure_offsets=['00:00:00', '00:02:00'])
                 ])
     ])
 
-    s.remove_route('r2')
+    s.vehicles = {'veh_2_bus': {'type': 'bus'}, 'veh_1_bus': {'type': 'bus'}}
 
     return s
 
@@ -212,7 +204,7 @@ def schedule_with_multiple_use_vehicles():
     return s
 
 
-def test_schedule_with_no_multiple_use_vehicles(schedule_with_multiple_use_vehicles):
+def test_schedule_with_multiple_use_vehicles(schedule_with_multiple_use_vehicles):
     correct_output = {}
     correct_output['veh_1_bus'] = []
     correct_output['veh_1_bus'].append('VJ00938baa194cee94700312812d208fe79f3297ee_044000')

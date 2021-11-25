@@ -1,13 +1,16 @@
 import json
-import sys, os
-import dictdiffer
-import pytest
-import pandas as pd
+import os
+import sys
 from collections import OrderedDict
-from genet.schedule_elements import Stop, Route, Service, Schedule
-from genet.inputs_handler import osm_reader
+
+import dictdiffer
+import pandas as pd
+import pytest
+
 import genet.modify.change_log as change_log
+from genet.inputs_handler import osm_reader
 from genet.inputs_handler import read
+from genet.schedule_elements import Stop, Route, Service, Schedule
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -265,12 +268,12 @@ def correct_routes_db():
 @pytest.fixture()
 def correct_schedule_dict():
     return {'1001': [
-        {'route_short_name': 'BTR', 'route_long_name': 'Bus Test Route', 'mode': 'bus', 'route_color': '#CE312D',
+        {'route_short_name': 'BTR', 'route_long_name': 'Bus Test Route', 'mode': 'bus',
          'trips': {'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_0_bus']},
          'stops': ['BSE', 'BSN'], 'arrival_offsets': ['0:00:00', '0:02:00'],
          'departure_offsets': ['0:00:00', '0:02:00'], 's2_stops': [5221390325135889957, 5221390684150342605]}],
         '1002': [
-            {'route_short_name': 'RTR', 'route_long_name': 'Rail Test Route', 'mode': 'rail', 'route_color': '#CE312D',
+            {'route_short_name': 'RTR', 'route_long_name': 'Rail Test Route', 'mode': 'rail',
              'trips': {'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_1_rail']},
              'stops': ['RSN', 'RSE'], 'arrival_offsets': ['0:00:00', '0:02:00'],
              'departure_offsets': ['0:00:00', '0:02:00'], 's2_stops': [5221390332291192399, 5221390324026756531]}]}
@@ -315,19 +318,21 @@ def correct_schedule_graph_data_from_test_gtfs():
     return {'name': 'Schedule graph', 'crs': 'epsg:4326',
             'route_to_service_map': {'1001_0': '1001', '1002_0': '1002'},
             'service_to_route_map': {'1001': ['1001_0'], '1002': ['1002_0']}, 'change_log': change_log.ChangeLog(),
-            'routes': {'1001_0': {'arrival_offsets': ['00:00:00', '00:02:00'], 'route_color': 'CE312D',
-                                  'ordered_stops': ['BSE', 'BSN'], 'mode': 'bus', 'route_type': 3,
-                                  'departure_offsets': ['00:00:00', '00:02:00'],
-                                  'route_long_name': 'Bus Test Route', 'route_short_name': 'BTR',
-                                  'trips': {'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'],
-                                            'vehicle_id': ['veh_0']}, 'service_id': '1001', 'id': '1001_0'},
-                       '1002_0': {'arrival_offsets': ['00:00:00', '00:02:00'], 'route_color': 'CE312D',
-                                  'ordered_stops': ['RSN', 'RSE'], 'mode': 'rail', 'route_type': 2,
-                                  'departure_offsets': ['00:00:00', '00:02:00'],
-                                  'route_long_name': 'Rail Test Route', 'route_short_name': 'RTR',
-                                  'trips': {'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'],
-                                            'vehicle_id': ['veh_1']}, 'service_id': '1002',
-                                  'id': '1002_0'}},
+            'routes': {
+                '1001_0': {'departure_offsets': ['00:00:00', '00:02:00'], 'arrival_offsets': ['00:00:00', '00:02:00'],
+                           'route_url': float('nan'), 'route_text_color': 'FFFFFF', 'route_type': 3,
+                           'route_color': 'CE312D', 'route_short_name': 'BTR', 'checkin_duration': float('nan'),
+                           'route_long_name': 'Bus Test Route', 'ordered_stops': ['BSE', 'BSN'], 'mode': 'bus',
+                           'agency_id': 'OP550',
+                           'trips': {'trip_id': ['BT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_0']},
+                           'service_id': '1001', 'id': '1001_0'},
+                '1002_0': {'departure_offsets': ['00:00:00', '00:02:00'], 'arrival_offsets': ['00:00:00', '00:02:00'],
+                           'route_url': float('nan'), 'route_text_color': 'FFFFFF', 'route_type': 2,
+                           'route_color': 'CE312D', 'route_short_name': 'RTR', 'checkin_duration': float('nan'),
+                           'route_long_name': 'Rail Test Route', 'ordered_stops': ['RSN', 'RSE'], 'mode': 'rail',
+                           'agency_id': 'OP550',
+                           'trips': {'trip_id': ['RT1'], 'trip_departure_time': ['03:21:00'], 'vehicle_id': ['veh_1']},
+                           'service_id': '1002', 'id': '1002_0'}},
             'services': {'1001': {'id': '1001', 'name': 'BTR'}, '1002': {'id': '1002', 'name': 'RTR'}}}
 
 
