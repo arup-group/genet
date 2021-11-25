@@ -145,11 +145,11 @@ def _generate_requests_for_non_simplified_network(n, osm_tags=all):
         g = n.modal_subgraph(modes='car')
     else:
         g = n.subgraph_on_link_conditions(
-                conditions = [
+                conditions=[
                     {'attributes': {'osm:way:highway': {'text': osm_tags}}},
-                    {'modes' : 'car'}],
-                how = all,
-                mixed_dtypes = True)
+                    {'modes': 'car'}],
+                how=all,
+                mixed_dtypes=True)
 
     simple_paths = simplification._get_edge_groups_to_simplify(g)
 
