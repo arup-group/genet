@@ -115,7 +115,7 @@ def send_requests(api_requests: dict, departure_time, traffic_model: str = None,
     return api_requests
 
 
-def generate_requests(n):
+def generate_requests(n, osm_tags=all):
     """
     Generates a dictionary describing pairs of nodes for which we need to request
     directions from Google directions API.
@@ -125,21 +125,34 @@ def generate_requests(n):
     if n.is_simplified():
         logging.info('Generating Google Directions API requests for a simplified network.')
         return _generate_requests_for_simplified_network(n)
+    elif (n.is_simplified()) and (osm_tags != all):
+        raise RuntimeError('OSM tags can only be specified if the network used to generate the requests is not '
+                           'simplified. Please use a non-simplified network as input or set osm_tags=all.')
     else:
         logging.info('Generating Google Directions API requests for a non-simplified network.')
-        return _generate_requests_for_non_simplified_network(n)
+        return _generate_requests_for_non_simplified_network(n, osm_tags)
 
 
-def _generate_requests_for_non_simplified_network(n):
+def _generate_requests_for_non_simplified_network(n, osm_tags=all):
     """
     Generates a dictionary describing pairs of nodes for which we need to request
     directions from Google directions API. For a non-simplified network n
     :param n: genet.Network
+    :param osm_tags: takes a list of OSM tags to subset the network on, e.g. ['primary', 'secondary', 'tertiary']
     :return:
     """
-    g = n.modal_subgraph(modes='car')
+    if osm_tags == all:
+        g = n.modal_subgraph(modes='car')
+    else:
+        g = n.subgraph_on_link_conditions(
+                conditions = [
+                    {'attributes': {'osm:way:highway': {'text': osm_tags}}},
+                    {'modes' : 'car'}],
+                how = all,
+                mixed_dtypes = True)
 
     simple_paths = simplification._get_edge_groups_to_simplify(g)
+
     node_diff = set(g.nodes) - set(itertools.chain.from_iterable(simple_paths))
     non_simplified_edges = set(g.out_edges(node_diff)) | set(g.in_edges(node_diff))
     all_paths = list(non_simplified_edges) + simple_paths
