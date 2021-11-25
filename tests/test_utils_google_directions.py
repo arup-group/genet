@@ -566,20 +566,29 @@ def test_sending_requests_throws_error_if_key_not_found(mocker):
 
 
 def test_parsing_routes_with_a_good_response(google_directions_api_response, generated_request):
+    legs = google_directions_api_response.json()['routes'][0]['legs']
+    expected_speed = sum([leg['distance']['value'] for leg in legs]) / sum([leg['duration_in_traffic']['value'] for leg in legs])
+
     data = google_directions.parse_routes(google_directions_api_response, generated_request['path_polyline'])
-    assert_semantically_equal(data, {'google_speed': 7.542857142857143, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'})
+    assert_semantically_equal(data, {'google_speed': expected_speed, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'})
 
 
 def test_parsing_routes_with_a_response_without_traffic_info(google_directions_api_response_without_traffic_info, generated_request, caplog):
+    legs = google_directions_api_response_without_traffic_info.json()['routes'][0]['legs']
+    expected_speed = sum([leg['distance']['value'] for leg in legs]) / sum([leg['duration']['value'] for leg in legs])
+
     data = google_directions.parse_routes(google_directions_api_response_without_traffic_info, generated_request['path_polyline'])
-    assert_semantically_equal(data, {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'})
+    assert_semantically_equal(data, {'google_speed': expected_speed, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'})
     assert_logging_warning_caught_with_message_containing(caplog, 'duration_in_traffic was not found')
 
 
 def test_parsing_routes_with_multiple_legs_response(google_directions_api_response_multiple_legs, generated_request):
+    legs = google_directions_api_response_multiple_legs.json()['routes'][0]['legs']
+    expected_speed = sum([leg['distance']['value'] for leg in legs]) / sum([leg['duration_in_traffic']['value'] for leg in legs])
+
     data = google_directions.parse_routes(google_directions_api_response_multiple_legs,
                                           generated_request['path_polyline'])
-    assert_semantically_equal(data, {'google_speed': 2.9714285714285715, 'google_polyline': 'ekmyH~nYbBzFblahblah'})
+    assert_semantically_equal(data, {'google_speed': expected_speed, 'google_polyline': 'ekmyH~nYbBzFblahblah'})
 
 
 def test_parsing_routes_with_a_bad_response(caplog, request_denied_google_directions_api_response, generated_request):
