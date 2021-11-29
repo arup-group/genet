@@ -104,6 +104,17 @@ def test_initiating_route_with_headway_spec():
     )
 
 
+def test_updating_route_trips_with_headway(route):
+    route.generate_trips_from_headway({('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
+    assert_semantically_equal(
+        route.trips,
+        {'trip_id': ['1_01:00:00', '1_01:20:00', '1_01:40:00', '1_02:00:00', '1_02:30:00', '1_03:00:00'],
+         'trip_departure_time': ['01:00:00', '01:20:00', '01:40:00', '02:00:00', '02:30:00', '03:00:00'],
+         'vehicle_id': ['veh_bus_1_01:00:00', 'veh_bus_1_01:20:00', 'veh_bus_1_01:40:00', 'veh_bus_1_02:00:00',
+                        'veh_bus_1_02:30:00', 'veh_bus_1_03:00:00']}
+    )
+
+
 def test__repr__shows_stops_and_trips_length(route):
     assert str(len(route.ordered_stops)) in route.__repr__()
     assert str(len(route.trips['trip_id'])) in route.__repr__()

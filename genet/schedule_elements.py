@@ -682,11 +682,16 @@ class Route(ScheduleElement):
         new_trip_departures.sort()
         new_trip_departures = [t.strftime("%H:%M:%S") for t in new_trip_departures]
 
-        self.trips = {
+        trips = {
             'trip_id': [f'{self.id}_{t}' for t in new_trip_departures],
             'trip_departure_time': new_trip_departures,
             'vehicle_id': [f'veh_{self.mode}_{self.id}_{t}' for t in new_trip_departures]
         }
+        if 'trips' in self.__dict__:
+            self._graph.graph['routes']['trips'] = trips
+            self._graph.graph['change_log'] = self.change_log().modify(
+                object_type='route', old_id=self.id, old_attributes=self.trips, new_id=self.id, new_attributes=trips)
+        self.trips = trips
 
     def is_exact(self, other):
         same_route_name = self.route_short_name == other.route_short_name
@@ -1462,7 +1467,7 @@ class Schedule(ScheduleElement):
         new_trips = self.generate_trips_dataframe_from_headway(route_id, headway_spec)
         self.set_trips_dataframe(new_trips)
         self.vehicles = {**{veh_id: veh_type for veh_id in new_trips['vehicle_id']}, **self.vehicles}
-        list(map(self.vehicles.pop, old_vehicles))
+        list(map(self.vehicles.pop, old_vehicles-set(self.vehicles)))
 
     def headway_stats(self, from_time=None, to_time=None, gtfs_day='19700101'):
         """
