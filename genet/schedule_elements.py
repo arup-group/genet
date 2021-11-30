@@ -432,7 +432,7 @@ class Route(ScheduleElement):
         elif headway_spec is not None:
             self.generate_trips_from_headway(headway_spec)
         else:
-            raise RouteInitialisationError('Please provide trip of headway information to initialise Route object')
+            raise RouteInitialisationError('Please provide trip or headway information to initialise Route object')
 
         if route is None:
             self.route = []
