@@ -1446,12 +1446,11 @@ def test_generating_headways_with_an_upper_time_bound_misses_one_trip(schedule):
 
 
 def test_generating_trip_departures():
+    from genet.schedule_elements import generate_trip_departures_from_headway
     trip_deps = generate_trip_departures_from_headway(
         {('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30}
     )
-    assert trip_deps == {Timestamp('2021-11-19 01:40:00', freq='20T'), Timestamp('2021-11-19 01:20:00', freq='20T'),
-                         Timestamp('2021-11-19 03:00:00', freq='30T'), Timestamp('2021-11-19 02:30:00', freq='30T'),
-                         Timestamp('2021-11-19 01:00:00', freq='20T'), Timestamp('2021-11-19 02:00:00', freq='20T')}
+    assert {t.strftime("%H:%M:%S") for t in trip_deps} == {'01:20:00', '01:00:00', '01:40:00', '02:30:00', '03:00:00', '02:00:00'}
 
 
 def test_generating_trips_dataframe_from_headway(schedule):
@@ -1462,9 +1461,9 @@ def test_generating_trips_dataframe_from_headway(schedule):
         DataFrame(
             {'trip_id': {0: '1_01:20:00', 1: '1_02:00:00', 2: '1_03:00:00', 3: '1_02:30:00', 4: '1_01:40:00',
                          5: '1_01:00:00'},
-             'trip_departure_time': {0: Timestamp('2021-11-19 01:20:00'), 1: Timestamp('2021-11-19 02:00:00'),
-                                     2: Timestamp('2021-11-19 03:00:00'), 3: Timestamp('2021-11-19 02:30:00'),
-                                     4: Timestamp('2021-11-19 01:40:00'), 5: Timestamp('2021-11-19 01:00:00')},
+             'trip_departure_time': {0: Timestamp('1970-01-01 01:20:00'), 1: Timestamp('1970-01-01 02:00:00'),
+                                     2: Timestamp('1970-01-01 03:00:00'), 3: Timestamp('1970-01-01 02:30:00'),
+                                     4: Timestamp('1970-01-01 01:40:00'), 5: Timestamp('1970-01-01 01:00:00')},
              'vehicle_id': {0: 'veh_bus_1_01:20:00', 1: 'veh_bus_1_02:00:00', 2: 'veh_bus_1_03:00:00',
                             3: 'veh_bus_1_02:30:00', 4: 'veh_bus_1_01:40:00', 5: 'veh_bus_1_01:00:00'},
              'route_id': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1'},
@@ -1473,8 +1472,16 @@ def test_generating_trips_dataframe_from_headway(schedule):
     )
 
 
-def test_generating_trips_from_headway(schedule):
+def test_generating_trips_from_headway_creates_trips_with_vehicles(schedule):
+    assert_semantically_equal(
+        schedule.route('1').trips,
+        {'trip_id': ['1', '2'],
+         'trip_departure_time': ['13:00:00', '13:30:00'],
+         'vehicle_id': ['veh_1_bus', 'veh_2_bus']}
+    )
+
     schedule.generate_trips_from_headway('1', {('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
+
     assert_semantically_equal(
         schedule.route('1').trips,
         {'trip_id': ['1_01:00:00', '1_01:20:00', '1_01:40:00', '1_02:00:00', '1_02:30:00', '1_03:00:00'],
@@ -1482,6 +1489,19 @@ def test_generating_trips_from_headway(schedule):
          'vehicle_id': ['veh_bus_1_01:00:00', 'veh_bus_1_01:20:00', 'veh_bus_1_01:40:00', 'veh_bus_1_02:00:00',
                         'veh_bus_1_02:30:00', 'veh_bus_1_03:00:00']}
     )
+
+
+def test_generating_trips_from_headway_updates_vehicles(schedule):
+    assert_semantically_equal(
+        schedule.vehicles,
+        {'veh_3_bus': {'type': 'bus'},
+         'veh_4_bus': {'type': 'bus'},
+         'veh_1_bus': {'type': 'bus'},
+         'veh_2_bus': {'type': 'bus'}}
+    )
+
+    schedule.generate_trips_from_headway('1', {('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
+
     assert_semantically_equal(
         schedule.vehicles,
         {'veh_bus_1_01:00:00': {'type': 'bus'},

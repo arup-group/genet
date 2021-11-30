@@ -1467,7 +1467,7 @@ class Schedule(ScheduleElement):
         new_trips = self.generate_trips_dataframe_from_headway(route_id, headway_spec)
         self.set_trips_dataframe(new_trips)
         self.vehicles = {**{veh_id: veh_type for veh_id in new_trips['vehicle_id']}, **self.vehicles}
-        list(map(self.vehicles.pop, old_vehicles-set(self.vehicles)))
+        list(map(self.vehicles.pop, old_vehicles-set(new_trips['vehicle_id'])))
 
     def headway_stats(self, from_time=None, to_time=None, gtfs_day='19700101'):
         """
@@ -2825,5 +2825,6 @@ def generate_trip_departures_from_headway(headway_spec: dict):
     """
     trip_departures = set()
     for (from_time, to_time), headway_mins in headway_spec.items():
-        trip_departures |= set(pd.date_range(from_time, to_time, freq=f'{headway_mins}min'))
+        trip_departures |= set(pd.date_range(
+            f'1970-01-01 {from_time}', f'1970-01-01 {to_time}', freq=f'{headway_mins}min'))
     return trip_departures
