@@ -1106,6 +1106,42 @@ def test_links_on_spatial_condition_with_containement_and_complex_geometry_that_
     assert set(links) == {'1'}
 
 
+@pytest.fixture()
+def network_to_subset():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car'], 'length': 1})
+    n.add_link('1', 2, 3, attribs={'modes': ['car'], 'length': 1})
+    n.add_link('2', 3, 2, attribs={'modes': ['car'], 'length': 1})
+    n.add_link('3', 2, 1, attribs={'modes': ['car'], 'length': 1})
+    return n
+
+
+def test_modifying_subnetwork_does_not_affect_the_original(network_to_subset):
+    assert {_id for _id, dat in network_to_subset.links()} == {'0', '1', '2', '3'}
+
+    subnet = network_to_subset.subnetwork({'0', '3'})
+
+    assert {_id for _id, dat in subnet.links()} == {'0', '3'}
+    assert set(subnet.link_id_mapping.keys()) == {'0', '3'}
+    assert {_id for _id, dat in network_to_subset.links()} == {'0', '1', '2', '3'}
+    assert set(network_to_subset.link_id_mapping.keys()) == {'0', '1', '2', '3'}
+
+
+def test_extracting_subnetwork_results_in_strongly_connected_graph(network_to_subset):
+    subnet = network_to_subset.subnetwork({'0', '2', '3'})
+    assert {_id for _id, dat in subnet.links()} == {'0', '3'}
+
+
+def test_extracting_subnetwork_updates_link_id_map(network_to_subset):
+    subnet = network_to_subset.subnetwork({'0', '3'})
+    assert set(subnet.link_id_mapping.keys()) == {'0', '3'}
+
+
+def test_extracting_subnetwork_with_schedule_retains_pt_routes(network_object_from_test_data):
+    subnet = network_object_from_test_data.subnetwork({}, {'10314'})
+    assert set(subnet.link_id_mapping.keys()) == {'1'}
+
+
 def test_find_shortest_path_when_graph_has_no_extra_edge_choices():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike'], 'length': 1})

@@ -22,9 +22,9 @@ import genet.modify.change_log as change_log
 import genet.modify.schedule as mod_schedule
 import genet.outputs_handler.geojson as gngeojson
 import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
+import genet.outputs_handler.sanitiser as sanitiser
 import genet.use.schedule as use_schedule
 import genet.utils.dict_support as dict_support
-import genet.outputs_handler.sanitiser as sanitiser
 import genet.utils.graph_operations as graph_operations
 import genet.utils.parallel as parallel
 import genet.utils.persistence as persistence
@@ -1207,6 +1207,12 @@ class Schedule(ScheduleElement):
     def __len__(self):
         return len(self.service_ids())
 
+    def __copy__(self):
+        g_copy = self._graph.copy()
+        g_copy.graph = deepcopy(self._graph.graph)
+        g_copy.graph['change_log'] = change_log.ChangeLog(df=self._graph.graph['change_log'].copy())
+        return Schedule(_graph=g_copy, minimal_transfer_times=deepcopy(self.minimal_transfer_times))
+
     def _build_graph(self, services):
         nodes = {}
         edges = {}
@@ -1894,6 +1900,18 @@ class Schedule(ScheduleElement):
         route_ids = self.routes_on_modal_condition(modes=modes)
         return self.extract_stop_ids_on_attributes(conditions={'routes': route_ids})
 
+    def subschedule(self, service_ids):
+        subschedule = self.__copy__()
+        for s in subschedule.service_ids():
+            if s not in service_ids:
+                subschedule.remove_service(s)
+        subschedule.remove_unsused_stops()
+        return subschedule
+
+    def subschedule_on_spatial_condition(self, region_input, how='intersect'):
+        services_to_keep = self.services_on_spatial_condition(region_input=region_input, how=how)
+        return self.subschedule(services_to_keep)
+
     def services_on_spatial_condition(self, region_input, how='intersect'):
         """
         Returns Service IDs which intersect region_input, by default, or are contained within region_input if
@@ -2311,33 +2329,43 @@ class Schedule(ScheduleElement):
         logging.info(f'Removed Route with index `{route_id}`, data={route_data}. '
                      f'It was linked to Service `{service_id}`.')
 
-    def remove_stop(self, stop_id):
+    def remove_stop(self, stop_id: str):
         """
         Removes Stop under index `stop_id`
         :param stop_id:
         :return:
         """
-        if not self.has_stop(stop_id):
-            raise StopIndexError(f'Stop with ID `{stop_id}` does not exist in the Schedule. '
-                                 "Cannot remove a Stop that isn't present.")
+        self.remove_stops([stop_id])
 
-        stop_data = self._graph.nodes[stop_id]
-        routes_affected = stop_data.pop('routes')
-        services_affected = stop_data.pop('services')
-        self._graph.remove_node(stop_id)
-        # remove from minimal transfer times if relevant
-        try:
-            del self.minimal_transfer_times[stop_id]
-        except KeyError:
-            pass
-        for val in self.minimal_transfer_times.values():
-            try:
-                del val[stop_id]
-            except KeyError:
-                pass
-        self._graph.graph['change_log'].remove(object_type='stop', object_id=stop_id, object_attributes=stop_data)
+    def remove_stops(self, stop_ids: Union[list, set]):
+        stop_ids = list(set(stop_ids))
+        for stop_id in stop_ids:
+            if not self.has_stop(stop_id):
+                stop_ids.pop(stop_id)
+                raise StopIndexError(f'Stop with ID `{stop_id}` does not exist in the Schedule. '
+                                     "Cannot remove a Stop that isn't present.")
+
+        stop_data = [data for _id, data in self._graph.nodes(data=True) if _id in stop_ids]
+        routes_affected = set().union(*[data.pop('routes') for data in stop_data])
+        services_affected = set().union(*[data.pop('services') for data in stop_data])
+        self._graph.remove_nodes_from(stop_ids)
+        self.remove_stops_from_minimal_transfer_times(stop_ids)
+
+        self._graph.graph['change_log'].remove_bunch(object_type='stop', id_bunch=stop_ids, attributes_bunch=stop_data)
         logging.info(f'Removed Stop with index `{stop_id}`, data={stop_data}. '
                      f'Routes affected: {routes_affected}. Services affected: {services_affected}.')
+
+    def remove_stops_from_minimal_transfer_times(self, stop_ids):
+        # first level keys of the min transfer times
+        # 'stop_to_remove' : {'stop_1': 10}
+        [self.minimal_transfer_times.pop(s) for s in stop_ids if s in self.minimal_transfer_times]
+        # second level, stops the keys are mapping to
+        # 'stop_1' : {'stop_to_remove': 10}
+        [[val.pop(s) for s in stop_ids if s in val] for k, val in self.minimal_transfer_times.items()]
+        # clean up empties in the second level
+        # 'stop_1' : {}
+        empties = [s for s, val in self.minimal_transfer_times.items() if not val]
+        [self.minimal_transfer_times.pop(s) for s in empties if s in self.minimal_transfer_times]
 
     def remove_unsused_stops(self):
         stops_to_remove = set()
@@ -2345,12 +2373,12 @@ class Schedule(ScheduleElement):
             if not data:
                 stops_to_remove.add(stop)
         # but leave those stops that have transfers
-        stops_to_remove = stops_to_remove - {stop for from_to_tuple in self.minimal_transfer_times.keys() for stop in
-                                             from_to_tuple}
-        for stop in stops_to_remove:
-            self.remove_stop(stop)
-        logging.info(f'Removed Stops with indecies `{stops_to_remove}` which were not used by any Routes or part of '
-                     f'minimal transfer times.')
+        stops_to_remove = stops_to_remove - set().union(
+            *[{from_s} | set(val.keys()) for from_s, val in self.minimal_transfer_times.items()])
+        if stops_to_remove:
+            self.remove_stops(stops_to_remove)
+            logging.info(f'Removed Stops with indecies `{stops_to_remove}` which were not used by any Routes or part '
+                         'of minimal transfer times.')
 
     def is_strongly_connected(self):
         if nx.number_strongly_connected_components(self.graph()) == 1:

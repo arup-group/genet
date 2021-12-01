@@ -432,6 +432,84 @@ class Network:
             # is assumed to be hex
             return self._find_link_ids_on_s2_geometry(gdf, how, region_input)
 
+    def subnetwork(self, links: Union[list, set], services: Union[list, set] = None):
+        """
+
+        :param links:
+        :param services: optional, collection of service IDs in the Schedule for subsetting.
+        :return:
+        """
+        logging.info('Subsetting a Network will likely result in a disconnected network graph. A cleaner will be ran '
+                     'that will remove links to make the resulting Network stongly connected for modes: '
+                     'car, walk, bike.')
+        if self.schedule:
+            if services:
+                logging.info(f'Schedule will be subsetted using given services: {services}. Links pertaining to ')
+                subschedule = self.schedule.subschedule(services)
+                routes = subschedule.route_attribute_data(keys=['route'])
+                links = set(links) | set(np.concatenate(routes['route'].values))
+
+        subnetwork = Network(epsg=self.epsg)
+        subnetwork.graph = self.subgraph_on_link_conditions(conditions={'id': links})
+        subnetwork.link_id_mapping = {k: v for k, v in self.link_id_mapping.items() if k in links}
+        for mode in {'car', 'walk', 'bike'}:
+            if not subnetwork.is_strongly_connected(modes=mode):
+                subnetwork.retain_n_connected_subgraphs(n=1, mode=mode)
+
+        # TODO Inherit and subset Auxiliary files
+
+        logging.info('Subsetted Network is ready - do not forget to validate and visualise your subset!')
+        return subnetwork
+
+    def subnetwork_on_spatial_condition(self, region_input, how='intersect'):
+        if self.schedule:
+            services_to_keep = self.schedule.services_on_spatial_condition(region_input=region_input, how=how)
+        else:
+            services_to_keep = None
+
+        subset_links = set(self.links_on_spatial_condition(region_input=region_input, how=how))
+        return self.subnetwork(links=subset_links, services=services_to_keep)
+
+    def retain_n_connected_subgraphs(self, n, mode):
+        """
+        Method to remove modes from link which do not belong to largest connected n components. Deletes links which
+        have no mode left after the process.
+        :param n: number of components to retain
+        :param mode: which mode to consider
+        :return: updates graph
+        """
+        def remove_mode(link_attribs):
+            if link_attribs['id'] in diff_links:
+                return set(link_attribs['modes']) - {mode}
+            else:
+                return link_attribs['modes']
+
+        def empty_modes(mode_attrib):
+            if not mode_attrib:
+                return True
+            return False
+
+        modal_subgraph = self.modal_subgraph(mode)
+        # calculate how many connected subgraphs there are
+        connected_components = network_validation.find_connected_subgraphs(modal_subgraph)
+        connected_components_nodes = []
+        for i in range(0, n):
+            connected_components_nodes += connected_components[i][0]
+        connected_subgraphs_to_extract = modal_subgraph.subgraph(connected_components_nodes).copy().edges.data('id')
+        diff_links = set([e[2] for e in modal_subgraph.edges.data('id')]) - set(
+            [e[2] for e in connected_subgraphs_to_extract])
+        logging.info(f'Extracting largest connected components resulted in mode: {mode} being deleted from '
+                     f'{len(diff_links)} edges')
+        self.apply_function_to_links(function=remove_mode, location='modes')
+
+        # remove links without modes
+        no_mode_links = graph_operations.extract_on_attributes(
+            self.links(),
+            {'modes': empty_modes},
+            mixed_dtypes=False
+        )
+        self.remove_links(no_mode_links)
+
     def _find_ids_on_geojson(self, gdf, how, geojson_input):
         shapely_input = spatial.read_geojson_to_shapely(geojson_input)
         return self._find_ids_on_shapely_geometry(gdf=gdf, how=how, shapely_input=shapely_input)
@@ -1066,6 +1144,12 @@ class Network:
         components = network_validation.find_connected_subgraphs(g)
 
         if len(components) == 1:
+            return True
+        elif len(components) == 0:
+            logging.warning(
+                f'The graph for modes: {modes} does not have any connected components.'
+                ' This method returns True because if the graph is empty for this mode there is no reason to fail'
+                ' this check.')
             return True
         else:
             return False
