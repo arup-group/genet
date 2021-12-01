@@ -24,11 +24,11 @@ def network():
                 routes=[Route(id='route_1',
                               route_short_name='route_1',
                               mode='bus',
-                              trips={},
+                              trips={'trip_id': ['1'], 'trip_departure_time':['02:20:20'], 'vehicle_id': ['1']},
                               stops=[Stop('stop_1', epsg='epsg:27700', x=1, y=2),
                                      Stop('stop_2', epsg='epsg:27700', x=3, y=2)],
-                              arrival_offsets=[''],
-                              departure_offsets=['']
+                              arrival_offsets=['', ''],
+                              departure_offsets=['', '']
                               )]))
     return n
 

@@ -2,13 +2,15 @@ import csv
 import logging
 import os
 import shutil
-import pandas as pd
-import numpy as np
-import networkx as nx
 from datetime import datetime, timedelta
-from genet.utils import spatial, persistence
+
+import networkx as nx
+import numpy as np
+import pandas as pd
+
 import genet.modify.change_log as change_log
 from genet import variables
+from genet.utils import spatial, persistence
 
 
 def read_services_from_calendar(path, day):
@@ -41,6 +43,7 @@ def read_services_from_calendar(path, day):
             with open(file, mode='r', encoding="utf-8-sig") as infile:
                 reader = csv.DictReader(infile)
                 for row in reader:
+                    row['service_id'] = sanitise_id(row['service_id'])
                     if (int(day) in range(int(row['start_date']), int(row['end_date']))) and \
                             (int(row[day_of_the_week]) == 1):
                         services.append(row['service_id'])
@@ -50,6 +53,10 @@ def read_services_from_calendar(path, day):
         else:
             raise RuntimeError('Calendar was not found with the GTFS')
     return services
+
+
+def sanitise_id(_id: str):
+    return _id.replace(' ', '_')
 
 
 def read_gtfs_to_db_like_tables(path):
@@ -66,18 +73,27 @@ def read_gtfs_to_db_like_tables(path):
         if "stop_times" in file:
             logging.info("Reading stop times")
             stop_times_db = pd.read_csv(file, dtype={'trip_id': str, 'stop_id': str}, low_memory=False)
+            stop_times_db['trip_id'] = stop_times_db['trip_id'].apply(lambda x: sanitise_id(x))
+            stop_times_db['stop_id'] = stop_times_db['stop_id'].apply(lambda x: sanitise_id(x))
 
         elif "stops" in file:
             logging.info("Reading stops")
             stops_db = pd.read_csv(file, dtype={'stop_id': str})
+            stops_db['stop_id'] = stops_db['stop_id'].apply(lambda x: sanitise_id(x))
 
         elif "trips" in file:
             logging.info("Reading trips")
             trips_db = pd.read_csv(file, dtype={'route_id': str, 'service_id': str, 'trip_id': str})
+            trips_db['trip_id'] = trips_db['trip_id'].apply(lambda x: sanitise_id(x))
+            trips_db['route_id'] = trips_db['route_id'].apply(lambda x: sanitise_id(x))
+            trips_db['service_id'] = trips_db['service_id'].apply(lambda x: sanitise_id(x))
 
         elif "routes" in file:
             logging.info("Reading routes")
-            routes_db = pd.read_csv(file, dtype={'route_id': str})
+            routes_db = pd.read_csv(file, dtype={'route_id': str, 'route_short_name': str, 'route_long_name': str})
+            routes_db['route_id'] = routes_db['route_id'].apply(lambda x: sanitise_id(x))
+            routes_db['route_short_name'] = routes_db['route_short_name'].fillna('')
+            routes_db['route_long_name'] = routes_db['route_long_name'].fillna('')
 
     return stop_times_db, stops_db, trips_db, routes_db
 
@@ -150,7 +166,9 @@ def gtfs_db_to_schedule_graph(stop_times_db, stops_db, trips_db, routes_db, serv
 
     trips_db = trips_db[trips_db['service_id'].isin(services)]
     df = trips_db[['route_id', 'trip_id']].merge(
-        routes_db[['route_id', 'route_type', 'route_short_name', 'route_long_name', 'route_color']], on='route_id',
+        routes_db[{'route_id', 'route_type', 'route_short_name', 'route_long_name', 'route_color'} and set(
+            routes_db.columns)],
+        on='route_id',
         how='left')
     df['mode'] = df['route_type'].apply(lambda x: get_mode(x))
     df = df.merge(stop_times_db[['trip_id', 'stop_id', 'arrival_time', 'departure_time', 'stop_sequence']],

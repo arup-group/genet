@@ -67,14 +67,12 @@ def test_reading_json():
                                'id': '490000235X.link:1', 'x': 529981.7958802709, 'y': 181412.0975758662,
                                'epsg': 'epsg:27700', 'name': 'Tottenham Court Road Station (Stop X)',
                                'lat': -0.12809598708996447, 'lon': 51.51668503324075, 's2_id': 2507584377443783851,
-                               'additional_attributes': {'isBlocking', 'linkRefId'}, 'isBlocking': 'false',
-                               'linkRefId': '1'},
+                               'isBlocking': 'false', 'linkRefId': '1'},
          '490000235YB.link:10': {'services': {'20274'}, 'routes': {'VJ6c64ab7b477e201cae950efde5bd0cb4e2e8888e'},
                                  'id': '490000235YB.link:10', 'x': 529570.7813227688, 'y': 181336.2815925331,
                                  'epsg': 'epsg:27700', 'name': 'Oxford Street  Soho Street (Stop YB)',
                                  'lat': -0.13404398709291862, 'lon': 51.51609803324078, 's2_id': 2507584474601580133,
-                                 'additional_attributes': {'isBlocking', 'linkRefId'}, 'isBlocking': 'false',
-                                 'linkRefId': '10'}}
+                                 'isBlocking': 'false', 'linkRefId': '10'}}
     )
 
 
