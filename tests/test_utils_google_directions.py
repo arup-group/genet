@@ -457,6 +457,19 @@ def test_queries_build_correctly_with_optimistic_traffic_model():
     assert result.url == 'https://maps.googleapis.com/maps/api/directions/json?origin=1%2C2&destination=3%2C4&key=super_awesome_key&traffic_model=optimistic&departure_time=now'
 
 
+def test_queries_build_correctly_with_correct_unix_time():
+    request = google_directions.make_request(
+        origin_attributes={'lat': 1, 'lon': 2},
+        destination_attributes={'lat': 3, 'lon': 4},
+        key='super_awesome_key',
+        departure_time=1893506400,
+        traffic_model=None
+    )
+    result = request.result()
+    assert result.status_code == 200
+    assert result.url == 'https://maps.googleapis.com/maps/api/directions/json?origin=1%2C2&destination=3%2C4&key=super_awesome_key&departure_time=1893506400'
+
+
 def test_generating_requests_on_non_simplified_graphs():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'modes': ['car']})
