@@ -1901,6 +1901,11 @@ class Schedule(ScheduleElement):
         return self.extract_stop_ids_on_attributes(conditions={'routes': route_ids})
 
     def subschedule(self, service_ids):
+        """
+        Subset a Schedule object using a spatial bound
+        :param service_ids: optional, collection of service IDs in the Schedule for subsetting.
+        :return: A new Schedule object that is a subset of the original
+        """
         subschedule = self.__copy__()
         for s in subschedule.service_ids():
             if s not in service_ids:
@@ -1909,18 +1914,37 @@ class Schedule(ScheduleElement):
         return subschedule
 
     def subschedule_on_spatial_condition(self, region_input, how='intersect'):
+        """
+        Subset a Schedule object using a spatial bound
+        :param region_input:
+            - path to a geojson file, can have multiple features
+            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
+             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
+             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
+            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :param how:
+            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
+            region_input
+            - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
+        :return: A new Schedule object that is a subset of the original
+        """
         services_to_keep = self.services_on_spatial_condition(region_input=region_input, how=how)
         return self.subschedule(services_to_keep)
 
     def services_on_spatial_condition(self, region_input, how='intersect'):
         """
         Returns Service IDs which intersect region_input, by default, or are contained within region_input if
-        how='contain'
+        how='within'
         :param region_input:
+            - path to a geojson file, can have multiple features
+            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
+             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
+             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
+            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
         :param how:
             - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
             region_input
-            - 'contain' will return IDs of the Services whose all of the Stops are contained within the region_input
+            - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
         :return: Service IDs
         """
         if how == 'intersect':
@@ -1937,7 +1961,7 @@ class Schedule(ScheduleElement):
     def routes_on_spatial_condition(self, region_input, how='intersect'):
         """
         Returns Route IDs which intersect region_input, by default, or are contained within region_input if
-        how='contain'
+        how='within'
         :param region_input:
             - path to a geojson file, can have multiple features
             - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
@@ -1945,9 +1969,9 @@ class Schedule(ScheduleElement):
              e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
             - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
         :param how:
-            - 'intersect' default, will return IDs of the Routes whose at least one Stop intersects the
+            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
             region_input
-            - 'contain' will return IDs of the Routes whose all of the Stops are contained within the region_input
+            - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
         :return: Route IDs
         """
         stops_intersecting = set(self.stops_on_spatial_condition(region_input))

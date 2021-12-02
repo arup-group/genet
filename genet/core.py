@@ -420,6 +420,10 @@ class Network:
              the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
              e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
             - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :param how:
+            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
+            region_input
+            - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
         :return: link IDs
         """
         gdf = self.to_geodataframe()['links'].to_crs("epsg:4326")
@@ -434,10 +438,10 @@ class Network:
 
     def subnetwork(self, links: Union[list, set], services: Union[list, set] = None):
         """
-
-        :param links:
+        Subset a Network object using a collection of link IDs and (optionally) service IDs
+        :param links: Link IDs to be retained in the new Network
         :param services: optional, collection of service IDs in the Schedule for subsetting.
-        :return:
+        :return: A new Network object that is a subset of the original
         """
         logging.info('Subsetting a Network will likely result in a disconnected network graph. A cleaner will be ran '
                      'that will remove links to make the resulting Network strongly connected for modes: '
@@ -463,6 +467,20 @@ class Network:
         return subnetwork
 
     def subnetwork_on_spatial_condition(self, region_input, how='intersect'):
+        """
+        Subset a Network object using a spatial bound
+        :param region_input:
+            - path to a geojson file, can have multiple features
+            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
+             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
+             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
+            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :param how:
+            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
+            region_input
+            - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
+        :return: A new Network object that is a subset of the original
+        """
         if self.schedule:
             services_to_keep = self.schedule.services_on_spatial_condition(region_input=region_input, how=how)
         else:
