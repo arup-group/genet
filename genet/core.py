@@ -440,16 +440,17 @@ class Network:
         :return:
         """
         logging.info('Subsetting a Network will likely result in a disconnected network graph. A cleaner will be ran '
-                     'that will remove links to make the resulting Network stongly connected for modes: '
+                     'that will remove links to make the resulting Network strongly connected for modes: '
                      'car, walk, bike.')
+        subnetwork = Network(epsg=self.epsg)
         if self.schedule:
             if services:
-                logging.info(f'Schedule will be subsetted using given services: {services}. Links pertaining to ')
+                logging.info(f'Schedule will be subsetted using given services: {services}. Links pertaining to their'
+                              'network routes will also be retained.')
                 subschedule = self.schedule.subschedule(services)
                 routes = subschedule.route_attribute_data(keys=['route'])
                 links = set(links) | set(np.concatenate(routes['route'].values))
-
-        subnetwork = Network(epsg=self.epsg)
+                subnetwork.schedule = subschedule
         subnetwork.graph = self.subgraph_on_link_conditions(conditions={'id': links})
         subnetwork.link_id_mapping = {k: v for k, v in self.link_id_mapping.items() if k in links}
         for mode in {'car', 'walk', 'bike'}:

@@ -1142,6 +1142,11 @@ def test_extracting_subnetwork_with_schedule_retains_pt_routes(network_object_fr
     assert set(subnet.link_id_mapping.keys()) == {'1'}
 
 
+def test_extracting_subnetwork_with_schedule_returns_subschedule(network_object_from_test_data):
+    subnet = network_object_from_test_data.subnetwork({}, {'10314'})
+    assert set(subnet.schedule.service_ids()) == {'10314'}
+
+
 def test_find_shortest_path_when_graph_has_no_extra_edge_choices():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike'], 'length': 1})

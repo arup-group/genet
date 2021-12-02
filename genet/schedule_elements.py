@@ -2352,7 +2352,7 @@ class Schedule(ScheduleElement):
         self.remove_stops_from_minimal_transfer_times(stop_ids)
 
         self._graph.graph['change_log'].remove_bunch(object_type='stop', id_bunch=stop_ids, attributes_bunch=stop_data)
-        logging.info(f'Removed Stop with index `{stop_id}`, data={stop_data}. '
+        logging.info(f'Removed Stops with indices `{stop_ids}`.'
                      f'Routes affected: {routes_affected}. Services affected: {services_affected}.')
 
     def remove_stops_from_minimal_transfer_times(self, stop_ids):
