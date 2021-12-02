@@ -449,8 +449,9 @@ class Network:
         subnetwork = Network(epsg=self.epsg)
         if self.schedule:
             if services:
-                logging.info(f'Schedule will be subsetted using given services: {services}. Links pertaining to their'
-                              'network routes will also be retained.')
+                logging.info(
+                    f'Schedule will be subsetted using given services: {services}. Links pertaining to their '
+                    'network routes will also be retained.')
                 subschedule = self.schedule.subschedule(services)
                 routes = subschedule.route_attribute_data(keys=['route'])
                 links = set(links) | set(np.concatenate(routes['route'].values))
