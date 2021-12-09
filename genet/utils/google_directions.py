@@ -1,21 +1,23 @@
 import ast
 import itertools
+import json
 import logging
-import polyline
 import os
 import time
-import json
-from requests_futures.sessions import FuturesSession
-import genet.utils.secrets_vault as secrets_vault
-import genet.utils.spatial as spatial
-import genet.utils.persistence as persistence
-import genet.utils.simplification as simplification
+
 import genet.outputs_handler.geojson as geojson
+import genet.utils.persistence as persistence
+import genet.utils.secrets_vault as secrets_vault
+import genet.utils.simplification as simplification
+import genet.utils.spatial as spatial
+import polyline
+from requests_futures.sessions import FuturesSession
 
 session = FuturesSession(max_workers=2)
 
 
-def send_requests_for_network(n, request_number_threshold: int, output_dir, traffic: bool = False,
+def send_requests_for_network(n, request_number_threshold: int, output_dir,
+                              departure_time, traffic_model: str = None,
                               max_workers: int = 4, key: str = None, secret_name: str = None, region_name: str = None):
     """
     Generates, sends and parses results from Google Directions API for the car modal subgraph for network n.
@@ -25,11 +27,13 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir, traf
     :param n: genet.Network
     :param request_number_threshold: max number of requests
     :param output_dir: output directory where to save the google directions api parsed data
-    :param traffic: bool, whether to request traffic based information from the directions api
+    :param departure_time: specifies the desired time of departure, in seconds since midnight, January 1, 1970 UTC,
+    i.e. unix time; if set to None, API will return results for average time-independent traffic conditions
+    :param traffic_model: str, specifies the assumptions to use when calculating time in traffic
     :param key: API key
     :param secret_name: if using aws secrets manager, the name where your directions api key is stored
     :param region_name: the aws region you operate in
-    :return:
+    :return: api requests
     """
     logging.info('Generating Google Directions API requests')
     api_requests = generate_requests(n)
@@ -40,7 +44,7 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir, traf
         raise RuntimeError(f'Number of requests exceeded the threshold. Number of requests: {len(api_requests)}')
 
     logging.info('Sending API requests')
-    api_requests = send_requests(api_requests, key, secret_name, region_name, traffic)
+    api_requests = send_requests(api_requests, departure_time, traffic_model, key, secret_name, region_name)
     logging.info('Parsing API requests')
     api_requests = parse_results(api_requests)
 
@@ -48,9 +52,10 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir, traf
     return api_requests
 
 
-def read_saved_api_results(file_path):
+def read_api_requests(file_path):
     """
-    Read parsed Google Directions API requests in `file_path` JSON file
+    Read the Google Directions API requests, generated to be sent and received back from the API, in the `file_path`
+    JSON file.
     :param file_path: path to the JSON file where the google directions api requests were saved
     :return:
     """
@@ -67,19 +72,48 @@ def read_saved_api_results(file_path):
     return api_requests
 
 
-def make_request(origin_attributes, destination_attributes, key, traffic):
+def make_request(origin_attributes, destination_attributes, key, departure_time, traffic_model):
     base_url = 'https://maps.googleapis.com/maps/api/directions/json'
-    params = {
-        'origin': '{},{}'.format(origin_attributes['lat'], origin_attributes['lon']),
-        'destination': '{},{}'.format(destination_attributes['lat'], destination_attributes['lon']),
-        'key': key
-    }
-    if traffic:
+    params = {'origin': '{},{}'.format(origin_attributes['lat'], origin_attributes['lon']),
+              'destination': '{},{}'.format(destination_attributes['lat'], destination_attributes['lon']),
+              'key': key,
+              'traffic_model': traffic_model
+              }
+    current_unix_time = time.time()
+    end_of_unix_time = 2147483646
+    if departure_time == 'now':
         params['departure_time'] = 'now'
+    elif (type(departure_time) == int) & (departure_time > current_unix_time) & (departure_time < end_of_unix_time):
+        params['departure_time'] = departure_time
+    else:
+        raise RuntimeError('The departure_time parameter value not recognised. The departure_time can be set '
+                           'to None (meaning API will return results for average time-independent traffic conditions)'
+                           ', "now", or some time in the future. If setting the departure_time to '
+                           'some time in the future, then it needs to be specified as an integer in seconds since '
+                           'midnight, January 1, 1970 UTC (i.e. unix time). It cannot be in the past.')
     return session.get(base_url, params=params)
 
 
-def generate_requests(n):
+def send_requests(api_requests: dict, departure_time, traffic_model: str = None,
+                  key: str = None, secret_name: str = None, region_name: str = None):
+    if key is None:
+        key = secrets_vault.get_google_directions_api_key(secret_name, region_name)
+        if key is None:
+            raise RuntimeError('API key was not found. Make sure you are authenticated and pointing in the correct '
+                               'location if using AWS secrets manager, or that you have passed the correct key. '
+                               'If using `GOOGLE_DIR_API_KEY` environmental variable, make sure you have spelled it '
+                               'correctly. You can check this using `echo $GOOGLE_DIR_API_KEY` in the terminal you\'re '
+                               'using or  `!echo $GOOGLE_DIR_API_KEY` if using jupyter notebook cells. To export the '
+                               'key use: `export GOOGLE_DIR_API_KEY=key` (again, use ! at the beginning of the line in '
+                               'jupyter).')
+    for request_nodes, api_request_attribs in api_requests.items():
+        api_request_attribs['timestamp'] = time.time()
+        api_request_attribs['request'] = make_request(
+            api_request_attribs['origin'], api_request_attribs['destination'], key, departure_time, traffic_model)
+    return api_requests
+
+
+def generate_requests(n, osm_tags=all):
     """
     Generates a dictionary describing pairs of nodes for which we need to request
     directions from Google directions API.
@@ -89,21 +123,34 @@ def generate_requests(n):
     if n.is_simplified():
         logging.info('Generating Google Directions API requests for a simplified network.')
         return _generate_requests_for_simplified_network(n)
+    elif (n.is_simplified()) and (osm_tags != all):
+        raise RuntimeError('OSM tags can only be specified if the network used to generate the requests is not '
+                           'simplified. Please use a non-simplified network as input or set osm_tags=all.')
     else:
         logging.info('Generating Google Directions API requests for a non-simplified network.')
-        return _generate_requests_for_non_simplified_network(n)
+        return _generate_requests_for_non_simplified_network(n, osm_tags)
 
 
-def _generate_requests_for_non_simplified_network(n):
+def _generate_requests_for_non_simplified_network(n, osm_tags=all):
     """
     Generates a dictionary describing pairs of nodes for which we need to request
     directions from Google directions API. For a non-simplified network n
     :param n: genet.Network
+    :param osm_tags: takes a list of OSM tags to subset the network on, e.g. ['primary', 'secondary', 'tertiary']
     :return:
     """
-    g = n.modal_subgraph(modes='car')
+    if osm_tags == all:
+        g = n.modal_subgraph(modes='car')
+    else:
+        g = n.subgraph_on_link_conditions(
+                conditions=[
+                    {'attributes': {'osm:way:highway': {'text': osm_tags}}},
+                    {'modes': 'car'}],
+                how=all,
+                mixed_dtypes=True)
 
     simple_paths = simplification._get_edge_groups_to_simplify(g)
+
     node_diff = set(g.nodes) - set(itertools.chain.from_iterable(simple_paths))
     non_simplified_edges = set(g.out_edges(node_diff)) | set(g.in_edges(node_diff))
     all_paths = list(non_simplified_edges) + simple_paths
@@ -139,29 +186,18 @@ def _generate_requests_for_simplified_network(n):
     return gdf_links.set_index(['from', 'to'])[['path_polyline', 'path_nodes', 'origin', 'destination']].T.to_dict()
 
 
-def send_requests(api_requests: dict, key: str = None, secret_name: str = None, region_name: str = None,
-                  traffic: bool = False):
-    if key is None:
-        key = secrets_vault.get_google_directions_api_key(secret_name, region_name)
-        if key is None:
-            raise RuntimeError('API key was not found. Make sure you are authenticated and pointing in the correct '
-                               'location if using AWS secrets manager, or that you have passed the correct key. '
-                               'If using `GOOGLE_DIR_API_KEY` environmental variable, make sure you have spelled it '
-                               'correctly. You can check this using `echo $GOOGLE_DIR_API_KEY` in the terminal you\'re '
-                               'using or  `!echo $GOOGLE_DIR_API_KEY` if using jupyter notebook cells. To export the '
-                               'key use: `export GOOGLE_DIR_API_KEY=key` (again, use ! at the beginning of the line in '
-                               'jupyter).')
-    for request_nodes, api_request_attribs in api_requests.items():
-        api_request_attribs['timestamp'] = time.time()
-        api_request_attribs['request'] = make_request(
-            api_request_attribs['origin'], api_request_attribs['destination'], key, traffic)
-    return api_requests
-
-
 def parse_route(route: dict):
     def compute_speed():
         total_distance = sum([leg['distance']['value'] for leg in legs])
-        total_duration = sum([leg['duration']['value'] for leg in legs])
+        total_duration = 0
+        for leg in legs:
+            if 'duration_in_traffic' in leg:
+                total_duration += leg['duration_in_traffic']['value']
+            else:
+                logging.warning(
+                    f'duration_in_traffic was not found for leg: from: {leg["start_location"]} '
+                    f'to: {leg["end_location"]}')
+                total_duration += leg['duration']['value']
         if total_duration == 0:
             logging.warning('Duration of 0 detected. Route polyline: {}'.format(route['overview_polyline']['points']))
             return 0
@@ -224,6 +260,7 @@ def parse_results(api_requests):
         path_polyline = api_requests_attribs['path_polyline']
         request = api_requests_attribs['request']
         del api_requests_attribs['request']
+        api_requests_attribs['request_payload'] = request.result().json()
         api_requests_attribs['parsed_response'] = parse_routes(request.result(), path_polyline)
         api_requests_with_response[node_request_pair] = api_requests_attribs
     return api_requests_with_response
@@ -245,13 +282,16 @@ def map_results_to_edges(api_requests):
     return google_dir_api_edge_data
 
 
-def dump_all_api_requests_to_json(api_requests, output_dir):
+def dump_all_api_requests_to_json(api_requests, output_dir, output_file_name=None):
     # sanitise tuple keys
     new_d = {}
     for k, v in api_requests.items():
         new_d['{}'.format(k)] = '{}'.format(v)
 
+    if output_file_name is None:
+        output_file_name = 'api_requests.json'
+
     persistence.ensure_dir(output_dir)
     logging.info(f'Saving Google Directions API requests to {output_dir}')
-    with open(os.path.join(output_dir, 'api_requests.json'), 'w') as fp:
+    with open(os.path.join(output_dir, output_file_name), 'w') as fp:
         json.dump(new_d, fp)

@@ -74,3 +74,24 @@ class InconsistentVehicleModeError(Exception):
     Raised when vehicles are shared between Routes with different modes
     """
     pass
+
+
+class EmptySpatialTree(Exception):
+    """
+    Raised when there is no (relevant) data in the Spatial Tree
+    """
+    pass
+
+
+class InvalidMaxStableSetProblem(Exception):
+    """
+    Raised when the maximum stable set to snap PT to the network is not valid and cannot proceed to the solver
+    """
+    pass
+
+
+class PartialMaxStableSetProblem(Exception):
+    """
+    Raised when the maximum stable set to snap PT to the network is partial - some stops found nothing to snap to
+    """
+    pass
