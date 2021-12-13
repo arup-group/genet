@@ -1158,6 +1158,18 @@ def test_removing_mode_from_links_updates_the_modes():
     assert n.link('0')['modes'] == {'car'}
 
 
+def test_removing_multiple_modes_from_links_updates_the_modes():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': {'car', 'bike'}, 'length': 1})
+    n.add_link('1', 2, 3, attribs={'modes': {'car'}, 'length': 1})
+    n.add_link('2', 2, 3, attribs={'modes': {'bike'}, 'length': 1})
+    n.add_link('3', 2, 3, attribs={'modes': {'walk', 'car'}, 'length': 1})
+
+    n.remove_mode_from_links(links=['0', '3'], mode=['bike', 'walk'])
+    assert n.link('0')['modes'] == {'car'}
+    assert n.link('3')['modes'] == {'car'}
+
+
 def test_removing_mode_from_links_removes_empty_links():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'modes': {'car', 'bike'}, 'length': 1})

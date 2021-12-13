@@ -490,7 +490,7 @@ class Network:
         subset_links = set(self.links_on_spatial_condition(region_input=region_input, how=how))
         return self.subnetwork(links=subset_links, services=services_to_keep)
 
-    def remove_mode_from_links(self, links: Union[set, list], mode: str):
+    def remove_mode_from_links(self, links: Union[set, list], mode: Union[set, list, str]):
         """
         Method to remove modes from links. Deletes links which have no mode left after the process.
         :param links: collection of link IDs to remove the mode from
@@ -502,13 +502,18 @@ class Network:
                 return True
             return False
 
-        links = set(links)
+        links = self._setify(links)
+        mode = self._setify(mode)
+
         df = self.link_attribute_data_under_keys(['modes'])
         extra = links - set(df.index)
         if extra:
             logging.warning(f'The following links are not present: {extra}')
-        df = df.loc[links & set(df.index)][df['modes'].apply(lambda x: mode in x)]
-        df['modes'] = df['modes'].apply(lambda x: x - {mode})
+
+        df['modes'] = df['modes'].apply(lambda x: self._setify(x))
+
+        df = df.loc[links & set(df.index)][df['modes'].apply(lambda x: bool(mode & x))]
+        df['modes'] = df['modes'].apply(lambda x: x - mode)
         self.apply_attributes_to_links(df.T.to_dict())
 
         # remove links without modes
