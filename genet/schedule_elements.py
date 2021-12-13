@@ -2615,8 +2615,6 @@ class Schedule(ScheduleElement):
             *[{from_s} | set(val.keys()) for from_s, val in self.minimal_transfer_times.items()])
         if stops_to_remove:
             self.remove_stops(stops_to_remove)
-            logging.info(f'Removed Stops with indecies `{stops_to_remove}` which were not used by any Routes or part '
-                         'of minimal transfer times.')
 
     def is_strongly_connected(self):
         if nx.number_strongly_connected_components(self.graph()) == 1:
