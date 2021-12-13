@@ -1079,7 +1079,7 @@ class Network:
     def apply_function_to_links(self, function, location: str):
         """
         Applies function to link attributes dictionary
-        :param function: function of node attributes dictionary returning a value that should be stored
+        :param function: function of link attributes dictionary returning a value that should be stored
         under `location`
         :param location: where to save the results: string defining the key in the nodes attributes dictionary
         :return:

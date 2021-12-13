@@ -33,10 +33,10 @@ def generate_edge_vph_geodataframe(df, gdf_links):
     :return:
     """
     df.loc[:, 'hour'] = df['departure_time'].dt.round("H")
-    groupby_cols = ['hour', 'trip', 'from_stop', 'from_stop_name', 'to_stop', 'to_stop_name']
+    groupby_cols = ['hour', 'trip_id', 'from_stop', 'from_stop_name', 'to_stop', 'to_stop_name']
     df = df.groupby(groupby_cols).count().reset_index()
     df.loc[:, 'vph'] = 1
-    groupby_cols.remove('trip')
+    groupby_cols.remove('trip_id')
     df = df.groupby(groupby_cols).sum().reset_index()
 
     cols_to_delete = list(set(df.columns) - (set(groupby_cols) | {'vph'}))
@@ -57,7 +57,7 @@ def vehicles_per_hour(df, aggregate_by: list, output_path=''):
     """
     df.loc[:, 'hour'] = df['departure_time'].dt.round("H")
     df.loc[:, 'hour'] = df['hour'].dt.hour
-    df = df.groupby(['hour', 'trip'] + aggregate_by).count().reset_index()
+    df = df.groupby(['hour', 'trip_id'] + aggregate_by).count().reset_index()
     df.loc[:, 'vph'] = 1
     df = pd.pivot_table(df, values='vph', index=aggregate_by, columns=['hour'],
                         aggfunc=np.sum).reset_index()
@@ -74,9 +74,9 @@ def trips_per_day_per_service(df, output_dir=''):
     :param output_dir: directory to save `trips_per_day_per_service.csv`
     :return:
     """
-    trips_per_day = df.groupby(['service', 'service_name', 'route', 'mode']).nunique()['trip'].reset_index()
-    trips_per_day = trips_per_day.groupby(['service', 'service_name', 'mode']).sum()['trip'].reset_index()
-    trips_per_day = trips_per_day.rename(columns={'trip': 'number_of_trips'})
+    trips_per_day = df.groupby(['service_id', 'service_name', 'route_id', 'mode']).nunique()['trip_id'].reset_index()
+    trips_per_day = trips_per_day.groupby(['service_id', 'service_name', 'mode']).sum()['trip_id'].reset_index()
+    trips_per_day = trips_per_day.rename(columns={'trip_id': 'number_of_trips'})
     if output_dir:
         trips_per_day.to_csv(os.path.join(output_dir, 'trips_per_day_per_service.csv'))
     return trips_per_day
@@ -89,8 +89,8 @@ def trips_per_day_per_route(df, output_dir=''):
     :param output_dir: directory to save `trips_per_day_per_service.csv`
     :return:
     """
-    trips_per_day = df.groupby(['route', 'route_name', 'mode']).nunique()['trip'].reset_index()
-    trips_per_day = trips_per_day.rename(columns={'trip': 'number_of_trips'})
+    trips_per_day = df.groupby(['route_id', 'route_name', 'mode']).nunique()['trip_id'].reset_index()
+    trips_per_day = trips_per_day.rename(columns={'trip_id': 'number_of_trips'})
     if output_dir:
         trips_per_day.to_csv(os.path.join(output_dir, 'trips_per_day_per_route.csv'))
     return trips_per_day
@@ -124,7 +124,7 @@ def aggregate_trips_per_day_per_route_by_end_stop_pairs(schedule, trips_per_day_
             df = df.append(df_stops)
     df['routes_in_common'] = df.apply(lambda x: route_id_intersect(x), axis=1)
     df = df.dropna()
-    trips_per_day_per_route = trips_per_day_per_route.set_index('route')
+    trips_per_day_per_route = trips_per_day_per_route.set_index('route_id')
     df['number_of_trips'] = df['routes_in_common'].apply(
         lambda x: sum([trips_per_day_per_route.loc[r_id, 'number_of_trips'] for r_id in x]))
     return df

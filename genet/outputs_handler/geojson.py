@@ -74,7 +74,7 @@ def save_geodataframe(gdf, filename, output_dir, include_shp_files=False):
 def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700101', include_shp_files=False):
     logging.info('Generating geojson standard outputs for schedule')
     schedule_links = schedule.to_geodataframe()['links'].to_crs("epsg:4326")
-    df = schedule.route_trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
+    df = schedule.trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
     df_all_modes_vph = None
 
     vph_dir = os.path.join(output_dir, 'vehicles_per_hour')
@@ -132,7 +132,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
     logging.info('Generating csv for vehicles per hour for each service')
     use_schedule.vehicles_per_hour(
         df,
-        aggregate_by=['service', 'service_name', 'mode'],
+        aggregate_by=['service_id', 'service_name', 'mode'],
         output_path=os.path.join(vph_dir, 'vph_per_service.csv'))
 
     logging.info('Generating csv for vehicles per hour per stop')

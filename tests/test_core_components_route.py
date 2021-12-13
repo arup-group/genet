@@ -4,7 +4,7 @@ from pandas import DataFrame, Timestamp
 from pandas.testing import assert_frame_equal
 from genet.schedule_elements import Route, Stop
 from genet.utils import plot
-from tests.fixtures import stop_epsg_27700, assert_semantically_equal
+from tests.fixtures import stop_epsg_27700, assert_semantically_equal, assert_logging_warning_caught_with_message_containing
 
 
 @pytest.fixture()
@@ -81,6 +81,38 @@ def test_initiating_route(route):
               'departure_offsets': ['00:00:00', '00:05:00', '00:09:00', '00:15:00'], 'route_long_name': '', 'id': '1',
               'route': ['1', '2', '3', '4'], 'await_departure': [], 'ordered_stops': ['1', '2', '3', '4']}},
                                                'services': {}, 'crs': 'epsg:27700'})
+
+
+def test_initiating_route_with_headway_spec():
+    r = Route(
+        id='route_ID',
+        route_short_name='name',
+        mode='bus',
+        stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='1', x=4, y=2, epsg='epsg:27700'),
+               Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+        headway_spec={('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30},
+        arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+        departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+
+    assert_semantically_equal(
+        r.trips,
+        {'trip_id': ['route_ID_01:00:00', 'route_ID_01:20:00', 'route_ID_01:40:00', 'route_ID_02:00:00',
+                     'route_ID_02:30:00', 'route_ID_03:00:00'],
+         'trip_departure_time': ['01:00:00', '01:20:00', '01:40:00', '02:00:00', '02:30:00', '03:00:00'],
+         'vehicle_id': ['veh_bus_route_ID_01:00:00', 'veh_bus_route_ID_01:20:00', 'veh_bus_route_ID_01:40:00',
+                        'veh_bus_route_ID_02:00:00', 'veh_bus_route_ID_02:30:00', 'veh_bus_route_ID_03:00:00']}
+    )
+
+
+def test_updating_route_trips_with_headway(route):
+    route.generate_trips_from_headway({('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
+    assert_semantically_equal(
+        route.trips,
+        {'trip_id': ['1_01:00:00', '1_01:20:00', '1_01:40:00', '1_02:00:00', '1_02:30:00', '1_03:00:00'],
+         'trip_departure_time': ['01:00:00', '01:20:00', '01:40:00', '02:00:00', '02:30:00', '03:00:00'],
+         'vehicle_id': ['veh_bus_1_01:00:00', 'veh_bus_1_01:20:00', 'veh_bus_1_01:40:00', 'veh_bus_1_02:00:00',
+                        'veh_bus_1_02:30:00', 'veh_bus_1_03:00:00']}
+    )
 
 
 def test__repr__shows_stops_and_trips_length(route):
@@ -373,8 +405,15 @@ def test_is_valid_with_single_stop_network():
     assert not route.is_valid_route()
 
 
-def test_building_trips_dataframe(route):
-    df = route.route_trips_with_stops_to_dataframe()
+def test_building_trips_dataframe_with_stops_accepts_backwards_compatibility(route, mocker, caplog):
+    mocker.patch.object(Route, 'trips_with_stops_to_dataframe')
+    route.trips_with_stops_to_dataframe(route.trips_to_dataframe())
+    route.trips_with_stops_to_dataframe.assert_called_once()
+    assert_logging_warning_caught_with_message_containing(caplog, '`route_trips_with_stops_to_dataframe` method is deprecated')
+
+
+def test_building_trips_dataframe_with_stops(route):
+    df = route.trips_with_stops_to_dataframe()
 
     correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 10:00:00'), 1: Timestamp('1970-01-01 10:05:00'),
                                                2: Timestamp('1970-01-01 10:09:00'), 3: Timestamp('1970-01-01 20:00:00'),
@@ -385,16 +424,31 @@ def test_building_trips_dataframe(route):
                                              4: Timestamp('1970-01-01 20:07:00'), 5: Timestamp('1970-01-01 20:13:00')},
                             'from_stop': {0: '1', 1: '2', 2: '3', 3: '1', 4: '2', 5: '3'},
                             'to_stop': {0: '2', 1: '3', 2: '4', 3: '2', 4: '3', 5: '4'},
-                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
+                            'trip_id': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2'},
                             'vehicle_id': {0: 'veh_1_bus', 1: 'veh_1_bus', 2: 'veh_1_bus', 3: 'veh_2_bus',
                                            4: 'veh_2_bus', 5: 'veh_2_bus'},
-                            'route': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1'},
+                            'route_id': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1'},
                             'route_name': {0: 'name', 1: 'name', 2: 'name', 3: 'name', 4: 'name', 5: 'name'},
                             'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus', 4: 'bus', 5: 'bus'},
                             'from_stop_name': {0: '', 1: '', 2: '', 3: '', 4: '', 5: ''},
                             'to_stop_name': {0: '', 1: '', 2: '', 3: '', 4: '', 5: ''}})
 
     assert_frame_equal(df, correct_df)
+
+
+def test_generating_trips_dataframe(route):
+    df = route.trips_to_dataframe()
+
+    assert_frame_equal(
+        df,
+        DataFrame(
+            {'trip_id': {0: '1', 1: '2'},
+             'trip_departure_time': {0: Timestamp('1970-01-01 10:00:00'), 1: Timestamp('1970-01-01 20:00:00')},
+             'vehicle_id': {0: 'veh_1_bus', 1: 'veh_2_bus'},
+             'route_id': {0: '1', 1: '1'},
+             'mode': {0: 'bus', 1: 'bus'}}
+        )
+    )
 
 
 def test_vehicles(route):
