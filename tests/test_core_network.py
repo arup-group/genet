@@ -1147,6 +1147,29 @@ def test_extracting_subnetwork_with_schedule_returns_subschedule(network_object_
     assert set(subnet.schedule.service_ids()) == {'10314'}
 
 
+def test_removing_mode_from_links_updates_the_modes():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': {'car', 'bike'}, 'length': 1})
+    n.add_link('1', 2, 3, attribs={'modes': {'car'}, 'length': 1})
+    n.add_link('2', 2, 3, attribs={'modes': {'bike'}, 'length': 1})
+    n.add_link('3', 2, 3, attribs={'modes': {'walk'}, 'length': 1})
+
+    n.remove_mode_from_links(links=['0'], mode='bike')
+    assert n.link('0')['modes'] == {'car'}
+
+
+def test_removing_mode_from_links_removes_empty_links():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': {'car', 'bike'}, 'length': 1})
+    n.add_link('1', 2, 3, attribs={'modes': {'car'}, 'length': 1})
+    n.add_link('2', 2, 3, attribs={'modes': {'bike'}, 'length': 1})
+    n.add_link('3', 2, 3, attribs={'modes': {'walk'}, 'length': 1})
+
+    n.remove_mode_from_links(links=['0', '2'], mode='bike')
+    assert not n.has_link('2')
+    assert n.has_link('0')
+
+
 def test_find_shortest_path_when_graph_has_no_extra_edge_choices():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'modes': ['car', 'bike'], 'length': 1})

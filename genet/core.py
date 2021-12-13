@@ -490,7 +490,36 @@ class Network:
         subset_links = set(self.links_on_spatial_condition(region_input=region_input, how=how))
         return self.subnetwork(links=subset_links, services=services_to_keep)
 
-    def retain_n_connected_subgraphs(self, n, mode):
+    def remove_mode_from_links(self, links: Union[set, list], mode: str):
+        """
+        Method to remove modes from links. Deletes links which have no mode left after the process.
+        :param links: collection of link IDs to remove the mode from
+        :param mode: which mode to remove
+        :return: updates graph
+        """
+        def empty_modes(mode_attrib):
+            if not mode_attrib:
+                return True
+            return False
+
+        links = set(links)
+        df = self.link_attribute_data_under_keys(['modes'])
+        extra = links - set(df.index)
+        if extra:
+            logging.warning(f'The following links are not present: {extra}')
+        df = df.loc[links & set(df.index)][df['modes'].apply(lambda x: mode in x)]
+        df['modes'] = df['modes'].apply(lambda x: x - {mode})
+        self.apply_attributes_to_links(df.T.to_dict())
+
+        # remove links without modes
+        no_mode_links = graph_operations.extract_on_attributes(
+            self.links(),
+            {'modes': empty_modes},
+            mixed_dtypes=False
+        )
+        self.remove_links(no_mode_links)
+
+    def retain_n_connected_subgraphs(self, n: int, mode: str):
         """
         Method to remove modes from link which do not belong to largest connected n components. Deletes links which
         have no mode left after the process.
@@ -498,17 +527,6 @@ class Network:
         :param mode: which mode to consider
         :return: updates graph
         """
-        def remove_mode(link_attribs):
-            if link_attribs['id'] in diff_links:
-                return set(link_attribs['modes']) - {mode}
-            else:
-                return link_attribs['modes']
-
-        def empty_modes(mode_attrib):
-            if not mode_attrib:
-                return True
-            return False
-
         modal_subgraph = self.modal_subgraph(mode)
         # calculate how many connected subgraphs there are
         connected_components = network_validation.find_connected_subgraphs(modal_subgraph)
@@ -520,15 +538,7 @@ class Network:
             [e[2] for e in connected_subgraphs_to_extract])
         logging.info(f'Extracting largest connected components resulted in mode: {mode} being deleted from '
                      f'{len(diff_links)} edges')
-        self.apply_function_to_links(function=remove_mode, location='modes')
-
-        # remove links without modes
-        no_mode_links = graph_operations.extract_on_attributes(
-            self.links(),
-            {'modes': empty_modes},
-            mixed_dtypes=False
-        )
-        self.remove_links(no_mode_links)
+        self.remove_mode_from_links(diff_links, mode)
 
     def _find_ids_on_geojson(self, gdf, how, geojson_input):
         shapely_input = spatial.read_geojson_to_shapely(geojson_input)
