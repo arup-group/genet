@@ -13,6 +13,7 @@ from typing import Union, Dict, List, Set, Tuple
 import dictdiffer
 import networkx as nx
 import numpy as np
+import pandas as pd
 import yaml
 from pandas import DataFrame, Series
 from pyproj import Transformer, Geod
@@ -391,16 +392,20 @@ class Route(ScheduleElement):
     ----------
     :param route_short_name: route's short name
     :param mode: mode
-    :param trips: dictionary with keys: 'trip_id', 'trip_departure_time', 'vehicle_id'. Each value is a list
-        e.g. : {'trip_id': ['trip_1', 'trip_2'],  - IDs of trips, unique within the Route
-                'trip_departure_time': ['HH:MM:SS', 'HH:MM:SS'],  - departure time from first stop for each trip_id
-                'vehicle_id': [veh_1, veh_2]} - vehicle IDs for each trip_id, don't need to be unique
-                    (i.e. vehicles can be shared between trips, but it's up to you to make this physically possible)
     :param arrival_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
     :param departure_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
 
     Optional Parameters (note, not providing some of the parameters may result in the object failing validation)
     ----------
+    :param trips: Provide either detailed trip information of headway specification
+    dictionary with keys: 'trip_id', 'trip_departure_time', 'vehicle_id'. Each value is a list
+    e.g. : {'trip_id': ['trip_1', 'trip_2'],  - IDs of trips, unique within the Route
+            'trip_departure_time': ['HH:MM:SS', 'HH:MM:SS'],  - departure time from first stop for each trip_id
+            'vehicle_id': [veh_1, veh_2]} - vehicle IDs for each trip_id, don't need to be unique
+                (i.e. vehicles can be shared between trips, but it's up to you to make this physically possible)
+    :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
+         {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
+
     :param stops: ordered list of Stop class objects or Stop IDs already present in a Schedule, if generating a Route
         to add
     :param route_long_name: optional, verbose name for the route if exists
@@ -410,18 +415,25 @@ class Route(ScheduleElement):
     :param kwargs: additional attributes
     """
 
-    def __init__(self, route_short_name: str, mode: str, trips: Dict[str, List[str]], arrival_offsets: List[str],
-                 departure_offsets: List[str], route: list = None, route_long_name: str = '', id: str = '',
-                 await_departure: list = None, stops: List[Union[Stop, str]] = None, **kwargs):
+    def __init__(self, route_short_name: str, mode: str, arrival_offsets: List[str], departure_offsets: List[str],
+                 trips: Dict[str, List[str]] = None, headway_spec: Dict[tuple, int] = None, route: list = None,
+                 route_long_name: str = '', id: str = '', await_departure: list = None,
+                 stops: List[Union[Stop, str]] = None, **kwargs):
         self.route_short_name = route_short_name
         self.mode = mode
-        self.trips = trips
         self.arrival_offsets = arrival_offsets
         self.departure_offsets = departure_offsets
         self.route_long_name = route_long_name
         self.id = id
         ordered_stops = None
         _graph = None
+        if trips is not None:
+            self.trips = trips
+        elif headway_spec is not None:
+            self.generate_trips_from_headway(headway_spec)
+        else:
+            raise RouteInitialisationError('Please provide trip or headway information to initialise Route object')
+
         if route is None:
             self.route = []
         else:
@@ -599,6 +611,16 @@ class Route(ScheduleElement):
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
+        This method exists for backwards compatibility only
+        Please use trips_with_stops_to_dataframe
+        :return:
+        """
+        logging.warning('`route_trips_with_stops_to_dataframe` method is deprecated and will be replaced by '
+                        '`trips_to_dataframe` in later versions.')
+        return self.trips_with_stops_to_dataframe(gtfs_day)
+
+    def trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
+        """
         Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
         if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
@@ -616,7 +638,7 @@ class Route(ScheduleElement):
         for trip_id, trip_dep_time, veh_id in zip(self.trips['trip_id'], self.trips['trip_departure_time'],
                                                   self.trips['vehicle_id']):
             trip_df = _df.copy()
-            trip_df['trip'] = trip_id
+            trip_df['trip_id'] = trip_id
             trip_df['vehicle_id'] = veh_id
             trip_dep_time = use_schedule.sanitise_time(trip_dep_time, gtfs_day=gtfs_day)
             trip_df['departure_time'] = trip_dep_time + trip_df['departure_time']
@@ -625,13 +647,51 @@ class Route(ScheduleElement):
                 df = trip_df
             else:
                 df = df.append(trip_df)
-        df['route'] = self.id
+        df['route_id'] = self.id
         df['route_name'] = self.route_short_name.replace("\\", "_").replace("/", "_")
         df['mode'] = self.mode
         df['from_stop_name'] = df['from_stop'].apply(lambda x: self.stop(x).name.replace("\\", "_").replace("/", "_"))
         df['to_stop_name'] = df['to_stop'].apply(lambda x: self.stop(x).name.replace("\\", "_").replace("/", "_"))
         df = df.reset_index(drop=True)
         return df
+
+    def trips_to_dataframe(self, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        Check out also `trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
+        over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
+        df = pd.DataFrame(self.trips)
+        df['route_id'] = self.id
+        df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
+        df['mode'] = self.mode
+        return df
+
+    def generate_trips_from_headway(self, headway_spec: dict):
+        """
+        Generates new trips for the route.
+        All newly generated trips get unique vehicles with this method.
+        :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
+         {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
+        :return:
+        """
+        new_trip_departures = list(generate_trip_departures_from_headway(headway_spec))
+        new_trip_departures.sort()
+        new_trip_departures = [t.strftime("%H:%M:%S") for t in new_trip_departures]
+
+        trips = {
+            'trip_id': [f'{self.id}_{t}' for t in new_trip_departures],
+            'trip_departure_time': new_trip_departures,
+            'vehicle_id': [f'veh_{self.mode}_{self.id}_{t}' for t in new_trip_departures]
+        }
+        if 'trips' in self.__dict__:
+            self._graph.graph['routes']['trips'] = trips
+            self._graph.graph['change_log'] = self.change_log().modify(
+                object_type='route', old_id=self.id, old_attributes=self.trips, new_id=self.id, new_attributes=trips)
+        self.trips = trips
 
     def is_exact(self, other):
         same_route_name = self.route_short_name == other.route_short_name
@@ -1012,6 +1072,16 @@ class Service(ScheduleElement):
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
+        This method exists for backwards compatibility only
+        Please use trips_with_stops_to_dataframe
+        :return:
+        """
+        logging.warning('`route_trips_with_stops_to_dataframe` method is deprecated and will be replaced by '
+                        '`trips_to_dataframe` in later versions.')
+        return self.trips_with_stops_to_dataframe(gtfs_day)
+
+    def trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
+        """
         Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
         if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
@@ -1019,13 +1089,33 @@ class Service(ScheduleElement):
         """
         df = None
         for route in self.routes():
-            _df = route.route_trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
+            _df = route.trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
             if df is None:
                 df = _df
             else:
                 df = df.append(_df)
-        df['service'] = self.id
+        df['service_id'] = self.id
         df['service_name'] = self.name.replace("\\", "_").replace("/", "_")
+        df = df.reset_index(drop=True)
+        return df
+
+    def trips_to_dataframe(self, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        Check out also `trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
+        over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
+        df = None
+        for route in self.routes():
+            _df = route.trips_to_dataframe(gtfs_day=gtfs_day)
+            if df is None:
+                df = _df
+            else:
+                df = df.append(_df)
+        df['service_id'] = self.id
         df = df.reset_index(drop=True)
         return df
 
@@ -1251,7 +1341,7 @@ class Schedule(ScheduleElement):
         """
         if self:
             # generate vehicles using Services and Routes upon init
-            df = self.route_trips_to_dataframe()[['route_id', 'vehicle_id']]
+            df = self.trips_to_dataframe()[['route_id', 'vehicle_id']]
             df['type'] = df.apply(
                 lambda x: self._graph.graph['routes'][x['route_id']]['mode'], axis=1)
             df = df.drop(columns='route_id')
@@ -1271,9 +1361,19 @@ class Schedule(ScheduleElement):
 
     def route_trips_to_dataframe(self, gtfs_day='19700101'):
         """
+        This method exists for backwards compatibility only
+        Please use trips_to_dataframe
+        :return:
+        """
+        logging.warning('`route_trips_to_dataframe` method is deprecated and will be replaced by `trips_to_dataframe`'
+                        'in later versions.')
+        return self.trips_to_dataframe(gtfs_day)
+
+    def trips_to_dataframe(self, gtfs_day='19700101'):
+        """
         Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
         if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        Check out also `route_trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
+        Check out also `trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
         over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
         :return:
@@ -1283,6 +1383,7 @@ class Schedule(ScheduleElement):
             index_name='route_id')
         df = df.reset_index()
         df['service_id'] = df['route_id'].apply(lambda x: self._graph.graph['route_to_service_map'][x])
+        df['mode'] = df['route_id'].apply(lambda x: self.graph().graph['routes'][x]['mode'])
         df = df.rename(columns={'trips::trip_id': 'trip_id', 'trips::trip_departure_time': 'trip_departure_time',
                                 'trips::vehicle_id': 'vehicle_id'})
         df = DataFrame({
@@ -1292,6 +1393,99 @@ class Schedule(ScheduleElement):
                  trip_departure_time=np.concatenate(df['trip_departure_time'].values),
                  vehicle_id=np.concatenate(df['vehicle_id'].values))
         df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
+        return df
+
+    def trips_headways(self, from_time=None, to_time=None, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        Adds two columns: headway and headway_mins by calculating the time difference in ordered trip departures for
+        each unique route.
+        This can also be done for a specific time frame by specifying from_time and to_time (or just one of them).
+        :param from_time: "HH:MM:SS" format, used as lower time bound for subsetting
+        :param to_time: "HH:MM:SS" format, used as upper time bound for subsetting
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
+        df = self.trips_to_dataframe(gtfs_day=gtfs_day).sort_values(
+            ['route_id', 'trip_departure_time']).reset_index(drop=True)
+
+        year = int(gtfs_day[:4])
+        month = int(gtfs_day[4:6])
+        day = int(gtfs_day[6:8])
+        if from_time is not None:
+            hour, minute, second = list(map(int, from_time.split(':')))
+            df = df[df['trip_departure_time'] >= datetime(year, month, day, hour, minute, second)]
+        if to_time is not None:
+            hour, minute, second = list(map(int, to_time.split(':')))
+            df = df[df['trip_departure_time'] <= datetime(year, month, day, hour, minute, second)]
+
+        df = df.groupby('route_id').apply(get_headway)
+        df['headway_mins'] = (pd.to_timedelta(df['headway']).dt.total_seconds() / 60).fillna(0)
+        return df
+
+    def generate_trips_dataframe_from_headway(self, route_id, headway_spec: dict):
+        """
+        Generates new trips and vehicles for the specified route.
+        Inherits one of the existing vehicle types - if the vehicle types vary for a route, you will
+        need to generate your own trips dataframe and add those vehicles yourself.
+        All newly generated trips get unique vehicles with this method.
+        :param route_id: existing route
+        :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
+         {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
+        :return:
+        """
+        veh_type = self.vehicles[self.route(route_id).trips['vehicle_id'][0]]
+        new_trip_departures = list(generate_trip_departures_from_headway(headway_spec))
+        new_trip_departures.sort()
+
+        new_trips = pd.DataFrame(
+            {
+                'trip_id': [f'{route_id}_{t.strftime("%H:%M:%S")}' for t in new_trip_departures],
+                'trip_departure_time': new_trip_departures,
+                'vehicle_id': [f'veh_{veh_type["type"]}_{route_id}_{t.strftime("%H:%M:%S")}' for t in
+                               new_trip_departures]
+            }
+        )
+        new_trips['route_id'] = route_id
+        new_trips['service_id'] = self._graph.graph['route_to_service_map'][route_id]
+        return new_trips
+
+    def generate_trips_from_headway(self, route_id, headway_spec: dict):
+        """
+        Generates new trips and vehicles for the specified route.
+        Inherits one of the existing vehicle types - if the vehicle types vary for a route, you will
+        need to generate your own trips dataframe and add those vehicles yourself.
+        All newly generated trips get unique vehicles with this method.
+        :param route_id: existing route
+        :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
+         {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
+        :return:
+        """
+        veh_type = self.vehicles[self.route(route_id).trips['vehicle_id'][0]]
+        old_vehicles = set(self.route(route_id).trips['vehicle_id'])
+        new_trips = self.generate_trips_dataframe_from_headway(route_id, headway_spec)
+        self.set_trips_dataframe(new_trips)
+        self.vehicles = {**{veh_id: veh_type for veh_id in new_trips['vehicle_id']}, **self.vehicles}
+        list(map(self.vehicles.pop, old_vehicles-set(new_trips['vehicle_id'])))
+
+    def headway_stats(self, from_time=None, to_time=None, gtfs_day='19700101'):
+        """
+        Generates a DataFrame calculating mean headway in minutes for all routes, with their service ID.
+        This can also be done for a specific time frame by specifying from_time and to_time (or just one of them).
+        :param from_time: "HH:MM:SS" format, used as lower time bound for subsetting
+        :param to_time: "HH:MM:SS" format, used as upper time bound for subsetting
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
+        df = self.trips_headways(from_time=from_time, to_time=to_time, gtfs_day=gtfs_day)
+
+        df = df.groupby(['service_id', 'route_id', 'mode']).describe()
+        df = df['headway_mins'][['mean', 'std', 'max', 'min', 'count']].reset_index()
+        df = df.rename(
+            columns={'mean': 'mean_headway_mins', 'std': 'std_headway_mins', 'max': 'max_headway_mins',
+                     'min': 'min_headway_mins', 'count': 'trip_count'}
+        )
         return df
 
     def unused_vehicles(self):
@@ -1306,7 +1500,7 @@ class Schedule(ScheduleElement):
         """
 
         existing_vehicles = set(self.vehicles.keys())
-        used_vehicles = self.route_trips_to_dataframe()
+        used_vehicles = self.trips_to_dataframe()
         used_vehicles = set(used_vehicles['vehicle_id'].to_list())
 
         unused_vehicles = existing_vehicles - used_vehicles
@@ -1326,7 +1520,7 @@ class Schedule(ScheduleElement):
         a dictionary of vehicle IDs together with trips for which they are being used.
         It also logs a warning which says whether any vehicles are being used for multiple trips.
         """
-        trips_df = self.route_trips_to_dataframe()
+        trips_df = self.trips_to_dataframe()
         trips_df = trips_df[['trip_id', 'vehicle_id']]
 
         trips_dict = trips_df.set_index('trip_id')['vehicle_id'].to_dict()
@@ -1358,11 +1552,20 @@ class Schedule(ScheduleElement):
 
     def set_route_trips_dataframe(self, df):
         """
-        Option to replace trips data currently stored under routes by an updated `route_trips_to_dataframe`.
+        This method exists for backwards compatibility only
+        Please use set_trips_dataframe
+        """
+        logging.warning('`set_route_trips_dataframe` method is deprecated and will be replaced by `set_trips_dataframe`'
+                        'in later versions.')
+        return self.set_trips_dataframe(df)
+
+    def set_trips_dataframe(self, df):
+        """
+        Option to replace trips data currently stored under routes by an updated `trips_to_dataframe`.
         Need not be exhaustive in terms of routes. I.e. trips for some of the routes can be omitted if no changes are
         required. Needs to be exhaustive in terms of trips. I.e. if there are changes to a route, all of the trips
         required to be in that trip need to be present, it overwrites route.trips attribute.
-        :param df: DataFrame generated by `route_trips_to_dataframe` (or of the same format)
+        :param df: DataFrame generated by `trips_to_dataframe` (or of the same format)
         :return:
         """
         # convert route trips dataframe to apply dictionary shape and give to apply to routes method
@@ -1557,19 +1760,29 @@ class Schedule(ScheduleElement):
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
+        This method exists for backwards compatibility only
+        Please use trips_with_stops_to_dataframe
+        :return:
+        """
+        logging.warning('`route_trips_with_stops_to_dataframe` method is deprecated and will be replaced by '
+                        '`trips_to_dataframe` in later versions.')
+        return self.trips_with_stops_to_dataframe(gtfs_day)
+
+    def trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
+        """
         Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
         if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        Check out also `route_trips_to_dataframe` for a simplified version (trips, their departure times and vehicles
+        Check out also `trips_to_dataframe` for a simplified version (trips, their departure times and vehicles
         only)
         :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
         :return:
         """
         df = self.route_attribute_data(
             keys=['route_short_name', 'mode', 'trips', 'arrival_offsets', 'departure_offsets', 'ordered_stops', 'id'])
-        df = df.rename(columns={'id': 'route', 'route_short_name': 'route_name'})
+        df = df.rename(columns={'id': 'route_id', 'route_short_name': 'route_name'})
         df['route_name'] = df['route_name'].apply(lambda x: x.replace("\\", "_").replace("/", "_"))
-        df['service'] = df['route'].apply(lambda x: self._graph.graph['route_to_service_map'][x])
-        df['service_name'] = df['service'].apply(
+        df['service_id'] = df['route_id'].apply(lambda x: self._graph.graph['route_to_service_map'][x])
+        df['service_name'] = df['service_id'].apply(
             lambda x: self._graph.graph['services'][x]['name'].replace("\\", "_").replace("/", "_"))
         df['ordered_stops'] = df['ordered_stops'].apply(lambda x: list(zip(x[:-1], x[1:])))
         df['departure_offsets'] = df['departure_offsets'].apply(lambda x: list(map(use_schedule.get_offset, x[:-1])))
@@ -1601,9 +1814,10 @@ class Schedule(ScheduleElement):
         df = DataFrame({
             col: np.repeat(df[col].values, df['trips'].str['trip_id'].str.len())
             for col in set(df.columns) - {'trips'}}
-        ).assign(trip=trips[:, 0],
+        ).assign(trip_id=trips[:, 0],
                  trip_dep_time=trips[:, 1],
-                 vehicle_id=trips[:, 2]).sort_values(by=['route', 'trip', 'departure_time']).reset_index(drop=True)
+                 vehicle_id=trips[:, 2]).sort_values(
+            by=['route_id', 'trip_id', 'departure_time']).reset_index(drop=True)
 
         df['departure_time'] = df['trip_dep_time'] + df['departure_time']
         df['arrival_time'] = df['trip_dep_time'] + df['arrival_time']
@@ -2489,7 +2703,7 @@ class Schedule(ScheduleElement):
         routes = routes.groupby('route_id').first().reset_index()
 
         trips = self.route_attribute_data(keys=['id', 'ordered_stops', 'arrival_offsets', 'departure_offsets'])
-        trips = trips.merge(self.route_trips_to_dataframe(), left_on='id', right_on='route_id')
+        trips = trips.merge(self.trips_to_dataframe(), left_on='id', right_on='route_id')
         trips['route_id'] = trips['service_id']
 
         # expand the frame for stops and offsets to get stop times
@@ -2595,3 +2809,22 @@ def read_vehicle_types(yml):
     if persistence.is_yml(yml):
         yml = io.open(yml, mode='r')
     return yaml.load(yml, Loader=yaml.FullLoader)['VEHICLE_TYPES']
+
+
+def get_headway(group):
+    group['headway'] = group['trip_departure_time'].diff().fillna(pd.Timedelta(seconds=0))
+    return group
+
+
+def generate_trip_departures_from_headway(headway_spec: dict):
+    """
+    Generates new trip departure times
+    :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
+     {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
+    :return:
+    """
+    trip_departures = set()
+    for (from_time, to_time), headway_mins in headway_spec.items():
+        trip_departures |= set(pd.date_range(
+            f'1970-01-01 {from_time}', f'1970-01-01 {to_time}', freq=f'{headway_mins}min'))
+    return trip_departures
