@@ -596,6 +596,16 @@ def test_creating_subschedule_results_in_valid_schedule(schedule_with_two_servic
     assert subschedule.is_valid_schedule()
 
 
+def test_subnetwork_on_spatial_condition_delagates_to_spatial_methods_to_get_subset_items(mocker, schedule_with_two_services):
+    mocker.patch.object(Schedule, 'services_on_spatial_condition', return_value={'service'})
+    mocker.patch.object(Schedule, 'subschedule')
+
+    schedule_with_two_services.subschedule_on_spatial_condition(region_input='region')
+
+    Schedule.services_on_spatial_condition.assert_called_once_with(region_input='region', how='intersect')
+    Schedule.subschedule.assert_called_once_with(service_ids={'service'})
+
+
 def test_applying_attributes_to_service(schedule):
     assert schedule._graph.graph['services']['service']['name'] == 'name'
     assert schedule['service'].name == 'name'

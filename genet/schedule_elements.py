@@ -11,14 +11,6 @@ from datetime import datetime
 from typing import Union, Dict, List, Set, Tuple
 
 import dictdiffer
-import networkx as nx
-import numpy as np
-import pandas as pd
-import yaml
-from pandas import DataFrame, Series
-from pyproj import Transformer, Geod
-from s2sphere import CellId
-
 import genet.modify.change_log as change_log
 import genet.modify.schedule as mod_schedule
 import genet.outputs_handler.geojson as gngeojson
@@ -32,9 +24,16 @@ import genet.utils.persistence as persistence
 import genet.utils.plot as plot
 import genet.utils.spatial as spatial
 import genet.validate.schedule_validation as schedule_validation
+import networkx as nx
+import numpy as np
+import pandas as pd
+import yaml
 from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisationError, ServiceInitialisationError, \
     UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData, \
     InconsistentVehicleModeError
+from pandas import DataFrame, Series
+from pyproj import Transformer, Geod
+from s2sphere import CellId
 
 # number of decimal places to consider when comparing lat lons
 SPATIAL_TOLERANCE = 8
@@ -2117,7 +2116,7 @@ class Schedule(ScheduleElement):
     def subschedule(self, service_ids):
         """
         Subset a Schedule object using a spatial bound
-        :param service_ids: optional, collection of service IDs in the Schedule for subsetting.
+        :param service_ids: collection of service IDs in the Schedule for subsetting.
         :return: A new Schedule object that is a subset of the original
         """
         subschedule = self.__copy__()
@@ -2143,7 +2142,7 @@ class Schedule(ScheduleElement):
         :return: A new Schedule object that is a subset of the original
         """
         services_to_keep = self.services_on_spatial_condition(region_input=region_input, how=how)
-        return self.subschedule(services_to_keep)
+        return self.subschedule(service_ids=services_to_keep)
 
     def services_on_spatial_condition(self, region_input, how='intersect'):
         """
