@@ -1147,6 +1147,19 @@ def test_extracting_subnetwork_with_schedule_returns_subschedule(network_object_
     assert set(subnet.schedule.service_ids()) == {'10314'}
 
 
+def test_subnetwork_on_spatial_condition_delagates_to_spatial_methods_to_get_subset_items(mocker, network_object_from_test_data):
+    mocker.patch.object(Schedule, 'services_on_spatial_condition', return_value={'service'})
+    mocker.patch.object(Network, 'links_on_spatial_condition', return_value={'link'})
+    mocker.patch.object(Network, 'subnetwork')
+
+    network_object_from_test_data.subnetwork_on_spatial_condition(region_input='region')
+
+    Schedule.services_on_spatial_condition.assert_called_once_with(region_input='region', how='intersect')
+    Network.links_on_spatial_condition.assert_called_once_with(region_input='region', how='intersect')
+    Network.subnetwork.assert_called_once_with(links={'link'}, services={'service'}, n_connected_components=1,
+                                               strongly_connected_modes=None)
+
+
 def test_removing_mode_from_links_updates_the_modes():
     n = Network('epsg:27700')
     n.add_link('0', 1, 2, attribs={'modes': {'car', 'bike'}, 'length': 1})

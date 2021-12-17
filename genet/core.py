@@ -7,13 +7,6 @@ import uuid
 from copy import deepcopy
 from typing import Union, List, Dict
 
-import geopandas as gpd
-import networkx as nx
-import numpy as np
-import pandas as pd
-from pyproj import Transformer
-from s2sphere import CellId
-
 import genet.auxiliary_files as auxiliary_files
 import genet.exceptions as exceptions
 import genet.modify.change_log as change_log
@@ -32,6 +25,12 @@ import genet.utils.plot as plot
 import genet.utils.simplification as simplification
 import genet.utils.spatial as spatial
 import genet.validate.network_validation as network_validation
+import geopandas as gpd
+import networkx as nx
+import numpy as np
+import pandas as pd
+from pyproj import Transformer
+from s2sphere import CellId
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -436,17 +435,24 @@ class Network:
             # is assumed to be hex
             return self._find_link_ids_on_s2_geometry(gdf, how, region_input)
 
-    def subnetwork(self, links: Union[list, set], services: Union[list, set] = None):
+    def subnetwork(self, links: Union[list, set], services: Union[list, set] = None,
+                   strongly_connected_modes: Union[list, set] = None, n_connected_components: int = 1):
         """
         Subset a Network object using a collection of link IDs and (optionally) service IDs
         :param links: Link IDs to be retained in the new Network
         :param services: optional, collection of service IDs in the Schedule for subsetting.
+        :param strongly_connected_modes: modes in the network that need to be strongly connected. For MATSim those
+            are modes that agents are allowed to route on. Defaults to {'car', 'walk', 'bike'}
+        :param n_connected_components: number of expected strongly connected components for
+            `the strongly_connected_modes`. Defaults to 1, as that is what MATSim expects. Other number may be used
+            if disconnected islands are expected, and then connected up using the `connect_components` method.
         :return: A new Network object that is a subset of the original
         """
         logging.info('Subsetting a Network will likely result in a disconnected network graph. A cleaner will be ran '
                      'that will remove links to make the resulting Network strongly connected for modes: '
                      'car, walk, bike.')
         subnetwork = Network(epsg=self.epsg)
+        links = set(links)
         if self.schedule:
             if services:
                 logging.info(
@@ -454,20 +460,32 @@ class Network:
                     'network routes will also be retained.')
                 subschedule = self.schedule.subschedule(services)
                 routes = subschedule.route_attribute_data(keys=['route'])
-                links = set(links) | set(np.concatenate(routes['route'].values))
+                links = links | set(np.concatenate(routes['route'].values))
                 subnetwork.schedule = subschedule
         subnetwork.graph = self.subgraph_on_link_conditions(conditions={'id': links})
         subnetwork.link_id_mapping = {k: v for k, v in self.link_id_mapping.items() if k in links}
-        for mode in {'car', 'walk', 'bike'}:
+
+        if strongly_connected_modes is None:
+            logging.info("Param: strongly_connected_modes is defaulting to `{'car', 'walk', 'bike'}` "
+                         "You can change this behaviour by passing the parameter.")
+            strongly_connected_modes = {'car', 'walk', 'bike'}
+        for mode in strongly_connected_modes:
             if not subnetwork.is_strongly_connected(modes=mode):
-                subnetwork.retain_n_connected_subgraphs(n=1, mode=mode)
+                logging.warning(f'The graph for mode {mode} is not strongly connected. '
+                                f'The largest {n_connected_components} connected components will be extracted.')
+                if n_connected_components > 1:
+                    logging.info('Number of requested connected components is larger than 1. Consider using '
+                                 '`connect_components` method to create modal graphs that are strongly connected.')
+                subnetwork.retain_n_connected_subgraphs(n=n_connected_components, mode=mode)
 
         # TODO Inherit and subset Auxiliary files
 
         logging.info('Subsetted Network is ready - do not forget to validate and visualise your subset!')
         return subnetwork
 
-    def subnetwork_on_spatial_condition(self, region_input, how='intersect'):
+    def subnetwork_on_spatial_condition(self, region_input, how='intersect',
+                                        strongly_connected_modes: Union[list, set] = None,
+                                        n_connected_components: int = 1):
         """
         Subset a Network object using a spatial bound
         :param region_input:
@@ -480,6 +498,11 @@ class Network:
             - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
             region_input
             - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
+        :param strongly_connected_modes: modes in the network that need to be strongly connected. For MATSim those
+            are modes that agents are allowed to route on. Defaults to {'car', 'walk', 'bike'}
+        :param n_connected_components: number of expected strongly connected components for
+            `the strongly_connected_modes`. Defaults to 1, as that is what MATSim expects. Other number may be used
+            if disconnected islands are expected, and then connected up using the `connect_components` method.
         :return: A new Network object that is a subset of the original
         """
         if self.schedule:
@@ -488,7 +511,9 @@ class Network:
             services_to_keep = None
 
         subset_links = set(self.links_on_spatial_condition(region_input=region_input, how=how))
-        return self.subnetwork(links=subset_links, services=services_to_keep)
+        return self.subnetwork(links=subset_links, services=services_to_keep,
+                               strongly_connected_modes=strongly_connected_modes,
+                               n_connected_components=n_connected_components)
 
     def remove_mode_from_links(self, links: Union[set, list], mode: Union[set, list, str]):
         """
