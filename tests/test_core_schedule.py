@@ -457,6 +457,154 @@ def test_getting_services_contained_spatial_region(schedule):
     routes = schedule.services_on_spatial_condition(p, how='within')
     assert set(routes) == {'service'}
 
+@pytest.fixture()
+def schedule_with_two_services():
+    bus_route = Route(route_short_name='bus_route',
+                      mode='bus', id='bus_route',
+                      stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700', linkRefId='1'),
+                             Stop(id='2', x=1, y=2, epsg='epsg:27700', linkRefId='2'),
+                             Stop(id='3', x=3, y=3, epsg='epsg:27700', linkRefId='3'),
+                             Stop(id='4', x=7, y=5, epsg='epsg:27700', linkRefId='4')],
+                      trips={'trip_id': ['1', '2'],
+                             'trip_departure_time': ['13:00:00', '13:30:00'],
+                             'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
+                      route=['1','2','3','4'],
+                      arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                      departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    rail_route = Route(route_short_name='rail_route',
+                       mode='rail', id='rail_route',
+                       stops=[Stop(id='4', x=4, y=2, epsg='epsg:27700', linkRefId='4'),
+                              Stop(id='5', x=1, y=2, epsg='epsg:27700', linkRefId='5'),
+                              Stop(id='6', x=3, y=3, epsg='epsg:27700', linkRefId='6'),
+                              Stop(id='7', x=7, y=5, epsg='epsg:27700', linkRefId='7')],
+                       trips={'trip_id': ['1', '2'],
+                              'trip_departure_time': ['11:00:00', '13:00:00'],
+                              'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
+                       route=['4', '5', '6', '7'],
+                       arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                       departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    bus_service = Service(id='bus_service', routes=[bus_route])
+    rail_service = Service(id='rail_service', routes=[rail_route])
+    return Schedule(epsg='epsg:27700', services=[bus_service, rail_service],
+                    minimal_transfer_times={'7': {'6':0.0}, '2': {'1':0.0}, '4': {'3':0.0}})
+
+
+def test_removing_service_from_copied_schedule_does_not_affect_services_in_original(schedule_with_two_services):
+    assert set(schedule_with_two_services.service_ids()) == {'bus_service', 'rail_service'}
+
+    subschedule = schedule_with_two_services.__copy__()
+    subschedule.remove_service('rail_service')
+
+    assert set(schedule_with_two_services.service_ids()) == {'bus_service', 'rail_service'}
+    assert set(subschedule.service_ids()) == {'bus_service'}
+
+
+def test_removing_service_from_copied_schedule_does_not_affect_graph_nodes_of_original(schedule_with_two_services):
+    subschedule = schedule_with_two_services.__copy__()
+    subschedule.remove_service('rail_service')
+
+    assert_semantically_equal(
+        dict(subschedule._graph.nodes(data=True)),
+        {'4': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '4', 'x': 7.0, 'y': 5.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.557068195637501, 'lat': 49.766856648946295,
+               's2_id': 5205973754097123809, 'linkRefId': '4'},
+         '5': {'services': set(), 'routes': set(), 'id': '5', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+               'lon': -7.55714803952495, 'lat': 49.766825803756994, 's2_id': 5205973754090365183, 'linkRefId': '5'},
+         '6': {'services': set(), 'routes': set(), 'id': '6', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700', 'name': '',
+               'lon': -7.557121424907426, 'lat': 49.76683608549253, 's2_id': 5205973754090203369, 'linkRefId': '6'},
+         '7': {'services': set(), 'routes': set(), 'id': '7', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700', 'name': '',
+               'lon': -7.557068195637501, 'lat': 49.766856648946295, 's2_id': 5205973754097123809, 'linkRefId': '7'},
+         '3': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '3', 'x': 3.0, 'y': 3.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.557121424907426, 'lat': 49.76683608549253,
+               's2_id': 5205973754090203369, 'linkRefId': '3'},
+         '1': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '1', 'x': 4.0, 'y': 2.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.5571065776837285, 'lat': 49.76682779861248,
+               's2_id': 5205973754090531959, 'linkRefId': '1'},
+         '2': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '2', 'x': 1.0, 'y': 2.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.55714803952495, 'lat': 49.766825803756994,
+               's2_id': 5205973754090365183, 'linkRefId': '2'}}
+    )
+    assert_semantically_equal(
+        dict(schedule_with_two_services._graph.nodes(data=True)),
+        {'4': {'services': {'bus_service', 'rail_service'}, 'routes': {'bus_route', 'rail_route'}, 'id': '4', 'x': 7.0,
+               'y': 5.0, 'epsg': 'epsg:27700', 'name': '', 'lon': -7.557068195637501, 'lat': 49.766856648946295,
+               's2_id': 5205973754097123809, 'linkRefId': '4'},
+         '5': {'services': {'rail_service'}, 'routes': {'rail_route'}, 'id': '5', 'x': 1.0, 'y': 2.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.55714803952495, 'lat': 49.766825803756994,
+               's2_id': 5205973754090365183, 'linkRefId': '5'},
+         '6': {'services': {'rail_service'}, 'routes': {'rail_route'}, 'id': '6', 'x': 3.0, 'y': 3.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.557121424907426, 'lat': 49.76683608549253,
+               's2_id': 5205973754090203369, 'linkRefId': '6'},
+         '7': {'services': {'rail_service'}, 'routes': {'rail_route'}, 'id': '7', 'x': 7.0, 'y': 5.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.557068195637501, 'lat': 49.766856648946295,
+               's2_id': 5205973754097123809, 'linkRefId': '7'},
+         '3': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '3', 'x': 3.0, 'y': 3.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.557121424907426, 'lat': 49.76683608549253,
+               's2_id': 5205973754090203369, 'linkRefId': '3'},
+         '1': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '1', 'x': 4.0, 'y': 2.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.5571065776837285, 'lat': 49.76682779861248,
+               's2_id': 5205973754090531959, 'linkRefId': '1'},
+         '2': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '2', 'x': 1.0, 'y': 2.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.55714803952495, 'lat': 49.766825803756994,
+               's2_id': 5205973754090365183, 'linkRefId': '2'}}
+    )
+
+def test_removing_service_from_copied_schedule_does_not_affect_vehicles_of_original(schedule_with_two_services):
+    subschedule = schedule_with_two_services.__copy__()
+    subschedule.remove_service('rail_service')
+
+    assert_semantically_equal(
+        subschedule.vehicles,
+        {'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'}}
+    )
+    assert_semantically_equal(
+        schedule_with_two_services.vehicles,
+        {'veh_3_bus': {'type': 'rail'}, 'veh_4_bus': {'type': 'rail'}, 'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'}}
+    )
+
+
+def test_changing_copied_schedule_does_not_affect_transfer_times_of_original(schedule_with_two_services):
+    subschedule = schedule_with_two_services.__copy__()
+    subschedule.remove_stops_from_minimal_transfer_times(['7'])
+
+    assert_semantically_equal(
+        subschedule.minimal_transfer_times,
+        {'2': {'1': 0.0}, '4': {'3': 0.0}}
+    )
+    assert_semantically_equal(
+        schedule_with_two_services.minimal_transfer_times,
+        {'7': {'6': 0.0}, '2': {'1': 0.0}, '4': {'3': 0.0}}
+    )
+
+
+def test_creating_subschedule_results_in_correct_schedule_elems(schedule_with_two_services):
+    assert set(schedule_with_two_services.service_ids()) == {'bus_service', 'rail_service'}
+    assert set(schedule_with_two_services.route_ids()) == {'bus_route', 'rail_route'}
+    assert {s.id for s in schedule_with_two_services.stops()} == {'4', '3', '5', '7', '2', '6', '1'}
+
+    subschedule = schedule_with_two_services.subschedule(['bus_service'])
+
+    assert set(subschedule.service_ids()) == {'bus_service'}
+    assert set(subschedule.route_ids()) == {'bus_route'}
+    # 6 and 7 are there because we keep unused stops if they have transfers
+    assert {s.id for s in subschedule.stops()} == {'4', '3', '2', '1', '6', '7'}
+
+
+def test_creating_subschedule_results_in_valid_schedule(schedule_with_two_services):
+    assert schedule_with_two_services.is_valid_schedule()
+    subschedule = schedule_with_two_services.subschedule(['bus_service'])
+    assert subschedule.is_valid_schedule()
+
+
+def test_subnetwork_on_spatial_condition_delagates_to_spatial_methods_to_get_subset_items(mocker, schedule_with_two_services):
+    mocker.patch.object(Schedule, 'services_on_spatial_condition', return_value={'service'})
+    mocker.patch.object(Schedule, 'subschedule')
+
+    schedule_with_two_services.subschedule_on_spatial_condition(region_input='region')
+
+    Schedule.services_on_spatial_condition.assert_called_once_with(region_input='region', how='intersect')
+    Schedule.subschedule.assert_called_once_with(service_ids={'service'})
+
 
 def test_applying_attributes_to_service(schedule):
     assert schedule._graph.graph['services']['service']['name'] == 'name'
@@ -958,6 +1106,11 @@ def test_removing_stop(schedule):
     assert {stop.id for stop in schedule.stops()} == {'1', '3', '4', '7', '8', '6', '2'}
 
 
+def test_removing_multiple_stops(schedule):
+    schedule.remove_stops(['5', '3'])
+    assert {stop.id for stop in schedule.stops()} == {'1', '4', '7', '8', '6', '2'}
+
+
 def test_removing_stop_updates_minimal_tranfer_times(schedule):
     schedule.minimal_transfer_times = {
         '5': {'2': 0.0},
@@ -969,6 +1122,57 @@ def test_removing_stop_updates_minimal_tranfer_times(schedule):
                               {
                                   '2': {'3': 0.0},
                                   '3': {'2': 0.0},
+                              })
+
+
+def test_removing_multiple_stops_updates_minimal_tranfer_times(schedule):
+    schedule.minimal_transfer_times = {
+        '5': {'2': 0.0},
+        '2': {'5': 0.0, '3': 0.0},
+        '3': {'2': 0.0},
+    }
+    schedule.remove_stops(['5', '3'])
+    assert_semantically_equal(schedule.minimal_transfer_times, {})
+
+
+def test_removing_key_stops_from_minimal_transfert_times(schedule):
+    schedule.minimal_transfer_times = {
+        '5': {'2': 0.0},
+        '2': {'5': 0.0, '3': 0.0},
+        '3': {'2': 0.0},
+        '4': {'3': 0.0}
+    }
+    schedule.remove_stops_from_minimal_transfer_times(['4'])
+    assert_semantically_equal(schedule.minimal_transfer_times,
+                              {
+                                  '5': {'2': 0.0},
+                                  '2': {'5': 0.0, '3': 0.0},
+                                  '3': {'2': 0.0},
+                              })
+
+
+def test_removing_val_stops_from_minimal_transfert_times(schedule):
+    schedule.minimal_transfer_times = {
+        '2': {'5': 0.0, '3': 0.0},
+        '3': {'2': 0.0},
+    }
+    schedule.remove_stops_from_minimal_transfer_times(['5'])
+    assert_semantically_equal(schedule.minimal_transfer_times,
+                              {
+                                  '2': {'3': 0.0},
+                                  '3': {'2': 0.0},
+                              })
+
+
+def test_removing_stops_from_minimal_transfert_times_cleans_up_empties(schedule):
+    schedule.minimal_transfer_times = {
+        '4': {'5': 0.0, '3': 0.0},
+        '3': {'2': 0.0},
+    }
+    schedule.remove_stops_from_minimal_transfer_times(['2'])
+    assert_semantically_equal(schedule.minimal_transfer_times,
+                              {
+                                  '4': {'5': 0.0, '3': 0.0},
                               })
 
 

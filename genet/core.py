@@ -7,13 +7,6 @@ import uuid
 from copy import deepcopy
 from typing import Union, List, Dict
 
-import geopandas as gpd
-import networkx as nx
-import numpy as np
-import pandas as pd
-from pyproj import Transformer
-from s2sphere import CellId
-
 import genet.auxiliary_files as auxiliary_files
 import genet.exceptions as exceptions
 import genet.modify.change_log as change_log
@@ -32,6 +25,12 @@ import genet.utils.plot as plot
 import genet.utils.simplification as simplification
 import genet.utils.spatial as spatial
 import genet.validate.network_validation as network_validation
+import geopandas as gpd
+import networkx as nx
+import numpy as np
+import pandas as pd
+from pyproj import Transformer
+from s2sphere import CellId
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -420,6 +419,10 @@ class Network:
              the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
              e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
             - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :param how:
+            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
+            region_input
+            - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
         :return: link IDs
         """
         gdf = self.to_geodataframe()['links'].to_crs("epsg:4326")
@@ -431,6 +434,141 @@ class Network:
         else:
             # is assumed to be hex
             return self._find_link_ids_on_s2_geometry(gdf, how, region_input)
+
+    def subnetwork(self, links: Union[list, set], services: Union[list, set] = None,
+                   strongly_connected_modes: Union[list, set] = None, n_connected_components: int = 1):
+        """
+        Subset a Network object using a collection of link IDs and (optionally) service IDs
+        :param links: Link IDs to be retained in the new Network
+        :param services: optional, collection of service IDs in the Schedule for subsetting.
+        :param strongly_connected_modes: modes in the network that need to be strongly connected. For MATSim those
+            are modes that agents are allowed to route on. Defaults to {'car', 'walk', 'bike'}
+        :param n_connected_components: number of expected strongly connected components for
+            `the strongly_connected_modes`. Defaults to 1, as that is what MATSim expects. Other number may be used
+            if disconnected islands are expected, and then connected up using the `connect_components` method.
+        :return: A new Network object that is a subset of the original
+        """
+        logging.info('Subsetting a Network will likely result in a disconnected network graph. A cleaner will be ran '
+                     'that will remove links to make the resulting Network strongly connected for modes: '
+                     'car, walk, bike.')
+        subnetwork = Network(epsg=self.epsg)
+        links = set(links)
+        if self.schedule:
+            if services:
+                logging.info(
+                    f'Schedule will be subsetted using given services: {services}. Links pertaining to their '
+                    'network routes will also be retained.')
+                subschedule = self.schedule.subschedule(services)
+                routes = subschedule.route_attribute_data(keys=['route'])
+                links = links | set(np.concatenate(routes['route'].values))
+                subnetwork.schedule = subschedule
+        subnetwork.graph = self.subgraph_on_link_conditions(conditions={'id': links})
+        subnetwork.link_id_mapping = {k: v for k, v in self.link_id_mapping.items() if k in links}
+
+        if strongly_connected_modes is None:
+            logging.info("Param: strongly_connected_modes is defaulting to `{'car', 'walk', 'bike'}` "
+                         "You can change this behaviour by passing the parameter.")
+            strongly_connected_modes = {'car', 'walk', 'bike'}
+        for mode in strongly_connected_modes:
+            if not subnetwork.is_strongly_connected(modes=mode):
+                logging.warning(f'The graph for mode {mode} is not strongly connected. '
+                                f'The largest {n_connected_components} connected components will be extracted.')
+                if n_connected_components > 1:
+                    logging.info('Number of requested connected components is larger than 1. Consider using '
+                                 '`connect_components` method to create modal graphs that are strongly connected.')
+                subnetwork.retain_n_connected_subgraphs(n=n_connected_components, mode=mode)
+
+        # TODO Inherit and subset Auxiliary files
+
+        logging.info('Subsetted Network is ready - do not forget to validate and visualise your subset!')
+        return subnetwork
+
+    def subnetwork_on_spatial_condition(self, region_input, how='intersect',
+                                        strongly_connected_modes: Union[list, set] = None,
+                                        n_connected_components: int = 1):
+        """
+        Subset a Network object using a spatial bound
+        :param region_input:
+            - path to a geojson file, can have multiple features
+            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
+             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
+             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
+            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
+        :param how:
+            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
+            region_input
+            - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
+        :param strongly_connected_modes: modes in the network that need to be strongly connected. For MATSim those
+            are modes that agents are allowed to route on. Defaults to {'car', 'walk', 'bike'}
+        :param n_connected_components: number of expected strongly connected components for
+            `the strongly_connected_modes`. Defaults to 1, as that is what MATSim expects. Other number may be used
+            if disconnected islands are expected, and then connected up using the `connect_components` method.
+        :return: A new Network object that is a subset of the original
+        """
+        if self.schedule:
+            services_to_keep = self.schedule.services_on_spatial_condition(region_input=region_input, how=how)
+        else:
+            services_to_keep = None
+
+        subset_links = set(self.links_on_spatial_condition(region_input=region_input, how=how))
+        return self.subnetwork(links=subset_links, services=services_to_keep,
+                               strongly_connected_modes=strongly_connected_modes,
+                               n_connected_components=n_connected_components)
+
+    def remove_mode_from_links(self, links: Union[set, list], mode: Union[set, list, str]):
+        """
+        Method to remove modes from links. Deletes links which have no mode left after the process.
+        :param links: collection of link IDs to remove the mode from
+        :param mode: which mode to remove
+        :return: updates graph
+        """
+        def empty_modes(mode_attrib):
+            if not mode_attrib:
+                return True
+            return False
+
+        links = self._setify(links)
+        mode = self._setify(mode)
+
+        df = self.link_attribute_data_under_keys(['modes'])
+        extra = links - set(df.index)
+        if extra:
+            logging.warning(f'The following links are not present: {extra}')
+
+        df['modes'] = df['modes'].apply(lambda x: self._setify(x))
+
+        df = df.loc[links & set(df.index)][df['modes'].apply(lambda x: bool(mode & x))]
+        df['modes'] = df['modes'].apply(lambda x: x - mode)
+        self.apply_attributes_to_links(df.T.to_dict())
+
+        # remove links without modes
+        no_mode_links = graph_operations.extract_on_attributes(
+            self.links(),
+            {'modes': empty_modes},
+            mixed_dtypes=False
+        )
+        self.remove_links(no_mode_links)
+
+    def retain_n_connected_subgraphs(self, n: int, mode: str):
+        """
+        Method to remove modes from link which do not belong to largest connected n components. Deletes links which
+        have no mode left after the process.
+        :param n: number of components to retain
+        :param mode: which mode to consider
+        :return: updates graph
+        """
+        modal_subgraph = self.modal_subgraph(mode)
+        # calculate how many connected subgraphs there are
+        connected_components = network_validation.find_connected_subgraphs(modal_subgraph)
+        connected_components_nodes = []
+        for i in range(0, n):
+            connected_components_nodes += connected_components[i][0]
+        connected_subgraphs_to_extract = modal_subgraph.subgraph(connected_components_nodes).copy().edges.data('id')
+        diff_links = set([e[2] for e in modal_subgraph.edges.data('id')]) - set(
+            [e[2] for e in connected_subgraphs_to_extract])
+        logging.info(f'Extracting largest connected components resulted in mode: {mode} being deleted from '
+                     f'{len(diff_links)} edges')
+        self.remove_mode_from_links(diff_links, mode)
 
     def _find_ids_on_geojson(self, gdf, how, geojson_input):
         shapely_input = spatial.read_geojson_to_shapely(geojson_input)
@@ -1066,6 +1204,12 @@ class Network:
         components = network_validation.find_connected_subgraphs(g)
 
         if len(components) == 1:
+            return True
+        elif len(components) == 0:
+            logging.warning(
+                f'The graph for modes: {modes} does not have any connected components.'
+                ' This method returns True because if the graph is empty for this mode there is no reason to fail'
+                ' this check.')
             return True
         else:
             return False
