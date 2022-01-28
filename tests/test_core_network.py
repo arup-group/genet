@@ -481,7 +481,7 @@ def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_
 
     link_ids_pre_simplify = set(dict(n.links()).keys())
 
-    n.simplify()
+    deleted_loop_links = n.simplify()
 
     assert n.is_simplified()
 
@@ -490,8 +490,11 @@ def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_
     assert link_ids_post_simplify & link_ids_pre_simplify
     new_links = link_ids_post_simplify - link_ids_pre_simplify
     deleted_links = link_ids_pre_simplify - link_ids_post_simplify
+    # check the links removed in simplification are all mapped to new links
     assert set(n.link_simplification_map.keys()) == deleted_links
-    assert set(n.link_simplification_map.values()) == new_links
+    # check even the removed loop links have the simplification mapping retained
+    assert set(n.link_simplification_map.values()) == new_links | deleted_loop_links
+    # check all new links int he network have edge mappings
     assert (set(n.link_id_mapping.keys()) & new_links) == new_links
 
     report = n.generate_validation_report()
@@ -512,6 +515,20 @@ def test_simplify_does_not_oversimplify_PT_endpoints():
 
     for s in stops_at_risk:
         assert n.link(n.schedule.stop(s).linkRefId)['length'] == 1
+
+
+def test_simplify_removes_loops_by_default_but_keeps_pt_stop_loops(caplog):
+    n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
+                         path_to_schedule=puma_schedule_test_file)
+
+    assert n.schedule.stop('5221390681543854913').linkRefId == '5221390681543854913_5221390681543854913'
+
+    n.simplify()
+
+    assert n.schedule.stop('5221390681543854913').linkRefId == '5221390681543854913_5221390681543854913'
+    assert n.has_link('5221390681543854913_5221390681543854913')
+    assert n.link('5221390681543854913_5221390681543854913')['from'] == '5221390681543854913'
+    assert n.link('5221390681543854913_5221390681543854913')['to'] == '5221390681543854913'
 
 
 def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_dtd):

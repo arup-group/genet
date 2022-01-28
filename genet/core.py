@@ -210,12 +210,36 @@ class Network:
         else:
             self.transformer = None
 
-    def simplify(self, no_processes=1):
+    def simplify(self, no_processes=1, keep_loops=False):
+        """
+        Simplifies network graph, retaining only nodes that are junctions
+        :param no_processes: Number of processes to split some computation across. The method is pretty fast though
+            and 1 process is often preferable --- there is overhead for splitting and joining the data.
+        :param keep_loops: bool, simplification often leads to
+        :return:
+        """
         if self.is_simplified():
             raise RuntimeError('This network has already been simplified. You cannot simplify the graph twice.')
         simplification.simplify_graph(self, no_processes)
+
+        df = self.link_attribute_data_under_keys(keys=['from', 'to'])
+        df = df[df['from'] == df['to']]
+        loops = set(df.index)
+        # pt stops can be loops
+        pt_stop_loops = set(self.schedule.stop_attribute_data(keys=['linkRefId'])['linkRefId'])
+        to_remove = loops - pt_stop_loops
+        if to_remove:
+            logging.info(f'Simplification led to {len(loops)} in the network. {len(to_remove)} are not connected'
+                         'to PT stops.')
+            if not keep_loops:
+                logging.info('These loops will now be removed. To disable this behaviour, use `keep_loops=True`.'
+                             'Investigate the change log for more information about these links')
+                self.remove_links(to_remove)
+
         # mark graph as having been simplified
         self.graph.graph["simplified"] = True
+
+        return  to_remove
 
     def is_simplified(self):
         return self.graph.graph["simplified"]
