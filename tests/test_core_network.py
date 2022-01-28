@@ -500,6 +500,20 @@ def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_
     assert report['schedule']['schedule_level']['is_valid_schedule']
 
 
+def test_simplify_does_not_oversimplify_endpoints():
+    n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
+                         path_to_schedule=puma_schedule_test_file)
+
+    stops_at_risk = ['5221390681543854913', '5221390302070799085', '5221390323679791901']
+    for s in stops_at_risk:
+        assert n.link(n.schedule.stop(s).linkRefId)['length'] == 1
+
+    n.simplify()
+
+    for s in stops_at_risk:
+        assert n.link(n.schedule.stop(s).linkRefId)['length'] == 1
+
+
 def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_dtd):
     n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
                          path_to_schedule=puma_schedule_test_file)
