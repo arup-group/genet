@@ -500,7 +500,7 @@ def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_
     assert report['schedule']['schedule_level']['is_valid_schedule']
 
 
-def test_simplify_does_not_oversimplify_endpoints():
+def test_simplify_does_not_oversimplify_PT_endpoints():
     n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
                          path_to_schedule=puma_schedule_test_file)
 

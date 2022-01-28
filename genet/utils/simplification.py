@@ -115,7 +115,7 @@ def _is_endpoint(node_neighbours):
     return [node for node, data in node_neighbours.items() if
             ((len(data['successors'] | data['predecessors']) > 2) or
              (not data['successors'] or not data['predecessors']) or
-             (data['successors'] == {node}) or
+             (node in data['successors']) or
              (len(data['successors']) != len(data['predecessors'])) or
              ((len(data['successors'] | data['predecessors']) == 1) and (data['successors'] == data['predecessors'])))]
 
