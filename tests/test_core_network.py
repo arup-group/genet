@@ -475,14 +475,27 @@ def test_attempt_to_simplify_already_simplified_network_throws_error():
     assert "cannot simplify" in str(error_info.value)
 
 
-def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_expected_graph_data():
-    n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
-                         path_to_schedule=puma_schedule_test_file)
+@pytest.fixture()
+def puma_network_pre_simplify():
+    return read.read_matsim(
+        path_to_network=puma_network_test_file, epsg='epsg:27700', path_to_schedule=puma_schedule_test_file)
+
+
+@pytest.fixture()
+def puma_network_post_simplify():
+    n = read.read_matsim(
+        path_to_network=puma_network_test_file, epsg='epsg:27700', path_to_schedule=puma_schedule_test_file)
+    deleted_self_loops = n.simplify()
+    return deleted_self_loops, n
+
+
+def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_expected_graph_data(
+        puma_network_pre_simplify, puma_network_post_simplify):
+    n = puma_network_pre_simplify
 
     link_ids_pre_simplify = set(dict(n.links()).keys())
 
-    deleted_loop_links = n.simplify()
-
+    deleted_self_loops, n = puma_network_post_simplify
     assert n.is_simplified()
 
     link_ids_post_simplify = set(dict(n.links()).keys())
@@ -493,7 +506,7 @@ def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_
     # check the links removed in simplification are all mapped to new links
     assert set(n.link_simplification_map.keys()) == deleted_links
     # check even the removed loop links have the simplification mapping retained
-    assert set(n.link_simplification_map.values()) == new_links | deleted_loop_links
+    assert set(n.link_simplification_map.values()) == new_links | deleted_self_loops
     # check all new links int he network have edge mappings
     assert (set(n.link_id_mapping.keys()) & new_links) == new_links
 
@@ -503,27 +516,27 @@ def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_
     assert report['schedule']['schedule_level']['is_valid_schedule']
 
 
-def test_simplify_does_not_oversimplify_PT_endpoints():
-    n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
-                         path_to_schedule=puma_schedule_test_file)
+def test_simplify_does_not_oversimplify_PT_endpoints(
+        puma_network_pre_simplify, puma_network_post_simplify):
+    n = puma_network_pre_simplify
 
     stops_at_risk = ['5221390681543854913', '5221390302070799085', '5221390323679791901']
     for s in stops_at_risk:
         assert n.link(n.schedule.stop(s).linkRefId)['length'] == 1
 
-    n.simplify()
+    deleted_self_loops, n = puma_network_post_simplify
 
     for s in stops_at_risk:
         assert n.link(n.schedule.stop(s).linkRefId)['length'] == 1
 
 
-def test_simplify_removes_loops_by_default_but_keeps_pt_stop_loops(caplog):
-    n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
-                         path_to_schedule=puma_schedule_test_file)
+def test_simplify_removes_loops_by_default_but_keeps_pt_stop_loops(
+        puma_network_pre_simplify, puma_network_post_simplify):
+    n = puma_network_pre_simplify
 
     assert n.schedule.stop('5221390681543854913').linkRefId == '5221390681543854913_5221390681543854913'
 
-    n.simplify()
+    deleted_self_loops, n = puma_network_post_simplify
 
     assert n.schedule.stop('5221390681543854913').linkRefId == '5221390681543854913_5221390681543854913'
     assert n.has_link('5221390681543854913_5221390681543854913')
@@ -531,12 +544,8 @@ def test_simplify_removes_loops_by_default_but_keeps_pt_stop_loops(caplog):
     assert n.link('5221390681543854913_5221390681543854913')['to'] == '5221390681543854913'
 
 
-def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_dtd):
-    n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
-                         path_to_schedule=puma_schedule_test_file)
-
-    n.simplify()
-
+def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_dtd, puma_network_post_simplify):
+    deleted_self_loops, n = puma_network_post_simplify
     n.write_to_matsim(tmpdir)
 
     generated_network_file_path = os.path.join(tmpdir, 'network.xml')
