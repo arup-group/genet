@@ -229,11 +229,12 @@ class Network:
         pt_stop_loops = set(self.schedule.stop_attribute_data(keys=['linkRefId'])['linkRefId'])
         to_remove = loops - pt_stop_loops
         if to_remove:
-            logging.info(f'Simplification led to {len(loops)} in the network. {len(to_remove)} are not connected'
-                         'to PT stops.')
+            logging.info(f'Simplification led to {len(loops)} self-loop links in the network. '
+                         f'{len(to_remove)} are not connected to the PT stops.')
             if not keep_loops:
-                logging.info('These loops will now be removed. To disable this behaviour, use `keep_loops=True`.'
-                             'Investigate the change log for more information about these links')
+                logging.info('The self-loops with no reference to PT stops will now be removed. '
+                             'To disable this behaviour, use `keep_loops=True`. '
+                             'Investigate the change log for more information about these links.')
                 self.remove_links(to_remove)
 
         # mark graph as having been simplified
