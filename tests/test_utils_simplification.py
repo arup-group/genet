@@ -52,14 +52,13 @@ def test_getting_endpoints_with_graph_with_junctions_directed_both_ways(graph_wi
         {node: {'successors': set(g.successors(node)), 'predecessors': set(g.predecessors(node))}
          for node in g.nodes}
     )
-    assert set(endpts) == {1, 2, 5, 6}
+    assert set(endpts) == {1, 2, 5, 6, 11}
 
 
 def test_simplified_paths_with_graph_with_junctions_directed_both_ways(graph_with_junctions_directed_both_ways_and_loop):
     g = graph_with_junctions_directed_both_ways_and_loop
     edge_groups = simplification._get_edge_groups_to_simplify(g)
-    assert_correct_edge_groups(edge_groups, [[2, 11, 11, 2], [2, 3, 4, 5], [2, 22, 33, 44, 55, 5],
-                                             [5, 4, 3, 2], [5, 55, 44, 33, 22, 2]])
+    assert_correct_edge_groups(edge_groups, [[2, 3, 4, 5], [2, 22, 33, 44, 55, 5], [5, 4, 3, 2], [5, 55, 44, 33, 22, 2]])
 
 
 @pytest.fixture()
