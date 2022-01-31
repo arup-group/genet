@@ -239,7 +239,7 @@ class Network:
         # mark graph as having been simplified
         self.graph.graph["simplified"] = True
 
-        return  to_remove
+        return to_remove
 
     def is_simplified(self):
         return self.graph.graph["simplified"]
@@ -546,6 +546,7 @@ class Network:
         :param mode: which mode to remove
         :return: updates graph
         """
+
         def empty_modes(mode_attrib):
             if not mode_attrib:
                 return True
