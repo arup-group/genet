@@ -215,8 +215,9 @@ class Network:
         Simplifies network graph, retaining only nodes that are junctions
         :param no_processes: Number of processes to split some computation across. The method is pretty fast though
             and 1 process is often preferable --- there is overhead for splitting and joining the data.
-        :param keep_loops: bool, simplification often leads to
-        :return:
+        :param keep_loops: bool, defaults to False. Simplification often leads to self-loops, these will be removed
+            unless keep_loops=True
+        :return: set of self-loop link IDs
         """
         if self.is_simplified():
             raise RuntimeError('This network has already been simplified. You cannot simplify the graph twice.')
@@ -227,20 +228,20 @@ class Network:
         loops = set(df.index)
         # pt stops can be loops
         pt_stop_loops = set(self.schedule.stop_attribute_data(keys=['linkRefId'])['linkRefId'])
-        to_remove = loops - pt_stop_loops
-        if to_remove:
-            logging.info(f'Simplification led to {len(loops)} self-loop links in the network. '
-                         f'{len(to_remove)} are not connected to the PT stops.')
+        useless_self_loops = loops - pt_stop_loops
+        if useless_self_loops:
+            logging.warning(f'Simplification led to {len(loops)} self-loop links in the network. '
+                         f'{len(useless_self_loops)} are not connected to the PT stops.')
             if not keep_loops:
                 logging.info('The self-loops with no reference to PT stops will now be removed. '
                              'To disable this behaviour, use `keep_loops=True`. '
                              'Investigate the change log for more information about these links.')
-                self.remove_links(to_remove)
+                self.remove_links(useless_self_loops)
 
         # mark graph as having been simplified
         self.graph.graph["simplified"] = True
 
-        return to_remove
+        return useless_self_loops
 
     def is_simplified(self):
         return self.graph.graph["simplified"]
