@@ -4,6 +4,7 @@ import logging
 import os
 import glob
 import pandas as pd
+import geopandas as gpd
 
 from genet import read_matsim
 from genet.utils.dict_support import find_nested_paths_to_value
@@ -90,7 +91,9 @@ if __name__ == '__main__':
 
     logging.info('Checking for links in auxiliary files that have ill-defined mapping')
     values_to_correct = {}
+    aux_file_links = set()
     for name, aux_file in old_n.auxiliary_files['link'].items():
+        aux_file_links |= set(aux_file.map)
         bad_links = set(aux_file.map) & undefined_ids
         if bad_links:
             values_to_correct[aux_file.filename] = []
@@ -107,8 +110,8 @@ if __name__ == '__main__':
             json.dump(values_to_correct, outfile)
 
     logging.info('Updating auxiliary files')
-    old_to_new_map = old_to_new_map_df[['old_net_id', 'new_net_id']].drop_duplicates().dropna().loc[
-        set(old_to_new_map_df) - undefined_ids].set_index('old_net_id')['new_net_id'].to_dict()
+    old_to_new_map = old_to_new_map_df[~old_to_new_map_df['unsimp_id'].isin(undefined_ids)][
+        ['old_net_id', 'new_net_id']].drop_duplicates().dropna().set_index('old_net_id')['new_net_id'].to_dict()
     old_to_new_map_path = os.path.join(output_dir, 'old_to_new_map.json')
     logging.info(f'Saving old-to-new ID map to {old_to_new_map_path}')
     with open(old_to_new_map_path, 'w') as outfile:
@@ -121,7 +124,8 @@ if __name__ == '__main__':
     logging.info('Validating geometries of auxiliary files')
     old_links = old_n.to_geodataframe()['links']
     new_links = new_n.to_geodataframe()['links']
-    old_to_new_map_df = old_to_new_map_df[old_to_new_map_df['old_net_id'].isin(old_to_new_map.keys())]
+    old_to_new_map_df = old_to_new_map_df[old_to_new_map_df['old_net_id'].isin(aux_file_links)]
+    old_to_new_map_df = old_to_new_map_df[['old_net_id', 'new_net_id']].drop_duplicates()
     old_to_new_map_df = pd.merge(old_to_new_map_df, old_links[['id', 'geometry']], left_on='old_net_id',
                                  right_on='id')
     old_to_new_map_df.rename(columns={'geometry': 'old_geom'}, inplace=True)
@@ -133,7 +137,7 @@ if __name__ == '__main__':
         mismatched_geometries_path = os.path.join(output_dir, 'mismatched_geometries.geojson')
         logging.warning(f'Found {len(mismatched_geometries_path)} geometries that are not matching exactly, they '
                         f'should be verified. Saving geojson to {mismatched_geometries_path}.')
-        mismatched_geometries.to_file(mismatched_geometries_path)
+        gpd.GeoDataFrame(mismatched_geometries).to_file(mismatched_geometries_path)
 
     logging.info('Writing auxiliary files')
     old_n.write_auxiliary_files(output_dir)
