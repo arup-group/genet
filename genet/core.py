@@ -231,7 +231,7 @@ class Network:
         useless_self_loops = loops - pt_stop_loops
         if useless_self_loops:
             logging.warning(f'Simplification led to {len(loops)} self-loop links in the network. '
-                         f'{len(useless_self_loops)} are not connected to the PT stops.')
+                            f'{len(useless_self_loops)} are not connected to the PT stops.')
             if not keep_loops:
                 logging.info('The self-loops with no reference to PT stops will now be removed. '
                              'To disable this behaviour, use `keep_loops=True`. '
