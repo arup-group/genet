@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
     logging.info('Creating a map between old and new network link IDs')
     old_to_new_map_df = pd.DataFrame(old_simplification_map.items(), columns=['unsimp_id', 'old_net_id'])
-    old_to_new_map_df['new_net_id'] = old_to_new_map_df['puma_id'].map(new_simplification_map)
+    old_to_new_map_df['new_net_id'] = old_to_new_map_df['unsimp_id'].map(new_simplification_map)
 
     overlap = old_to_new_map_df[['old_net_id', 'new_net_id']].drop_duplicates().dropna().groupby('old_net_id').size()
     undefined_ids = set(overlap[overlap > 1].index)
