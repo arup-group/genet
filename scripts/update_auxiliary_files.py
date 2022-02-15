@@ -5,10 +5,60 @@ import os
 import glob
 import pandas as pd
 import geopandas as gpd
+import lxml.etree as ET
 
 from genet import read_matsim
 from genet.utils.dict_support import find_nested_paths_to_value
 from genet.utils.persistence import ensure_dir
+
+
+def process_rp_file(rp_path, old_net_gdf, new_net_gdf, rp_out_path, validation_folder):
+    filename = os.path.basename(rp_path)
+    logging.info(f'Reading {rp_path}')
+    old_ids = []
+    new_ids = []
+    missing_ids = []
+
+    rp = ET.parse(rp_path)
+    for elem in rp.getroot():
+        for subelem in elem:
+            if 'id' in subelem.attrib:
+                link_id = subelem.attrib["id"]
+                if link_id in old_to_new_map:
+                    subelem.attrib["id"] = old_to_new_map[link_id]
+                    old_ids.append(link_id)
+                    new_ids.append(old_to_new_map[link_id])
+                elif not old_n.has_link(link_id):
+                    logging.warning(f'{link_id} not found in the OLD network. Removing')
+                    missing_ids.append(link_id)
+                    subelem.getparent().remove(subelem)
+                elif not new_n.has_link(link_id):
+                    logging.warning(f'{link_id} not found in the NEW network. Removing')
+                    missing_ids.append(link_id)
+                    subelem.getparent().remove(subelem)
+                else:
+                    # it's a link that didnt change ID, proceed
+                    old_ids.append(link_id)
+                    new_ids.append(link_id)
+
+    rp_val_out_path = os.path.join(validation_folder, filename.strip('.xml'))
+    ensure_dir(rp_val_out_path)
+    old_net_gdf[old_net_gdf['id'].isin(old_ids)][['id', 'geometry']].to_file(
+        os.path.join(rp_val_out_path, 'old_link_geometry.geojson'), driver='GeoJSON')
+    new_net_gdf[new_net_gdf['id'].isin(new_ids)][['id', 'geometry']].to_file(
+        os.path.join(rp_val_out_path, 'new_link_geometry.geojson'), driver='GeoJSON')
+
+    if missing_ids:
+        logging.warning(f'Found {len(missing_ids)} missing IDs: {missing_ids}')
+        with open(os.path.join(rp_val_out_path, 'missing_links.txt'), 'w') as f:
+            for item in missing_ids:
+                f.write("%s\n" % item)
+
+    rp_out_path = os.path.join(rp_out_path, filename)
+    logging.info(f'Writing {rp_out_path}')
+    rp.write(rp_out_path)
+    return missing_ids
+
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Map auxiliary files from one network to another using '
@@ -43,6 +93,14 @@ if __name__ == '__main__':
                             required=False,
                             default=None)
 
+    arg_parser.add_argument('-r',
+                            '--rp_file_dir',
+                            help='Path to directory containing xml road-pricing files that are connected to the old '
+                                 'network. These will be updated using simplification maps to now reference the new '
+                                 'network',
+                            required=False,
+                            default=None)
+
     arg_parser.add_argument('-p',
                             '--projection',
                             help='The projection network is in, eg. "epsg:27700"',
@@ -50,7 +108,7 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('-od',
                             '--output_dir',
-                            help='Output directory for the updated auxiliary files',
+                            help='Output directory for the updated files',
                             required=True)
 
     args = vars(arg_parser.parse_args())
@@ -59,9 +117,13 @@ if __name__ == '__main__':
     new_network = args['new_network']
     new_simplification_map = args['new_simplification_map']
     aux_file_dir = args['aux_file_dir']
+    rp_file_dir = args['rp_file_dir']
     projection = args['projection']
     output_dir = args['output_dir']
-    ensure_dir(output_dir)
+    aux_output_dir = os.path.join(output_dir, 'auxiliary_files')
+    rp_output_dir = os.path.join(output_dir, 'road_pricing_files')
+    ensure_dir(aux_output_dir)
+    ensure_dir(rp_output_dir)
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
@@ -122,8 +184,17 @@ if __name__ == '__main__':
         aux_file.update()
 
     logging.info('Validating geometries of auxiliary files')
-    old_links = old_n.to_geodataframe()['links']
-    new_links = new_n.to_geodataframe()['links']
+    old_links = old_n.to_geodataframe()['links'].to_crs('epsg:4326')
+    new_links = new_n.to_geodataframe()['links'].to_crs('epsg:4326')
+    # save geojson before and after
+    geometries_dir = os.path.join(aux_output_dir, 'validation_geojsons')
+    ensure_dir(geometries_dir)
+    logging.info(f'Saving verification geojson to {geometries_dir}.')
+    old_links[old_links['id'].isin(aux_file_links)][['id', 'geometry']].to_file(
+        os.path.join(geometries_dir, 'old_link_geometry.geojson'), driver='GeoJSON')
+    new_links[new_links['id'].isin([old_to_new_map[i] for i in aux_file_links])][['id', 'geometry']].to_file(
+        os.path.join(geometries_dir, 'new_link_geometry.geojson'), driver='GeoJSON')
+
     old_to_new_map_df = old_to_new_map_df[old_to_new_map_df['old_net_id'].isin(aux_file_links)]
     old_to_new_map_df = old_to_new_map_df[['old_net_id', 'new_net_id']].drop_duplicates()
     old_to_new_map_df = pd.merge(old_to_new_map_df, old_links[['id', 'geometry']], left_on='old_net_id',
@@ -134,10 +205,31 @@ if __name__ == '__main__':
     old_to_new_map_df.rename(columns={'geometry': 'new_geom'}, inplace=True)
     mismatched_geometries = old_to_new_map_df[old_to_new_map_df.apply(lambda x: x['old_geom'] != x['new_geom'], axis=1)]
     if len(mismatched_geometries) > 0:
-        mismatched_geometries_path = os.path.join(output_dir, 'mismatched_geometries.geojson')
+        mismatched_geometries_path = os.path.join(geometries_dir, 'mismatched_geometries.geojson')
         logging.warning(f'Found {len(mismatched_geometries_path)} geometries that are not matching exactly, they '
                         f'should be verified. Saving geojson to {mismatched_geometries_path}.')
         gpd.GeoDataFrame(mismatched_geometries).to_file(mismatched_geometries_path)
 
     logging.info('Writing auxiliary files')
     old_n.write_auxiliary_files(output_dir)
+
+    logging.info('Processing road pricing files')
+    validation_folder = os.path.join(rp_output_dir, 'validation')
+    all_missing_ids = []
+    rps = list(glob.glob(os.path.join(rp_file_dir, '*.xml')))
+    for rp_path in rps:
+        all_missing_ids.append(
+            process_rp_file(
+                rp_path,
+                old_net_gdf=old_links,
+                new_net_gdf=new_links,
+                rp_out_path=rp_output_dir,
+                validation_folder=validation_folder
+            )
+        )
+    if all_missing_ids:
+        with open(os.path.join(rp_output_dir, 'all_missing_links.txt'), 'w') as f:
+            for item in all_missing_ids:
+                f.write("%s\n" % item)
+
+    logging.info('Finished updating link IDs')
