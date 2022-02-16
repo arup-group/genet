@@ -192,7 +192,10 @@ if __name__ == '__main__':
     logging.info(f'Saving verification geojson to {geometries_dir}.')
     old_links[old_links['id'].isin(aux_file_links)][['id', 'geometry']].to_file(
         os.path.join(geometries_dir, 'old_link_geometry.geojson'), driver='GeoJSON')
-    new_links[new_links['id'].isin([old_to_new_map[i] for i in aux_file_links])][['id', 'geometry']].to_file(
+    mapped_links = [old_to_new_map[i] for i in aux_file_links if i in old_to_new_map]
+    # links that didn't get simplified / mapped
+    mapped_links += [i for i in aux_file_links if i not in old_to_new_map]
+    new_links[new_links['id'].isin(mapped_links)][['id', 'geometry']].to_file(
         os.path.join(geometries_dir, 'new_link_geometry.geojson'), driver='GeoJSON')
 
     old_to_new_map_df = old_to_new_map_df[old_to_new_map_df['old_net_id'].isin(aux_file_links)]
