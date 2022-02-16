@@ -5,6 +5,7 @@ from statistics import median
 from shapely.geometry import LineString, Point
 
 import genet.utils.parallel as parallel
+from genet.outputs_handler.geojson import setify
 
 
 # rip and monkey patch of a few functions from osmnx.simplification to customise graph simplification
@@ -22,10 +23,10 @@ def _process_path(indexed_edge_groups_to_simplify):
             for attribs_dict in edge_attributes['attributes']:
                 for key, val in attribs_dict.items():
                     if key in new_attributes:
-                        new_attributes[key]['text'] |= {val["text"]}
+                        new_attributes[key]['text'] |= setify(val["text"])
                     else:
                         new_attributes[key] = val.copy()
-                        new_attributes[key]['text'] = {new_attributes[key]['text']}
+                        new_attributes[key]['text'] = setify(new_attributes[key]['text'])
             for key, val in new_attributes.items():
                 if len(val['text']) == 1:
                     val['text'] = list(val['text'])[0]

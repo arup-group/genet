@@ -76,7 +76,7 @@ six==1.14.0
 tabulate==0.8.7
 tornado==6.1
 tqdm==4.48.0
-traitlets==4.3.3
+traitlets==5.1.1
 urllib3>=1.25.1
 wcwidth==0.1.9
 wheel==0.36.2

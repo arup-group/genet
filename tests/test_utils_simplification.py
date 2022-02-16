@@ -204,6 +204,49 @@ def test_merging_edge_data_without_attributes():
                             '5219840192721593713_5219840201713556083']}})
 
 
+def test_merging_set_attribute_values():
+    edge_group = {'new_link_id': {
+        'path': [1, 2, 3],
+        'link_data': {'permlanes': [3.0, 3.0], 'freespeed': [20, 20], 'capacity': [1000.0, 1000.0], 'oneway': ['1', '1'],
+                      'modes': [['car'], ['car']], 'from': [1, 2], 'to': [2, 3], 'id': ['1926', '1927'],
+                      's2_from': [5221390326122671999, 5221390326036762795],
+                      's2_to': [5221390326036762795, 5221390326952602895],
+                      'length': [12.0, 14.0],
+                      'attributes': [
+                          {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': {'1', '2'}}},
+                          {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'}}]},
+        'node_data': {
+            1: {'id': 1, 'x': 528915.9309752393, 'y': 181899.48948011652, 'lon': -0.14327038749428384,
+                'lat': 51.52130909540579, 's2_id': 5221390326122671999},
+            2: {'id': 2, 'x': 528888.1581643537, 'y': 181892.3086225874, 'lon': -0.14367308749449406,
+                'lat': 51.52125089540575, 's2_id': 5221390326036762795},
+            3: {'id': 3, 'x': 528780.3405144282, 'y': 181859.84184561518, 'lon': -0.14523808749533396,
+                'lat': 51.520983695405526, 's2_id': 5221390326952602895}
+        }}
+    }
+    links_to_add = simplification._process_path(edge_group)
+
+    assert_semantically_equal(links_to_add, {
+        'new_link_id': {
+            'permlanes': 3,
+            'freespeed': 20.0,
+            'capacity': 1000.0,
+            'oneway': '1',
+            'modes': {'car'},
+            'from': 1,
+            'to': 3,
+            'id': 'new_link_id',
+            's2_from': 5221390326122671999,
+            's2_to': 5221390326952602895,
+            'length': 26,
+            'attributes': {
+                'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': {'1','2','3'}}
+            },
+            'geometry': LineString([(528915.9309752393, 181899.48948011652), (528888.1581643537, 181892.3086225874),
+                                     (528780.3405144282, 181859.84184561518)]),
+            'ids': ['1926', '1927']}})
+
+
 def test_building_paths():
     path_start_points = {(1, 2), (1, 22)}
     endpoints = {1, 4}
