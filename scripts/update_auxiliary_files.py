@@ -166,7 +166,7 @@ if __name__ == '__main__':
                                 f'mapped. Found at location: {loc}')
         aux_file.apply_map(dict(zip(bad_links, [None] * len(bad_links))))
     if values_to_correct:
-        ill_defined_link_log = os.path.join(output_dir, 'ill_defined_link_log.json')
+        ill_defined_link_log = os.path.join(aux_output_dir, 'ill_defined_link_log.json')
         logging.info(f'Saving information on which files should be updated and where to {ill_defined_link_log}')
         with open(ill_defined_link_log, 'w') as outfile:
             json.dump(values_to_correct, outfile)
@@ -214,7 +214,7 @@ if __name__ == '__main__':
         gpd.GeoDataFrame(mismatched_geometries).to_file(mismatched_geometries_path)
 
     logging.info('Writing auxiliary files')
-    old_n.write_auxiliary_files(output_dir)
+    old_n.write_auxiliary_files(aux_output_dir)
 
     logging.info('Processing road pricing files')
     validation_folder = os.path.join(rp_output_dir, 'validation')
