@@ -33,10 +33,10 @@ jobs:
     - name: Lint with flake8
       run: |
         flake8 . --max-line-length 120 --count  --show-source --statistics --exclude=scripts,tests,notebooks
-    - name: Unit tests
-      run: |
-        export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-        ./bash_scripts/code-coverage.sh
+#    - name: Unit tests
+#      run: |
+#        export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+#        ./bash_scripts/code-coverage.sh
     - name: Smoke test notebooks
       run: |
         ./bash_scripts/notebooks-smoke-test.sh
