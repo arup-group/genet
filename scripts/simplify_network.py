@@ -6,6 +6,7 @@ import time
 
 from genet import read_matsim
 from genet.utils.persistence import ensure_dir
+from genet.outputs_handler.sanitiser import sanitise_dictionary
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Simplify a MATSim network by removing '
@@ -86,6 +87,8 @@ if __name__ == '__main__':
             f'Schedule vehicle level validation: {report["schedule"]["vehicle_level"]["vehicle_definitions_valid"]}'
             )
         logging.info(f'Routing validation: {report["routing"]["services_have_routes_in_the_graph"]}')
+    with open(os.path.join(output_dir, 'validation_report.json'), 'w', encoding='utf-8') as f:
+        json.dump(sanitise_dictionary(report), f, ensure_ascii=False, indent=4)
 
     n.generate_standard_outputs(os.path.join(output_dir, 'standard_outputs'))
 
