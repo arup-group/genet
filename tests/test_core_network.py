@@ -525,29 +525,34 @@ def network_with_simplified_schema():
     return n
 
 
-def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_expected_graph_data(puma_network):
+def test_simplifing_puma_network_results_in_correct_record_of_simplified_links(puma_network):
     assert not puma_network.is_simplified()
     link_ids_pre_simplify = set(dict(puma_network.links()).keys())
 
-    deleted_self_loops = puma_network.simplify()
+    puma_network.simplify()
     assert puma_network.is_simplified()
 
     link_ids_post_simplify = set(dict(puma_network.links()).keys())
 
-    assert link_ids_post_simplify & link_ids_pre_simplify
     new_links = link_ids_post_simplify - link_ids_pre_simplify
     deleted_links = link_ids_pre_simplify - link_ids_post_simplify
-    # check the links removed in simplification are all mapped to new links
-    assert set(puma_network.link_simplification_map.keys()) == deleted_links
-    # check even the removed loop links have the simplification mapping retained
-    assert set(puma_network.link_simplification_map.values()) == new_links | deleted_self_loops
-    # check all new links int he network have edge mappings
+
+    # check the links removed in simplification are mapped to new links
+    assert set(puma_network.link_simplification_map.keys()).issubset(deleted_links)
+    # check map points to new links
+    assert set(puma_network.link_simplification_map.values()) == new_links
+    # check all new links in the network have edge mappings (present in link_id_mapping)
     assert (set(puma_network.link_id_mapping.keys()) & new_links) == new_links
 
-    report = puma_network.generate_validation_report()
 
-    assert report['routing']['services_have_routes_in_the_graph']
-    assert report['schedule']['schedule_level']['is_valid_schedule']
+def test_simplifing_puma_network_results_in_a_valid_schedule(puma_network):
+    puma_network.simplify()
+    puma_network.schedule.is_valid_schedule()
+
+
+def test_simplifing_puma_network_results_in_a_schedule_with_valid_network_routes(puma_network):
+    puma_network.simplify()
+    puma_network.has_schedule_with_valid_network_routes()
 
 
 def test_simplify_does_not_oversimplify_PT_endpoints(puma_network_with_pt_stops_at_risk_of_oversimplification):
@@ -558,15 +563,14 @@ def test_simplify_does_not_oversimplify_PT_endpoints(puma_network_with_pt_stops_
     for s in pt_stops_at_risk:
         assert puma_network.link(puma_network.schedule.stop(s).linkRefId)['length'] == 1
 
-    deleted_self_loops = puma_network.simplify()
+    puma_network.simplify()
 
     for s in pt_stops_at_risk:
         assert puma_network.link(puma_network.schedule.stop(s).linkRefId)['length'] == 1
 
 
-def test_simplify_removes_loops_by_default_but_keeps_pt_stop_loops(puma_network):
-    deleted_self_loops = puma_network.simplify()
-    assert deleted_self_loops
+def test_simplify_keeps_pt_stop_loops(puma_network):
+    puma_network.simplify()
     for stop in puma_network.schedule.stops():
         assert puma_network.link(stop.linkRefId)['from'] == puma_network.link(stop.linkRefId)['to']
         assert puma_network.link(stop.linkRefId)['length'] == 1

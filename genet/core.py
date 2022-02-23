@@ -237,11 +237,12 @@ class Network:
                              'To disable this behaviour, use `keep_loops=True`. '
                              'Investigate the change log for more information about these links.')
                 self.remove_links(useless_self_loops)
+                # delete removed links from the simplification map
+                self.link_simplification_map = {k: v for k, v in self.link_simplification_map.items() if
+                                                v not in useless_self_loops}
 
         # mark graph as having been simplified
         self.graph.graph["simplified"] = True
-
-        return useless_self_loops
 
     def is_simplified(self):
         return self.graph.graph["simplified"]
