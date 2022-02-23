@@ -217,7 +217,7 @@ class Network:
             and 1 process is often preferable --- there is overhead for splitting and joining the data.
         :param keep_loops: bool, defaults to False. Simplification often leads to self-loops, these will be removed
             unless keep_loops=True
-        :return: set of self-loop link IDs
+        :return: None, updates Network object
         """
         if self.is_simplified():
             raise RuntimeError('This network has already been simplified. You cannot simplify the graph twice.')
