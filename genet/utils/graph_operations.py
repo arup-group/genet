@@ -292,8 +292,8 @@ def apply_mapping_to_attributes(iterator, mapping, location):
             # to relevant items
             pass
     if (not new_attributes) and mapping:
-        logging.warning(f'Mapping attributes resulted in 0 changes. Ensure your location variable: {location} exists'
-                        f'as keys in the input dictionaries. Only dictionaries with location={location} keys will be'
+        logging.warning(f'Mapping attributes resulted in 0 changes. Ensure your location variable: {location} exists '
+                        f'as keys in the input dictionaries. Only dictionaries with location={location} keys will be '
                         'mapped.')
     return new_attributes
 

@@ -210,10 +210,37 @@ class Network:
         else:
             self.transformer = None
 
-    def simplify(self, no_processes=1):
+    def simplify(self, no_processes=1, keep_loops=False):
+        """
+        Simplifies network graph, retaining only nodes that are junctions
+        :param no_processes: Number of processes to split some computation across. The method is pretty fast though
+            and 1 process is often preferable --- there is overhead for splitting and joining the data.
+        :param keep_loops: bool, defaults to False. Simplification often leads to self-loops, these will be removed
+            unless keep_loops=True
+        :return: None, updates Network object
+        """
         if self.is_simplified():
             raise RuntimeError('This network has already been simplified. You cannot simplify the graph twice.')
         simplification.simplify_graph(self, no_processes)
+
+        df = self.link_attribute_data_under_keys(keys=['from', 'to'])
+        df = df[df['from'] == df['to']]
+        loops = set(df.index)
+        # pt stops can be loops
+        pt_stop_loops = set(self.schedule.stop_attribute_data(keys=['linkRefId'])['linkRefId'])
+        useless_self_loops = loops - pt_stop_loops
+        if useless_self_loops:
+            logging.warning(f'Simplification led to {len(loops)} self-loop links in the network. '
+                            f'{len(useless_self_loops)} are not connected to the PT stops.')
+            if not keep_loops:
+                logging.info('The self-loops with no reference to PT stops will now be removed. '
+                             'To disable this behaviour, use `keep_loops=True`. '
+                             'Investigate the change log for more information about these links.')
+                self.remove_links(useless_self_loops)
+                # delete removed links from the simplification map
+                self.link_simplification_map = {k: v for k, v in self.link_simplification_map.items() if
+                                                v not in useless_self_loops}
+
         # mark graph as having been simplified
         self.graph.graph["simplified"] = True
 
@@ -522,6 +549,7 @@ class Network:
         :param mode: which mode to remove
         :return: updates graph
         """
+
         def empty_modes(mode_attrib):
             if not mode_attrib:
                 return True

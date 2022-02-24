@@ -475,50 +475,115 @@ def test_attempt_to_simplify_already_simplified_network_throws_error():
     assert "cannot simplify" in str(error_info.value)
 
 
-def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_expected_graph_data():
-    n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
-                         path_to_schedule=puma_schedule_test_file)
+@pytest.fixture()
+def puma_network():
+    return read.read_matsim(
+        path_to_network=puma_network_test_file, epsg='epsg:27700', path_to_schedule=puma_schedule_test_file)
 
-    link_ids_pre_simplify = set(dict(n.links()).keys())
 
-    n.simplify()
+@pytest.fixture()
+def puma_network_with_pt_stops_at_risk_of_oversimplification(puma_network):
+    return {
+        'network':puma_network,
+        'pt_stops_at_risk': ['5221390681543854913', '5221390302070799085', '5221390323679791901']
+    }
 
-    assert n.is_simplified()
+@pytest.fixture()
+def network_with_simplified_schema():
+    # characterised by complex geometry link attribute and set text value in nested attributes dictionary
+    n = Network('epsg:27700')
+    n.add_node('101982',
+                {'id': '101982',
+                 'x': '528704.1425925883',
+                 'y': '182068.78193707118',
+                 'lon': -0.14625948709424305,
+                 'lat': 51.52287873323954,
+                 's2_id': 5221390329378179879})
+    n.add_node('101986',
+                {'id': '101986',
+                 'x': '528835.203274008',
+                 'y': '182006.27331298392',
+                 'lon': -0.14439428709377497,
+                 'lat': 51.52228713323965,
+                 's2_id': 5221390328605860387})
+    n.add_link('0', '101982', '101986',
+                attribs={'id': '0',
+                         'from': '101982',
+                         'to': '101986',
+                         'freespeed': 4.166666666666667,
+                         'capacity': 600.0,
+                         'permlanes': 1.0,
+                         'oneway': '1',
+                         'modes': {'car'},
+                         'geometry': LineString([(528704.1425925883, 182068.78193707118),  (528754.425925883, 182038.78193707118), (528835.203274008,182006.27331298392)]),
+                         's2_from': 5221390329378179879,
+                         's2_to': 5221390328605860387,
+                         'length': 52.765151087870265,
+                         'attributes': {'osm:way:highway': {'name': 'osm:way:highway',
+                                                            'class': 'java.lang.String',
+                                                            'text': {'unclassified', 'other'}}}})
+    return n
 
-    link_ids_post_simplify = set(dict(n.links()).keys())
 
-    assert link_ids_post_simplify & link_ids_pre_simplify
+def test_simplifing_puma_network_results_in_correct_record_of_simplified_links(puma_network):
+    assert not puma_network.is_simplified()
+    link_ids_pre_simplify = set(dict(puma_network.links()).keys())
+
+    puma_network.simplify()
+    assert puma_network.is_simplified()
+
+    link_ids_post_simplify = set(dict(puma_network.links()).keys())
+
     new_links = link_ids_post_simplify - link_ids_pre_simplify
     deleted_links = link_ids_pre_simplify - link_ids_post_simplify
-    assert set(n.link_simplification_map.keys()) == deleted_links
-    assert set(n.link_simplification_map.values()) == new_links
-    assert (set(n.link_id_mapping.keys()) & new_links) == new_links
 
-    report = n.generate_validation_report()
+    # check the links removed in simplification are mapped to new links
+    assert set(puma_network.link_simplification_map.keys()).issubset(deleted_links)
+    # check map points to new links
+    assert set(puma_network.link_simplification_map.values()) == new_links
+    # check all new links in the network have edge mappings (present in link_id_mapping)
+    assert (set(puma_network.link_id_mapping.keys()) & new_links) == new_links
 
-    assert report['routing']['services_have_routes_in_the_graph']
-    assert report['schedule']['schedule_level']['is_valid_schedule']
+
+def test_simplifing_puma_network_results_in_a_valid_schedule(puma_network):
+    puma_network.simplify()
+    puma_network.schedule.is_valid_schedule()
 
 
-def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_dtd):
-    n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
-                         path_to_schedule=puma_schedule_test_file)
+def test_simplifing_puma_network_results_in_a_schedule_with_valid_network_routes(puma_network):
+    puma_network.simplify()
+    puma_network.has_schedule_with_valid_network_routes()
 
-    n.simplify()
 
-    n.write_to_matsim(tmpdir)
+def test_simplify_does_not_oversimplify_PT_endpoints(puma_network_with_pt_stops_at_risk_of_oversimplification):
+    puma_network = puma_network_with_pt_stops_at_risk_of_oversimplification['network']
+    pt_stops_at_risk = puma_network_with_pt_stops_at_risk_of_oversimplification['pt_stops_at_risk']
+
+    assert not puma_network.is_simplified()
+    for s in pt_stops_at_risk:
+        assert puma_network.link(puma_network.schedule.stop(s).linkRefId)['length'] == 1
+
+    puma_network.simplify()
+
+    for s in pt_stops_at_risk:
+        assert puma_network.link(puma_network.schedule.stop(s).linkRefId)['length'] == 1
+
+
+def test_simplify_keeps_pt_stop_loops(puma_network):
+    puma_network.simplify()
+    for stop in puma_network.schedule.stops():
+        assert puma_network.link(stop.linkRefId)['from'] == puma_network.link(stop.linkRefId)['to']
+        assert puma_network.link(stop.linkRefId)['length'] == 1
+
+
+def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, network_with_simplified_schema):
+    network_with_simplified_schema.write_to_matsim(tmpdir)
 
     generated_network_file_path = os.path.join(tmpdir, 'network.xml')
     xml_obj = lxml.etree.parse(generated_network_file_path)
     assert network_dtd.validate(xml_obj), \
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
                                                                         network_dtd.error_log.filter_from_errors())
-
-    generated_schedule_file_path = os.path.join(tmpdir, 'schedule.xml')
-    xml_obj = lxml.etree.parse(generated_schedule_file_path)
-    assert schedule_dtd.validate(xml_obj), \
-        'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
-                                                                        schedule_dtd.error_log.filter_from_errors())
 
 
 def test_simplifying_network_with_multi_edges_resulting_in_multi_paths():
