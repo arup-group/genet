@@ -192,7 +192,7 @@ def test_instantiating_cordon_class_from_osm_inputs(network_object, osm_tolls_df
 
 
 def test_saving_cordon_to_csv_produces_correct_csv(cordon, osm_tolls_df, tmpdir):
-    expected_csv = os.path.join(tmpdir, 'cordon_road_pricing.csv')
+    expected_csv = os.path.join(tmpdir, 'road_pricing.csv')
     assert not os.path.exists(expected_csv)
     cordon.write_to_csv(tmpdir)
     assert os.path.exists(expected_csv)
@@ -227,7 +227,9 @@ def test_building_tree_where_no_links_repeat(tmpdir):
                                             'test_data/road_pricing/osm_to_network_ids_no_link_repeat.json'))
     path_csv = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                              'test_data/road_pricing/osm_tolls_with_network_ids_no_link_overlap.csv'))
-    xml_tree_root = road_pricing.build_tree_from_csv_json(path_csv, path_json)
+    xml_tree_root = road_pricing.build_tree_from_csv_json(
+        path_csv, path_json,
+        toll_type='cordon', toll_scheme_name='cordon-toll', toll_description='A simple cordon toll scheme')
     road_pricing.write_xml(xml_tree_root, tmpdir)
 
     expected_xml = os.path.abspath(os.path.join(os.path.dirname(__file__),
@@ -274,13 +276,13 @@ def test_builds_xml_tree_with_correct_content_from_csv_json(road_pricing_xml_tre
     path_json = 'tests/test_data/road_pricing/osm_to_network_ids.json'
 
     assert road_pricing_xml_tree.tag == 'roadpricing'
-    assert road_pricing_xml_tree.attrib == {'type': 'cordon', 'name': 'cordon-toll'}
+    assert road_pricing_xml_tree.attrib == {'type': 'link', 'name': 'simple-toll'}
     assert len(road_pricing_xml_tree) == 2  # description, links
 
     descs = road_pricing_xml_tree.findall('description')
     assert len(descs) == 1
     assert descs[0].tag == 'description'
-    assert descs[0].text == 'A simple cordon toll scheme'
+    assert descs[0].text == 'A simple toll scheme'
 
     costs = road_pricing_xml_tree.xpath('//cost')
     assert len(costs) == 158

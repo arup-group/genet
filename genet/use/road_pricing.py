@@ -100,8 +100,8 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
     with tqdm(total=len(target_osm_ids)) as pbar:
         for target_id in target_osm_ids:
             links = network.extract_links_on_edge_attributes(
-                    conditions={'attributes': {attribute_name: {'text': target_id}}},
-                )
+                conditions={'attributes': {attribute_name: {'text': target_id}}},
+            )
 
             # links is now a list of strings
             if len(links) > 0:
@@ -130,7 +130,7 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
     return osm_df, osm_to_network_dict
 
 
-def write_xml(root, path):
+def write_xml(root, path, filename='roadpricing-file.xml'):
     """
     Write XML config for MATSim Road Pricing a given folder location.
     :param root: an 'lxml.etree._Element' object corresponding to the root of an XML tree
@@ -141,13 +141,14 @@ def write_xml(root, path):
                        pretty_print=True,
                        xml_declaration=False,
                        encoding='UTF-8')
-    with open(os.path.join(path, 'roadpricing-file.xml'), 'wb') as file:
+    with open(os.path.join(path, filename), 'wb') as file:
         file.write(b'<?xml version="1.0" ?>\n')
         file.write(b'<!DOCTYPE roadpricing SYSTEM "http://www.matsim.org/files/dtd/roadpricing_v1.dtd">\n')
         file.write(tree)
 
 
-def build_tree_from_csv_json(csv_input, json_input):
+def build_tree_from_csv_json(csv_input, json_input, toll_type='link', toll_scheme_name='simple-toll',
+                             toll_description='A simple toll scheme'):
     """
     Build XML config for MATSim Road Pricing from .csv and .json input
     :param csv_input: csv output from `extract_network_id_from_osm_csv` with additional columns: `vehicle_type`,
@@ -160,10 +161,11 @@ def build_tree_from_csv_json(csv_input, json_input):
     # JSON input
     with open(json_input, 'r') as f:
         osm_to_network_dict = json.load(f)
-    return build_tree(merge_osm_tolls_and_network_snapping(osm_df, osm_to_network_dict))
+    return build_tree(merge_osm_tolls_and_network_snapping(osm_df, osm_to_network_dict), toll_type=toll_type,
+                      toll_scheme_name=toll_scheme_name, toll_description=toll_description)
 
 
-def build_tree(df_tolls):
+def build_tree(df_tolls, toll_type='link', toll_scheme_name='simple-toll', toll_description='A simple toll scheme'):
     """
     Build XML config for MATSim Road Pricing from tolls DataFrame input
     :param df_tolls: pd.DataFrame(
@@ -177,12 +179,16 @@ def build_tree(df_tolls):
                     'osm_name',  # optional, if derived from OSM, human readable name of the road
                     'notes'  # optional, user notes
                 ]
+    :param toll_type: default 'link', other supported MATSim toll types: 'distance', 'cordon', 'area',
+        more info: https://www.matsim.org/apidocs/core/0.3.0/org/matsim/roadpricing/package-summary.html
+    :param toll_scheme_name: name to pass to xml file, useful for identifying multiple toll schemes
+    :param toll_description: additional description of the toll to pass to the xml file
     :return: an 'lxml.etree._Element' object
     """
 
-    roadpricing = Element("roadpricing", type="cordon", name="cordon-toll")
+    roadpricing = Element("roadpricing", type=toll_type, name=toll_scheme_name)
     description = SubElement(roadpricing, "description")
-    description.text = "A simple cordon toll scheme"
+    description.text = toll_description
 
     links = SubElement(roadpricing, "links")
 
@@ -208,7 +214,7 @@ def build_tree(df_tolls):
     for index, row in links_no_repeat.iterrows():
 
         if str(row['toll_id']) not in commented_tolls:
-            links.append(Comment(' === '+str(row['toll_id'])+' === '))
+            links.append(Comment(' === ' + str(row['toll_id']) + ' === '))
             commented_tolls.append(str(row['toll_id']))
 
         link = SubElement(links, "link", id=str(row['network_link_id']))
@@ -225,7 +231,7 @@ def build_tree(df_tolls):
 
             link_ref = link_time_of_day_df['toll_id'].unique()[0]
             if link_ref not in commented_tolls:
-                links.append(Comment(' === '+str(link_ref)+' === '))
+                links.append(Comment(' === ' + str(link_ref) + ' === '))
                 commented_tolls.append(str(link_ref))
 
             link = SubElement(links, "link", id=str(link_id))
