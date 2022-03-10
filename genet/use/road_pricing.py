@@ -35,7 +35,8 @@ class Toll:
         """
         self.df_tolls.to_csv(os.path.join(output_dir, filename), index=False)
 
-    def write_to_xml(self, output_dir, filename='roadpricing-file.xml', toll_type='link', toll_scheme_name='simple-toll', toll_description='A simple toll scheme'):
+    def write_to_xml(self, output_dir, filename='roadpricing-file.xml', toll_type='link',
+                     toll_scheme_name='simple-toll', toll_description='A simple toll scheme'):
         """
         Write toll to MATSim xml file
         :param output_dir: path to folder to receive the file
