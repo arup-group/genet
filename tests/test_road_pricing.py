@@ -151,7 +151,7 @@ def osm_tolls_df():
 
 
 @pytest.fixture
-def cordon(osm_tolls_df):
+def toll(osm_tolls_df):
     return road_pricing.Toll(osm_tolls_df)
 
 
@@ -176,25 +176,25 @@ def test_merging_osm_and_network_snapping(osm_network_snapping, osm_tolls_df):
     )
 
 
-def test_instantiating_cordon_class_from_osm_inputs(network_object, osm_tolls_df, tmpdir):
-    osm_cordon = road_pricing.road_pricing_from_osm(
+def test_instantiating_toll_class_from_osm_inputs(network_object, osm_tolls_df, tmpdir):
+    osm_toll = road_pricing.road_pricing_from_osm(
         network_object,
         'osm:way:id',
         'tests/test_data/road_pricing/osm_toll_id_ref.csv',
         tmpdir
     )
     assert_frame_equal(
-        osm_cordon.df_tolls.sort_index(axis=1),
+        osm_toll.df_tolls.sort_index(axis=1),
         osm_tolls_df,
         check_dtype=False
     )
-    assert isinstance(osm_cordon, road_pricing.Toll)
+    assert isinstance(osm_toll, road_pricing.Toll)
 
 
-def test_saving_cordon_to_csv_produces_correct_csv(cordon, osm_tolls_df, tmpdir):
+def test_saving_toll_to_csv_produces_correct_csv(toll, osm_tolls_df, tmpdir):
     expected_csv = os.path.join(tmpdir, 'road_pricing.csv')
     assert not os.path.exists(expected_csv)
-    cordon.write_to_csv(tmpdir)
+    toll.write_to_csv(tmpdir)
     assert os.path.exists(expected_csv)
     df_from_csv = pd.read_csv(expected_csv, dtype=str)
     assert_frame_equal(
@@ -204,21 +204,21 @@ def test_saving_cordon_to_csv_produces_correct_csv(cordon, osm_tolls_df, tmpdir)
     )
 
 
-def test_saving_cordon_to_xml_produces_xml_file(cordon, tmpdir):
+def test_saving_toll_to_xml_produces_xml_file(toll, tmpdir):
     # the content of the file is tested elsewhere
     expected_xml = os.path.join(tmpdir, 'roadpricing-file.xml')
     assert not os.path.exists(expected_xml)
-    cordon.write_to_xml(tmpdir)
+    toll.write_to_xml(tmpdir)
     assert os.path.exists(expected_xml)
 
 
-def test_saving_cordon_to_xml_with_missing_toll_ids_produces_xml_file(cordon, tmpdir):
-    cordon.df_tolls = cordon.df_tolls.drop('toll_id', axis=1)
-    assert not 'toll_id' in cordon.df_tolls.columns
+def test_saving_toll_to_xml_with_missing_toll_ids_produces_xml_file(toll, tmpdir):
+    toll.df_tolls = toll.df_tolls.drop('toll_id', axis=1)
+    assert not 'toll_id' in toll.df_tolls.columns
     # the content of the file is tested elsewhere
     expected_xml = os.path.join(tmpdir, 'roadpricing-file.xml')
     assert not os.path.exists(expected_xml)
-    cordon.write_to_xml(tmpdir)
+    toll.write_to_xml(tmpdir)
     assert os.path.exists(expected_xml)
 
 

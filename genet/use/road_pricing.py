@@ -27,22 +27,27 @@ class Toll:
         else:
             self.df_tolls = df_tolls
 
-    def write_to_csv(self, output_dir):
+    def write_to_csv(self, output_dir, filename='road_pricing.csv'):
         """
         Exports all tolls to csv file
         :param output_dir: path to folder to receive the file
         :return: None
         """
-        self.df_tolls.to_csv(os.path.join(output_dir, 'road_pricing.csv'), index=False)
+        self.df_tolls.to_csv(os.path.join(output_dir, filename), index=False)
 
-    def write_to_xml(self, output_dir):
+    def write_to_xml(self, output_dir, filename='roadpricing-file.xml', toll_type='link', toll_scheme_name='simple-toll', toll_description='A simple toll scheme'):
         """
-
+        Write toll to MATSim xml file
         :param output_dir: path to folder to receive the file
+        :param toll_type: default 'link', other supported MATSim toll types: 'distance', 'cordon', 'area',
+            more info: https://www.matsim.org/apidocs/core/0.3.0/org/matsim/roadpricing/package-summary.html
+        :param toll_scheme_name: name to pass to xml file, useful for identifying multiple toll schemes
+        :param toll_description: additional description of the toll to pass to the xml file
         :return: None
         """
-        xml_tree = build_tree(self.df_tolls)
-        write_xml(xml_tree, output_dir)
+        xml_tree = build_tree(
+            self.df_tolls, toll_type=toll_type, toll_scheme_name=toll_scheme_name, toll_description=toll_description)
+        write_xml(xml_tree, output_dir, filename=filename)
 
 
 def road_pricing_from_osm(network, attribute_name, osm_csv_path, outpath):
