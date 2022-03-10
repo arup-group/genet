@@ -152,7 +152,7 @@ def osm_tolls_df():
 
 @pytest.fixture
 def cordon(osm_tolls_df):
-    return road_pricing.Cordon(osm_tolls_df)
+    return road_pricing.Toll(osm_tolls_df)
 
 
 @pytest.fixture
@@ -188,7 +188,7 @@ def test_instantiating_cordon_class_from_osm_inputs(network_object, osm_tolls_df
         osm_tolls_df,
         check_dtype=False
     )
-    assert isinstance(osm_cordon, road_pricing.Cordon)
+    assert isinstance(osm_cordon, road_pricing.Toll)
 
 
 def test_saving_cordon_to_csv_produces_correct_csv(cordon, osm_tolls_df, tmpdir):

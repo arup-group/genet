@@ -9,7 +9,7 @@ from lxml.etree import Element, SubElement, Comment
 from tqdm import tqdm
 
 
-class Cordon:
+class Toll:
     def __init__(self, df_tolls: pd.DataFrame = None):
         if df_tolls is None:
             self.df_tolls = pd.DataFrame(
@@ -33,7 +33,7 @@ class Cordon:
         :param output_dir: path to folder to receive the file
         :return: None
         """
-        self.df_tolls.to_csv(os.path.join(output_dir, 'cordon_road_pricing.csv'), index=False)
+        self.df_tolls.to_csv(os.path.join(output_dir, 'road_pricing.csv'), index=False)
 
     def write_to_xml(self, output_dir):
         """
@@ -47,7 +47,7 @@ class Cordon:
 
 def road_pricing_from_osm(network, attribute_name, osm_csv_path, outpath):
     """
-    Instantiates a Cordon object from OSM csv config and network inputs
+    Instantiates a Toll object from OSM csv config and network inputs
 
     Parse a genet.Network object and find edges whose
     ['attributes'][attribute_name]['text'] is present in a list of OSM way ids
@@ -61,7 +61,7 @@ def road_pricing_from_osm(network, attribute_name, osm_csv_path, outpath):
     """
     osm_df, osm_to_network_dict = extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpath)
     tolls_df = merge_osm_tolls_and_network_snapping(osm_df, osm_to_network_dict)
-    return Cordon(tolls_df)
+    return Toll(tolls_df)
 
 
 def merge_osm_tolls_and_network_snapping(osm_df, osm_to_network_dict):
