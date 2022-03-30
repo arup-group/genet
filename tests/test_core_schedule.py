@@ -763,6 +763,39 @@ def test_adding_service(schedule, service):
                                'different_service': ['different_service_1', 'different_service_2']})
 
 
+@pytest.fixture()
+def services_to_add():
+    services = []
+    for i in range(2):
+        routes = []
+        for j in range(2):
+            routes.append(Route(route_short_name='name',
+                                mode='bus', id=f'new_route_{i}_{j}',
+                                stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'),
+                                       Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                                       Stop(id='3', x=3, y=3, epsg='epsg:27700'),
+                                       Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                                trips={'trip_id': ['1', '2'],
+                                       'trip_departure_time': ['13:00:00', '13:30:00'],
+                                       'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
+                                arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                                departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+                          )
+        services.append(Service(id=f'new_service_{i}', routes=routes))
+    return services
+
+
+def test_multiple_services_are_present_in_schedule_after_adding(schedule, services_to_add):
+    schedule.add_services(services_to_add)
+    assert set(schedule.service_ids()) == {'new_service_1', 'new_service_0', 'service'}
+    assert set(schedule.route_ids()) == {'new_route_0_0', '1', '2', 'new_route_1_1', 'new_route_1_0', 'new_route_0_1'}
+
+
+def test_adding_multiple_services_updates_changelog(schedule, services_to_add):
+    schedule.add_services(services_to_add)
+    list(schedule.change_log().iloc[-2:][['change_event', 'new_id']].to_records()) == [(0, 'add', 'new_service_0'), (1, 'add', 'new_service_1')]
+
+
 def test_adding_service_with_clashing_route_ids(schedule, service):
     service.reindex('different_service')
     schedule.add_service(service)

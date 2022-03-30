@@ -2388,54 +2388,77 @@ class Schedule(ScheduleElement):
             `apply_function_to_stops`.
         :return:
         """
-        if self.has_service(service.id):
-            raise ServiceIndexError(f'Service with ID `{service.id}` already exists in the Schedule.')
-        for route in service.routes():
-            if self.has_route(route.id):
-                logging.warning(f'Route with ID `{route.id}` within this Service `{service.id}` already exists in the '
-                                f'Schedule. This Route will be reindexed to `{service.id}_{route.id}`')
-                route.reindex(f'{service.id}_{route.id}')
+        self.add_services([service], force=force)
 
-        g = service.graph()
-        stops_without_data, stops_with_conflicting_data = self._compare_stops_data(g)
-        if stops_without_data:
-            logging.warning(f'The following stops are missing data: {stops_without_data}')
-        if stops_with_conflicting_data:
-            if force:
-                logging.warning(f'The following stops will inherit the data currently stored under those Stop IDs in '
-                                f'the Schedule: {stops_with_conflicting_data}.')
-            else:
-                raise ConflictingStopData("The following stops would inherit data currently stored under those "
-                                          f"Stop IDs in the Schedule: {stops_with_conflicting_data}. Use `force=True` "
-                                          "to continue with this operation in this manner. If you want to change the "
-                                          "data for stops use `apply_attributes_to_stops` or "
-                                          "`apply_function_to_stops`.")
-        nodes = dict_support.merge_complex_dictionaries(
-            dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
-        edges = dict_support.combine_edge_data_lists(
-            list(g.edges(data=True)), list(self._graph.edges(data=True)))
-        graph_routes = dict_support.merge_complex_dictionaries(
-            g.graph['routes'], self._graph.graph['routes'])
-        graph_services = dict_support.merge_complex_dictionaries(
-            g.graph['services'], self._graph.graph['services'])
-        self._graph.graph['route_to_service_map'] = {**self._graph.graph['route_to_service_map'],
-                                                     **g.graph['route_to_service_map']}
-        self._graph.graph['service_to_route_map'] = {**self._graph.graph['service_to_route_map'],
-                                                     **g.graph['service_to_route_map']}
+    def add_services(self, services: List[Service], force=False):
+        """
+        Adds multiple services to Schedule.
+        :param service: genet.Service object, must have index unique w.r.t. Services already in the Schedule
+        :param force: force the add, even if the stops in the Service have data conflicting with the stops of the same
+            IDs that are already in the Schedule. This will force the Service to be added, the stops data of currently
+            in the Schedule will persist. If you want to change the data for stops use `apply_attributes_to_stops` or
+            `apply_function_to_stops`.
+        :return:
+        """
+        for service in services:
+            clashing_ids = []
+            if self.has_service(service.id):
+                clashing_ids.append(service.id)
+            if clashing_ids:
+                raise ServiceIndexError(f'Services with IDs `{clashing_ids}` already exists in the Schedule.')
+        for service in services:
+            for route in service.routes():
+                if self.has_route(route.id):
+                    logging.warning(f'Route with ID `{route.id}` within this Service `{service.id}` already exists in the '
+                                    f'Schedule. This Route will be reindexed to `{service.id}_{route.id}`')
+                    route.reindex(f'{service.id}_{route.id}')
 
-        self._graph.add_nodes_from(nodes)
-        self._graph.add_edges_from(edges)
-        nx.set_node_attributes(self._graph, nodes)
-        self._graph.graph['routes'] = graph_routes
-        self._graph.graph['services'] = graph_services
+        for service in services:
+            g = service.graph()
+            stops_without_data, stops_with_conflicting_data = self._compare_stops_data(g)
+            if stops_without_data:
+                logging.warning(f'The following stops are missing data: {stops_without_data}')
+            if stops_with_conflicting_data:
+                if force:
+                    logging.warning(f'The following stops will inherit the data currently stored under those Stop IDs in '
+                                    f'the Schedule: {stops_with_conflicting_data}.')
+                else:
+                    raise ConflictingStopData("The following stops would inherit data currently stored under those "
+                                              f"Stop IDs in the Schedule: {stops_with_conflicting_data}. Use `force=True` "
+                                              "to continue with this operation in this manner. If you want to change the "
+                                              "data for stops use `apply_attributes_to_stops` or "
+                                              "`apply_function_to_stops`.")
+            nodes = dict_support.merge_complex_dictionaries(
+                dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
+            edges = dict_support.combine_edge_data_lists(
+                list(g.edges(data=True)), list(self._graph.edges(data=True)))
+            graph_routes = dict_support.merge_complex_dictionaries(
+                g.graph['routes'], self._graph.graph['routes'])
+            graph_services = dict_support.merge_complex_dictionaries(
+                g.graph['services'], self._graph.graph['services'])
+            route_to_service_map = {**self._graph.graph['route_to_service_map'],
+                                    **g.graph['route_to_service_map']}
+            service_to_route_map = {**self._graph.graph['service_to_route_map'],
+                                    **g.graph['service_to_route_map']}
 
-        service_data = self._graph.graph['services'][service.id]
-        route_ids = list(service.route_ids())
-        self._graph.graph['change_log'].add(object_type='service', object_id=service.id, object_attributes=service_data)
-        logging.info(f'Added Service with index `{service.id}`, data={service_data} and Routes: {route_ids}')
-        service._graph = self._graph
+            self._graph.add_nodes_from(nodes)
+            self._graph.add_edges_from(edges)
+            nx.set_node_attributes(self._graph, nodes)
+            self._graph.graph['routes'] = graph_routes
+            self._graph.graph['services'] = graph_services
+            self._graph.graph['route_to_service_map'] = route_to_service_map
+            self._graph.graph['service_to_route_map'] = service_to_route_map
+
+        service_ids = [service.id for service in services]
+        service_data = [self._graph.graph['services'][sid] for sid in service_ids]
+        route_ids = [list(service.route_ids()) for service in services]
+        self._graph.graph['change_log'] = self._graph.graph['change_log'].add_bunch(
+            object_type='service', id_bunch=service_ids, attributes_bunch=service_data)
+        logging.info(f'Added Services with indicies `{service_ids}` and Routes: {route_ids}')
+        for service in services:
+            service._graph = self._graph
         self.generate_vehicles(overwrite=False)
-        return service
+        return services
 
     def remove_service(self, service_id):
         """
@@ -2588,7 +2611,8 @@ class Schedule(ScheduleElement):
         self._graph.remove_nodes_from(stop_ids)
         self.remove_stops_from_minimal_transfer_times(stop_ids)
 
-        self._graph.graph['change_log'].remove_bunch(object_type='stop', id_bunch=stop_ids, attributes_bunch=stop_data)
+        self._graph.graph['change_log'] = self._graph.graph['change_log'].remove_bunch(
+            object_type='stop', id_bunch=stop_ids, attributes_bunch=stop_data)
         logging.info(f'Removed Stops with indices `{stop_ids}`.'
                      f'Routes affected: {routes_affected}. Services affected: {services_affected}.')
 
