@@ -1,19 +1,16 @@
 from shapely.geometry import Polygon, GeometryCollection
 from pandas import DataFrame, Timestamp, Timedelta
 from pandas.testing import assert_frame_equal
-from tests.fixtures import *
-from tests.test_core_components_route import self_looping_route, route
-from tests.test_core_components_service import service
-from genet.inputs_handler import read, matsim_reader, gtfs_reader
 
 from genet.exceptions import ServiceIndexError, ConflictingStopData, InconsistentVehicleModeError
-from genet.inputs_handler import read
+from genet.inputs_handler import read, matsim_reader, gtfs_reader
 from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation
 from tests.fixtures import *
 from tests.test_core_components_service import service
 from tests.test_core_components_route import self_looping_route, route
+from tests.test_core_schedule_elements import schedule_graph
 
 import pytest
 
@@ -882,6 +879,22 @@ def test_removing_service_updates_vehicles(schedule):
     assert schedule.has_service('service')
     schedule.remove_service('service')
     assert schedule.vehicles == {}
+
+
+def test_multiple_services_are_no_longer_present_in_schedule_after_removing(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    assert set(s.service_ids()) == {'service1', 'service2'}
+    assert set(s.route_ids()) == {'2', '1', '4', '3'}
+    s.remove_services(['service1', 'service2'])
+    assert set(s.service_ids()) == set()
+    assert set(s.route_ids()) == set()
+
+
+def test_removing_multiple_services_updates_changelog(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    s.remove_services(['service1', 'service2'])
+    list(s.change_log().iloc[-2:][['change_event', 'old_id']].to_records()) == [(0, 'remove', 'service1'), (1, 'remove', 'service2')]
+
 
 
 def test_adding_route(schedule, route):
