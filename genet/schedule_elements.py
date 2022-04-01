@@ -2571,11 +2571,12 @@ class Schedule(ScheduleElement):
                             f'The following stops will inherit the data currently stored under those Stop IDs in '
                             f'the Schedule: {stops_with_conflicting_data}.')
                     else:
-                        raise ConflictingStopData("The following stops would inherit data currently stored under those "
-                                                  f"Stop IDs in the Schedule: {stops_with_conflicting_data}. Use `force=True` "
-                                                  "to continue with this operation in this manner. If you want to change the "
-                                                  "data for stops use `apply_attributes_to_stops` or "
-                                                  "`apply_function_to_stops`.")
+                        raise ConflictingStopData(
+                            "The following stops would inherit data currently stored under those "
+                            f"Stop IDs in the Schedule: {stops_with_conflicting_data}. Use `force=True` "
+                            "to continue with this operation in this manner. If you want to change the "
+                            "data for stops use `apply_attributes_to_stops` or "
+                            "`apply_function_to_stops`.")
                 nx.set_edge_attributes(g, {edge: {'services': {service_id}} for edge in set(g.edges())})
                 nx.set_node_attributes(g, {node: {'services': {service_id}} for node in set(g.nodes())})
                 nodes = dict_support.merge_complex_dictionaries(
