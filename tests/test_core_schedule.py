@@ -923,7 +923,43 @@ def test_adding_route_with_clashing_id(schedule, route):
 def test_adding_route_to_non_existing_service_throws_error(schedule, route):
     with pytest.raises(ServiceIndexError) as e:
         schedule.add_route('service_that_doesnt_exist', route)
-    assert 'does not exist' in str(e.value)
+    assert 'do not exist' in str(e.value)
+
+
+@pytest.fixture()
+def routes_to_add():
+    route_1 = Route(route_short_name='name',
+                    mode='bus', id='route_to_add1',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['13:00:00', '13:30:00'],
+                           'vehicle_id': ['veh_1', 'veh_2']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    route_2 = Route(route_short_name='name_2',
+                    mode='bus', id='route_to_add2',
+                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['11:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_3', 'veh_4']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    return [route_1, route_2]
+
+
+def test_multiple_routes_are_present_in_schedule_after_adding(schedule, routes_to_add):
+    assert set(schedule.service_ids()) == {'service'}
+    assert set(schedule.route_ids()) == {'2', '1'}
+    schedule.add_routes({'service': routes_to_add})
+    assert set(schedule.service_ids()) == {'service'}
+    assert set(schedule.route_ids()) == {'2', 'route_to_add2', '1', 'route_to_add1'}
+
+
+def test_adding_multiple_routes_updates_changelog(schedule, services_to_add):
+    schedule.add_services(services_to_add)
+    list(schedule.change_log().iloc[-2:][['change_event', 'new_id']].to_records()) == [(0, 'add', 'route_to_add1'), (1, 'add', 'route_to_add2')]
 
 
 def test_creating_a_route_to_add_using_id_references_to_existing_stops_inherits_schedule_stops_data(schedule):

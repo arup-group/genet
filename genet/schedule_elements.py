@@ -2388,7 +2388,7 @@ class Schedule(ScheduleElement):
             `apply_function_to_stops`.
         :return:
         """
-        self.add_services([service], force=force)
+        self.add_services(services=[service], force=force)
 
     def add_services(self, services: List[Service], force=False):
         """
@@ -2469,7 +2469,7 @@ class Schedule(ScheduleElement):
         :param service_id: Service ID to remove
         :return:
         """
-        self.remove_services([service_id])
+        self.remove_services(service_ids=[service_id])
 
     def remove_services(self, service_ids: List[str]):
         """
@@ -2529,52 +2529,78 @@ class Schedule(ScheduleElement):
             `apply_function_to_stops`.
         :return:
         """
-        if not self.has_service(service_id):
-            raise ServiceIndexError(f'Service with ID `{service_id}` does not exist in the Schedule. '
-                                    'You must add a Route to an existing Service, or add a new Service')
-        if self.has_route(route.id):
-            service = self[service_id]
-            logging.warning(f'Route with ID `{route.id}` within already exists in the Schedule. '
-                            f'This Route will be reindexed to `{service_id}_{len(service) + 1}`')
-            route.reindex(f'{service_id}_{len(service) + 1}')
+        self.add_routes(routes_dict={service_id: [route]}, force=force)
 
-        g = route.graph()
-        stops_without_data, stops_with_conflicting_data = self._compare_stops_data(g)
-        if stops_without_data:
-            logging.warning(f'The following stops are missing data: {stops_without_data}')
-        if stops_with_conflicting_data:
-            if force:
-                logging.warning(f'The following stops will inherit the data currently stored under those Stop IDs in '
-                                f'the Schedule: {stops_with_conflicting_data}.')
+    def add_routes(self, routes_dict: Dict[str, List[Route]], force=False):
+        """
+        Adds routes to a services already present in the Schedule.
+        :param routes_dict: dictionary specifying service IDs and list of routes (Route objects) to add to them
+        :param force: force the add, even if the stops in the Route have data conflicting with the stops of the same
+            IDs that are already in the Schedule. This will force the Route to be added, the stops data of currently
+            in the Schedule will persist. If you want to change the data for stops use `apply_attributes_to_stops` or
+            `apply_function_to_stops`.
+        :return:
+        """
+        missing_services = []
+        route_ids = []
+        for service_id, routes in routes_dict.items():
+            if not self.has_service(service_id):
+                missing_services.append(service_id)
             else:
-                raise ConflictingStopData("The following stops would inherit data currently stored under those "
-                                          f"Stop IDs in the Schedule: {stops_with_conflicting_data}. Use `force=True` "
-                                          "to continue with this operation in this manner. If you want to change the "
-                                          "data for stops use `apply_attributes_to_stops` or "
-                                          "`apply_function_to_stops`.")
-        nx.set_edge_attributes(g, {edge: {'services': {service_id}} for edge in set(g.edges())})
-        nx.set_node_attributes(g, {node: {'services': {service_id}} for node in set(g.nodes())})
-        nodes = dict_support.merge_complex_dictionaries(
-            dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
-        edges = dict_support.combine_edge_data_lists(
-            list(g.edges(data=True)), list(self._graph.edges(data=True)))
-        graph_routes = dict_support.merge_complex_dictionaries(
-            g.graph['routes'], self._graph.graph['routes'])
-        self._graph.graph['route_to_service_map'][route.id] = service_id
-        self._graph.graph['service_to_route_map'][service_id].append(route.id)
+                for route in routes:
+                    if self.has_route(route.id):
+                        service = self[service_id]
+                        logging.warning(f'Route with ID `{route.id}` for Service {service_id} within already exists '
+                                        'in the Schedule. This Route will be reindexed to '
+                                        f'`{service_id}_{len(service) + 1}`')
+                        route.reindex(f'{service_id}_{len(service) + 1}')
+                    route_ids.append(route.id)
+        if missing_services:
+            raise ServiceIndexError(f'Services with IDs `{missing_services}` do not exist in the Schedule. '
+                                    'You must add Routes to an existing Service, or add a new Service')
 
-        self._graph.add_nodes_from(nodes)
-        self._graph.add_edges_from(edges)
-        nx.set_node_attributes(self._graph, nodes)
-        self._graph.graph['routes'] = graph_routes
+        for service_id, routes in routes_dict.items():
+            for route in routes:
+                g = route.graph()
+                stops_without_data, stops_with_conflicting_data = self._compare_stops_data(g)
+                if stops_without_data:
+                    logging.warning(f'The following stops are missing data: {stops_without_data}')
+                if stops_with_conflicting_data:
+                    if force:
+                        logging.warning(f'The following stops will inherit the data currently stored under those Stop IDs in '
+                                        f'the Schedule: {stops_with_conflicting_data}.')
+                    else:
+                        raise ConflictingStopData("The following stops would inherit data currently stored under those "
+                                                  f"Stop IDs in the Schedule: {stops_with_conflicting_data}. Use `force=True` "
+                                                  "to continue with this operation in this manner. If you want to change the "
+                                                  "data for stops use `apply_attributes_to_stops` or "
+                                                  "`apply_function_to_stops`.")
+                nx.set_edge_attributes(g, {edge: {'services': {service_id}} for edge in set(g.edges())})
+                nx.set_node_attributes(g, {node: {'services': {service_id}} for node in set(g.nodes())})
+                nodes = dict_support.merge_complex_dictionaries(
+                    dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
+                edges = dict_support.combine_edge_data_lists(
+                    list(g.edges(data=True)), list(self._graph.edges(data=True)))
+                graph_routes = dict_support.merge_complex_dictionaries(
+                    g.graph['routes'], self._graph.graph['routes'])
+                self._graph.graph['route_to_service_map'][route.id] = service_id
+                self._graph.graph['service_to_route_map'][service_id].append(route.id)
 
-        route_data = self._graph.graph['routes'][route.id]
-        self._graph.graph['change_log'].add(object_type='route', object_id=route.id, object_attributes=route_data)
-        logging.info(f'Added Route with index `{route.id}`, data={route_data} to Service `{service_id}` within the '
+                self._graph.add_nodes_from(nodes)
+                self._graph.add_edges_from(edges)
+                nx.set_node_attributes(self._graph, nodes)
+                self._graph.graph['routes'] = graph_routes
+
+        route_data = [self._graph.graph['routes'][rid] for rid in route_ids]
+        self._graph.graph['change_log'] = self._graph.graph['change_log'].add_bunch(
+            object_type='route', id_bunch=route_ids, attributes_bunch=route_data)
+        logging.info(f'Added Routes with IDs {route_ids}, to Services `{list(routes_dict.keys())}` within the '
                      f'Schedule')
-        route._graph = self._graph
+        for service_id, routes in routes_dict.items():
+            for route in routes:
+                route._graph = self._graph
         self.generate_vehicles(overwrite=False)
-        return route
+        return routes_dict
 
     def remove_route(self, route_id):
         """
