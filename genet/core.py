@@ -1711,6 +1711,11 @@ class Network:
         route = self.schedule.route(_id)
         logging.info(f'Checking `linkRefId`s of the Route: `{_id}` are present in the graph')
         linkrefids = [stop.linkRefId for stop in route.stops()]
+        # sometimes consecutive stops share links (if the links are long or stops close together)
+        # we dont need to route between them so we simplify the chain of linkrefids
+        linkrefids = [linkrefids[0]] + [linkrefids[i] for i in range(1, len(linkrefids)) if
+                                        linkrefids[i - 1] != linkrefids[i]]
+
         unrecognised_linkrefids = set(linkrefids) - set(self.link_id_mapping.keys())
         if not unrecognised_linkrefids:
             logging.info(f'Rerouting Route `{_id}`')

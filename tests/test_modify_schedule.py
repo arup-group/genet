@@ -298,9 +298,10 @@ def test_routing_services_with_shared_stops(test_network, test_service):
                       arrival_offsets=['00:00:00', '00:02:00', '00:05:00'],
                       departure_offsets=['00:00:00', '00:03:00', '00:07:00']
                       )
-    ])])
+            ])])
     test_network.route_service('service_bus', additional_modes='car')
-    assert test_network.schedule['other_service_bus'].reference_edges() == {('A', '490000235C'), ('490000235C', '490000089A')}
+    assert test_network.schedule['other_service_bus'].reference_edges() == {('A', '490000235C'),
+                                                                            ('490000235C', '490000089A')}
     test_network.route_service('other_service_bus', additional_modes='car')
 
     rep = test_network.generate_validation_report()
@@ -327,7 +328,7 @@ def test_routing_services_with_stops_that_have_colons_in_id_and_are_unsnapped(te
                       arrival_offsets=['00:00:00', '00:02:00', '00:05:00'],
                       departure_offsets=['00:00:00', '00:03:00', '00:07:00']
                       )
-    ])])
+            ])])
     test_network.route_service('service_bus', additional_modes='car')
 
     rep = test_network.generate_validation_report()
@@ -564,6 +565,23 @@ def test_rerouting_route(test_network):
 
     assert test_network.schedule._graph.graph['routes']['7797_0']['route']
     test_network.schedule.route('7797_0').is_valid_route()
+
+
+def test_rerouting_with_stops_that_have_repeated_linkrefids_does_not_route_between_shared_linkrefid(test_network):
+    old_route = test_network.schedule.route('7797_1').route
+    test_network.schedule._graph.nodes['5221390696959560817']['linkRefId'] = '5221390688151572741_5221390688151572741'
+    stops_linkrefids = [test_network.schedule._graph.nodes[stop]['linkRefId'] for stop in
+                        test_network.schedule._graph.graph['routes']['7797_1']['ordered_stops']]
+    assert stops_linkrefids == ['5221390668024400277_5221390668024400277', '5221390679263486719_5221390679263486719',
+                                '5221390681543854913_5221390681543854913', '5221390705165650355_5221390705165650355',
+                                '5221390700987319759_5221390700987319759', '5221390688151572741_5221390688151572741',
+                                '5221390688151572741_5221390688151572741', '5221390319339875719_5221390319339875719']
+    test_network.reroute('7797_1')
+
+    new_route = test_network.schedule.route('7797_1').route
+    assert new_route != old_route
+    # check double linkref is mentioned only once
+    assert [i for i in new_route if i=='5221390688151572741_5221390688151572741'] == ['5221390688151572741_5221390688151572741']
 
 
 def test_rerouting_nonexistent_id_throws_error(test_network):
