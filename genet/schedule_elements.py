@@ -2405,7 +2405,7 @@ class Schedule(ScheduleElement):
             if self.has_service(service.id):
                 clashing_ids.append(service.id)
         if clashing_ids:
-            raise ServiceIndexError(f'Services with IDs `{clashing_ids}` already exists in the Schedule.')
+            raise ServiceIndexError(f'Services with IDs {clashing_ids} already exist in the Schedule.')
         for service in services:
             for route in service.routes():
                 if self.has_route(route.id):
@@ -2484,8 +2484,8 @@ class Schedule(ScheduleElement):
             if not self.has_service(service_id):
                 missing_ids.append(service_id)
         if missing_ids:
-            raise ServiceIndexError(f'Services with IDs `{missing_ids}` does not exist in the Schedule. '
-                                    "Cannot remove a Service that isn't present.")
+            raise ServiceIndexError(f'Services with IDs {missing_ids} do not exist in the Schedule. '
+                                    "Cannot remove Services that aren't present.")
         service_data = []
         route_ids = set()
         ref_nodes = set()
@@ -2567,8 +2567,9 @@ class Schedule(ScheduleElement):
                     logging.warning(f'The following stops are missing data: {stops_without_data}')
                 if stops_with_conflicting_data:
                     if force:
-                        logging.warning(f'The following stops will inherit the data currently stored under those Stop IDs in '
-                                        f'the Schedule: {stops_with_conflicting_data}.')
+                        logging.warning(
+                            f'The following stops will inherit the data currently stored under those Stop IDs in '
+                            f'the Schedule: {stops_with_conflicting_data}.')
                     else:
                         raise ConflictingStopData("The following stops would inherit data currently stored under those "
                                                   f"Stop IDs in the Schedule: {stops_with_conflicting_data}. Use `force=True` "
@@ -2605,39 +2606,72 @@ class Schedule(ScheduleElement):
     def remove_route(self, route_id):
         """
         Removes Route under index `route_id`
-        :param route_id:
+        :param route_id: route ID to remove
         :return:
         """
-        if not self.has_route(route_id):
-            raise RouteIndexError(f'Route with ID `{route_id}` does not exist in the Schedule. '
-                                  "Cannot remove a Route that isn't present.")
-        route = self.route(route_id)
-        route_data = self._graph.graph['routes'][route_id]
-        service_id = self._graph.graph['route_to_service_map'][route_id]
+        self.remove_routes(route_ids=[route_id])
 
-        for stop in route.reference_nodes():
-            self._graph.nodes[stop]['routes'] = self._graph.nodes[stop]['routes'] - {route_id}
-            if (not self._graph.nodes[stop]['routes']) or (
-                    self._graph.nodes[stop]['routes'] & set(self._graph.graph['service_to_route_map'])):
-                self._graph.nodes[stop]['services'] = self._graph.nodes[stop]['services'] - {service_id}
-        for u, v in route.reference_edges():
-            self._graph[u][v]['routes'] = self._graph[u][v]['routes'] - {route_id}
-            if (not self._graph[u][v]['routes']) or (
-                    set(self._graph[u][v]['routes']) & set(self._graph.graph['service_to_route_map'])):
-                self._graph[u][v]['services'] = self._graph[u][v]['services'] - {service_id}
+    def remove_routes(self, route_ids: List[str]):
+        """
+        Removes Route under index `route_id`
+        :param route_ids: list of route IDs to remove
+        :return:
+        """
+        if isinstance(route_ids, set):
+            route_ids = list(route_ids)
+        missing_ids = []
+        for route_id in route_ids:
+            if not self.has_route(route_id):
+                missing_ids.append(route_id)
+        if missing_ids:
+            raise RouteIndexError(f'Routes with IDs {missing_ids} do not exist in the Schedule. '
+                                  "Cannot remove Routes that aren't present.")
 
-        self._graph.graph['service_to_route_map'][service_id].remove(route_id)
-        del self._graph.graph['route_to_service_map'][route_id]
-        del self._graph.graph['routes'][route_id]
-        self._graph.graph['change_log'].remove(object_type='route', object_id=route_id, object_attributes=route_data)
+        route_data = []
+        service_ids = set()
+        route_ref_nodes = set()
+        route_ref_edges = set()
+        for route_id in route_ids:
+            route_data.append(self._graph.graph['routes'][route_id])
+            service_id = self._graph.graph['route_to_service_map'][route_id]
+            service_ids.add(service_id)
+            route_ref_nodes |= self.route_reference_nodes(route_id)
+            route_ref_edges |= self.route_reference_edges(route_id)
+
+        self._remove_routes_from_nodes(nodes=route_ref_nodes, route_ids=set(route_ids))
+        self._remove_routes_from_edges(edges=route_ref_edges, route_ids=set(route_ids))
+
+        service_ref_nodes = set()
+        service_ref_edges = set()
+        for service_id in service_ids:
+            for node in route_ref_nodes:
+                if not (self._graph.nodes[node]['routes'] & set(self._graph.graph['service_to_route_map'][service_id])):
+                    service_ref_nodes.add(node)
+            for (u, v) in route_ref_edges:
+                if not (self._graph[u][v]['routes'] & set(self._graph.graph['service_to_route_map'][service_id])):
+                    service_ref_edges.add((u, v))
+        self._remove_services_from_nodes(nodes=service_ref_nodes, service_ids=service_ids)
+        self._remove_services_from_edges(edges=service_ref_edges, service_ids=service_ids)
+
+        for route_id in route_ids:
+            service_id = self._graph.graph['route_to_service_map'][route_id]
+            self._graph.graph['service_to_route_map'][service_id].remove(route_id)
+            del self._graph.graph['route_to_service_map'][route_id]
+            del self._graph.graph['routes'][route_id]
+            if not self._graph.graph['service_to_route_map'][service_id]:
+                logging.warning(f'Removal of Routes led to a whole service {service_id} being removed')
+                del self._graph.graph['service_to_route_map'][service_id]
+                del self._graph.graph['services'][service_id]
+
+        self._graph.graph['change_log'] = self._graph.graph['change_log'].remove_bunch(
+            object_type='route', id_bunch=route_ids, attributes_bunch=route_data)
 
         # update vehicles
         old_vehicles = deepcopy(self.vehicles)
         self.vehicles = {}
         self.generate_vehicles()
         self.vehicles = {**self.vehicles, **{k: v for k, v in old_vehicles.items() if k in self.vehicles}}
-        logging.info(f'Removed Route with index `{route_id}`, data={route_data}. '
-                     f'It was linked to Service `{service_id}`.')
+        logging.info(f'Removed Routes with IDs {route_ids}, to Services `{service_id}`.')
 
     def remove_stop(self, stop_id: str):
         """

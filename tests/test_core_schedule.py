@@ -810,7 +810,7 @@ def test_adding_service_with_clashing_route_ids(schedule, service):
 def test_adding_service_with_clashing_id_throws_error(schedule, service):
     with pytest.raises(ServiceIndexError) as e:
         schedule.add_service(service)
-    assert 'already exists' in str(e.value)
+    assert 'already exist' in str(e.value)
 
 
 def test_adding_service_with_clashing_stops_data_does_not_overwrite_existing_stops(schedule):
@@ -1181,6 +1181,30 @@ def test_removing_route_with_overlapping_vehicles_leaves_all_vehicles(schedule, 
     assert_semantically_equal(schedule.vehicles,
                               {'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'},
                                'veh_3_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'}})
+
+
+def test_multiple_routes_are_no_longer_present_in_schedule_after_removing(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    assert set(s.service_ids()) == {'service1', 'service2'}
+    assert set(s.route_ids()) == {'2', '1', '4', '3'}
+    s.remove_routes(['1', '3'])
+    assert set(s.service_ids()) == {'service1', 'service2'}
+    assert set(s.route_ids()) == {'4', '2'}
+
+
+def test_service_is_no_longer_present_after_removing_all_its_routes(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    assert set(s.service_ids()) == {'service1', 'service2'}
+    assert set(s.route_ids()) == {'2', '1', '4', '3'}
+    s.remove_routes(['1', '2'])
+    assert set(s.service_ids()) == {'service2'}
+    assert set(s.route_ids()) == {'4', '3'}
+
+
+def test_removing_multiple_routes_updates_changelog(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    s.remove_routes(['1', '2'])
+    list(s.change_log().iloc[-2:][['change_event', 'old_id']].to_records()) == [(0, 'remove', '1'), (1, 'remove', '2')]
 
 
 def test_removing_stop(schedule):
