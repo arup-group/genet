@@ -783,14 +783,21 @@ def services_to_add():
 
 
 def test_multiple_services_are_present_in_schedule_after_adding(schedule, services_to_add):
+    existing_routes = set(schedule.route_ids())
+    expected_routes_after_adding = existing_routes | {r.id for s in services_to_add for r in s.routes()}
+    existing_services = set(schedule.service_ids())
+    expected_services_after_adding = existing_services | {s.id for s in services_to_add}
+
     schedule.add_services(services_to_add)
-    assert set(schedule.service_ids()) == {'new_service_1', 'new_service_0', 'service'}
-    assert set(schedule.route_ids()) == {'new_route_0_0', '1', '2', 'new_route_1_1', 'new_route_1_0', 'new_route_0_1'}
+
+    assert set(schedule.service_ids()) == expected_services_after_adding
+    assert set(schedule.route_ids()) == expected_routes_after_adding
 
 
 def test_adding_multiple_services_updates_changelog(schedule, services_to_add):
     schedule.add_services(services_to_add)
-    list(schedule.change_log().iloc[-2:][['change_event', 'new_id']].to_records()) == [(0, 'add', 'new_service_0'), (1, 'add', 'new_service_1')]
+    assert list(schedule.change_log().iloc[-len(services_to_add):][['change_event', 'new_id']].itertuples(
+        index=False,name=None)) == [('add', s.id) for s in services_to_add]
 
 
 def test_adding_service_with_clashing_route_ids(schedule, service):
@@ -883,18 +890,17 @@ def test_removing_service_updates_vehicles(schedule):
 
 def test_multiple_services_are_no_longer_present_in_schedule_after_removing(schedule_graph):
     s = Schedule(_graph=schedule_graph)
-    assert set(s.service_ids()) == {'service1', 'service2'}
-    assert set(s.route_ids()) == {'2', '1', '4', '3'}
-    s.remove_services(['service1', 'service2'])
+    s.remove_services(list(s.service_ids()))
     assert set(s.service_ids()) == set()
     assert set(s.route_ids()) == set()
 
 
-def test_removing_multiple_services_updates_changelog(schedule_graph):
+def test_removing_multiple_services_updates_changelog(schedule, schedule_graph):
     s = Schedule(_graph=schedule_graph)
-    s.remove_services(['service1', 'service2'])
-    list(s.change_log().iloc[-2:][['change_event', 'old_id']].to_records()) == [(0, 'remove', 'service1'), (1, 'remove', 'service2')]
-
+    services_to_remove = list(s.service_ids())
+    s.remove_services(services_to_remove)
+    assert list(s.change_log().iloc[-len(services_to_remove):][['change_event', 'old_id']].itertuples(
+        index=False,name=None)) == [('remove', s) for s in services_to_remove]
 
 
 def test_adding_route(schedule, route):
@@ -946,20 +952,25 @@ def routes_to_add():
                            'vehicle_id': ['veh_3', 'veh_4']},
                     arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
-    return [route_1, route_2]
+    return {'service': [route_1, route_2]}
 
 
 def test_multiple_routes_are_present_in_schedule_after_adding(schedule, routes_to_add):
-    assert set(schedule.service_ids()) == {'service'}
-    assert set(schedule.route_ids()) == {'2', '1'}
-    schedule.add_routes({'service': routes_to_add})
-    assert set(schedule.service_ids()) == {'service'}
-    assert set(schedule.route_ids()) == {'2', 'route_to_add2', '1', 'route_to_add1'}
+    existing_routes= set(schedule.route_ids())
+    expected_routes_after_adding = existing_routes | {r.id for s, rs in routes_to_add.items() for r in rs}
+    existing_services = set(schedule.service_ids())
+    expected_services_after_adding = existing_services | set(routes_to_add)
+
+    schedule.add_routes(routes_to_add)
+
+    assert set(schedule.service_ids()) == expected_services_after_adding
+    assert set(schedule.route_ids()) == expected_routes_after_adding
 
 
-def test_adding_multiple_routes_updates_changelog(schedule, services_to_add):
-    schedule.add_services(services_to_add)
-    list(schedule.change_log().iloc[-2:][['change_event', 'new_id']].to_records()) == [(0, 'add', 'route_to_add1'), (1, 'add', 'route_to_add2')]
+def test_adding_multiple_routes_updates_changelog(schedule, routes_to_add):
+    schedule.add_routes(routes_to_add)
+    assert list(schedule.change_log().iloc[-sum([len(rs) for s, rs in routes_to_add.items()]):][['change_event', 'new_id']].itertuples(
+        index=False,name=None)) == [('add', r.id) for s, rs in routes_to_add.items() for r in rs]
 
 
 def test_creating_a_route_to_add_using_id_references_to_existing_stops_inherits_schedule_stops_data(schedule):
@@ -1203,8 +1214,9 @@ def test_service_is_no_longer_present_after_removing_all_its_routes(schedule_gra
 
 def test_removing_multiple_routes_updates_changelog(schedule_graph):
     s = Schedule(_graph=schedule_graph)
-    s.remove_routes(['1', '2'])
-    list(s.change_log().iloc[-2:][['change_event', 'old_id']].to_records()) == [(0, 'remove', '1'), (1, 'remove', '2')]
+    route_to_remove=['1', '2']
+    s.remove_routes(route_to_remove)
+    assert list(s.change_log().iloc[-len(route_to_remove):][['change_event', 'old_id']].itertuples(index=False,name=None)) == [('remove', r) for r in route_to_remove]
 
 
 def test_removing_stop(schedule):

@@ -1,6 +1,7 @@
 import os
 import logging
 import shutil
+from typing import Union
 
 
 def ensure_dir(direc):
@@ -9,6 +10,24 @@ def ensure_dir(direc):
             os.makedirs(direc)
         except PermissionError as e:
             logging.warning(e)
+
+
+def setify(value: Union[str, list, set]):
+    if isinstance(value, str):
+        return {value}
+    elif isinstance(value, (list, set)):
+        return set(value)
+    elif value is None:
+        return set()
+
+
+def listify(value: Union[str, list, set]):
+    if isinstance(value, str):
+        return [value]
+    elif isinstance(value, (list, set)):
+        return list(value)
+    elif value is None:
+        return []
 
 
 def is_yml(path):

@@ -19,13 +19,6 @@ def modal_subset(row, modes):
         return False
 
 
-def setify(x):
-    if not isinstance(x, set):
-        return {x}
-    else:
-        return x
-
-
 def generate_geodataframes(graph):
     def line_geometry():
         from_node = nodes.loc[_u, :]
@@ -178,7 +171,7 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
 
     logging.info('Generating geojson outputs for different highway tags in car modal subgraph')
     highway_tags = n.link_attribute_data_under_key({'attributes': {'osm:way:highway': 'text'}})
-    highway_tags = set(chain.from_iterable(highway_tags.apply(lambda x: setify(x))))
+    highway_tags = set(chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
     for tag in highway_tags:
         tag_links = n.extract_links_on_edge_attributes(
             conditions={'attributes': {'osm:way:highway': {'text': tag}}},

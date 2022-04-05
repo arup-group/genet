@@ -2477,8 +2477,7 @@ class Schedule(ScheduleElement):
         :param service_ids: List of service IDs to remove
         :return:
         """
-        if isinstance(service_ids, set):
-            service_ids = list(service_ids)
+        service_ids = persistence.listify(service_ids)
         missing_ids = []
         for service_id in service_ids:
             if not self.has_service(service_id):
@@ -2533,7 +2532,7 @@ class Schedule(ScheduleElement):
 
     def add_routes(self, routes_dict: Dict[str, List[Route]], force=False):
         """
-        Adds routes to a services already present in the Schedule.
+        Adds routes to services already present in the Schedule.
         :param routes_dict: dictionary specifying service IDs and list of routes (Route objects) to add to them
         :param force: force the add, even if the stops in the Route have data conflicting with the stops of the same
             IDs that are already in the Schedule. This will force the Route to be added, the stops data of currently
@@ -2618,8 +2617,7 @@ class Schedule(ScheduleElement):
         :param route_ids: list of route IDs to remove
         :return:
         """
-        if isinstance(route_ids, set):
-            route_ids = list(route_ids)
+        route_ids = persistence.listify(route_ids)
         missing_ids = []
         for route_id in route_ids:
             if not self.has_route(route_id):
@@ -2683,7 +2681,7 @@ class Schedule(ScheduleElement):
         self.remove_stops([stop_id])
 
     def remove_stops(self, stop_ids: Union[list, set]):
-        stop_ids = list(set(stop_ids))
+        stop_ids = persistence.listify(set(stop_ids))
         for stop_id in stop_ids:
             if not self.has_stop(stop_id):
                 stop_ids.pop(stop_id)
