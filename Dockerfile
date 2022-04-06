@@ -9,9 +9,6 @@ RUN curl -sL https://deb.nodesource.com/setup_17.x | bash -
 RUN apt-get -y install nodejs && node --version && npm --version &&  \
 rm -rf /var/lib/apt/lists/*
 
-#RUN apt-get install -y coinor-cbc &&  \
-#rm -rf /var/lib/apt/lists/*
-
 RUN /usr/local/bin/python -m pip install --no-cache-dir --compile --upgrade pip
 
 COPY ./scripts .
