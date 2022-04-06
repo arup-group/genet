@@ -151,8 +151,8 @@ def osm_tolls_df():
 
 
 @pytest.fixture
-def cordon(osm_tolls_df):
-    return road_pricing.Cordon(osm_tolls_df)
+def toll(osm_tolls_df):
+    return road_pricing.Toll(osm_tolls_df)
 
 
 @pytest.fixture
@@ -176,25 +176,25 @@ def test_merging_osm_and_network_snapping(osm_network_snapping, osm_tolls_df):
     )
 
 
-def test_instantiating_cordon_class_from_osm_inputs(network_object, osm_tolls_df, tmpdir):
-    osm_cordon = road_pricing.road_pricing_from_osm(
+def test_instantiating_toll_class_from_osm_inputs(network_object, osm_tolls_df, tmpdir):
+    osm_toll = road_pricing.road_pricing_from_osm(
         network_object,
         'osm:way:id',
         'tests/test_data/road_pricing/osm_toll_id_ref.csv',
         tmpdir
     )
     assert_frame_equal(
-        osm_cordon.df_tolls.sort_index(axis=1),
+        osm_toll.df_tolls.sort_index(axis=1),
         osm_tolls_df,
         check_dtype=False
     )
-    assert isinstance(osm_cordon, road_pricing.Cordon)
+    assert isinstance(osm_toll, road_pricing.Toll)
 
 
-def test_saving_cordon_to_csv_produces_correct_csv(cordon, osm_tolls_df, tmpdir):
-    expected_csv = os.path.join(tmpdir, 'cordon_road_pricing.csv')
+def test_saving_toll_to_csv_produces_correct_csv(toll, osm_tolls_df, tmpdir):
+    expected_csv = os.path.join(tmpdir, 'road_pricing.csv')
     assert not os.path.exists(expected_csv)
-    cordon.write_to_csv(tmpdir)
+    toll.write_to_csv(tmpdir)
     assert os.path.exists(expected_csv)
     df_from_csv = pd.read_csv(expected_csv, dtype=str)
     assert_frame_equal(
@@ -204,21 +204,21 @@ def test_saving_cordon_to_csv_produces_correct_csv(cordon, osm_tolls_df, tmpdir)
     )
 
 
-def test_saving_cordon_to_xml_produces_xml_file(cordon, tmpdir):
+def test_saving_toll_to_xml_produces_xml_file(toll, tmpdir):
     # the content of the file is tested elsewhere
     expected_xml = os.path.join(tmpdir, 'roadpricing-file.xml')
     assert not os.path.exists(expected_xml)
-    cordon.write_to_xml(tmpdir)
+    toll.write_to_xml(tmpdir)
     assert os.path.exists(expected_xml)
 
 
-def test_saving_cordon_to_xml_with_missing_toll_ids_produces_xml_file(cordon, tmpdir):
-    cordon.df_tolls = cordon.df_tolls.drop('toll_id', axis=1)
-    assert not 'toll_id' in cordon.df_tolls.columns
+def test_saving_toll_to_xml_with_missing_toll_ids_produces_xml_file(toll, tmpdir):
+    toll.df_tolls = toll.df_tolls.drop('toll_id', axis=1)
+    assert not 'toll_id' in toll.df_tolls.columns
     # the content of the file is tested elsewhere
     expected_xml = os.path.join(tmpdir, 'roadpricing-file.xml')
     assert not os.path.exists(expected_xml)
-    cordon.write_to_xml(tmpdir)
+    toll.write_to_xml(tmpdir)
     assert os.path.exists(expected_xml)
 
 
@@ -227,7 +227,9 @@ def test_building_tree_where_no_links_repeat(tmpdir):
                                             'test_data/road_pricing/osm_to_network_ids_no_link_repeat.json'))
     path_csv = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                              'test_data/road_pricing/osm_tolls_with_network_ids_no_link_overlap.csv'))
-    xml_tree_root = road_pricing.build_tree_from_csv_json(path_csv, path_json)
+    xml_tree_root = road_pricing.build_tree_from_csv_json(
+        path_csv, path_json,
+        toll_type='cordon', toll_scheme_name='cordon-toll', toll_description='A simple cordon toll scheme')
     road_pricing.write_xml(xml_tree_root, tmpdir)
 
     expected_xml = os.path.abspath(os.path.join(os.path.dirname(__file__),
@@ -274,13 +276,13 @@ def test_builds_xml_tree_with_correct_content_from_csv_json(road_pricing_xml_tre
     path_json = 'tests/test_data/road_pricing/osm_to_network_ids.json'
 
     assert road_pricing_xml_tree.tag == 'roadpricing'
-    assert road_pricing_xml_tree.attrib == {'type': 'cordon', 'name': 'cordon-toll'}
+    assert road_pricing_xml_tree.attrib == {'type': 'link', 'name': 'simple-toll'}
     assert len(road_pricing_xml_tree) == 2  # description, links
 
     descs = road_pricing_xml_tree.findall('description')
     assert len(descs) == 1
     assert descs[0].tag == 'description'
-    assert descs[0].text == 'A simple cordon toll scheme'
+    assert descs[0].text == 'A simple toll scheme'
 
     costs = road_pricing_xml_tree.xpath('//cost')
     assert len(costs) == 158

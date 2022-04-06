@@ -345,6 +345,6 @@ def read_matsim_road_pricing(path_to_file):
     """
     TODO: implement
     :param path_to_file: path to MATSim's road_pricing.xml file
-    :return: genet.Cordon.. or other if applicable though not yet implemented (eg distance or area tolling)
+    :return: genet.Toll.. or other if applicable though not yet implemented (eg distance or area tolling)
     """
     pass
