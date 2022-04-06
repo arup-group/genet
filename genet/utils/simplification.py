@@ -5,7 +5,7 @@ from statistics import median
 from shapely.geometry import LineString, Point
 
 import genet.utils.parallel as parallel
-from genet.outputs_handler.geojson import setify
+from genet.utils.persistence import setify
 
 
 # rip and monkey patch of a few functions from osmnx.simplification to customise graph simplification

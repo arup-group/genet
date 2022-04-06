@@ -1,19 +1,16 @@
 from shapely.geometry import Polygon, GeometryCollection
 from pandas import DataFrame, Timestamp, Timedelta
 from pandas.testing import assert_frame_equal
-from tests.fixtures import *
-from tests.test_core_components_route import self_looping_route, route
-from tests.test_core_components_service import service
-from genet.inputs_handler import read, matsim_reader, gtfs_reader
 
 from genet.exceptions import ServiceIndexError, ConflictingStopData, InconsistentVehicleModeError
-from genet.inputs_handler import read
+from genet.inputs_handler import read, matsim_reader, gtfs_reader
 from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation
 from tests.fixtures import *
 from tests.test_core_components_service import service
 from tests.test_core_components_route import self_looping_route, route
+from tests.test_core_schedule_elements import schedule_graph
 
 import pytest
 
@@ -763,6 +760,46 @@ def test_adding_service(schedule, service):
                                'different_service': ['different_service_1', 'different_service_2']})
 
 
+@pytest.fixture()
+def services_to_add():
+    services = []
+    for i in range(2):
+        routes = []
+        for j in range(2):
+            routes.append(Route(route_short_name='name',
+                                mode='bus', id=f'new_route_{i}_{j}',
+                                stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'),
+                                       Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                                       Stop(id='3', x=3, y=3, epsg='epsg:27700'),
+                                       Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                                trips={'trip_id': ['1', '2'],
+                                       'trip_departure_time': ['13:00:00', '13:30:00'],
+                                       'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
+                                arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                                departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+                          )
+        services.append(Service(id=f'new_service_{i}', routes=routes))
+    return services
+
+
+def test_multiple_services_are_present_in_schedule_after_adding(schedule, services_to_add):
+    existing_routes = set(schedule.route_ids())
+    expected_routes_after_adding = existing_routes | {r.id for s in services_to_add for r in s.routes()}
+    existing_services = set(schedule.service_ids())
+    expected_services_after_adding = existing_services | {s.id for s in services_to_add}
+
+    schedule.add_services(services_to_add)
+
+    assert set(schedule.service_ids()) == expected_services_after_adding
+    assert set(schedule.route_ids()) == expected_routes_after_adding
+
+
+def test_adding_multiple_services_updates_changelog(schedule, services_to_add):
+    schedule.add_services(services_to_add)
+    assert list(schedule.change_log().iloc[-len(services_to_add):][['change_event', 'new_id']].itertuples(
+        index=False,name=None)) == [('add', s.id) for s in services_to_add]
+
+
 def test_adding_service_with_clashing_route_ids(schedule, service):
     service.reindex('different_service')
     schedule.add_service(service)
@@ -780,7 +817,7 @@ def test_adding_service_with_clashing_route_ids(schedule, service):
 def test_adding_service_with_clashing_id_throws_error(schedule, service):
     with pytest.raises(ServiceIndexError) as e:
         schedule.add_service(service)
-    assert 'already exists' in str(e.value)
+    assert 'already exist' in str(e.value)
 
 
 def test_adding_service_with_clashing_stops_data_does_not_overwrite_existing_stops(schedule):
@@ -851,6 +888,21 @@ def test_removing_service_updates_vehicles(schedule):
     assert schedule.vehicles == {}
 
 
+def test_multiple_services_are_no_longer_present_in_schedule_after_removing(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    s.remove_services(list(s.service_ids()))
+    assert set(s.service_ids()) == set()
+    assert set(s.route_ids()) == set()
+
+
+def test_removing_multiple_services_updates_changelog(schedule, schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    services_to_remove = list(s.service_ids())
+    s.remove_services(services_to_remove)
+    assert list(s.change_log().iloc[-len(services_to_remove):][['change_event', 'old_id']].itertuples(
+        index=False,name=None)) == [('remove', s) for s in services_to_remove]
+
+
 def test_adding_route(schedule, route):
     route.reindex('new_id')
     schedule.add_route('service', route)
@@ -877,7 +929,48 @@ def test_adding_route_with_clashing_id(schedule, route):
 def test_adding_route_to_non_existing_service_throws_error(schedule, route):
     with pytest.raises(ServiceIndexError) as e:
         schedule.add_route('service_that_doesnt_exist', route)
-    assert 'does not exist' in str(e.value)
+    assert 'do not exist' in str(e.value)
+
+
+@pytest.fixture()
+def routes_to_add():
+    route_1 = Route(route_short_name='name',
+                    mode='bus', id='route_to_add1',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['13:00:00', '13:30:00'],
+                           'vehicle_id': ['veh_1', 'veh_2']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    route_2 = Route(route_short_name='name_2',
+                    mode='bus', id='route_to_add2',
+                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['11:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_3', 'veh_4']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    return {'service': [route_1, route_2]}
+
+
+def test_multiple_routes_are_present_in_schedule_after_adding(schedule, routes_to_add):
+    existing_routes= set(schedule.route_ids())
+    expected_routes_after_adding = existing_routes | {r.id for s, rs in routes_to_add.items() for r in rs}
+    existing_services = set(schedule.service_ids())
+    expected_services_after_adding = existing_services | set(routes_to_add)
+
+    schedule.add_routes(routes_to_add)
+
+    assert set(schedule.service_ids()) == expected_services_after_adding
+    assert set(schedule.route_ids()) == expected_routes_after_adding
+
+
+def test_adding_multiple_routes_updates_changelog(schedule, routes_to_add):
+    schedule.add_routes(routes_to_add)
+    assert list(schedule.change_log().iloc[-sum([len(rs) for s, rs in routes_to_add.items()]):][['change_event', 'new_id']].itertuples(
+        index=False,name=None)) == [('add', r.id) for s, rs in routes_to_add.items() for r in rs]
 
 
 def test_creating_a_route_to_add_using_id_references_to_existing_stops_inherits_schedule_stops_data(schedule):
@@ -1099,6 +1192,31 @@ def test_removing_route_with_overlapping_vehicles_leaves_all_vehicles(schedule, 
     assert_semantically_equal(schedule.vehicles,
                               {'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'},
                                'veh_3_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'}})
+
+
+def test_multiple_routes_are_no_longer_present_in_schedule_after_removing(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    assert set(s.service_ids()) == {'service1', 'service2'}
+    assert set(s.route_ids()) == {'2', '1', '4', '3'}
+    s.remove_routes(['1', '3'])
+    assert set(s.service_ids()) == {'service1', 'service2'}
+    assert set(s.route_ids()) == {'4', '2'}
+
+
+def test_service_is_no_longer_present_after_removing_all_its_routes(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    assert set(s.service_ids()) == {'service1', 'service2'}
+    assert set(s.route_ids()) == {'2', '1', '4', '3'}
+    s.remove_routes(['1', '2'])
+    assert set(s.service_ids()) == {'service2'}
+    assert set(s.route_ids()) == {'4', '3'}
+
+
+def test_removing_multiple_routes_updates_changelog(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    route_to_remove=['1', '2']
+    s.remove_routes(route_to_remove)
+    assert list(s.change_log().iloc[-len(route_to_remove):][['change_event', 'old_id']].itertuples(index=False,name=None)) == [('remove', r) for r in route_to_remove]
 
 
 def test_removing_stop(schedule):

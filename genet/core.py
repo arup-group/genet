@@ -555,15 +555,15 @@ class Network:
                 return True
             return False
 
-        links = self._setify(links)
-        mode = self._setify(mode)
+        links = persistence.setify(links)
+        mode = persistence.setify(mode)
 
         df = self.link_attribute_data_under_keys(['modes'])
         extra = links - set(df.index)
         if extra:
             logging.warning(f'The following links are not present: {extra}')
 
-        df['modes'] = df['modes'].apply(lambda x: self._setify(x))
+        df['modes'] = df['modes'].apply(lambda x: persistence.setify(x))
 
         df = df.loc[links & set(df.index)][df['modes'].apply(lambda x: bool(mode & x))]
         df['modes'] = df['modes'].apply(lambda x: x - mode)
@@ -1372,14 +1372,6 @@ class Network:
         u, v, multi_idx = self.edge_tuple_from_link_id(link_id)
         return dict(self.graph[u][v][multi_idx])
 
-    def _setify(self, value: Union[str, list, set]):
-        if isinstance(value, str):
-            return {value}
-        elif isinstance(value, (list, set)):
-            return set(value)
-        elif value is None:
-            return set()
-
     def route_schedule(self, services: Union[list, set] = None, solver='cbc', allow_partial=True,
                        distance_threshold=30, step_size=10, additional_modes=None, allow_directional_split=False):
         """
@@ -1426,7 +1418,7 @@ class Network:
                 additional_modes = {}
             else:
                 for k, v in additional_modes.items():
-                    additional_modes[k] = self._setify(v)
+                    additional_modes[k] = persistence.setify(v)
 
             changeset = None
             route_data = self.schedule.route_attribute_data(keys=['ordered_stops'])
@@ -1535,7 +1527,7 @@ class Network:
         """
         if spatial_tree is None:
             spatial_tree = spatial.SpatialTree(self)
-        additional_modes = self._setify(additional_modes)
+        additional_modes = persistence.setify(additional_modes)
 
         service = self.schedule[service_id]
         if allow_directional_split:
@@ -1711,10 +1703,15 @@ class Network:
         route = self.schedule.route(_id)
         logging.info(f'Checking `linkRefId`s of the Route: `{_id}` are present in the graph')
         linkrefids = [stop.linkRefId for stop in route.stops()]
+        # sometimes consecutive stops share links (if the links are long or stops close together)
+        # we dont need to route between them so we simplify the chain of linkrefids
+        linkrefids = [linkrefids[0]] + [linkrefids[i] for i in range(1, len(linkrefids)) if
+                                        linkrefids[i - 1] != linkrefids[i]]
+
         unrecognised_linkrefids = set(linkrefids) - set(self.link_id_mapping.keys())
         if not unrecognised_linkrefids:
             logging.info(f'Rerouting Route `{_id}`')
-            modes = {route.mode} | self._setify(additional_modes)
+            modes = {route.mode} | persistence.setify(additional_modes)
             subgraph = self.modal_subgraph(modes)
             network_route = [linkrefids[0]]
             for from_stop_link_id, to_stop_link_id in zip(linkrefids[:-1], linkrefids[1:]):
@@ -1725,10 +1722,10 @@ class Network:
                 network_route.append(to_stop_link_id)
             self.schedule.apply_attributes_to_routes({_id: {'route': network_route}})
             links_for_mode_add = {link_id for link_id in set(network_route) if
-                                  not {route.mode}.issubset(self._setify(self.link(link_id)['modes']))}
+                                  not {route.mode}.issubset(persistence.setify(self.link(link_id)['modes']))}
             if links_for_mode_add:
                 self.apply_attributes_to_links(
-                    {link_id: {'modes': self._setify(self.link(link_id)['modes']) | {route.mode}} for link_id in
+                    {link_id: {'modes': persistence.setify(self.link(link_id)['modes']) | {route.mode}} for link_id in
                      links_for_mode_add})
         else:
             logging.warning(f'Could not reroute Route of ID: `{_id}` due to some stops having unrecognised '
