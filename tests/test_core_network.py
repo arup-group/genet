@@ -142,10 +142,10 @@ def network_hk():
                  's2_id': 5221390329378179871})
     n_hk.add_node('101986',
                 {'id': '101986',
-                 'x': '114.159648',
-                 'y': '22.278037',
-                 'lon': 114.159648,
-                 'lat': 22.278037,
+                 'x': '114.155850',
+                 'y': '22.290983',
+                 'lon': 114.155850,
+                 'lat': 22.290983,
                  's2_id': 5221390328605860382})
     n_hk.add_link('0', '101982', '101986',
                 attribs={'id': '0',
@@ -2940,4 +2940,15 @@ def test_adding_elevation_to_nodes(network_hk):
     network_hk.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
     output = network_hk.node_attribute_data_under_key('z')
 
+    assert output['101982'] == 25
+
+
+def test_adding_elevation_to_nodes(network_hk):
+    elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
+    elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
+
+    network_hk.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
+    output = network_hk.node_attribute_data_under_key('z')
+
+    assert output['101986'] == 0
     assert output['101982'] == 25

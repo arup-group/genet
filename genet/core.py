@@ -2198,7 +2198,6 @@ class Network:
             # zero values handling - may wish to add infilling based on nearby values later
             if z == null_value:
                 z = 0
-            pair = {'z': z}
-            elevation_dict[node_id] = pair
+            elevation_dict[node_id] = {'z': z}
 
         self.apply_attributes_to_nodes(elevation_dict)
