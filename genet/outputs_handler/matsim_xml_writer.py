@@ -9,8 +9,6 @@ from genet.validate.network_validation import validate_link_data
 from genet.utils.spatial import change_proj, encode_shapely_linestring_to_polyline
 from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES, \
     OPTIONAL_NETWORK_LINK_ATTRIBUTES, ADDITIONAL_STOP_FACILITY_ATTRIBUTES
-from anytree import RenderTree
-import genet.utils.graph_operations as graph_operations
 
 
 def delete_redundant_link_attributes_for_xml(d):
