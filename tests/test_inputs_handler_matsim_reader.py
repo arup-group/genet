@@ -20,6 +20,8 @@ pt2matsim_network_with_singular_geometry_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_with_singular_geometry.xml"))
 pt2matsim_NZ_network = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "NZ_network.xml"))
+pt2matsim_HK_network = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "HK_network.xml"))
 pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
 pt2matsim_vehicles_file = os.path.abspath(
@@ -338,3 +340,23 @@ def test_reading_pt2matsim_vehicles():
                 'egressTime': {'secondsPerPerson': '0.5'},
                 'doorOperation': {'mode': 'serial'},
                 'passengerCarEquivalents': {'pce': '2.8'}}})
+
+
+def test_reading_HK_network_with_elevation():
+    n = read.read_matsim(path_to_network=pt2matsim_HK_network, epsg='epsg:4326')
+
+    assert_semantically_equal(dict(n.nodes()), {
+        '101982': {'id': '101982', 'x': 114.161432, 'y': 22.279784, 'z': 25.0, 'lon': 114.161432, 'lat': 22.279784,
+                    's2_id': 3748121220106005759},
+         '101986': {'id': '101986', 'x': 114.159648, 'y': 22.278037, 'z': 53.0, 'lon': 114.159648, 'lat': 22.278037,
+                    's2_id': 3748121226099361651}})
+
+    assert_semantically_equal(dict(n.links()), {
+        '0': {'id': '0', 'from': '101982', 'to': '101986', 'freespeed': 4.166666666666667, 'capacity': 600.0,
+               'permlanes': 1.0, 'oneway': '1', 'modes': {'car'}, 's2_from': 3748121220106005759,
+               's2_to': 3748121226099361651, 'attributes':
+                   {'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
+                    'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
+                    'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928564'},
+                    'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Garden Road'}},
+               'length': 52.765151087870265}})

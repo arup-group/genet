@@ -17,6 +17,7 @@ import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.sanitiser as sanitiser
 import genet.schedule_elements as schedule_elements
 import genet.utils.dict_support as dict_support
+import genet.utils.elevation as elevation
 import genet.utils.graph_operations as graph_operations
 import genet.utils.pandas_helpers as pd_helpers
 import genet.utils.parallel as parallel
@@ -2179,3 +2180,25 @@ class Network:
             persistence.ensure_dir(schedule_csv_folder)
             self.schedule.write_to_csv(schedule_csv_folder, gtfs_day)
         self.write_extras(network_csv_folder)
+
+    def add_elevation_to_nodes(self, elevation_tif_file, null_value: float):
+        """
+        Takes an elevation raster file in .tif format, and adds z-value to each network node.
+        :param elevation_tif_file: path to the elevation raster file in .tif format
+        :param null_value: value that represents null in the elevation raster file
+        :return:
+        """
+        img = elevation.get_elevation_image(elevation_tif_file)
+
+        elevation_dict = {}
+
+        for node_id, node_attribs in self.nodes():
+            z = elevation.get_elevation_data(img, lat=node_attribs['lat'], lon=node_attribs['lon'])
+
+            # zero values handling - may wish to add infilling based on nearby values later
+            if z==null_value:
+                z=0
+            pair = {'z': z}
+            elevation_dict[node_id] = pair
+
+        self.apply_attributes_to_nodes(elevation_dict)

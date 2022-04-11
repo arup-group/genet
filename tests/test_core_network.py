@@ -130,6 +130,51 @@ def network2():
     return n2
 
 
+@pytest.fixture()
+def network_hk():
+    n_hk = Network('epsg:4326')
+    n_hk.add_node('101982',
+                {'id': '101982',
+                 'x': '114.161432',
+                 'y': '22.279784',
+                 'lon': 114.161432,
+                 'lat': 22.279784,
+                 's2_id': 5221390329378179871})
+    n_hk.add_node('101986',
+                {'id': '101986',
+                 'x': '114.159648',
+                 'y': '22.278037',
+                 'lon': 114.159648,
+                 'lat': 22.278037,
+                 's2_id': 5221390328605860382})
+    n_hk.add_link('0', '101982', '101986',
+                attribs={'id': '0',
+                         'from': '101982',
+                         'to': '101986',
+                         'freespeed': 4.166666666666667,
+                         'capacity': 600.0,
+                         'permlanes': 1.0,
+                         'oneway': '1',
+                         'modes': ['car'],
+                         's2_from': 5221390329378179871,
+                         's2_to': 5221390328605860382,
+                         'length': 52.765151087870265,
+                         'attributes': {'osm:way:access': {'name': 'osm:way:access',
+                                                           'class': 'java.lang.String',
+                                                           'text': 'permissive'},
+                                        'osm:way:highway': {'name': 'osm:way:highway',
+                                                            'class': 'java.lang.String',
+                                                            'text': 'unclassified'},
+                                        'osm:way:id': {'name': 'osm:way:id',
+                                                       'class': 'java.lang.Long',
+                                                       'text': '26997928564'},
+                                        'osm:way:name': {'name': 'osm:way:name',
+                                                         'class': 'java.lang.String',
+                                                         'text': 'Garden Road'}}})
+    return n_hk
+
+
+
 def test_network_graph_initiates_as_not_simplififed():
     n = Network('epsg:27700')
     assert not n.graph.graph['simplified']
@@ -2886,3 +2931,13 @@ def test_saving_network_to_csv(network1, correct_schedule, tmpdir):
          'oneway': {0: 1}, 'freespeed': {0: 4.166666666666667}, 'permlanes': {0: 1.0}, 'attributes': {
             0: "{'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}, 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}}"}}
     )
+
+
+def test_adding_elevation_to_nodes(network_hk):
+    elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
+    elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
+
+    network_hk.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
+    output = network_hk.node_attribute_data_under_key('z')
+
+    assert output['101982'] == 25

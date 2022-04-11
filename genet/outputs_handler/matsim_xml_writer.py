@@ -9,6 +9,8 @@ from genet.validate.network_validation import validate_link_data
 from genet.utils.spatial import change_proj, encode_shapely_linestring_to_polyline
 from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES, \
     OPTIONAL_NETWORK_LINK_ATTRIBUTES, ADDITIONAL_STOP_FACILITY_ATTRIBUTES
+from anytree import RenderTree
+import genet.utils.graph_operations as graph_operations
 
 
 def delete_redundant_link_attributes_for_xml(d):
@@ -78,6 +80,8 @@ def write_matsim_network(output_dir, network):
             with xf.element("nodes"):
                 for node_id, node_attributes in network.nodes():
                     node_attrib = {'id': str(node_id), 'x': str(node_attributes['x']), 'y': str(node_attributes['y'])}
+                    if 'z' in node_attributes:
+                        node_attrib['z'] = str(node_attributes['z'])
                     xf.write(etree.Element("node", node_attrib))
 
             links_attribs = {'capperiod': '01:00:00', 'effectivecellsize': '7.5', 'effectivelanewidth': '3.75'}
