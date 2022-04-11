@@ -2196,8 +2196,8 @@ class Network:
             z = elevation.get_elevation_data(img, lat=node_attribs['lat'], lon=node_attribs['lon'])
 
             # zero values handling - may wish to add infilling based on nearby values later
-            if z==null_value:
-                z=0
+            if z == null_value:
+                z = 0
             pair = {'z': z}
             elevation_dict[node_id] = pair
 
