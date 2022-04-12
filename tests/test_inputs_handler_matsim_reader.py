@@ -20,7 +20,7 @@ pt2matsim_network_with_singular_geometry_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_with_singular_geometry.xml"))
 pt2matsim_NZ_network = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "NZ_network.xml"))
-pt2matsim_HK_network = os.path.abspath(
+HK_network = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "HK_network.xml"))
 pt2matsim_schedule_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml"))
@@ -343,7 +343,7 @@ def test_reading_pt2matsim_vehicles():
 
 
 def test_reading_HK_network_with_elevation():
-    n = read.read_matsim(path_to_network=pt2matsim_HK_network, epsg='epsg:4326')
+    n = read.read_matsim(path_to_network=HK_network, epsg='epsg:4326')
 
     assert_semantically_equal(dict(n.nodes()), {
         '101982': {'id': '101982', 'x': 114.161432, 'y': 22.279784, 'z': 25.0, 'lon': 114.161432, 'lat': 22.279784,

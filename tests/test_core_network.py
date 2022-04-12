@@ -131,23 +131,23 @@ def network2():
 
 
 @pytest.fixture()
-def network_hk():
-    n_hk = Network('epsg:4326')
-    n_hk.add_node('101982',
+def network3():
+    n3 = Network('epsg:4326')
+    n3.add_node('101982',
                 {'id': '101982',
                  'x': '114.161432',
                  'y': '22.279784',
                  'lon': 114.161432,
                  'lat': 22.279784,
                  's2_id': 5221390329378179871})
-    n_hk.add_node('101986',
+    n3.add_node('101986',
                 {'id': '101986',
                  'x': '114.155850',
                  'y': '22.290983',
                  'lon': 114.155850,
                  'lat': 22.290983,
                  's2_id': 5221390328605860382})
-    n_hk.add_link('0', '101982', '101986',
+    n3.add_link('0', '101982', '101986',
                 attribs={'id': '0',
                          'from': '101982',
                          'to': '101986',
@@ -171,7 +171,7 @@ def network_hk():
                                         'osm:way:name': {'name': 'osm:way:name',
                                                          'class': 'java.lang.String',
                                                          'text': 'Garden Road'}}})
-    return n_hk
+    return n3
 
 
 
@@ -2933,22 +2933,21 @@ def test_saving_network_to_csv(network1, correct_schedule, tmpdir):
     )
 
 
-def test_adding_elevation_to_nodes(network_hk):
+def test_adding_elevation_to_nodes(network3):
     elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
     elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
 
-    network_hk.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
-    output = network_hk.node_attribute_data_under_key('z')
+    network3.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
+    output = network3.node_attribute_data_under_key('z')
 
     assert output['101982'] == 25
 
 
-def test_adding_elevation_to_nodes(network_hk):
+def test_adding_elevation_to_nodes_with_null_value_mapping(network3):
     elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
     elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
 
-    network_hk.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
-    output = network_hk.node_attribute_data_under_key('z')
+    network3.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
+    output = network3.node_attribute_data_under_key('z')
 
     assert output['101986'] == 0
-    assert output['101982'] == 25

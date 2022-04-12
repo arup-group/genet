@@ -23,10 +23,8 @@ def read_node(elem, g, node_id_mapping, transformer):
     attribs = elem.attrib
     attribs['x'], attribs['y'] = float(attribs['x']), float(attribs['y'])
 
-    try:
+    if 'z' in attribs:
         attribs['z'] = float(attribs['z'])
-    except KeyError:
-        pass
 
     lon, lat = spatial.change_proj(attribs['x'], attribs['y'], transformer)
     # ideally we would check if the transformer was created with always_xy=True and swap

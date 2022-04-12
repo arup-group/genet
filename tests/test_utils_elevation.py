@@ -11,7 +11,7 @@ array_path = os.path.join(elevation_test_folder, 'elevation_image.nc')
 
 def test_output_type_get_elevation_image():
     img = elevation.get_elevation_image(tif_path)
-    assert type(img).__name__ == 'DataArray'
+    assert isinstance(img, xr.DataArray)
 
 
 def test_get_elevation_image():

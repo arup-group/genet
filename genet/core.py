@@ -2181,14 +2181,14 @@ class Network:
             self.schedule.write_to_csv(schedule_csv_folder, gtfs_day)
         self.write_extras(network_csv_folder)
 
-    def add_elevation_to_nodes(self, elevation_tif_file, null_value: float):
+    def add_elevation_to_nodes(self, elevation_tif_file_path, null_value: float):
         """
         Takes an elevation raster file in .tif format, and adds z-value to each network node.
         :param elevation_tif_file: path to the elevation raster file in .tif format
         :param null_value: value that represents null in the elevation raster file
         :return:
         """
-        img = elevation.get_elevation_image(elevation_tif_file)
+        img = elevation.get_elevation_image(elevation_tif_file_path)
 
         elevation_dict = {}
 
