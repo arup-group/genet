@@ -2184,7 +2184,7 @@ class Network:
     def add_elevation_to_nodes(self, elevation_tif_file_path, null_value: float):
         """
         Takes an elevation raster file in .tif format, and adds z-value to each network node.
-        :param elevation_tif_file: path to the elevation raster file in .tif format
+        :param elevation_tif_file_path: path to the elevation raster file in .tif format
         :param null_value: value that represents null in the elevation raster file
         :return:
         """
@@ -2201,3 +2201,44 @@ class Network:
             elevation_dict[node_id] = {'z': z}
 
         self.apply_attributes_to_nodes(elevation_dict)
+
+    def validation_report_for_node_elevation(self, low_limit=-50, high_limit=4809):
+        """
+        Generates a validation report for the elevation data added to the network nodes.
+        :param low_limit: set at -50 by default, can optionally set a different value
+        :param high_limit: defaults to 4809m is the height of Mont Blank, can optionally set a different value
+        :return: dict
+        """
+        graph = self.subgraph_on_link_conditions(conditions={'modes': all}, mixed_dtypes=True)
+        gdfs = geojson.generate_geodataframes(graph)
+        nodes = gdfs['nodes']
+
+        elevation_list = nodes['z'].to_list()
+        min_value = np.min(elevation_list)
+        max_value = np.max(elevation_list)
+        mean = np.mean(elevation_list)
+        median = np.median(elevation_list)
+
+        nodes_dictionary = dict(zip(nodes['id'], nodes['z']))
+        too_high = {}
+        too_low = {}
+
+        for node_id, node_elev in nodes_dictionary.items():
+            if node_elev < low_limit:
+                too_low[node_id] = node_elev
+            elif node_elev > high_limit:
+                too_high[node_id] = node_elev
+
+        report = {
+            'summary': {'total_nodes': len(elevation_list),
+                        'min_value': int(min_value),
+                        'max_value': int(max_value),
+                        'mean': int(mean),
+                        'median': int(median),
+                        'extremely_high_values_count': len(too_high),
+                        'extremely_low_values_count': len(too_low)},
+
+            'values': {'extremely_high_values_dict': too_high,
+                       'extremely_low_values_dict': too_low}}
+
+        return report

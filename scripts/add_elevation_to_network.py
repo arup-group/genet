@@ -1,8 +1,11 @@
 import argparse
 import logging
+import os
+import json
 
 from genet import read_matsim
 from genet.utils.persistence import ensure_dir
+import genet.outputs_handler.sanitiser as sanitiser
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Add elevation data to network nodes and validate it')
@@ -53,6 +56,11 @@ if __name__ == '__main__':
     n.add_elevation_to_nodes(elevation_tif_file_path=elevation, null_value=tif_null_value)
 
     logging.info('Validating the elevation data added to network nodes')
+    report = n.validation_report_for_node_elevation()
+    logging.info(report)
+
+    with open(os.path.join(output_dir, 'validation_report_for_elevation.json'), 'w', encoding='utf-8') as f:
+        json.dump(sanitiser.sanitise_dictionary(report), f, ensure_ascii=False, indent=4)
 
     logging.info('Writing the network.')
     n.write_to_matsim(output_dir)
