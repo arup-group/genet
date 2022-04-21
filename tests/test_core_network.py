@@ -2982,8 +2982,6 @@ def test_adding_elevation_to_nodes(network3):
     elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
 
     network3.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
-    # network3.validation_report_for_node_elevation()
-    # print("Blah")
     output = network3.node_attribute_data_under_key('z')
 
     assert output['101982'] == 25
