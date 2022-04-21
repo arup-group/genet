@@ -2796,7 +2796,7 @@ def network_1_geo_and_json(network1):
                    'geometry': Point(528835.203274008, 182006.27331298392)}}).T
     nodes.index = nodes.index.set_names(['index'])
     links = gpd.GeoDataFrame({
-        '0': {'id': '0', 'from': '101982', 'to': '101986', 'freespeed': 4.166666666666667, 'capacity': 600.0,
+        '0': {'id': '0', 'from': '101982', 'to': '10186', 'freespeed': 4.166666666666667, 'capacity': 600.0,
               'permlanes': 1.0, 'oneway': '1', 'modes': ['car', 'bike'], 's2_from': 5221390329378179879,
               's2_to': 5221390328605860387, 'length': 52.765151087870265,
               'geometry': LineString(

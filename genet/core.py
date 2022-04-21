@@ -2202,11 +2202,11 @@ class Network:
 
         self.apply_attributes_to_nodes(elevation_dict)
 
-    def validation_report_for_node_elevation(self, low_limit=-50, high_limit=4809):
+    def validation_report_for_node_elevation(self, low_limit=-50, mont_blanc_height=4809):
         """
         Generates a validation report for the elevation data added to the network nodes.
         :param low_limit: set at -50 by default, can optionally set a different value
-        :param high_limit: defaults to 4809m is the height of Mont Blank, can optionally set a different value
+        :param mont_blanc_height: defaults to 4809m is the height of Mont Blank, can optionally set a different value
         :return: dict
         """
         graph = self.subgraph_on_link_conditions(conditions={'modes': all}, mixed_dtypes=True)
@@ -2226,7 +2226,7 @@ class Network:
         for node_id, node_elev in nodes_dictionary.items():
             if node_elev < low_limit:
                 too_low[node_id] = node_elev
-            elif node_elev > high_limit:
+            elif node_elev > mont_blanc_height:
                 too_high[node_id] = node_elev
 
         report = {

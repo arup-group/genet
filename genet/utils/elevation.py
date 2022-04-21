@@ -3,9 +3,8 @@ import rioxarray
 
 def get_elevation_image(elevation_tif):
     xarr_file = rioxarray.open_rasterio(elevation_tif)
-    img = xarr_file[0, :, :]
 
-    return img
+    return xarr_file[0, :, :]
 
 
 def get_elevation_data(img, lat, lon):
