@@ -2984,6 +2984,8 @@ def test_adding_elevation_to_nodes(network3):
     network3.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
     output = network3.node_attribute_data_under_key('z')
 
+    # elevation value (25m) that corresponds to the coordinate of this node in the network has been double checked here:
+    # https://www.freemaptools.com/elevation-finder.htm
     assert output['101982'] == 25
 
 
@@ -2994,6 +2996,7 @@ def test_adding_elevation_to_nodes_with_null_value_mapping(network3):
     network3.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
     output = network3.node_attribute_data_under_key('z')
 
+    # the coordinate of this node in the network corresponds to a pixel with null (no data) value in the tif file
     assert output['101986'] == 0
 
 
