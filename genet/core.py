@@ -2213,6 +2213,9 @@ class Network:
         gdfs = geojson.generate_geodataframes(graph)
         nodes = gdfs['nodes']
 
+        class MissingElevationException(Exception):
+            pass
+
         if 'z' in list(nodes.columns):
             elevation_list = nodes['z'].to_list()
             min_value = np.min(elevation_list)
@@ -2245,4 +2248,5 @@ class Network:
             return report
 
         else:
-            logging.info('Network nodes do not contain elevation data. Cannot generate validation report.')
+            raise MissingElevationException('Network nodes do not contain elevation data. '
+                                            'Cannot generate validation report.')

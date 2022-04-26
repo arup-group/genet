@@ -3008,3 +3008,10 @@ def test_validation_report_for_node_elevation(network4):
                       'values': {'extremely_high_values_dict': {}, 'extremely_low_values_dict': {'101982': -51}}}
 
     assert_semantically_equal(report, correct_report)
+
+
+def test_validation_report_for_network_without_node_elevation(network3):
+    n = network3
+    with pytest.raises(Exception) as error_info:
+        n.validation_report_for_node_elevation()
+    assert "do not contain elevation" in str(error_info.value)
