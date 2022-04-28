@@ -2202,7 +2202,6 @@ class Network:
 
         self.apply_attributes_to_nodes(elevation_dict)
 
-
     def validation_report_for_node_elevation(self, low_limit=-50, mont_blanc_height=4809):
         """
         Generates a validation report for the elevation data added to the network nodes.
