@@ -13,7 +13,7 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 from geopandas.testing import assert_geodataframe_equal
 from shapely.geometry import LineString, Polygon, Point
 
-from genet.core import Network
+from genet.core import Network, MissingElevationException
 from genet.inputs_handler import matsim_reader
 from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule, Stop
@@ -3012,6 +3012,6 @@ def test_validation_report_for_node_elevation(network4):
 
 def test_validation_report_for_network_without_node_elevation(network3):
     n = network3
-    with pytest.raises(Exception) as error_info:
+    with pytest.raises(MissingElevationException) as error_info:
         n.validation_report_for_node_elevation()
     assert "do not contain elevation" in str(error_info.value)

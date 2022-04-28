@@ -2202,6 +2202,7 @@ class Network:
 
         self.apply_attributes_to_nodes(elevation_dict)
 
+
     def validation_report_for_node_elevation(self, low_limit=-50, mont_blanc_height=4809):
         """
         Generates a validation report for the elevation data added to the network nodes.
@@ -2212,9 +2213,6 @@ class Network:
         graph = self.subgraph_on_link_conditions(conditions={'modes': all}, mixed_dtypes=True)
         gdfs = geojson.generate_geodataframes(graph)
         nodes = gdfs['nodes']
-
-        class MissingElevationException(Exception):
-            pass
 
         if 'z' in list(nodes.columns):
             elevation_list = nodes['z'].to_list()
@@ -2250,3 +2248,7 @@ class Network:
         else:
             raise MissingElevationException('Network nodes do not contain elevation data. '
                                             'Cannot generate validation report.')
+
+
+class MissingElevationException(Exception):
+    pass
