@@ -17,6 +17,7 @@ import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
 import genet.outputs_handler.sanitiser as sanitiser
 import genet.schedule_elements as schedule_elements
 import genet.utils.dict_support as dict_support
+import genet.utils.elevation as elevation
 import genet.utils.graph_operations as graph_operations
 import genet.utils.pandas_helpers as pd_helpers
 import genet.utils.parallel as parallel
@@ -2179,3 +2180,74 @@ class Network:
             persistence.ensure_dir(schedule_csv_folder)
             self.schedule.write_to_csv(schedule_csv_folder, gtfs_day)
         self.write_extras(network_csv_folder)
+
+    def add_elevation_to_nodes(self, elevation_tif_file_path, null_value: float):
+        """
+        Takes an elevation raster file in .tif format, and adds z-value to each network node.
+        :param elevation_tif_file_path: path to the elevation raster file in .tif format
+        :param null_value: value that represents null in the elevation raster file
+        :return:
+        """
+        img = elevation.get_elevation_image(elevation_tif_file_path)
+
+        elevation_dict = {}
+
+        for node_id, node_attribs in self.nodes():
+            z = elevation.get_elevation_data(img, lat=node_attribs['lat'], lon=node_attribs['lon'])
+
+            # zero values handling - may wish to add infilling based on nearby values later
+            if z == null_value:
+                z = 0
+            elevation_dict[node_id] = {'z': z}
+
+        self.apply_attributes_to_nodes(elevation_dict)
+
+    def validation_report_for_node_elevation(self, low_limit=-50, mont_blanc_height=4809):
+        """
+        Generates a validation report for the elevation data added to the network nodes.
+        :param low_limit: set at -50 by default, can optionally set a different value
+        :param mont_blanc_height: defaults to 4809m is the height of Mont Blank, can optionally set a different value
+        :return: dict, with 2 data subsets - summary statistics, and extreme values lists
+        """
+        graph = self.subgraph_on_link_conditions(conditions={'modes': all}, mixed_dtypes=True)
+        gdfs = geojson.generate_geodataframes(graph)
+        nodes = gdfs['nodes']
+
+        if 'z' in list(nodes.columns):
+            elevation_list = nodes['z'].to_list()
+            min_value = np.min(elevation_list)
+            max_value = np.max(elevation_list)
+            mean = np.mean(elevation_list)
+            median = np.median(elevation_list)
+
+            nodes_dictionary = dict(zip(nodes['id'], nodes['z']))
+            too_high = {}
+            too_low = {}
+
+            for node_id, node_elev in nodes_dictionary.items():
+                if node_elev < low_limit:
+                    too_low[node_id] = node_elev
+                elif node_elev > mont_blanc_height:
+                    too_high[node_id] = node_elev
+
+            report = {
+                'summary': {'total_nodes': len(elevation_list),
+                            'min_value': int(min_value),
+                            'max_value': int(max_value),
+                            'mean': int(mean),
+                            'median': int(median),
+                            'extremely_high_values_count': len(too_high),
+                            'extremely_low_values_count': len(too_low)},
+
+                'values': {'extremely_high_values_dict': too_high,
+                           'extremely_low_values_dict': too_low}}
+
+            return report
+
+        else:
+            raise MissingElevationException('Network nodes do not contain elevation data. '
+                                            'Cannot generate validation report.')
+
+
+class MissingElevationException(Exception):
+    pass

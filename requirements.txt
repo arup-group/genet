@@ -67,6 +67,7 @@ PyYAML==5.4
 pyzmq==19.0.1
 requests==2.26.0
 requests-futures==1.0.0
+rioxarray==0.9.1
 Rtree==0.9.4
 s2sphere==0.2.5
 s3transfer==0.3.3
