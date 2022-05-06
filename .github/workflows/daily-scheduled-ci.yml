@@ -60,7 +60,7 @@ jobs:
       env:
         SLACK_COLOR: '#FF0000'
         SLACK_LINK_NAMES: true
-        SLACK_MESSAGE: @here ${{ github.repository }} Daily scheduled CI Build ${{ github.run_number }} has failed
+        SLACK_MESSAGE: '<!here> ${{ github.repository }} Daily scheduled CI Build ${{ github.run_number }} has failed'
         SLACK_TITLE: Daily Scheduled CI Build Failure!
         SLACK_CHANNEL: city-modelling-feeds
         SLACK_USERNAME: GitHub Build Bot
