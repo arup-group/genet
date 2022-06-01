@@ -338,3 +338,121 @@ def test_reading_pt2matsim_vehicles():
                 'egressTime': {'secondsPerPerson': '0.5'},
                 'doorOperation': {'mode': 'serial'},
                 'passengerCarEquivalents': {'pce': '2.8'}}})
+
+
+def test_uses_node_elevation_data_when_present_in_network_file(tmpdir):
+    nodes_with_elevations = {
+        '1': {
+            'id': '1',
+            'x': 114.161432,
+            'y': 22.279784,
+            'z': 25.0,
+            'lon': 114.161432,
+            'lat': 22.279784,
+            's2_id': 3748121220106005759
+        },
+        '2': {
+            'id': '2',
+            'x': 114.159648,
+            'y': 22.278037,
+            'z': 53.0,
+            'lon': 114.159648,
+            'lat': 22.278037,
+            's2_id': 3748121226099361651
+        }
+    }
+    links = {
+        '0': {
+            'id': '0',
+            'from': '1',
+            'to': '2',
+            'freespeed': 4.166666666666667,
+            'capacity': 600.0,
+            'permlanes': 1.0,
+            'oneway': '1',
+            'modes': {'car'},
+            's2_from': 3748121220106005759,
+            's2_to': 3748121226099361651,
+            'attributes': {
+                'osm:way:access': {
+                    'name': 'osm:way:access',
+                    'class': 'java.lang.String',
+                    'text': 'permissive'
+                },
+                'osm:way:highway': {
+                    'name': 'osm:way:highway',
+                    'class': 'java.lang.String',
+                    'text': 'unclassified'
+                },
+                'osm:way:id': {
+                    'name': 'osm:way:id',
+                    'class': 'java.lang.Long',
+                    'text': '26997928564'
+                },
+                'osm:way:name': {
+                    'name': 'osm:way:name',
+                    'class': 'java.lang.String',
+                    'text': 'Elevation Lane'
+                }
+            },
+            'length': 52.765151087870265
+        }
+    }
+    network_file_path = make_network_with_elevations_xml_file(nodes_with_elevations,
+                                                              links,
+                                                              '{}/small-network-with-elevations.xml'.format(tmpdir))
+
+    n = read.read_matsim(path_to_network=network_file_path, epsg='epsg:4326')
+
+    assert_semantically_equal(dict(n.nodes()), nodes_with_elevations)
+    assert_semantically_equal(dict(n.links()), links)
+
+###########################################################
+# helper functions
+###########################################################
+
+
+def make_network_with_elevations_xml_file(nodes_with_elevations_dict, link_dict, network_file_path):
+    network_xml_string = make_network_with_elevations_xml_string(nodes_with_elevations_dict, link_dict)
+    with open(network_file_path, 'w') as network_file:
+        network_file.write(network_xml_string)
+    assert os.path.exists(network_file_path)
+    return network_file_path
+
+
+def make_network_with_elevations_xml_string(nodes_with_elevations_dict, link_dict):
+    network_xml = '''
+    <network>
+        <attributes>
+            <attribute name="simplified" class="java.lang.String">False</attribute>
+            <attribute name="crs" class="java.lang.String">epsg:4326</attribute>
+        </attributes>
+        
+        <nodes>
+    '''
+    for node_id, node_values in nodes_with_elevations_dict.items():
+        network_xml += '<node id="{}" x="{}" y="{}" z="{}"/> '.format(node_id,
+                                                                      node_values['x'],
+                                                                      node_values['y'],
+                                                                      node_values['z'])
+    network_xml += ' </nodes> '
+    network_xml += ' <links capperiod="01:00:00" effectivecellsize="7.5" effectivelanewidth="3.75"> '
+    for link_id, link_value in link_dict.items():
+        network_xml += '<link id="{}" from="{}" to="{}" freespeed="{}" capacity="{}" permlanes="{}" oneway="{}" ' \
+                       'modes="{}" length="{}">'.format(link_id,
+                                                        link_value['from'],
+                                                        link_value['to'],
+                                                        link_value['freespeed'],
+                                                        link_value['capacity'],
+                                                        link_value['permlanes'],
+                                                        link_value['oneway'],
+                                                        ','.join(list(link_value['modes'])),
+                                                        link_value['length'])
+        network_xml += ' <attributes> '
+        for attr_name, attr_value in link_value['attributes'].items():
+            network_xml += '<attribute name="{}" class="{}">{}</attribute> '.format(attr_name,
+                                                                                    attr_value['class'],
+                                                                                    attr_value['text'])
+        network_xml += ' </attributes> </link>'
+    network_xml += ' </links> </network>'
+    return network_xml

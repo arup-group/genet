@@ -102,6 +102,8 @@ def write_matsim_network(output_dir, network):
                 for node_id, node_attributes in network.nodes():
                     # TODO add arbitrary node attributes
                     node_attrib = {'id': str(node_id), 'x': str(node_attributes['x']), 'y': str(node_attributes['y'])}
+                    if 'z' in node_attributes:
+                        node_attrib['z'] = str(node_attributes['z'])
                     xf.write(etree.Element("node", node_attrib))
 
             links_attribs = {'capperiod': '01:00:00', 'effectivecellsize': '7.5', 'effectivelanewidth': '3.75'}
