@@ -160,7 +160,8 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                 transit_line_attribs = {'id': service.id, 'name': str(service.name)}
 
                 with xf.element("transitLine", transit_line_attribs):
-                    # TODO add arbitrary transit line attributes
+                    if service.has_attrib('attributes'):
+                        save_additional_attributes(service.attributes, xf)
                     for route in service.routes():
                         transit_route_attribs = {'id': route.id}
 
