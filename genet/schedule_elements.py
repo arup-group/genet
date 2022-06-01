@@ -80,6 +80,19 @@ class ScheduleElement:
     def change_log(self):
         return self._graph.graph['change_log']
 
+    def add_additional_attributes(self, attribs: dict):
+        """
+        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
+        :param attribs: the additional attributes {attribute_name: attribute_value}
+        :return:
+        """
+        for k, v in attribs.items():
+            if k not in self.__dict__:
+                setattr(self, k, v)
+
+    def has_attrib(self, attrib_name):
+        return attrib_name in self.__dict__
+
     @abstractmethod
     def reference_nodes(self):
         pass
@@ -503,16 +516,6 @@ class Route(ScheduleElement):
         route_graph.graph['change_log'] = change_log.ChangeLog()
         return route_graph
 
-    def add_additional_attributes(self, attribs: dict):
-        """
-        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
-        :param attribs: the additional attributes {attribute_name: attribute_value}
-        :return:
-        """
-        for k, v in attribs.items():
-            if k not in self.__dict__:
-                setattr(self, k, v)
-
     def reference_nodes(self):
         return self.route_reference_nodes(self.id)
 
@@ -886,16 +889,6 @@ class Service(ScheduleElement):
         service_graph.graph['service_to_route_map'] = {_id: [route.id for route in routes]}
         return service_graph
 
-    def add_additional_attributes(self, attribs: dict):
-        """
-        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
-        :param attribs: the additional attributes {attribute_name: attribute_value}
-        :return:
-        """
-        for k, v in attribs.items():
-            if k not in self.__dict__:
-                setattr(self, k, v)
-
     def _ensure_unique_routes(self, routes: List[Route]):
         unique_routes = []
         route_ids = []
@@ -1218,7 +1211,8 @@ class Schedule(ScheduleElement):
                  minimal_transfer_times: Dict[str, Dict[str, float]] = None,
                  vehicles=None,
                  vehicle_types: Union[str, dict] = pkgutil.get_data(__name__, os.path.join("configs", "vehicles",
-                                                                                           "vehicle_definitions.yml"))):
+                                                                                           "vehicle_definitions.yml")),
+                 **kwargs):
         if isinstance(vehicle_types, dict):
             self.vehicle_types = vehicle_types
         else:
@@ -1273,6 +1267,10 @@ class Schedule(ScheduleElement):
         else:
             self.vehicles = vehicles
         self.validate_vehicle_definitions()
+
+        if kwargs:
+            self.add_additional_attributes(kwargs)
+
         super().__init__()
 
     def __nonzero__(self):

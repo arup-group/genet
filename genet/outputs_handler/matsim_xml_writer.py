@@ -44,23 +44,27 @@ def check_additional_attributes(link_attribs):
     return link_attribs
 
 
-def save_additional_attributes(additional_attributes, xf, elem_type):
-    attributes = additional_attributes.pop('attributes')
-    with xf.element(elem_type, sanitiser.sanitise_dictionary_for_xml(additional_attributes)):
-        with xf.element("attributes"):
-            for k, attrib in attributes.items():
-                attrib = sanitiser.sanitise_dictionary_for_xml(attrib)
-                text = attrib.pop('text')
-                rec = etree.Element("attribute", attrib)
-                rec.text = text
-                xf.write(rec)
-
-
 def save_attributes(attributes, xf, elem_type):
     if 'attributes' in attributes:
-        save_additional_attributes(attributes, xf, elem_type)
+        save_with_additional_attributes(attributes, xf, elem_type)
     else:
         xf.write(etree.Element(elem_type, sanitiser.sanitise_dictionary_for_xml(attributes)))
+
+
+def save_with_additional_attributes(additional_attributes, xf, elem_type):
+    attributes = additional_attributes.pop('attributes')
+    with xf.element(elem_type, sanitiser.sanitise_dictionary_for_xml(additional_attributes)):
+        save_additional_attributes(attributes, xf)
+
+
+def save_additional_attributes(attributes, xf):
+    with xf.element("attributes"):
+        for k, attrib in attributes.items():
+            attrib = sanitiser.sanitise_dictionary_for_xml(attrib)
+            text = attrib.pop('text')
+            rec = etree.Element("attribute", attrib)
+            rec.text = text
+            xf.write(rec)
 
 
 def prepare_link_attributes(link_attribs):
@@ -161,7 +165,9 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                         transit_route_attribs = {'id': route.id}
 
                         with xf.element("transitRoute", transit_route_attribs):
-                            # TODO add arbitrary route attributes
+                            if route.has_attrib('attributes'):
+                                save_additional_attributes(route.attributes, xf)
+
                             rec = etree.Element("transportMode")
                             rec.text = route.mode
                             xf.write(rec)
