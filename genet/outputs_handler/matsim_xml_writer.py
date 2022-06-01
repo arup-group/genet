@@ -165,7 +165,7 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                             y=stop_facility.lat,
                             crs_transformer=transformer)
                     transit_stop_attrib['x'], transit_stop_attrib['y'] = str(x), str(y)
-                    for k in OPTIONAL_STOP_FACILITY_ATTRIBUTES:
+                    for k in variables.OPTIONAL_STOP_FACILITY_ATTRIBUTES:
                         if stop_facility.has_attrib(k):
                             transit_stop_attrib[k] = str(stop_facility.additional_attribute(k))
                     if stop_facility.has_attrib('attributes'):
