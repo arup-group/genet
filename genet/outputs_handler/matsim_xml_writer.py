@@ -122,6 +122,8 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
         xf.write_declaration(doctype='<!DOCTYPE transitSchedule '
                                      'SYSTEM "http://www.matsim.org/files/dtd/transitSchedule_v2.dtd">')
         with xf.element("transitSchedule"):
+            if schedule.has_attrib('attributes'):
+                save_additional_attributes(schedule.attributes, xf)
             # transitStops first
             with xf.element("transitStops"):
                 for stop_facility in schedule.stops():

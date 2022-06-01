@@ -522,6 +522,48 @@ def test_schedule_with_additional_service_attribs_saves_all_data_to_xml(
     xml_diff.assert_semantically_equal(generated_schedule_file_path, schedule_with_additional_service_attribs_xml_file)
 
 
+@pytest.fixture()
+def schedule_with_additional_attrib():
+    schedule = Schedule('epsg:27700',
+                        attributes={'additional_attrib': {'name': 'additional_attrib',
+                                    'class': 'java.lang.String',
+                                    'text': 'attrib_value'}})
+    schedule.add_service(
+        Service(id='s1', routes=[
+            Route(id='r1', route_short_name='r1', mode='bus',
+                  arrival_offsets=['00:00:00', '00:01:00'],
+                  departure_offsets=['00:00:00', '00:01:00'],
+                  headway_spec={('07:00:00', '08:00:00'): 20},
+                  stops=[Stop('s1', x=1, y=1, epsg='epsg:27700'),
+                         Stop('s2', x=1, y=1, epsg='epsg:27700')])]
+                ))
+    return schedule
+
+
+@pytest.fixture()
+def schedule_with_additional_attribs_xml_file():
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule_with_additional_attrib.xml"))
+
+
+def test_schedule_with_additional_attribs_produces_valid_matsim_xml_file(
+        schedule_with_additional_attrib, tmpdir, schedule_dtd):
+    schedule_with_additional_attrib.write_to_matsim(tmpdir)
+    generated_schedule_file_path = os.path.join(tmpdir, 'schedule.xml')
+    xml_obj = lxml.etree.parse(generated_schedule_file_path)
+    assert schedule_dtd.validate(xml_obj), \
+        'Doc generated at {} is not valid against DTD due to {}'.format(generated_schedule_file_path,
+                                                                        schedule_dtd.error_log.filter_from_errors())
+
+
+def test_schedule_with_additional_attribs_saves_all_data_to_xml(
+        schedule_with_additional_attrib, tmpdir, network_dtd, schedule_with_additional_attribs_xml_file):
+    schedule_with_additional_attrib.write_to_matsim(tmpdir)
+
+    generated_schedule_file_path = os.path.join(tmpdir, 'schedule.xml')
+    xml_diff.assert_semantically_equal(generated_schedule_file_path, schedule_with_additional_attribs_xml_file)
+
+
 def test_generates_valid_matsim_vehicles_xml_file(tmpdir, vehicles_xsd, vehicle_types):
     vehicle_dict = {
         'veh_1': {'type': 'bus'},
