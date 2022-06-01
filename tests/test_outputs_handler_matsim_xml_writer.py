@@ -235,7 +235,7 @@ def test_saving_network_with_wrongly_formatted_attributes_with_geometry(tmpdir):
 
     assert_semantically_equal(dict(network.links()), {'0': link_attribs})
 
-    assert_semantically_equal(matsim_xml_writer.check_link_attributes(link_attribs),
+    assert_semantically_equal(matsim_xml_writer.check_additional_attributes(link_attribs),
                               {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
                                'geometry': LineString([(1, 2), (2, 3), (3, 4)])
@@ -271,7 +271,7 @@ def test_saving_network_with_bonkers_attributes_with_geometry(tmpdir):
 
     assert_semantically_equal(dict(network.links()), {'0': link_attribs})
 
-    assert_semantically_equal(matsim_xml_writer.check_link_attributes(link_attribs),
+    assert_semantically_equal(matsim_xml_writer.check_additional_attributes(link_attribs),
                               {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
                                'geometry': LineString([(1, 2), (2, 3), (3, 4)])
@@ -311,7 +311,7 @@ def test_saving_network_with_correct_attributes_and_geometry(tmpdir):
 
     assert_semantically_equal(dict(network.links()), {'0': link_attribs})
 
-    assert_semantically_equal(matsim_xml_writer.check_link_attributes(link_attribs), link_attribs)
+    assert_semantically_equal(matsim_xml_writer.check_additional_attributes(link_attribs), link_attribs)
 
     found_geometry_attrib = False
     for event, elem in ET.iterparse(os.path.join(tmpdir, 'network.xml'), events=('start', 'end')):

@@ -19,7 +19,7 @@ def delete_redundant_link_attributes_for_xml(d):
     return d
 
 
-def check_link_attributes(link_attribs):
+def check_additional_attributes(link_attribs):
     if 'attributes' in link_attribs:
         if isinstance(link_attribs['attributes'], dict):
             attribs_to_delete = []
@@ -45,7 +45,7 @@ def check_link_attributes(link_attribs):
 
 
 def prepare_link_attributes(link_attribs):
-    link_attributes = check_link_attributes(link_attribs)
+    link_attributes = check_additional_attributes(link_attribs)
     if 'geometry' in link_attributes:
         geom_attribute = {
             'name': 'geometry',
