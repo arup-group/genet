@@ -77,6 +77,7 @@ def write_matsim_network(output_dir, network):
 
             with xf.element("nodes"):
                 for node_id, node_attributes in network.nodes():
+                    # TODO add arbitrary node attributes
                     node_attrib = {'id': str(node_id), 'x': str(node_attributes['x']), 'y': str(node_attributes['y'])}
                     xf.write(etree.Element("node", node_attrib))
 
@@ -112,6 +113,7 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
             # transitStops first
             with xf.element("transitStops"):
                 for stop_facility in schedule.stops():
+                    # TODO add arbitrary stop attributes
                     transit_stop_attrib = {'id': str(stop_facility.id)}
                     if stop_facility.epsg == epsg:
                         x = stop_facility.x
@@ -144,10 +146,12 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                 transit_line_attribs = {'id': service.id, 'name': str(service.name)}
 
                 with xf.element("transitLine", transit_line_attribs):
+                    # TODO add arbitrary transit line attributes
                     for route in service.routes():
                         transit_route_attribs = {'id': route.id}
 
                         with xf.element("transitRoute", transit_route_attribs):
+                            # TODO add arbitrary route attributes
                             rec = etree.Element("transportMode")
                             rec.text = route.mode
                             xf.write(rec)
