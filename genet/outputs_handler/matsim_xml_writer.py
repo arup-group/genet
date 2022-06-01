@@ -44,6 +44,18 @@ def check_additional_attributes(link_attribs):
     return link_attribs
 
 
+def save_additional_attributes(additional_attributes, xf):
+    attributes = additional_attributes.pop('attributes')
+    with xf.element("link", sanitiser.sanitise_dictionary_for_xml(additional_attributes)):
+        with xf.element("attributes"):
+            for k, attrib in attributes.items():
+                attrib = sanitiser.sanitise_dictionary_for_xml(attrib)
+                text = attrib.pop('text')
+                rec = etree.Element("attribute", attrib)
+                rec.text = text
+                xf.write(rec)
+
+
 def prepare_link_attributes(link_attribs):
     link_attributes = check_additional_attributes(link_attribs)
     if 'geometry' in link_attributes:
@@ -86,15 +98,7 @@ def write_matsim_network(output_dir, network):
                 for link_id, link_attribs in network.links():
                     link_attributes = prepare_link_attributes(deepcopy(link_attribs))
                     if 'attributes' in link_attributes:
-                        attributes = link_attributes.pop('attributes')
-                        with xf.element("link", sanitiser.sanitise_dictionary_for_xml(link_attributes)):
-                            with xf.element("attributes"):
-                                for k, attrib in attributes.items():
-                                    attrib = sanitiser.sanitise_dictionary_for_xml(attrib)
-                                    text = attrib.pop('text')
-                                    rec = etree.Element("attribute", attrib)
-                                    rec.text = text
-                                    xf.write(rec)
+                        save_additional_attributes(link_attributes, xf)
                     else:
                         xf.write(etree.Element("link", sanitiser.sanitise_dictionary_for_xml(link_attributes)))
 
