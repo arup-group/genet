@@ -123,15 +123,12 @@ def write_matsim_network(output_dir, network):
                         xf.write(rec)
 
             with xf.element("nodes"):
-                for node_id, node_attributes in network.nodes():
-                    # TODO add arbitrary node attributes
-                    node_attrib = {'id': str(node_id), 'x': str(node_attributes['x']), 'y': str(node_attributes['y'])}
-                    if 'z' in node_attributes:
-                        node_attrib['z'] = str(node_attributes['z'])
-                    xf.write(etree.Element("node", node_attrib))
+                for node_id, node_attribs in network.nodes():
+                    node_attributes = prepare_attributes(node_attribs, elem_type='node')
+                    save_attributes(node_attributes, xf, elem_type='node')
 
-            links_attribs = {'capperiod': '01:00:00', 'effectivecellsize': '7.5', 'effectivelanewidth': '3.75'}
-            with xf.element("links", links_attribs):
+            with xf.element("links",
+                            {'capperiod': '01:00:00', 'effectivecellsize': '7.5', 'effectivelanewidth': '3.75'}):
                 for link_id, link_attribs in network.links():
                     link_attributes = prepare_attributes(link_attribs, elem_type='link')
                     link_attributes = prepare_link_geometry_attribute(link_attributes)
@@ -154,7 +151,6 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
             # transitStops first
             with xf.element("transitStops"):
                 for stop_facility in schedule.stops():
-                    # TODO add arbitrary stop attributes
                     transit_stop_attrib = {'id': str(stop_facility.id)}
                     if stop_facility.epsg == epsg:
                         x = stop_facility.x

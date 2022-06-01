@@ -357,6 +357,45 @@ def test_saving_network_with_geometry_produces_polyline_if_link_already_has_othe
     assert found_geometry_attrib
 
 
+@pytest.fixture()
+def network_with_additional_node_attrib():
+    network = Network('epsg:27700')
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2,
+                                   'attributes': {
+                                       'osm:node:data': {'name': 'osm:node:data',
+                                                         'class': 'java.lang.String',
+                                                         'text': '3'}}})
+    network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
+    network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
+                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car']})
+    return network
+
+
+@pytest.fixture()
+def network_with_additional_node_attrib_xml_file():
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_with_additional_node_attrib.xml"))
+
+
+def test_network_with_additional_node_attribs_produces_valid_matsim_xml_file(
+        network_with_additional_node_attrib, tmpdir, network_dtd):
+    network_with_additional_node_attrib.write_to_matsim(tmpdir)
+    generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+    xml_obj = lxml.etree.parse(generated_network_file_path)
+    assert network_dtd.validate(xml_obj), \
+        'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
+                                                                        network_dtd.error_log.filter_from_errors())
+
+
+def test_network_with_additional_node_attribs_saves_all_data_to_xml(
+        network_with_additional_node_attrib, tmpdir, network_dtd, network_with_additional_node_attrib_xml_file):
+    network_with_additional_node_attrib.write_to_matsim(tmpdir)
+
+    generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+    xml_diff.assert_semantically_equal(generated_network_file_path, network_with_additional_node_attrib_xml_file)
+
+
+
 def test_write_matsim_network_produces_semantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
                                                                                   tmpdir):
     matsim_xml_writer.write_matsim_network(tmpdir, network_object_from_test_data)
