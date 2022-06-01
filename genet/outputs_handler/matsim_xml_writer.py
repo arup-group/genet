@@ -5,43 +5,60 @@ from copy import deepcopy
 from pyproj import Proj, Transformer
 from pandas import DataFrame
 from genet.outputs_handler import sanitiser
-from genet.validate.network_validation import validate_link_data
+from genet.validate.network_validation import validate_attribute_data
 from genet.utils.spatial import change_proj, encode_shapely_linestring_to_polyline
-from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES, \
-    OPTIONAL_NETWORK_LINK_ATTRIBUTES, ADDITIONAL_STOP_FACILITY_ATTRIBUTES
+import genet.variables as variables
 
 
-def delete_redundant_link_attributes_for_xml(d):
+def get_allowable_attributes(elem_type):
+    if elem_type == 'node':
+        return variables.OPTIONAL_NETWORK_NODE_ATTRIBUTES + variables.NECESSARY_NETWORK_NODE_ATTRIBUTES
+    elif elem_type == 'link':
+        return variables.OPTIONAL_NETWORK_LINK_ATTRIBUTES + variables.NECESSARY_NETWORK_LINK_ATTRIBUTES + ['geometry']
+    elif elem_type == 'stopFacility':
+        return variables.OPTIONAL_STOP_FACILITY_ATTRIBUTES + variables.NECESSARY_STOP_FACILITY_ATTRIBUTES
+
+
+def get_necessary_attributes(elem_type):
+    if elem_type == 'node':
+        return variables.NECESSARY_NETWORK_NODE_ATTRIBUTES
+    elif elem_type == 'link':
+        return variables.NECESSARY_NETWORK_LINK_ATTRIBUTES
+    elif elem_type == 'stopFacility':
+        return variables.NECESSARY_STOP_FACILITY_ATTRIBUTES
+
+
+def retain_allowed_attributes_for_xml(d, elem_type):
     attrib_keys = set(d.keys())
-    allowable_attributes = OPTIONAL_NETWORK_LINK_ATTRIBUTES + NECESSARY_NETWORK_LINK_ATTRIBUTES
-    for attrib in attrib_keys - set(allowable_attributes + ['attributes']):
+    allowable_attributes = get_allowable_attributes(elem_type)
+    for attrib in attrib_keys - set(allowable_attributes):
         del d[attrib]
     return d
 
 
-def check_additional_attributes(link_attribs):
-    if 'attributes' in link_attribs:
-        if isinstance(link_attribs['attributes'], dict):
+def check_additional_attributes(attribs):
+    if 'attributes' in attribs:
+        if isinstance(attribs['attributes'], dict):
             attribs_to_delete = []
-            for attrib, value in link_attribs['attributes'].items():
+            for attrib, value in attribs['attributes'].items():
                 try:
-                    link_attribs['attributes'][attrib]['name']
-                    link_attribs['attributes'][attrib]['class']
-                    link_attribs['attributes'][attrib]['text']
+                    attribs['attributes'][attrib]['name']
+                    attribs['attributes'][attrib]['class']
+                    attribs['attributes'][attrib]['text']
                 except Exception as e:
-                    logging.warning(f'Attempt to access required keys in link data under "attributes:{attrib}" key '
+                    logging.warning(f'Attempt to access required keys in data under "attributes:{attrib}" key '
                                     f'resulted in {type(e)} with message "{e}".')
                     attribs_to_delete.append(attrib)
             for attrib in attribs_to_delete:
                 logging.warning(f'Deleting {attrib} under key "attributes"')
-                del link_attribs['attributes'][attrib]
-            if not link_attribs['attributes']:
-                logging.warning(f'Attributes on link are not formatted correctly and will be deleted: {link_attribs}')
-                del link_attribs['attributes']
+                del attribs['attributes'][attrib]
+            if not attribs['attributes']:
+                logging.warning(f'Attributes are not formatted correctly and will be deleted: {attribs}')
+                del attribs['attributes']
         else:
-            logging.warning(f'Attributes on link are not a dictionary: {link_attribs}')
-            del link_attribs['attributes']
-    return link_attribs
+            logging.warning(f'Attributes are not a dictionary: {attribs}')
+            del attribs['attributes']
+    return attribs
 
 
 def save_attributes(attributes, xf, elem_type):
@@ -67,9 +84,17 @@ def save_additional_attributes(attributes, xf):
             xf.write(rec)
 
 
-def prepare_link_attributes(link_attribs):
-    link_attributes = check_additional_attributes(link_attribs)
-    if 'geometry' in link_attributes:
+def prepare_attributes(attribs, elem_type):
+    d = deepcopy(attribs)
+    d = check_additional_attributes(d)
+    d = retain_allowed_attributes_for_xml(d, elem_type)
+    validate_attribute_data(d, get_necessary_attributes(elem_type))
+    return d
+
+
+def prepare_link_geometry_attribute(link_attribs):
+    link_attributes = deepcopy(link_attribs)
+    if 'geometry' in link_attribs:
         geom_attribute = {
             'name': 'geometry',
             'class': 'java.lang.String',
@@ -79,8 +104,7 @@ def prepare_link_attributes(link_attribs):
             link_attributes['attributes']['geometry'] = geom_attribute
         else:
             link_attributes['attributes'] = {'geometry': geom_attribute}
-    link_attributes = delete_redundant_link_attributes_for_xml(link_attributes)
-    validate_link_data(link_attributes)
+        del link_attributes['geometry']
     return link_attributes
 
 
@@ -109,7 +133,8 @@ def write_matsim_network(output_dir, network):
             links_attribs = {'capperiod': '01:00:00', 'effectivecellsize': '7.5', 'effectivelanewidth': '3.75'}
             with xf.element("links", links_attribs):
                 for link_id, link_attribs in network.links():
-                    link_attributes = prepare_link_attributes(deepcopy(link_attribs))
+                    link_attributes = prepare_attributes(link_attribs, elem_type='link')
+                    link_attributes = prepare_link_geometry_attribute(link_attributes)
                     save_attributes(link_attributes, xf, elem_type='link')
 
 
@@ -140,7 +165,7 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                             y=stop_facility.lat,
                             crs_transformer=transformer)
                     transit_stop_attrib['x'], transit_stop_attrib['y'] = str(x), str(y)
-                    for k in ADDITIONAL_STOP_FACILITY_ATTRIBUTES:
+                    for k in OPTIONAL_STOP_FACILITY_ATTRIBUTES:
                         if stop_facility.has_attrib(k):
                             transit_stop_attrib[k] = str(stop_facility.additional_attribute(k))
                     if stop_facility.has_attrib('attributes'):
