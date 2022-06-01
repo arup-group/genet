@@ -7,7 +7,7 @@ from tests.fixtures import network_object_from_test_data, full_fat_default_confi
 from tests import xml_diff
 from genet.outputs_handler import matsim_xml_writer
 from genet.core import Network
-from genet.schedule_elements import read_vehicle_types
+from genet.schedule_elements import read_vehicle_types, Schedule, Service, Route, Stop
 from genet.inputs_handler import read
 import xml.etree.cElementTree as ET
 
@@ -46,7 +46,7 @@ def vehicles_xsd():
 @pytest.fixture
 def vehicle_types():
     vehicle_types_config = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'genet',
-                                            "configs", "vehicles", "vehicle_definitions.yml"))
+                                                        "configs", "vehicles", "vehicle_definitions.yml"))
     return read_vehicle_types(vehicle_types_config)
 
 
@@ -73,8 +73,9 @@ def test_network_from_test_osm_data_produces_valid_matsim_network_xml_file(full_
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
                                                                         network_dtd.error_log.filter_from_errors())
 
+
 @pytest.fixture()
-def network_with_extra_attribs():
+def network_with_extra_attrib():
     network = Network('epsg:27700')
     network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
@@ -83,18 +84,20 @@ def network_with_extra_attribs():
                                              'extra_Special_attrib': 12})
     return network
 
+
 def test_network_with_extra_attribs_produces_valid_matsim_network_xml_file(
-        network_with_extra_attribs, tmpdir, network_dtd):
-    network_with_extra_attribs.write_to_matsim(tmpdir)
+        network_with_extra_attrib, tmpdir, network_dtd):
+    network_with_extra_attrib.write_to_matsim(tmpdir)
     generated_network_file_path = os.path.join(tmpdir, 'network.xml')
     xml_obj = lxml.etree.parse(generated_network_file_path)
     assert network_dtd.validate(xml_obj), \
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
                                                                         network_dtd.error_log.filter_from_errors())
 
+
 def test_network_with_extra_attribs_saves_all_data_to_xml(
-        network_with_extra_attribs, tmpdir, network_dtd):
-    network_with_extra_attribs.write_to_matsim(tmpdir)
+        network_with_extra_attrib, tmpdir, network_dtd):
+    network_with_extra_attrib.write_to_matsim(tmpdir)
     generated_network_file_path = os.path.join(tmpdir, 'network.xml')
     _network_from_file = read.read_matsim(path_to_network=generated_network_file_path, epsg='epsg:27700')
     assert_semantically_equal(dict(_network_from_file.nodes()), {
@@ -155,8 +158,7 @@ def test_network_with_attribs_doesnt_loose_any_attributes_after_saving(tmpdir):
     network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
-                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
-                                             'extra_Special_attrib': 12})
+                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car']})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                              'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
                                              'attributes': {
@@ -182,11 +184,10 @@ def test_saving_network_with_geometry_doesnt_change_data_on_the_network(tmpdir):
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                              'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
-                                             'geometry': LineString([(1,2), (2,3), (3,4)]),
-                                             'extra_Special_attrib': 12})
+                                             'geometry': LineString([(1, 2), (2, 3), (3, 4)])})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                              'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
-                                             'geometry': LineString([(1,2), (2,3), (3,4)]),
+                                             'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
                                              'attributes': {
                                                  'osm:way:lanes': {'name': 'osm:way:lanes',
                                                                    'class': 'java.lang.String',
@@ -210,7 +211,7 @@ def test_saving_network_with_geometry_produces_correct_polyline_in_link_attribut
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                              'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
-                                             'geometry': LineString([(1,2), (2,3), (3,4)]),
+                                             'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
                                              'extra_Special_attrib': 12})
 
     network.write_to_matsim(tmpdir)
@@ -234,10 +235,10 @@ def test_saving_network_with_wrongly_formatted_attributes_with_geometry(tmpdir):
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
 
     link_attribs = {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
-                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
-                                             'geometry': LineString([(1,2), (2,3), (3,4)]),
-                                             'attributes': {'heyo': 'whoop'}
-                                             }
+                    'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
+                    'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
+                    'attributes': {'heyo': 'whoop'}
+                    }
 
     network.add_link('0', '0', '1', attribs=link_attribs)
     network.write_to_matsim(tmpdir)
@@ -270,10 +271,10 @@ def test_saving_network_with_bonkers_attributes_with_geometry(tmpdir):
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
 
     link_attribs = {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
-                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
-                                             'geometry': LineString([(1,2), (2,3), (3,4)]),
-                                             'attributes': float('nan')
-                                             }
+                    'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
+                    'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
+                    'attributes': float('nan')
+                    }
 
     network.add_link('0', '0', '1', attribs=link_attribs)
     network.write_to_matsim(tmpdir)
@@ -306,13 +307,13 @@ def test_saving_network_with_correct_attributes_and_geometry(tmpdir):
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
 
     link_attribs = {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
-                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
-                                             'geometry': LineString([(1,2), (2,3), (3,4)]),
-                                             'attributes': {
-                                                 'osm:way:lanes': {'name': 'osm:way:lanes',
-                                                                   'class': 'java.lang.String',
-                                                                   'text': '3'}
-                                             }
+                    'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
+                    'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
+                    'attributes': {
+                        'osm:way:lanes': {'name': 'osm:way:lanes',
+                                          'class': 'java.lang.String',
+                                          'text': '3'}
+                    }
                     }
 
     network.add_link('0', '0', '1', attribs=link_attribs)
@@ -338,7 +339,7 @@ def test_saving_network_with_geometry_produces_polyline_if_link_already_has_othe
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                              'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
-                                             'geometry': LineString([(1,2), (2,3), (3,4)]),
+                                             'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
                                              'attributes': {
                                                  'osm:way:lanes': {'name': 'osm:way:lanes',
                                                                    'class': 'java.lang.String',
@@ -392,6 +393,50 @@ def test_write_matsim_schedule_produces_semantically_equal_xml_to_input_matsim_x
     xml_diff.assert_semantically_equal(os.path.join(tmpdir, 'schedule.xml'), pt2matsim_schedule_file)
 
 
+@pytest.fixture()
+def schedule_with_additional_attrib_stop():
+    schedule = Schedule('epsg:27700')
+    schedule.add_service(
+        Service(id='s1', routes=[
+            Route(id='r1', route_short_name='r1', mode='bus',
+                  arrival_offsets=['00:00:00', '00:01:00'],
+                  departure_offsets=['00:00:00', '00:01:00'],
+                  headway_spec={('07:00:00', '08:00:00'): 20},
+                  stops=[Stop('s1', x=1, y=1, epsg='epsg:27700',
+                              attributes={'carAccessible': {'name': 'carAccessible',
+                                                            'class': 'java.lang.String',
+                                                            'text': 'true'},
+                                          'accessLinkId_car': {'name': 'accessLinkId_car',
+                                                               'class': 'java.lang.String',
+                                                               'text': 'linkID'}
+                                          }),
+                         Stop('s2', x=1, y=1, epsg='epsg:27700')
+                         ])]))
+    return schedule
+
+
+schedule_with_additional_attrib_stop_xml_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule_stops_with_additional_attrib.xml"))
+
+
+def test_schedule_with_additional_attribs_produces_valid_matsim_xml_file(
+        schedule_with_additional_attrib_stop, tmpdir, schedule_dtd):
+    schedule_with_additional_attrib_stop.write_to_matsim(tmpdir)
+    generated_schedule_file_path = os.path.join(tmpdir, 'schedule.xml')
+    xml_obj = lxml.etree.parse(generated_schedule_file_path)
+    assert schedule_dtd.validate(xml_obj), \
+        'Doc generated at {} is not valid against DTD due to {}'.format(generated_schedule_file_path,
+                                                                        schedule_dtd.error_log.filter_from_errors())
+
+
+def test_schedule_with_additional_attribs_saves_all_data_to_xml(
+        schedule_with_additional_attrib_stop, tmpdir, network_dtd):
+    schedule_with_additional_attrib_stop.write_to_matsim(tmpdir)
+
+    generated_schedule_file_path = os.path.join(tmpdir, 'schedule.xml')
+    xml_diff.assert_semantically_equal(generated_schedule_file_path, schedule_with_additional_attrib_stop_xml_file)
+
+
 def test_generates_valid_matsim_vehicles_xml_file(tmpdir, vehicles_xsd, vehicle_types):
     vehicle_dict = {
         'veh_1': {'type': 'bus'},
@@ -423,7 +468,7 @@ def test_generates_matsim_vehicles_xml_file_containing_expected_vehicle_types(tm
     xml_obj = lxml.etree.parse(generated_file_path)
 
     vehicle_types = xml_obj.findall('{http://www.matsim.org/files/dtd}vehicleType')
-    expected_vehicle_types = {v['type'] for k,v in vehicle_dict.items()}
+    expected_vehicle_types = {v['type'] for k, v in vehicle_dict.items()}
     actual_vehicle_types = set()
     for vehicle_type in vehicle_types:
         actual_vehicle_types.add(vehicle_type.get('id'))

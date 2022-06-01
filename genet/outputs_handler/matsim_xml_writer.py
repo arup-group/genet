@@ -44,9 +44,9 @@ def check_additional_attributes(link_attribs):
     return link_attribs
 
 
-def save_additional_attributes(additional_attributes, xf):
+def save_additional_attributes(additional_attributes, xf, elem_type):
     attributes = additional_attributes.pop('attributes')
-    with xf.element("link", sanitiser.sanitise_dictionary_for_xml(additional_attributes)):
+    with xf.element(elem_type, sanitiser.sanitise_dictionary_for_xml(additional_attributes)):
         with xf.element("attributes"):
             for k, attrib in attributes.items():
                 attrib = sanitiser.sanitise_dictionary_for_xml(attrib)
@@ -58,7 +58,7 @@ def save_additional_attributes(additional_attributes, xf):
 
 def save_attributes(attributes, xf, elem_type):
     if 'attributes' in attributes:
-        save_additional_attributes(attributes, xf)
+        save_additional_attributes(attributes, xf, elem_type)
     else:
         xf.write(etree.Element(elem_type, sanitiser.sanitise_dictionary_for_xml(attributes)))
 
@@ -135,7 +135,9 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                     for k in ADDITIONAL_STOP_FACILITY_ATTRIBUTES:
                         if stop_facility.has_attrib(k):
                             transit_stop_attrib[k] = str(stop_facility.additional_attribute(k))
-                    xf.write(etree.Element("stopFacility", transit_stop_attrib))
+                    if stop_facility.has_attrib('attributes'):
+                        transit_stop_attrib['attributes'] = stop_facility.additional_attribute('attributes')
+                    save_attributes(transit_stop_attrib, xf, elem_type='stopFacility')
 
             # minimalTransferTimes, if present
             if schedule.minimal_transfer_times:
@@ -186,16 +188,17 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                                             stop_attribs['awaitDeparture'] = str(route.await_departure[j]).lower()
                                     xf.write(etree.Element("stop", stop_attribs))
 
-                            with xf.element("route"):
-                                if not route.route:
-                                    logging.warning(
-                                        "Route needs to have a network route composed of a list of network links that "
-                                        "the vehicle on this route traverses. If read the Schedule from GTFS, the "
-                                        "resulting Route objects will not have reference to the network route taken."
-                                    )
-                                for link_id in route.route:
-                                    route_attribs = {'refId': str(link_id)}
-                                    xf.write(etree.Element("link", route_attribs))
+                            if not route.route:
+                                logging.warning(
+                                    "Route needs to have a network route composed of a list of network links that "
+                                    "the vehicle on this route traverses. If read the Schedule from GTFS, the "
+                                    "resulting Route objects will not have reference to the network route taken."
+                                )
+                            else:
+                                with xf.element("route"):
+                                    for link_id in route.route:
+                                        route_attribs = {'refId': str(link_id)}
+                                        xf.write(etree.Element("link", route_attribs))
 
                             with xf.element("departures"):
                                 for trip_id, trip_dep_time, veh_id in zip(route.trips['trip_id'],
