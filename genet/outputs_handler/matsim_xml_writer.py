@@ -56,6 +56,13 @@ def save_additional_attributes(additional_attributes, xf):
                 xf.write(rec)
 
 
+def save_attributes(link_attributes, xf):
+    if 'attributes' in link_attributes:
+        save_additional_attributes(link_attributes, xf)
+    else:
+        xf.write(etree.Element("link", sanitiser.sanitise_dictionary_for_xml(link_attributes)))
+
+
 def prepare_link_attributes(link_attribs):
     link_attributes = check_additional_attributes(link_attribs)
     if 'geometry' in link_attributes:
@@ -97,10 +104,7 @@ def write_matsim_network(output_dir, network):
             with xf.element("links", links_attribs):
                 for link_id, link_attribs in network.links():
                     link_attributes = prepare_link_attributes(deepcopy(link_attribs))
-                    if 'attributes' in link_attributes:
-                        save_additional_attributes(link_attributes, xf)
-                    else:
-                        xf.write(etree.Element("link", sanitiser.sanitise_dictionary_for_xml(link_attributes)))
+                    save_attributes(link_attributes, xf)
 
 
 def write_matsim_schedule(output_dir, schedule, epsg=''):

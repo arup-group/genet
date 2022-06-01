@@ -73,20 +73,29 @@ def test_network_from_test_osm_data_produces_valid_matsim_network_xml_file(full_
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
                                                                         network_dtd.error_log.filter_from_errors())
 
-
-def test_network_with_extra_attribs_produces_valid_matsim_network_xml_file(tmpdir, network_dtd):
+@pytest.fixture()
+def network_with_extra_attribs():
     network = Network('epsg:27700')
     network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                              'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
                                              'extra_Special_attrib': 12})
-    network.write_to_matsim(tmpdir)
+    return network
+
+def test_network_with_extra_attribs_produces_valid_matsim_network_xml_file(
+        network_with_extra_attribs, tmpdir, network_dtd):
+    network_with_extra_attribs.write_to_matsim(tmpdir)
     generated_network_file_path = os.path.join(tmpdir, 'network.xml')
     xml_obj = lxml.etree.parse(generated_network_file_path)
     assert network_dtd.validate(xml_obj), \
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
                                                                         network_dtd.error_log.filter_from_errors())
+
+def test_network_with_extra_attribs_saves_all_data_to_xml(
+        network_with_extra_attribs, tmpdir, network_dtd):
+    network_with_extra_attribs.write_to_matsim(tmpdir)
+    generated_network_file_path = os.path.join(tmpdir, 'network.xml')
     _network_from_file = read.read_matsim(path_to_network=generated_network_file_path, epsg='epsg:27700')
     assert_semantically_equal(dict(_network_from_file.nodes()), {
         '0': {'id': '0', 'x': 1.0, 'y': 2.0, 'lon': -7.557148039524952, 'lat': 49.766825803756994,
