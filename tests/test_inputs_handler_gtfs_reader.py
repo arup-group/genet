@@ -3,7 +3,7 @@ import os
 import sys
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
-from genet.inputs_handler import gtfs_reader
+from genet.input import gtfs_reader
 from tests.fixtures import *
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

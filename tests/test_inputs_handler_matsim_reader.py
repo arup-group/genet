@@ -1,6 +1,6 @@
 from pyproj import Proj, Transformer
 from shapely.geometry import LineString
-from genet.inputs_handler import matsim_reader, read
+from genet.input import matsim_reader, read
 from tests.fixtures import *
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

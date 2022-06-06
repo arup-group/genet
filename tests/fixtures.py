@@ -8,8 +8,8 @@ import pandas as pd
 import pytest
 
 import genet.modify.change_log as change_log
-from genet.inputs_handler import osm_reader
-from genet.inputs_handler import read
+from genet.input import osm_reader
+from genet.input import read
 from genet.schedule_elements import Stop, Route, Service, Schedule
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

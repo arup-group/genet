@@ -111,7 +111,7 @@ MODES:
 
   DEFAULT_OSM_TAG_VALUE:
   # GeNet will first look at OSM tags to infer the matsim values the link should have. For the types and values head over to
-  # outputs_handler/matsim_xml_values.py.
+  # output/matsim_xml_values.py.
     car: secondary
     bus: secondary
     rail: railway

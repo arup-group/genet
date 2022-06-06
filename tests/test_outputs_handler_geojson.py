@@ -1,6 +1,6 @@
 import os
 import pytest
-from genet.outputs_handler import geojson as gngeojson
+from genet.output import geojson as gngeojson
 from genet import Network, Schedule, Service, Route, Stop
 from tests.fixtures import assert_semantically_equal, correct_schedule
 

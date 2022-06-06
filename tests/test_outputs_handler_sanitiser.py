@@ -1,6 +1,6 @@
 import os
-from genet.outputs_handler import sanitiser
-from genet.outputs_handler import geojson as gngeojson
+from genet.output import sanitiser
+from genet.output import geojson as gngeojson
 from genet import Network
 from tests.fixtures import assert_semantically_equal
 

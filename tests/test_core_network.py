@@ -14,11 +14,11 @@ from geopandas.testing import assert_geodataframe_equal
 from shapely.geometry import LineString, Polygon, Point
 
 from genet.core import Network, MissingElevationException
-from genet.inputs_handler import matsim_reader
+from genet.input import matsim_reader
 from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule, Stop
 from genet.utils import plot, spatial
-from genet.inputs_handler import read
+from genet.input import read
 from tests.fixtures import assert_semantically_equal, route, stop_epsg_27700, network_object_from_test_data, \
     full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path
 

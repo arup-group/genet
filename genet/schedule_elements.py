@@ -13,9 +13,9 @@ from typing import Union, Dict, List, Set, Tuple
 import dictdiffer
 import genet.modify.change_log as change_log
 import genet.modify.schedule as mod_schedule
-import genet.outputs_handler.geojson as gngeojson
-import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
-import genet.outputs_handler.sanitiser as sanitiser
+import genet.output.geojson as gngeojson
+import genet.output.matsim_xml_writer as matsim_xml_writer
+import genet.output.sanitiser as sanitiser
 import genet.use.schedule as use_schedule
 import genet.utils.dict_support as dict_support
 import genet.utils.graph_operations as graph_operations

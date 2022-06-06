@@ -7,7 +7,7 @@ import pytest
 from lxml.etree import Element
 from pandas.testing import assert_frame_equal
 
-from genet.inputs_handler import read
+from genet.input import read
 from genet.use import road_pricing
 
 # paths in use assume we're in the repo's root, so make sure we always are

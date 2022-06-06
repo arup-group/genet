@@ -6,7 +6,7 @@ import time
 
 from genet import read_matsim
 from genet.utils.persistence import ensure_dir
-from genet.outputs_handler.sanitiser import sanitise_dictionary
+from genet.output.sanitiser import sanitise_dictionary
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Simplify a MATSim network by removing '

@@ -3,7 +3,7 @@ from pandas import DataFrame, Timestamp, Timedelta
 from pandas.testing import assert_frame_equal
 
 from genet.exceptions import ServiceIndexError, ConflictingStopData, InconsistentVehicleModeError
-from genet.inputs_handler import read, matsim_reader, gtfs_reader
+from genet.input import read, matsim_reader, gtfs_reader
 from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation

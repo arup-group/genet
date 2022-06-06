@@ -12,9 +12,9 @@ import genet.exceptions as exceptions
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
 import genet.modify.schedule as modify_schedule
-import genet.outputs_handler.geojson as geojson
-import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
-import genet.outputs_handler.sanitiser as sanitiser
+import genet.output.geojson as geojson
+import genet.output.matsim_xml_writer as matsim_xml_writer
+import genet.output.sanitiser as sanitiser
 import genet.schedule_elements as schedule_elements
 import genet.utils.dict_support as dict_support
 import genet.utils.elevation as elevation

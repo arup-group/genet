@@ -5,10 +5,10 @@ import networkx as nx
 import json
 import logging
 import genet.core as core
-import genet.inputs_handler.gtfs_reader as gtfs_reader
-import genet.inputs_handler.osm_reader as osm_reader
+import genet.input.gtfs_reader as gtfs_reader
+import genet.input.osm_reader as osm_reader
 import genet.utils.parallel as parallel
-import genet.inputs_handler.matsim_reader as matsim_reader
+import genet.input.matsim_reader as matsim_reader
 import genet.schedule_elements as schedule_elements
 import genet.utils.spatial as spatial
 import genet.modify.change_log as change_log

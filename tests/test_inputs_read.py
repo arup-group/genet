@@ -1,4 +1,4 @@
-from genet.inputs_handler import read
+from genet.input import read
 from tests.fixtures import *
 from shapely.geometry import LineString
 

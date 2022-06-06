@@ -1,6 +1,6 @@
 import os
 import sys
-from genet.inputs_handler import osm_reader
+from genet.input import osm_reader
 from tests.fixtures import assert_semantically_equal, full_fat_default_config
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

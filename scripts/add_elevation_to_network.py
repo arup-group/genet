@@ -5,7 +5,7 @@ import json
 
 from genet import read_matsim
 from genet.utils.persistence import ensure_dir
-import genet.outputs_handler.sanitiser as sanitiser
+import genet.output.sanitiser as sanitiser
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Add elevation data to network nodes and validate it')

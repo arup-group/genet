@@ -1,6 +1,6 @@
 from itertools import groupby
 import genet.utils.spatial as spatial
-import genet.inputs_handler.osm_reader as osm_reader
+import genet.input.osm_reader as osm_reader
 
 
 # rip and monkey patch of a few functions from osmnx.core to customise the tags being saved to the graph
@@ -101,7 +101,7 @@ def return_edges(paths, config, bidirectional=False):
     """
     Makes graph edges from osm paths
     :param paths: dictionary {osm_way_id: {osmid: x, nodes:[a,b], osmtags: vals}}
-    :param config: genet.inputs_handler.osm_reader.Config object
+    :param config: genet.input.osm_reader.Config object
     :param bidirectional: bool value if True, reads all paths as both ways
     :return:
     """

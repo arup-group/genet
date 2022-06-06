@@ -5,10 +5,10 @@ from copy import deepcopy
 from shapely.geometry import LineString
 from tests.fixtures import network_object_from_test_data, full_fat_default_config_path, assert_semantically_equal
 from tests import xml_diff
-from genet.outputs_handler import matsim_xml_writer
+from genet.output import matsim_xml_writer
 from genet.core import Network
 from genet.schedule_elements import read_vehicle_types, Schedule, Service, Route, Stop
-from genet.inputs_handler import read
+from genet.input import read
 import xml.etree.cElementTree as ET
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

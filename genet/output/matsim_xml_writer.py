@@ -4,7 +4,7 @@ from lxml import etree
 from copy import deepcopy
 from pyproj import Proj, Transformer
 from pandas import DataFrame
-from genet.outputs_handler import sanitiser
+from genet.output import sanitiser
 from genet.validate.network_validation import validate_attribute_data
 from genet.utils.spatial import change_proj, encode_shapely_linestring_to_polyline
 import genet.variables as variables

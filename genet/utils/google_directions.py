@@ -5,7 +5,7 @@ import logging
 import os
 import time
 
-import genet.outputs_handler.geojson as geojson
+import genet.output.geojson as geojson
 import genet.utils.persistence as persistence
 import genet.utils.secrets_vault as secrets_vault
 import genet.utils.simplification as simplification
