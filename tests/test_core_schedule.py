@@ -1344,7 +1344,10 @@ def test_iter_stops_returns_stops_objects(test_service, different_test_service):
 
 
 def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker, route):
-    mocker.patch.object(matsim_reader, 'read_schedule', return_value=([Service(id='1', routes=[route])], {}, {}))
+    mocker.patch.object(
+        matsim_reader,
+        'read_schedule',
+        return_value=([Service(id='1', routes=[route])], {}, {}, {'attributes': {}}))
 
     schedule = read.read_matsim_schedule(pt2matsim_schedule_file, epsg='epsg:27700')
 

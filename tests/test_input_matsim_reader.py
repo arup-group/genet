@@ -334,7 +334,7 @@ def test_network_with_additional_node_attributes_reads_data_correctly(
 
 
 def test_read_schedule_reads_the_data_correctly(correct_services_from_test_pt2matsim_schedule):
-    services, minimalTransferTimes, transit_stop_id_mapping = matsim_reader.read_schedule(
+    services, minimalTransferTimes, transit_stop_id_mapping, schedule_attribs = matsim_reader.read_schedule(
         pt2matsim_schedule_file, 'epsg:27700')
 
     correct_minimalTransferTimes = {'26997928P': {'26997928P.link:1': 0.0},
@@ -363,6 +363,13 @@ def test_schedule_with_additional_service_attributes_reads_data_correctly(
     s = read.read_matsim_schedule(schedule_with_additional_service_attribs_xml_file, 'epsg:27700')
     assert s['s1'].has_attrib('attributes')
     assert_semantically_equal(s['s1'].attributes, schedule_with_additional_service_attrib['s1'].attributes)
+
+
+def test_schedule_with_additional_attributes_reads_data_correctly(
+        schedule_with_additional_attribs_xml_file, schedule_with_additional_attrib):
+    s = read.read_matsim_schedule(schedule_with_additional_attribs_xml_file, 'epsg:27700')
+    assert s.has_attrib('attributes')
+    assert_semantically_equal(s.attributes, schedule_with_additional_attrib.attributes)
 
 
 def test_reading_pt2matsim_vehicles():
