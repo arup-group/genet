@@ -265,6 +265,8 @@ def read_schedule(schedule_path, epsg):
                 id=transitRoute,
                 await_departure=await_departure
             )
+            if transitRoute_val['attributes']:
+                r.add_additional_attributes({'attributes': transitRoute_val['attributes']})
             service_routes.append(r)
         services.append(Service(id=service_id, routes=service_routes))
 
@@ -311,7 +313,7 @@ def read_schedule(schedule_path, epsg):
 
             elif elem.tag == 'transitRoute':
                 transitRoutes[elem.attrib['id']] = {'stops': [], 'links': [], 'departure_list': [],
-                                                    'attribs': elem.attrib}
+                                                    'attributes': {}}
                 transitRoute = elem.attrib['id']
 
             # doesn't have any attribs
@@ -348,7 +350,10 @@ def read_schedule(schedule_path, epsg):
                 elif elem_type_for_additional_attributes == 'transitLine':
                     pass
                 elif elem_type_for_additional_attributes == 'transitRoute':
-                    pass
+                    transitRoutes[transitRoute]['attributes'] = read_additional_attrib(
+                        elem,
+                        transitRoutes[transitRoute]['attributes']
+                    )
         elif (event == 'end') and (elem.tag == "transportMode"):
             transportMode = {'transportMode': elem.text}
 

@@ -80,6 +80,10 @@ class ScheduleElement:
     def change_log(self):
         return self._graph.graph['change_log']
 
+    @abstractmethod
+    def _add_additional_attribute_to_graph(self, k, v):
+        pass
+
     def add_additional_attributes(self, attribs: dict):
         """
         adds attributes defined by keys of the attribs dictionary with values of the corresponding values
@@ -89,6 +93,8 @@ class ScheduleElement:
         for k, v in attribs.items():
             if k not in self.__dict__:
                 setattr(self, k, v)
+                if '_graph' in self.__dict__:
+                    self._add_additional_attribute_to_graph(k, v)
 
     def has_attrib(self, attrib_name):
         return attrib_name in self.__dict__
@@ -524,6 +530,9 @@ class Route(ScheduleElement):
         route_graph.graph['change_log'] = change_log.ChangeLog()
         return route_graph
 
+    def _add_additional_attribute_to_graph(self, k, v):
+        self._graph.graph['routes'][self.id][k] = v
+
     def reference_nodes(self):
         return self.route_reference_nodes(self.id)
 
@@ -896,6 +905,9 @@ class Service(ScheduleElement):
         service_graph.graph['route_to_service_map'] = {route.id: _id for route in routes}
         service_graph.graph['service_to_route_map'] = {_id: [route.id for route in routes]}
         return service_graph
+
+    def _add_additional_attribute_to_graph(self, k, v):
+        self._graph.graph['services'][self.id][k] = v
 
     def _ensure_unique_routes(self, routes: List[Route]):
         unique_routes = []
