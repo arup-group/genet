@@ -2,6 +2,12 @@ from pyproj import Proj, Transformer
 from shapely.geometry import LineString
 from genet.input import matsim_reader, read
 from tests.fixtures import *
+from tests.test_output_matsim_xml_writer import \
+    network_with_additional_node_attrib_xml_file, network_with_additional_node_attrib, \
+    schedule_with_additional_attrib_stop_xml_file, schedule_with_additional_attrib_stop, \
+    schedule_with_additional_route_attribs_xml_file, schedule_with_additional_route_attrib, \
+    schedule_with_additional_service_attribs_xml_file, schedule_with_additional_service_attrib, \
+    schedule_with_additional_attribs_xml_file, schedule_with_additional_attrib
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -315,6 +321,18 @@ def test_reading_network_with_singular_geometry_attribute_cleans_up_empty_attrib
     assert_semantically_equal(dict(n.links()), correct_links)
 
 
+def test_network_with_additional_node_attributes_reads_data_correctly(
+        network_with_additional_node_attrib_xml_file, network_with_additional_node_attrib):
+    n = read.read_matsim(path_to_network=network_with_additional_node_attrib_xml_file, epsg='epsg:27700')
+    data_from_xml = dict(n.nodes())
+    # remove lat, lon, s2id which are generated upon read from x and y values
+    for k, v in data_from_xml.items():
+        del v['lat']
+        del v['lon']
+        del v['s2_id']
+    assert_semantically_equal(data_from_xml, dict(network_with_additional_node_attrib.nodes()))
+
+
 def test_read_schedule_reads_the_data_correctly(correct_services_from_test_pt2matsim_schedule):
     services, minimalTransferTimes, transit_stop_id_mapping = matsim_reader.read_schedule(
         pt2matsim_schedule_file, 'epsg:27700')
@@ -406,6 +424,7 @@ def test_uses_node_elevation_data_when_present_in_network_file(tmpdir):
 
     assert_semantically_equal(dict(n.nodes()), nodes_with_elevations)
     assert_semantically_equal(dict(n.links()), links)
+
 
 ###########################################################
 # helper functions

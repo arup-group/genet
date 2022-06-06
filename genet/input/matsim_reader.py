@@ -10,7 +10,7 @@ from genet.utils import dict_support
 from genet.utils import spatial
 
 
-def read_node(elem, g, node_id_mapping, transformer):
+def read_node(elem, g, node_id_mapping, node_attribs, transformer):
     """
     Adds node elem of the stream to the network
     :param elem:
@@ -31,6 +31,10 @@ def read_node(elem, g, node_id_mapping, transformer):
     # lat and long values if so, but there is no obvious way to interrogate the transformer
     attribs['lon'], attribs['lat'] = lon, lat
     attribs['s2_id'] = spatial.generate_index_s2(lat, lon)
+
+    if node_attribs:
+        attribs['attributes'] = node_attribs
+
     node_id = attribs['id']
     if node_id in node_id_mapping:
         logging.warning('This MATSim network has a node that is not unique: {}. Generating a new id would'
@@ -99,11 +103,11 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
     return g, u, v, link_id_mapping, duplicated_link_id
 
 
-def read_link_attrib(elem, link_attribs):
+def read_additional_attrib(elem, attribs):
     """
-    Reads link attributes
+    Reads additional attributes
     :param elem:
-    :param link_attribs: current link attributes
+    :param attribs: current additional attributes
     :return:
     """
     d = elem.attrib
@@ -114,8 +118,8 @@ def read_link_attrib(elem, link_attribs):
         d['text'] = set(elem.text.split(','))
     else:
         d['text'] = elem.text
-    link_attribs[elem.attrib['name']] = d
-    return link_attribs
+    attribs[elem.attrib['name']] = d
+    return attribs
 
 
 def unique_link_id(link_id, link_id_mapping):
@@ -146,38 +150,51 @@ def read_network(network_path, transformer: Transformer):
     g = nx.MultiDiGraph()
 
     node_id_mapping = {}
+    node_attribs = {}
     link_id_mapping = {}
     link_attribs = {}
     duplicated_link_ids = {}
     duplicated_node_ids = {}
     u, v = None, None
 
-    for event, elem in ET.iterparse(network_path):
-        if elem.tag == 'node':
-            g, duplicated_node_id = read_node(elem, g, node_id_mapping, transformer)
-            if duplicated_node_id:
-                for key, val in duplicated_node_id.items():
-                    if key in duplicated_node_ids:
-                        duplicated_node_ids[key].append(val)
-                    else:
-                        duplicated_node_ids[key] = [val]
-        elif elem.tag == 'attribute':
-            if node_id_mapping:
-                link_attribs = read_link_attrib(elem, link_attribs)
-            # else the attribute is on network level and does not belong to any nodes or links
-            elif elem.attrib['name'] == 'simplified':
-                g.graph['simplified'] = 'True' == elem.text
-        elif elem.tag == 'link':
-            g, u, v, link_id_mapping, duplicated_link_id = read_link(
-                elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs)
-            if duplicated_link_id:
-                for key, val in duplicated_link_id.items():
-                    if key in duplicated_link_ids:
-                        duplicated_link_ids[key].append(val)
-                    else:
-                        duplicated_link_ids[key] = [val]
-            # reset link_attribs
-            link_attribs = {}
+    elem_themes = {'network', 'nodes', 'links'}
+    start_event_elem_type = None
+
+    for event, elem in ET.iterparse(network_path, events=('start', 'end')):
+        if event == 'start':
+            if elem.tag in elem_themes:
+                start_event_elem_type = elem.tag
+        elif event == 'end':
+            if elem.tag == 'node':
+                g, duplicated_node_id = read_node(elem, g, node_id_mapping, node_attribs, transformer)
+                if duplicated_node_id:
+                    for key, val in duplicated_node_id.items():
+                        if key in duplicated_node_ids:
+                            duplicated_node_ids[key].append(val)
+                        else:
+                            duplicated_node_ids[key] = [val]
+                # reset node_attribs
+                node_attribs = {}
+            elif elem.tag == 'link':
+                g, u, v, link_id_mapping, duplicated_link_id = read_link(
+                    elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs)
+                if duplicated_link_id:
+                    for key, val in duplicated_link_id.items():
+                        if key in duplicated_link_ids:
+                            duplicated_link_ids[key].append(val)
+                        else:
+                            duplicated_link_ids[key] = [val]
+                # reset link_attribs
+                link_attribs = {}
+            elif elem.tag == 'attribute':
+                if start_event_elem_type == 'links':
+                    link_attribs = read_additional_attrib(elem, link_attribs)
+                elif start_event_elem_type == 'nodes':
+                    node_attribs = read_additional_attrib(elem, node_attribs)
+                elif start_event_elem_type == 'network':
+                    if elem.attrib['name'] == 'simplified':
+                        g.graph['simplified'] = 'True' == elem.text
+                    # todo add arbitrary attribs read/write for network level
     return g, link_id_mapping, duplicated_node_ids, duplicated_link_ids
 
 

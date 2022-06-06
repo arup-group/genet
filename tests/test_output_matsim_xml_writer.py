@@ -360,12 +360,12 @@ def test_saving_network_with_geometry_produces_polyline_if_link_already_has_othe
 @pytest.fixture()
 def network_with_additional_node_attrib():
     network = Network('epsg:27700')
-    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2,
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2,
                                    'attributes': {
                                        'osm:node:data': {'name': 'osm:node:data',
                                                          'class': 'java.lang.String',
-                                                         'text': 3}}})
-    network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
+                                                         'text': '3'}}})
+    network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                              'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car']})
     return network
