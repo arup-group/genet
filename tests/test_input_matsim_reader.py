@@ -344,6 +344,13 @@ def test_read_schedule_reads_the_data_correctly(correct_services_from_test_pt2ma
     assert_semantically_equal(minimalTransferTimes, correct_minimalTransferTimes)
 
 
+def test_schedule_with_additional_stop_attributes_reads_data_correctly(
+        schedule_with_additional_attrib_stop_xml_file, schedule_with_additional_attrib_stop):
+    s = read.read_matsim_schedule(schedule_with_additional_attrib_stop_xml_file, 'epsg:27700')
+    data_from_xml = dict(s.graph().nodes())
+    assert_semantically_equal(data_from_xml, dict(schedule_with_additional_attrib_stop.graph().nodes()))
+
+
 def test_reading_pt2matsim_vehicles():
     vehicles, vehicle_types = matsim_reader.read_vehicles(pt2matsim_vehicles_file)
 

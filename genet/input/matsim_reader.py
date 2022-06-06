@@ -277,6 +277,7 @@ def read_schedule(schedule_path, epsg):
 
     elem_themes_for_additional_attributes = {'transitSchedule', 'stopFacility', 'transitLine', 'transitRoute'}
     elem_type_for_additional_attributes = None
+    current_id_for_additional_attributes = None
 
     # transitLines
     for event, elem in ET.iterparse(schedule_path, events=('start', 'end')):
@@ -291,6 +292,7 @@ def read_schedule(schedule_path, epsg):
                 attribs['y'] = float(attribs['y'])
                 if attribs['id'] not in transit_stop_id_mapping:
                     transit_stop_id_mapping[attribs['id']] = attribs
+                current_id_for_additional_attributes = attribs['id']
 
             elif elem.tag == 'minimalTransferTimes':
                 is_minimalTransferTimes = not is_minimalTransferTimes
@@ -335,8 +337,14 @@ def read_schedule(schedule_path, epsg):
             elif elem.tag == 'attribute':
                 if elem_type_for_additional_attributes == 'transitSchedule':
                     pass
-                elif elem_type_for_additional_attributes == 'transitStop':
-                    pass
+                elif elem_type_for_additional_attributes == 'stopFacility':
+                    current_stop_data = transit_stop_id_mapping[current_id_for_additional_attributes]
+                    if 'attributes' in current_stop_data:
+                        current_stop_data['attributes'] = read_additional_attrib(
+                            elem,
+                            transit_stop_id_mapping[current_id_for_additional_attributes]['attributes'])
+                    else:
+                        current_stop_data['attributes'] = read_additional_attrib(elem, {})
                 elif elem_type_for_additional_attributes == 'transitLine':
                     pass
                 elif elem_type_for_additional_attributes == 'transitRoute':
