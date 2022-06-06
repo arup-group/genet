@@ -103,13 +103,18 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
     return g, u, v, link_id_mapping, duplicated_link_id
 
 
-def read_additional_attrib(elem, attribs):
+def update_additional_attrib(elem, attribs):
     """
     Reads additional attributes
     :param elem:
     :param attribs: current additional attributes
     :return:
     """
+    attribs[elem.attrib['name']] = read_additional_attrib(elem)
+    return attribs
+
+
+def read_additional_attrib(elem):
     d = elem.attrib
     if elem.text is None:
         d['text'] = ''
@@ -118,8 +123,7 @@ def read_additional_attrib(elem, attribs):
         d['text'] = set(elem.text.split(','))
     else:
         d['text'] = elem.text
-    attribs[elem.attrib['name']] = d
-    return attribs
+    return d
 
 
 def unique_link_id(link_id, link_id_mapping):
@@ -188,13 +192,14 @@ def read_network(network_path, transformer: Transformer):
                 link_attribs = {}
             elif elem.tag == 'attribute':
                 if elem_type_for_additional_attributes == 'links':
-                    link_attribs = read_additional_attrib(elem, link_attribs)
+                    link_attribs = update_additional_attrib(elem, link_attribs)
                 elif elem_type_for_additional_attributes == 'nodes':
-                    node_attribs = read_additional_attrib(elem, node_attribs)
+                    node_attribs = update_additional_attrib(elem, node_attribs)
                 elif elem_type_for_additional_attributes == 'network':
                     if elem.attrib['name'] == 'simplified':
                         g.graph['simplified'] = 'True' == elem.text
-                    # todo add arbitrary attribs read/write for network level
+                    else:
+                        g.graph[elem.attrib['name']] = elem.text
     return g, link_id_mapping, duplicated_node_ids, duplicated_link_ids
 
 
@@ -344,24 +349,24 @@ def read_schedule(schedule_path, epsg):
                 transitRoutes[current_route_id]['departure_list'].append({'departure': elem.attrib})
             elif elem.tag == 'attribute':
                 if elem_type_for_additional_attributes == 'transitSchedule':
-                    schedule_attribs['attributes'] = read_additional_attrib(
+                    schedule_attribs['attributes'] = update_additional_attrib(
                         elem,
                         schedule_attribs['attributes'])
                 elif elem_type_for_additional_attributes == 'stopFacility':
                     current_stop_data = transit_stop_id_mapping[current_stop_id]
                     if 'attributes' in current_stop_data:
-                        current_stop_data['attributes'] = read_additional_attrib(
+                        current_stop_data['attributes'] = update_additional_attrib(
                             elem,
                             transit_stop_id_mapping[current_stop_id]['attributes'])
                     else:
-                        current_stop_data['attributes'] = read_additional_attrib(elem, {})
+                        current_stop_data['attributes'] = update_additional_attrib(elem, {})
                 elif elem_type_for_additional_attributes == 'transitLine':
-                    transitLine['attributes'] = read_additional_attrib(
+                    transitLine['attributes'] = update_additional_attrib(
                         elem,
                         transitLine['attributes']
                     )
                 elif elem_type_for_additional_attributes == 'transitRoute':
-                    transitRoutes[current_route_id]['attributes'] = read_additional_attrib(
+                    transitRoutes[current_route_id]['attributes'] = update_additional_attrib(
                         elem,
                         transitRoutes[current_route_id]['attributes']
                     )

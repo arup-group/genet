@@ -265,9 +265,14 @@ def test_reading_matsim_output_network():
                                                   'text': '26997928'},
                                    'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String',
                                                     'text': 'Brunswick Place'}}}
+    correct_attributes = {'coordinateReferenceSystem': 'EPSG:27700',
+                          'name': 'Network graph',
+                          'crs': 'epsg:27700',
+                          'simplified': False}
 
     assert_semantically_equal(dict(n.graph.nodes(data=True)), correct_nodes)
     assert_semantically_equal(list(n.graph.edges(data=True))[0][2], correct_edge)
+    assert_semantically_equal(n.graph.graph, correct_attributes)
 
 
 def test_reading_network_with_geometry_attributes():
