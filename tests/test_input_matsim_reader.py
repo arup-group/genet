@@ -358,6 +358,13 @@ def test_schedule_with_additional_route_attributes_reads_data_correctly(
     assert_semantically_equal(s.route('r1').attributes, schedule_with_additional_route_attrib.route('r1').attributes)
 
 
+def test_schedule_with_additional_service_attributes_reads_data_correctly(
+        schedule_with_additional_service_attribs_xml_file, schedule_with_additional_service_attrib):
+    s = read.read_matsim_schedule(schedule_with_additional_service_attribs_xml_file, 'epsg:27700')
+    assert s['s1'].has_attrib('attributes')
+    assert_semantically_equal(s['s1'].attributes, schedule_with_additional_service_attrib['s1'].attributes)
+
+
 def test_reading_pt2matsim_vehicles():
     vehicles, vehicle_types = matsim_reader.read_vehicles(pt2matsim_vehicles_file)
 

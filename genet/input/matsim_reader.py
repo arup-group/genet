@@ -210,7 +210,7 @@ def read_schedule(schedule_path, epsg):
 
     def write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode):
         mode = transportMode['transportMode']
-        service_id = transitLine['transitLine']['id']
+        service_id = transitLine['transitLine_data']['id']
         service_routes = []
         for transitRoute, transitRoute_val in transitRoutes.items():
             stops = [Stop(
@@ -255,7 +255,7 @@ def read_schedule(schedule_path, epsg):
                 trips['vehicle_id'].append(dep['departure']['vehicleRefId'])
 
             r = Route(
-                route_short_name=transitLine['transitLine']['name'],
+                route_short_name=transitLine['transitLine_data']['name'],
                 mode=mode,
                 stops=stops,
                 route=route,
@@ -268,7 +268,10 @@ def read_schedule(schedule_path, epsg):
             if transitRoute_val['attributes']:
                 r.add_additional_attributes({'attributes': transitRoute_val['attributes']})
             service_routes.append(r)
-        services.append(Service(id=service_id, routes=service_routes))
+        _service = Service(id=service_id, routes=service_routes)
+        if transitLine['attributes']:
+            _service.add_additional_attributes({'attributes': transitLine['attributes']})
+        services.append(_service)
 
     transitLine = {}
     transitRoutes = {}
@@ -279,7 +282,10 @@ def read_schedule(schedule_path, epsg):
 
     elem_themes_for_additional_attributes = {'transitSchedule', 'stopFacility', 'transitLine', 'transitRoute'}
     elem_type_for_additional_attributes = None
-    current_id_for_additional_attributes = None
+
+    # Track IDs through the stream
+    current_stop_id = None
+    current_route_id = None
 
     # transitLines
     for event, elem in ET.iterparse(schedule_path, events=('start', 'end')):
@@ -294,7 +300,7 @@ def read_schedule(schedule_path, epsg):
                 attribs['y'] = float(attribs['y'])
                 if attribs['id'] not in transit_stop_id_mapping:
                     transit_stop_id_mapping[attribs['id']] = attribs
-                current_id_for_additional_attributes = attribs['id']
+                current_stop_id = attribs['id']
 
             elif elem.tag == 'minimalTransferTimes':
                 is_minimalTransferTimes = not is_minimalTransferTimes
@@ -308,51 +314,54 @@ def read_schedule(schedule_path, epsg):
             elif elem.tag == 'transitLine':
                 if transitLine:
                     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
-                transitLine = {"transitLine": elem.attrib}
+                transitLine = {"transitLine_data": elem.attrib, 'attributes': {}}
                 transitRoutes = {}
 
             elif elem.tag == 'transitRoute':
                 transitRoutes[elem.attrib['id']] = {'stops': [], 'links': [], 'departure_list': [],
                                                     'attributes': {}}
-                transitRoute = elem.attrib['id']
+                current_route_id = elem.attrib['id']
 
             # doesn't have any attribs
             # if elem.tag == 'routeProfile':
             #     routeProfile = {'routeProfile': elem.attrib}
 
             elif elem.tag == 'stop':
-                transitRoutes[transitRoute]['stops'].append({'stop': elem.attrib})
+                transitRoutes[current_route_id]['stops'].append({'stop': elem.attrib})
 
             # doesn't have any attribs
             # if elem.tag == 'route':
             #     route = {'route': elem.attrib}
 
             elif elem.tag == 'link':
-                transitRoutes[transitRoute]['links'].append({'link': elem.attrib})
+                transitRoutes[current_route_id]['links'].append({'link': elem.attrib})
 
             # doesn't have any attribs
             # if elem.tag == 'departures':
             #     departures = {'departures': elem.attrib}
 
             elif elem.tag == 'departure':
-                transitRoutes[transitRoute]['departure_list'].append({'departure': elem.attrib})
+                transitRoutes[current_route_id]['departure_list'].append({'departure': elem.attrib})
             elif elem.tag == 'attribute':
                 if elem_type_for_additional_attributes == 'transitSchedule':
                     pass
                 elif elem_type_for_additional_attributes == 'stopFacility':
-                    current_stop_data = transit_stop_id_mapping[current_id_for_additional_attributes]
+                    current_stop_data = transit_stop_id_mapping[current_stop_id]
                     if 'attributes' in current_stop_data:
                         current_stop_data['attributes'] = read_additional_attrib(
                             elem,
-                            transit_stop_id_mapping[current_id_for_additional_attributes]['attributes'])
+                            transit_stop_id_mapping[current_stop_id]['attributes'])
                     else:
                         current_stop_data['attributes'] = read_additional_attrib(elem, {})
                 elif elem_type_for_additional_attributes == 'transitLine':
-                    pass
-                elif elem_type_for_additional_attributes == 'transitRoute':
-                    transitRoutes[transitRoute]['attributes'] = read_additional_attrib(
+                    transitLine['attributes'] = read_additional_attrib(
                         elem,
-                        transitRoutes[transitRoute]['attributes']
+                        transitLine['attributes']
+                    )
+                elif elem_type_for_additional_attributes == 'transitRoute':
+                    transitRoutes[current_route_id]['attributes'] = read_additional_attrib(
+                        elem,
+                        transitRoutes[current_route_id]['attributes']
                     )
         elif (event == 'end') and (elem.tag == "transportMode"):
             transportMode = {'transportMode': elem.text}
