@@ -364,7 +364,7 @@ def network_with_additional_node_attrib():
                                    'attributes': {
                                        'osm:node:data': {'name': 'osm:node:data',
                                                          'class': 'java.lang.String',
-                                                         'text': '3'}}})
+                                                         'text': 3}}})
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                              'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car']})

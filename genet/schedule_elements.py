@@ -219,9 +219,8 @@ class ScheduleElement:
         :param new_epsg: 'epsg:1234'
         :return:
         """
-        if self.epsg != new_epsg:
+        if not self.stops_have_this_projection(new_epsg):
             g = self.graph()
-
             reprojected_node_attribs = parallel.multiprocess_wrap(
                 data=dict(g.nodes(data=True)),
                 split=parallel.split_dict,
@@ -232,6 +231,15 @@ class ScheduleElement:
             )
             nx.set_node_attributes(self._graph, reprojected_node_attribs)
             self.epsg = new_epsg
+
+    def unique_stop_projections(self):
+        return {x[1] for x in self.graph().nodes(data='epsg')}
+
+    def stops_have_this_projection(self, epsg):
+        return self.unique_stop_projections() == {epsg}
+
+    def has_uniformly_projected_stops(self):
+        return bool(len(self.unique_stop_projections()) == 1)
 
     def find_epsg(self):
         if 'crs' in self._graph.graph:
@@ -2766,9 +2774,16 @@ class Schedule(ScheduleElement):
         logging.info('Finished generating standard outputs. Zipping folder.')
         persistence.zip_folder(output_dir)
 
-    def write_to_matsim(self, output_dir):
+    def write_to_matsim(self, output_dir, reproj_processes=1):
+        """
+        Save to MATSim XML format.
+        :param output_dir: path to output directory
+        :param reproj_processes: you can set this in case you have a lot of stops and your stops need to be reprojected
+            it splits the process across given number of processes.
+        :return:
+        """
         persistence.ensure_dir(output_dir)
-        matsim_xml_writer.write_matsim_schedule(output_dir, self)
+        matsim_xml_writer.write_matsim_schedule(output_dir, self, reproj_processes=reproj_processes)
         matsim_xml_writer.write_vehicles(output_dir, self.vehicles, self.vehicle_types)
         self.write_extras(output_dir)
 

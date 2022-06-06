@@ -132,11 +132,12 @@ def test_initiating_schedule(schedule):
                                'crs': 'epsg:27700'})
 
 
-def test_initiating_schedule_with_non_uniquely_indexed_objects():
+@pytest.fixture()
+def non_uniquely_indexed_schedule():
     route_1 = Route(route_short_name='name',
                     mode='bus', id='',
-                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
-                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:4326'), Stop(id='2', x=1, y=2, epsg='epsg:4326'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:4326'), Stop(id='4', x=7, y=5, epsg='epsg:4326')],
                     trips={'trip_id': ['1', '2'],
                            'trip_departure_time': ['13:00:00', '13:30:00'],
                            'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
@@ -153,9 +154,28 @@ def test_initiating_schedule_with_non_uniquely_indexed_objects():
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     service1 = Service(id='service', routes=[route_1, route_2])
     service2 = Service(id='service', routes=[route_1, route_2])
-    s = Schedule(epsg='epsg:27700', services=[service1, service2])
-    assert s.number_of_routes() == 4
-    assert len(s) == 2
+    s = Schedule(epsg='epsg:3857', services=[service1, service2])
+    return s
+
+
+def test_schedule_with_non_uniquely_indexed_objects_does_not_automatically_reproject(non_uniquely_indexed_schedule):
+    assert non_uniquely_indexed_schedule.stop('1').epsg == 'epsg:4326'
+    assert non_uniquely_indexed_schedule.stop('5').epsg == 'epsg:27700'
+    assert non_uniquely_indexed_schedule.epsg == 'epsg:3857'
+
+
+def test_schedule_with_non_uniquely_indexed_objects_lists_correct_stop_projections(non_uniquely_indexed_schedule):
+    assert non_uniquely_indexed_schedule.unique_stop_projections() == {'epsg:4326', 'epsg:27700'}
+
+
+def test_schedule_with_non_uniquely_indexed_objects_fails_unique_stop_projects_test(non_uniquely_indexed_schedule):
+    assert not non_uniquely_indexed_schedule.has_uniformly_projected_stops()
+
+
+def test_schedule_with_non_uniquely_indexed_objects_can_be_projected_to_uniform_projection(non_uniquely_indexed_schedule):
+    non_uniquely_indexed_schedule.reproject('epsg:3857')
+    assert non_uniquely_indexed_schedule.stop('1').epsg == 'epsg:3857'
+    assert non_uniquely_indexed_schedule.stop('5').epsg == 'epsg:3857'
 
 
 def test__getitem__returns_a_service(test_service):

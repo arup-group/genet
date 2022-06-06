@@ -63,21 +63,20 @@ def check_additional_attributes(attribs):
 
 def save_attributes(attributes, xf, elem_type):
     if 'attributes' in attributes:
-        save_with_additional_attributes(attributes, xf, elem_type)
+        save_with_additional_attributes(sanitiser.sanitise_dictionary_for_xml(attributes), xf, elem_type)
     else:
         xf.write(etree.Element(elem_type, sanitiser.sanitise_dictionary_for_xml(attributes)))
 
 
 def save_with_additional_attributes(additional_attributes, xf, elem_type):
     attributes = additional_attributes.pop('attributes')
-    with xf.element(elem_type, sanitiser.sanitise_dictionary_for_xml(additional_attributes)):
+    with xf.element(elem_type, additional_attributes):
         save_additional_attributes(attributes, xf)
 
 
 def save_additional_attributes(attributes, xf):
     with xf.element("attributes"):
         for k, attrib in attributes.items():
-            attrib = sanitiser.sanitise_dictionary_for_xml(attrib)
             text = attrib.pop('text')
             rec = etree.Element("attribute", attrib)
             rec.text = text
@@ -135,11 +134,16 @@ def write_matsim_network(output_dir, network):
                     save_attributes(link_attributes, xf, elem_type='link')
 
 
-def write_matsim_schedule(output_dir, schedule, epsg=''):
+def write_matsim_schedule(output_dir, schedule, reproj_processes=1):
+    """
+        Save to MATSim XML format.
+    :param output_dir: path to output directory
+    :param schedule: genet.Schedule object
+    :param reproj_processes: you can set this in case you have a lot of stops and your stops need to be reprojected
+        it splits the process across given number of processes.
+    :return:
+    """
     fname = os.path.join(output_dir, "schedule.xml")
-    if not epsg:
-        epsg = schedule.epsg
-    transformer = Transformer.from_proj(Proj('epsg:4326'), Proj(epsg), always_xy=True)
     logging.info('Writing {}'.format(fname))
 
     with open(fname, "wb") as f, etree.xmlfile(f, encoding='utf-8') as xf:
@@ -148,24 +152,15 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
         with xf.element("transitSchedule"):
             if schedule.has_attrib('attributes'):
                 save_additional_attributes(schedule.attributes, xf)
-            # transitStops first
+
             with xf.element("transitStops"):
+                if not schedule.stops_have_this_projection(schedule.epsg):
+                    logging.warning('Stops did not have a uniform projection, they will be projected to the Schedule '
+                                    f'projection: {schedule.epsg}. Re-projection can be ran in parallel, if you have '
+                                    'a lot of stops consider using `reproj_processes` parameter.')
+                    schedule.reproject(schedule.epsg, processes=reproj_processes)
                 for stop_facility in schedule.stops():
-                    transit_stop_attrib = {'id': str(stop_facility.id)}
-                    if stop_facility.epsg == epsg:
-                        x = stop_facility.x
-                        y = stop_facility.y
-                    else:
-                        x, y = change_proj(
-                            x=stop_facility.lon,
-                            y=stop_facility.lat,
-                            crs_transformer=transformer)
-                    transit_stop_attrib['x'], transit_stop_attrib['y'] = str(x), str(y)
-                    for k in variables.OPTIONAL_STOP_FACILITY_ATTRIBUTES:
-                        if stop_facility.has_attrib(k):
-                            transit_stop_attrib[k] = str(stop_facility.additional_attribute(k))
-                    if stop_facility.has_attrib('attributes'):
-                        transit_stop_attrib['attributes'] = stop_facility.additional_attribute('attributes')
+                    transit_stop_attrib = prepare_attributes(stop_facility.__dict__, elem_type='stopFacility')
                     save_attributes(transit_stop_attrib, xf, elem_type='stopFacility')
 
             # minimalTransferTimes, if present
@@ -180,7 +175,6 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                             }
                             xf.write(etree.Element("relation", minimal_transfer_times_attribs))
 
-            # transitLine
             for service in schedule.services():
                 transit_line_attribs = {'id': service.id, 'name': str(service.name)}
 
