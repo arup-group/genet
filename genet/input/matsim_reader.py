@@ -157,13 +157,13 @@ def read_network(network_path, transformer: Transformer):
     duplicated_node_ids = {}
     u, v = None, None
 
-    elem_themes = {'network', 'nodes', 'links'}
-    start_event_elem_type = None
+    elem_themes_for_additional_attributes = {'network', 'nodes', 'links'}
+    elem_type_for_additional_attributes = None
 
     for event, elem in ET.iterparse(network_path, events=('start', 'end')):
         if event == 'start':
-            if elem.tag in elem_themes:
-                start_event_elem_type = elem.tag
+            if elem.tag in elem_themes_for_additional_attributes:
+                elem_type_for_additional_attributes = elem.tag
         elif event == 'end':
             if elem.tag == 'node':
                 g, duplicated_node_id = read_node(elem, g, node_id_mapping, node_attribs, transformer)
@@ -187,11 +187,11 @@ def read_network(network_path, transformer: Transformer):
                 # reset link_attribs
                 link_attribs = {}
             elif elem.tag == 'attribute':
-                if start_event_elem_type == 'links':
+                if elem_type_for_additional_attributes == 'links':
                     link_attribs = read_additional_attrib(elem, link_attribs)
-                elif start_event_elem_type == 'nodes':
+                elif elem_type_for_additional_attributes == 'nodes':
                     node_attribs = read_additional_attrib(elem, node_attribs)
-                elif start_event_elem_type == 'network':
+                elif elem_type_for_additional_attributes == 'network':
                     if elem.attrib['name'] == 'simplified':
                         g.graph['simplified'] = 'True' == elem.text
                     # todo add arbitrary attribs read/write for network level
@@ -275,9 +275,15 @@ def read_schedule(schedule_path, epsg):
     is_minimalTransferTimes = False
     minimalTransferTimes = {}  # {'stop_id_1': {'stop_id_2': 0.0}} seconds_to_transfer between stop_id_1 and stop_id_2
 
+    elem_themes_for_additional_attributes = {'transitSchedule', 'stopFacility', 'transitLine', 'transitRoute'}
+    elem_type_for_additional_attributes = None
+
     # transitLines
     for event, elem in ET.iterparse(schedule_path, events=('start', 'end')):
         if event == 'start':
+            if elem.tag in elem_themes_for_additional_attributes:
+                elem_type_for_additional_attributes = elem.tag
+
             if elem.tag == 'stopFacility':
                 attribs = elem.attrib
                 attribs['epsg'] = epsg
@@ -286,22 +292,22 @@ def read_schedule(schedule_path, epsg):
                 if attribs['id'] not in transit_stop_id_mapping:
                     transit_stop_id_mapping[attribs['id']] = attribs
 
-            if elem.tag == 'minimalTransferTimes':
+            elif elem.tag == 'minimalTransferTimes':
                 is_minimalTransferTimes = not is_minimalTransferTimes
-            if elem.tag == 'relation':
+            elif elem.tag == 'relation':
                 if is_minimalTransferTimes:
                     attribs = elem.attrib
                     minimalTransferTimes = dict_support.merge_complex_dictionaries(
                         minimalTransferTimes,
                         {attribs['fromStop']: {attribs['toStop']: float(attribs['transferTime'])}}
                     )
-            if elem.tag == 'transitLine':
+            elif elem.tag == 'transitLine':
                 if transitLine:
                     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
                 transitLine = {"transitLine": elem.attrib}
                 transitRoutes = {}
 
-            if elem.tag == 'transitRoute':
+            elif elem.tag == 'transitRoute':
                 transitRoutes[elem.attrib['id']] = {'stops': [], 'links': [], 'departure_list': [],
                                                     'attribs': elem.attrib}
                 transitRoute = elem.attrib['id']
@@ -310,22 +316,31 @@ def read_schedule(schedule_path, epsg):
             # if elem.tag == 'routeProfile':
             #     routeProfile = {'routeProfile': elem.attrib}
 
-            if elem.tag == 'stop':
+            elif elem.tag == 'stop':
                 transitRoutes[transitRoute]['stops'].append({'stop': elem.attrib})
 
             # doesn't have any attribs
             # if elem.tag == 'route':
             #     route = {'route': elem.attrib}
 
-            if elem.tag == 'link':
+            elif elem.tag == 'link':
                 transitRoutes[transitRoute]['links'].append({'link': elem.attrib})
 
             # doesn't have any attribs
             # if elem.tag == 'departures':
             #     departures = {'departures': elem.attrib}
 
-            if elem.tag == 'departure':
+            elif elem.tag == 'departure':
                 transitRoutes[transitRoute]['departure_list'].append({'departure': elem.attrib})
+            elif elem.tag == 'attribute':
+                if elem_type_for_additional_attributes == 'transitSchedule':
+                    pass
+                elif elem_type_for_additional_attributes == 'transitStop':
+                    pass
+                elif elem_type_for_additional_attributes == 'transitLine':
+                    pass
+                elif elem_type_for_additional_attributes == 'transitRoute':
+                    pass
         elif (event == 'end') and (elem.tag == "transportMode"):
             transportMode = {'transportMode': elem.text}
 
