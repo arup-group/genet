@@ -15,7 +15,7 @@ from shapely.geometry import LineString, Polygon, Point
 
 from genet.core import Network, MissingElevationException
 from genet.input import matsim_reader
-from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
+from tests.test_output_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule, Stop
 from genet.utils import plot, spatial
 from genet.input import read
