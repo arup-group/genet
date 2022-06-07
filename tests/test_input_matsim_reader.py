@@ -52,8 +52,8 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
 
     transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'), always_xy=True)
 
-    g, link_id_mapping, duplicated_nodes, duplicated_link_ids = matsim_reader.read_network(pt2matsim_network_test_file,
-                                                                                           transformer)
+    g, link_id_mapping, duplicated_nodes, duplicated_link_ids, attributes = matsim_reader.read_network(
+        pt2matsim_network_test_file, transformer)
 
     for u, data in g.nodes(data=True):
         assert str(u) in correct_nodes
@@ -122,7 +122,7 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
 
     transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'), always_xy=True)
 
-    g, link_id_mapping, duplicated_nodes, duplicated_link_ids = matsim_reader.read_network(
+    g, link_id_mapping, duplicated_nodes, duplicated_link_ids, attributes = matsim_reader.read_network(
         pt2matsim_network_multiple_edges_test_file, transformer)
 
     for u, data in g.nodes(data=True):
@@ -179,7 +179,7 @@ def test_read_network_builds_graph_with_unique_links_given_matsim_network_with_c
 
     transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'), always_xy=True)
 
-    g, link_id_mapping, duplicated_nodes, duplicated_link_ids = matsim_reader.read_network(
+    g, link_id_mapping, duplicated_nodes, duplicated_link_ids, attributes = matsim_reader.read_network(
         pt2matsim_network_clashing_link_ids_test_file, transformer)
 
     assert len(g.nodes) == len(correct_nodes)
@@ -222,7 +222,7 @@ def test_read_network_rejects_non_unique_nodes():
 
     transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'), always_xy=True)
 
-    g, link_id_mapping, duplicated_nodes, duplicated_link_ids = matsim_reader.read_network(
+    g, link_id_mapping, duplicated_nodes, duplicated_link_ids, attributes = matsim_reader.read_network(
         pt2matsim_network_clashing_node_ids_test_file, transformer)
 
     assert len(g.nodes) == len(correct_nodes)
@@ -265,14 +265,13 @@ def test_reading_matsim_output_network():
                                                   'text': '26997928'},
                                    'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String',
                                                     'text': 'Brunswick Place'}}}
-    correct_attributes = {'coordinateReferenceSystem': 'EPSG:27700',
-                          'name': 'Network graph',
-                          'crs': 'epsg:27700',
-                          'simplified': False}
+    correct_attributes = {
+        'coordinateReferenceSystem': {'class': 'java.lang.String', 'name': 'coordinateReferenceSystem',
+                                      'text': 'EPSG:27700'}}
 
     assert_semantically_equal(dict(n.graph.nodes(data=True)), correct_nodes)
     assert_semantically_equal(list(n.graph.edges(data=True))[0][2], correct_edge)
-    assert_semantically_equal(n.graph.graph, correct_attributes)
+    assert_semantically_equal(n.attributes, correct_attributes)
 
 
 def test_reading_network_with_geometry_attributes():

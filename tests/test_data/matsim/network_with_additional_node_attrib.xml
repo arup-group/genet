@@ -3,7 +3,6 @@
 <network>
     <attributes>
         <attribute name="crs" class="java.lang.String">epsg:27700</attribute>
-        <attribute name="simplified" class="java.lang.String">False</attribute>
     </attributes>
     <nodes>
         <node id="0" x="1" y="2">

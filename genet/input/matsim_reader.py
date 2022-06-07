@@ -153,6 +153,7 @@ def read_network(network_path, transformer: Transformer):
     """
     g = nx.MultiDiGraph()
 
+    network_attributes = {}
     node_id_mapping = {}
     node_attribs = {}
     link_id_mapping = {}
@@ -193,14 +194,11 @@ def read_network(network_path, transformer: Transformer):
             elif elem.tag == 'attribute':
                 if elem_type_for_additional_attributes == 'links':
                     link_attribs = update_additional_attrib(elem, link_attribs)
+                elif elem_type_for_additional_attributes == 'network':
+                    network_attributes = update_additional_attrib(elem, network_attributes)
                 elif elem_type_for_additional_attributes == 'nodes':
                     node_attribs = update_additional_attrib(elem, node_attribs)
-                elif elem_type_for_additional_attributes == 'network':
-                    if elem.attrib['name'] == 'simplified':
-                        g.graph['simplified'] = 'True' == elem.text
-                    else:
-                        g.graph[elem.attrib['name']] = elem.text
-    return g, link_id_mapping, duplicated_node_ids, duplicated_link_ids
+    return g, link_id_mapping, duplicated_node_ids, duplicated_link_ids, network_attributes
 
 
 def read_schedule(schedule_path, epsg):

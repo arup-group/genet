@@ -40,12 +40,10 @@ def read_matsim_network(path_to_network: str, epsg: str):
     :return: genet.Network object
     """
     n = core.Network(epsg=epsg)
-    n.graph, n.link_id_mapping, duplicated_nodes, duplicated_links = \
+    n.graph, n.link_id_mapping, duplicated_nodes, duplicated_links, network_attributes = \
         matsim_reader.read_network(path_to_network, n.transformer)
-    n.graph.graph['name'] = 'Network graph'
+    n.attributes = network_attributes
     n.graph.graph['crs'] = n.epsg
-    if 'simplified' not in n.graph.graph:
-        n.graph.graph['simplified'] = False
 
     for node_id, duplicated_node_attribs in duplicated_nodes.items():
         for duplicated_node_attrib in duplicated_node_attribs:
