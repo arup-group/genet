@@ -2265,7 +2265,8 @@ class Schedule(ScheduleElement):
         self._verify_no_id_change(new_attributes)
         services = list(new_attributes.keys())
         old_attribs = [deepcopy(self._graph.graph['services'][service]) for service in services]
-        new_attribs = [{**self._graph.graph['services'][service], **new_attributes[service]} for service in services]
+        new_attribs = [dict_support.set_nested_value(self._graph.graph['services'][service], new_attributes[service])
+                       for service in services]
 
         self._graph.graph['change_log'] = self.change_log().modify_bunch('service', services, old_attribs, services,
                                                                          new_attribs)
@@ -2309,7 +2310,8 @@ class Schedule(ScheduleElement):
 
         routes = list(new_attributes.keys())
         old_attribs = [deepcopy(self._graph.graph['routes'][route]) for route in routes]
-        new_attribs = [{**self._graph.graph['routes'][route], **new_attributes[route]} for route in routes]
+        new_attribs = [dict_support.set_nested_value(self._graph.graph['routes'][route], new_attributes[route]) for
+                       route in routes]
 
         self._graph.graph['change_log'] = self.change_log().modify_bunch('route', routes, old_attribs, routes,
                                                                          new_attribs)
@@ -2329,7 +2331,7 @@ class Schedule(ScheduleElement):
         self._verify_no_id_change(new_attributes)
         stops = list(new_attributes.keys())
         old_attribs = [deepcopy(self._graph.nodes[stop]) for stop in stops]
-        new_attribs = [{**self._graph.nodes[stop], **new_attributes[stop]} for stop in stops]
+        new_attribs = [dict_support.set_nested_value(self._graph.nodes[stop], new_attributes[stop]) for stop in stops]
 
         self._graph.graph['change_log'] = self.change_log().modify_bunch('stop', stops, old_attribs, stops, new_attribs)
 
