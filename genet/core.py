@@ -262,11 +262,11 @@ class Network:
         self._mark_as_simplified()
 
     def _mark_as_simplified(self):
-        self.attributes['simplified'] = {'name': 'simplified', 'class': 'java.lang.String', 'text': True}
+        self.attributes['simplified'] = {'name': 'simplified', 'class': 'java.lang.String', 'text': 'true'}
 
     def is_simplified(self):
         if 'simplified' in self.attributes:
-            return self.attributes['simplified']['text']
+            return self.attributes['simplified']['text'] in {'true', 'True', True}
         return False
 
     def node_attribute_summary(self, data=False):

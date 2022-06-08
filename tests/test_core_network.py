@@ -675,6 +675,17 @@ def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, network_w
                                                                         network_dtd.error_log.filter_from_errors())
 
 
+def test_network_tagged_as_simplified_saves_to_correct_dtds(tmpdir, network_dtd):
+    n = Network(epsg='epsg:27700')
+    n._mark_as_simplified()
+    n.write_to_matsim(tmpdir)
+    generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+    xml_obj = lxml.etree.parse(generated_network_file_path)
+    assert network_dtd.validate(xml_obj), \
+        'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
+                                                                        network_dtd.error_log.filter_from_errors())
+
+
 def test_simplifying_network_with_multi_edges_resulting_in_multi_paths():
     n = Network('epsg:27700')
     n.add_nodes({
