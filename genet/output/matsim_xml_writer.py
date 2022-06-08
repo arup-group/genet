@@ -144,8 +144,7 @@ def write_matsim_schedule(output_dir, schedule, reproj_processes=1):
         xf.write_declaration(doctype='<!DOCTYPE transitSchedule '
                                      'SYSTEM "http://www.matsim.org/files/dtd/transitSchedule_v2.dtd">')
         with xf.element("transitSchedule"):
-            if schedule.has_attrib('attributes'):
-                save_additional_attributes(schedule.attributes, xf)
+            save_additional_attributes(schedule.attributes, xf)
 
             with xf.element("transitStops"):
                 if not schedule.stops_have_this_projection(schedule.epsg):

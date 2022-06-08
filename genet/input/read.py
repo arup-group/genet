@@ -12,6 +12,7 @@ import genet.input.matsim_reader as matsim_reader
 import genet.schedule_elements as schedule_elements
 import genet.utils.spatial as spatial
 import genet.modify.change_log as change_log
+import genet.utils.dict_support as dict_support
 from genet.exceptions import NetworkSchemaError
 
 
@@ -42,7 +43,7 @@ def read_matsim_network(path_to_network: str, epsg: str):
     n = core.Network(epsg=epsg)
     n.graph, n.link_id_mapping, duplicated_nodes, duplicated_links, network_attributes = \
         matsim_reader.read_network(path_to_network, n.transformer)
-    n.attributes = network_attributes
+    n.attributes = dict_support.merge_complex_dictionaries(n.attributes, network_attributes)
     n.graph.graph['crs'] = n.epsg
 
     for node_id, duplicated_node_attribs in duplicated_nodes.items():
@@ -72,7 +73,7 @@ def read_matsim_schedule(path_to_schedule: str, epsg: str, path_to_vehicles: str
     :param epsg: projection for the schedule, e.g. 'epsg:27700'
     :return: genet.Schedule object
     """
-    services, minimal_transfer_times, transit_stop_id_mapping, schedule_attribs = matsim_reader.read_schedule(
+    services, minimal_transfer_times, transit_stop_id_mapping, schedule_attributes = matsim_reader.read_schedule(
         path_to_schedule, epsg)
     if path_to_vehicles:
         vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
@@ -90,8 +91,8 @@ def read_matsim_schedule(path_to_schedule: str, epsg: str, path_to_vehicles: str
         extra_stops[k]['services'] = set()
     matsim_schedule._graph.add_nodes_from(extra_stops)
     nx.set_node_attributes(matsim_schedule._graph, extra_stops)
-    if schedule_attribs['attributes']:
-        matsim_schedule.add_additional_attributes(schedule_attribs)
+    matsim_schedule.attributes = dict_support.merge_complex_dictionaries(matsim_schedule.attributes,
+                                                                         schedule_attributes)
     return matsim_schedule
 
 

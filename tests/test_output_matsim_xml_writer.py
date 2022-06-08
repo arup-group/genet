@@ -563,10 +563,12 @@ def test_schedule_with_additional_service_attribs_saves_all_data_to_xml(
 
 @pytest.fixture()
 def schedule_with_additional_attrib():
-    schedule = Schedule('epsg:27700',
-                        attributes={'additional_attrib': {'name': 'additional_attrib',
-                                    'class': 'java.lang.String',
-                                    'text': 'attrib_value'}})
+    schedule = Schedule('epsg:27700')
+    schedule.attributes['additional_attrib'] = {
+        'name': 'additional_attrib',
+        'class': 'java.lang.String',
+        'text': 'attrib_value'
+    }
     schedule.add_service(
         Service(id='s1', routes=[
             Route(id='r1', route_short_name='r1', mode='bus',

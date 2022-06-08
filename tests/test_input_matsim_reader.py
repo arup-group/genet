@@ -267,7 +267,9 @@ def test_reading_matsim_output_network():
                                                     'text': 'Brunswick Place'}}}
     correct_attributes = {
         'coordinateReferenceSystem': {'class': 'java.lang.String', 'name': 'coordinateReferenceSystem',
-                                      'text': 'EPSG:27700'}}
+                                      'text': 'EPSG:27700'},
+        'crs': {'class': 'java.lang.String', 'name': 'crs', 'text': 'epsg:27700'}
+    }
 
     assert_semantically_equal(dict(n.graph.nodes(data=True)), correct_nodes)
     assert_semantically_equal(list(n.graph.edges(data=True))[0][2], correct_edge)

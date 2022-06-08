@@ -285,7 +285,7 @@ def read_schedule(schedule_path, epsg):
 
     elem_themes_for_additional_attributes = {'transitSchedule', 'stopFacility', 'transitLine', 'transitRoute'}
     elem_type_for_additional_attributes = None
-    schedule_attribs = {'attributes': {}}
+    schedule_attribs = {}
     # Track IDs through the stream
     current_stop_id = None
     current_route_id = None
@@ -347,9 +347,7 @@ def read_schedule(schedule_path, epsg):
                 transitRoutes[current_route_id]['departure_list'].append({'departure': elem.attrib})
             elif elem.tag == 'attribute':
                 if elem_type_for_additional_attributes == 'transitSchedule':
-                    schedule_attribs['attributes'] = update_additional_attrib(
-                        elem,
-                        schedule_attribs['attributes'])
+                    schedule_attribs = update_additional_attrib(elem, schedule_attribs)
                 elif elem_type_for_additional_attributes == 'stopFacility':
                     current_stop_data = transit_stop_id_mapping[current_stop_id]
                     if 'attributes' in current_stop_data:

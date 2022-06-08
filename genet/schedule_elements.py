@@ -1276,6 +1276,7 @@ class Schedule(ScheduleElement):
                 services = []
             self._graph = self._build_graph(services)
         self.init_epsg = epsg
+        self.attributes = {'crs': {'name': 'crs', 'class': 'java.lang.String', 'text': epsg}}
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
         if minimal_transfer_times is not None:
             self.minimal_transfer_times = minimal_transfer_times
