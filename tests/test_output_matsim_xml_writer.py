@@ -395,6 +395,15 @@ def test_network_with_additional_node_attribs_saves_all_data_to_xml(
     xml_diff.assert_semantically_equal(generated_network_file_path, network_with_additional_node_attrib_xml_file)
 
 
+def test_saving_network_with_additional_node_attribs_does_not_change_data_post_save(
+        network_with_additional_node_attrib, tmpdir):
+    network_with_additional_node_attrib.write_to_matsim(tmpdir)
+    assert network_with_additional_node_attrib.node('0')['attributes'] == {
+        'osm:node:data': {'name': 'osm:node:data',
+                          'class': 'java.lang.String',
+                          'text': '3'}
+        }
+
 
 def test_write_matsim_network_produces_semantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
                                                                                   tmpdir):
@@ -478,6 +487,19 @@ def test_schedule_with_additional_stop_attribs_saves_all_data_to_xml(
     xml_diff.assert_semantically_equal(generated_schedule_file_path, schedule_with_additional_attrib_stop_xml_file)
 
 
+def test_saving_schedule_with_additional_stop_attribs_does_not_change_data_post_save(
+        schedule_with_additional_attrib_stop, tmpdir):
+    schedule_with_additional_attrib_stop.write_to_matsim(tmpdir)
+    assert schedule_with_additional_attrib_stop.stop('s1').attributes == {
+        'carAccessible': {'name': 'carAccessible',
+                          'class': 'java.lang.String',
+                          'text': 'true'},
+        'accessLinkId_car': {'name': 'accessLinkId_car',
+                             'class': 'java.lang.String',
+                             'text': 'linkID'}
+        }
+
+
 @pytest.fixture()
 def schedule_with_additional_route_attrib():
     schedule = Schedule('epsg:27700')
@@ -519,6 +541,16 @@ def test_schedule_with_additional_route_attribs_saves_all_data_to_xml(
     xml_diff.assert_semantically_equal(generated_schedule_file_path, schedule_with_additional_route_attribs_xml_file)
 
 
+def test_saving_schedule_with_additional_route_attribs_does_not_change_data_post_save(
+        schedule_with_additional_route_attrib, tmpdir):
+    schedule_with_additional_route_attrib.write_to_matsim(tmpdir)
+    assert schedule_with_additional_route_attrib.route('r1').attributes['additional_attrib'] == {
+        'name': 'additional_attrib',
+        'class': 'java.lang.String',
+        'text': 'attrib_value'
+    }
+
+
 @pytest.fixture()
 def schedule_with_additional_service_attrib():
     schedule = Schedule('epsg:27700')
@@ -530,7 +562,7 @@ def schedule_with_additional_service_attrib():
                   headway_spec={('07:00:00', '08:00:00'): 20},
                   stops=[Stop('s1', x=1, y=1, epsg='epsg:27700'),
                          Stop('s2', x=1, y=1, epsg='epsg:27700')])],
-            attributes={'additional_attrib': {'name': 'additional_attrib',
+                attributes={'additional_attrib': {'name': 'additional_attrib',
                                                   'class': 'java.lang.String',
                                                   'text': 'attrib_value'}}
                 ))
@@ -554,11 +586,22 @@ def test_schedule_with_additional_service_attribs_produces_valid_matsim_xml_file
 
 
 def test_schedule_with_additional_service_attribs_saves_all_data_to_xml(
-        schedule_with_additional_service_attrib, tmpdir, network_dtd, schedule_with_additional_service_attribs_xml_file):
+        schedule_with_additional_service_attrib, tmpdir, network_dtd,
+        schedule_with_additional_service_attribs_xml_file):
     schedule_with_additional_service_attrib.write_to_matsim(tmpdir)
 
     generated_schedule_file_path = os.path.join(tmpdir, 'schedule.xml')
     xml_diff.assert_semantically_equal(generated_schedule_file_path, schedule_with_additional_service_attribs_xml_file)
+
+
+def test_saving_schedule_with_additional_service_attribs_does_not_change_data_post_save(
+        schedule_with_additional_service_attrib, tmpdir):
+    schedule_with_additional_service_attrib.write_to_matsim(tmpdir)
+    assert schedule_with_additional_service_attrib['s1'].attributes['additional_attrib'] == {
+        'name': 'additional_attrib',
+        'class': 'java.lang.String',
+        'text': 'attrib_value'
+    }
 
 
 @pytest.fixture()
@@ -603,6 +646,16 @@ def test_schedule_with_additional_attribs_saves_all_data_to_xml(
 
     generated_schedule_file_path = os.path.join(tmpdir, 'schedule.xml')
     xml_diff.assert_semantically_equal(generated_schedule_file_path, schedule_with_additional_attribs_xml_file)
+
+
+def test_saving_schedule_with_additional_attribs_does_not_change_data_post_save(schedule_with_additional_attrib,
+                                                                                tmpdir):
+    schedule_with_additional_attrib.write_to_matsim(tmpdir)
+    assert schedule_with_additional_attrib.attributes['additional_attrib'] == {
+        'name': 'additional_attrib',
+        'class': 'java.lang.String',
+        'text': 'attrib_value'
+    }
 
 
 def test_generates_valid_matsim_vehicles_xml_file(tmpdir, vehicles_xsd, vehicle_types):

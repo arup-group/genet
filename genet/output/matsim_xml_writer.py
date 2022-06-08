@@ -73,7 +73,8 @@ def save_with_additional_attributes(additional_attributes, xf, elem_type):
         save_additional_attributes(attributes, xf)
 
 
-def save_additional_attributes(attributes, xf):
+def save_additional_attributes(_attributes, xf):
+    attributes = deepcopy(_attributes)
     with xf.element("attributes"):
         for k, attrib in attributes.items():
             text = attrib.pop('text')
