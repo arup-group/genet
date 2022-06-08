@@ -88,14 +88,16 @@ if __name__ == '__main__':
                                  'size of the neighbourhood increases by `step_size` value each time until it finds '
                                  'links to relate to stops.',
                             required=False,
-                            default=25)
+                            default=25,
+                            type=float)
 
     arg_parser.add_argument('-dt',
                             '--distance_threshold',
                             help='In metres. This is the limit of how wide the search area for a link can be for each '
                                  'stop.',
                             required=False,
-                            default=None)
+                            default=None,
+                            type=float)
 
     arg_parser.add_argument('-od',
                             '--output_dir',
@@ -150,6 +152,9 @@ if __name__ == '__main__':
 
     # TODO There are multiple links to choose from, for the time being we are not precious about which link is selected.
     selected_links = closest_links.reset_index().groupby('index').first()
+    if len(selected_links) != len(df_stops):
+        logging.warning(f'Only {len(selected_links)} out of {len(df_stops)} stops found a link to snap to. '
+                        'Consider removing the distance threshold if you want all stops to find a nearest link.')
 
     # Let's create some handy geojson outputs to verify our snapping
     df_stops[['lat', 'lon', 'geometry']].to_file(os.path.join(supporting_outputs, 'stops.geojson'), driver='GeoJSON')
@@ -172,8 +177,8 @@ if __name__ == '__main__':
 
     selected_links[access_link_id_tag] = selected_links['link_id'].apply(
         lambda x: {'name': access_link_id_tag, 'class': 'java.lang.String', 'text': x})
-    # todo if distance threshold is used some may be false - drop them
-    selected_links[accessible_tag] = {'name': accessible_tag, 'class': 'java.lang.String', 'text': 'true'}
+    selected_links[accessible_tag] = selected_links.apply(
+        lambda x: {'name': accessible_tag, 'class': 'java.lang.String', 'text': 'true'}, axis=1)
     selected_links['distance_catchment'] = selected_links['catchment'].apply(
         lambda x: {'name': 'distance_catchment', 'class': 'java.lang.String', 'text': str(x)})
     new_stops_data = selected_links[[access_link_id_tag, accessible_tag, 'distance_catchment']].T.to_dict()
