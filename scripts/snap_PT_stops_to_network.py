@@ -18,7 +18,7 @@ def cast_catchment(network_spatial_tree, df_stops, distance):
 def find_closest_links_by_step(network_spatial_tree, df_stops, step_size=10, distance_threshold=None):
     def threshold_reached(d):
         if distance_threshold is not None:
-            return d < distance_threshold
+            return d <= distance_threshold
         else:
             return True
 
