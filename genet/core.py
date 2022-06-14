@@ -2248,6 +2248,37 @@ class Network:
             raise MissingElevationException('Network nodes do not contain elevation data. '
                                             'Cannot generate validation report.')
 
+    def add_slope_attribute_to_links(self, elevation_tif_file_path, null_value: float):
+        """
+        Takes an elevation raster file in .tif format, finds the elevation of the end nodes for each link, calculates
+        link slope and adds it as an attribute to links.
+        :param elevation_tif_file_path: path to the elevation raster file in .tif format
+        :param null_value: value that represents null in the elevation raster file
+        :return:
+        """
+        img = elevation.get_elevation_image(elevation_tif_file_path)
+        slope_dict = {}
+
+        for link in self.links():
+            link_id = link[0]
+            node_1 = self.link(link_id)['from']
+            node_2 = self.link(link_id)['to']
+            link_length = self.link(link_id)['length']
+
+            z_1 = elevation.get_elevation_data(img, lat=self.node(node_1)['lat'], lon=self.node(node_1)['lon'])
+            z_2 = elevation.get_elevation_data(img, lat=self.node(node_2)['lat'], lon=self.node(node_2)['lon'])
+
+            for z in [z_1, z_2]:
+                # zero values handling - may wish to add infilling based on nearby values later
+                if z == null_value:
+                    z = 0
+
+            # To calculate slope divide the difference between the elevations of two nodes by the distance between them
+            link_slope = abs(z_1 - z_2)/link_length
+            slope_dict[link_id] = {'slope': link_slope}
+
+        self.apply_attributes_to_links(slope_dict)
+
 
 class MissingElevationException(Exception):
     pass
