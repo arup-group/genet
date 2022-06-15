@@ -13,7 +13,7 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 from geopandas.testing import assert_geodataframe_equal
 from shapely.geometry import LineString, Polygon, Point
 
-from genet.core import Network, MissingElevationException
+from genet.core import Network
 from genet.inputs_handler import matsim_reader
 from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule, Stop
@@ -2977,41 +2977,37 @@ def test_saving_network_to_csv(network1, correct_schedule, tmpdir):
     )
 
 
-def test_adding_elevation_to_nodes(network3):
+def test_getting_node_elevation_dictionary(network3):
     elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
     elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
 
-    network3.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
-    output = network3.node_attribute_data_under_key('z')
+    elev_dict = network3.get_node_elevation_dictionary(elevation_tif_file, null_value=-32768)
 
     # elevation value (25m) that corresponds to the coordinate of this node in the network has been double checked here:
     # https://www.freemaptools.com/elevation-finder.htm
-    assert output['101982'] == 25
+    assert elev_dict['101982']['z'] == 25
 
 
-def test_adding_elevation_to_nodes_with_null_value_mapping(network3):
+def test_getting_node_elevation_dictionary_with_null_value_mapping(network3):
     elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
     elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
 
-    network3.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
-    output = network3.node_attribute_data_under_key('z')
-
+    elev_dict = network3.get_node_elevation_dictionary(elevation_tif_file, null_value=-32768)
     # the coordinate of this node in the network corresponds to a pixel with null (no data) value in the tif file
-    assert output['101986'] == 0
+    assert elev_dict['101986']['z'] == 0
 
 
-def test_validation_report_for_node_elevation(network4):
-    n = network4
-    report = n.validation_report_for_node_elevation()
-    correct_report = {'summary': {'extremely_high_values_count': 0, 'extremely_low_values_count': 1, 'max_value': 100,
-                                  'mean': 24, 'median': 24, 'min_value': -51, 'total_nodes': 2},
-                      'values': {'extremely_high_values_dict': {}, 'extremely_low_values_dict': {'101982': -51}}}
-
-    assert_semantically_equal(report, correct_report)
+@pytest.fixture()
+def elevation_dictionary():
+    # based on network4() fixture
+    elevation_dictionary = {'101982': {'z': -51}, '101986': {'z': 100}}
+    return elevation_dictionary
 
 
-def test_validation_report_for_network_without_node_elevation(network3):
-    n = network3
-    with pytest.raises(MissingElevationException) as error_info:
-        n.validation_report_for_node_elevation()
-    assert "do not contain elevation" in str(error_info.value)
+def test_getting_link_slope_dictionary(network3, elevation_dictionary):
+
+    slope_dict = network3.get_link_slope_dictionary(elevation_dictionary)
+
+    # elevation value (25m) that corresponds to the coordinate of this node in the network has been double checked here:
+    # https://www.freemaptools.com/elevation-finder.htm
+    assert slope_dict['0']['slope'] == 1.042467864666141
