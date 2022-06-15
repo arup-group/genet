@@ -2229,7 +2229,7 @@ class Network:
                 link_slope = 0
             else:
                 # calculate slope by dividing the difference between elevations of two nodes by distance between them
-                link_slope = abs(z_1 - z_2) / length
+                link_slope = z_2 - z_1 / length
 
             slope_dict[link_id] = {'slope': link_slope}
 

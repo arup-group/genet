@@ -4,10 +4,10 @@ import xarray as xr
 import os
 from tests.fixtures import assert_semantically_equal
 
+
 elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
 tif_path = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
 array_path = os.path.join(elevation_test_folder, 'elevation_image.nc')
-
 
 def test_output_type_get_elevation_image():
     img = elevation.get_elevation_image(tif_path)

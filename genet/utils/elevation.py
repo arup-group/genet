@@ -1,6 +1,7 @@
 import rioxarray
 import numpy as np
 
+
 def get_elevation_image(elevation_tif):
     xarr_file = rioxarray.open_rasterio(elevation_tif)
 
