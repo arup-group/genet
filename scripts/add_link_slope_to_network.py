@@ -78,13 +78,13 @@ if __name__ == '__main__':
 
     logging.info('Adding link slope as attribute to the network')
 
-    # Will change when PR #118 is merged
     attrib_dict = {}
     for link_id in slope_dictionary.keys():
         slope_value = slope_dictionary[link_id]['slope']
-        attrib_dict[link_id] = {'slope': {'name': 'slope', 'class': 'java.lang.String', 'text': slope_value}}
+        attrib_dict[link_id] = {
+            'attributes': {'slope': {'name': 'slope', 'class': 'java.lang.String', 'text': slope_value}}}
 
-    n.apply_attributes_to_links({'attributes': attrib_dict})
+    n.apply_attributes_to_links(attrib_dict)
 
     logging.info('Writing the updated network')
     n.write_to_matsim(output_dir)

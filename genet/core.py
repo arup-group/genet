@@ -643,6 +643,7 @@ class Network:
         if attribs is not None:
             self.graph.add_node(node, **attribs)
         else:
+            # TODO do not add nodes without spatial info
             self.graph.add_node(node)
         self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
         if not silent:
@@ -760,6 +761,7 @@ class Network:
             raise RuntimeError('Multi index key needs to be an integer')
 
         self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
+        # TODO calculate length of link if not provided
         compulsory_attribs = {'from': u, 'to': v, 'id': link_id}
         if attribs is None:
             attribs = compulsory_attribs
@@ -2222,8 +2224,8 @@ class Network:
             z_1 = elevation_dict[node_1]['z']
             z_2 = elevation_dict[node_2]['z']
 
-            # calculate crow-fly distance between the 2 nodes - CHANGE
-            length = spatial.distance_between_s2cellids(self.node(node_1)['s2_id'], self.node(node_2)['s2_id'])
+            # TO-DO: calculate crow-fly distance between the 2 nodes
+            length = self.link(link_id)['length']
 
             if length == 0:
                 link_slope = 0
