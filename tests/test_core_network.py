@@ -3010,4 +3010,5 @@ def test_getting_link_slope_dictionary(network3, elevation_dictionary):
 
     # elevation value (25m) that corresponds to the coordinate of this node in the network has been double checked here:
     # https://www.freemaptools.com/elevation-finder.htm
-    assert slope_dict['0']['slope'] == 1.042467864666141
+
+    assert slope_dict['0']['slope'] == 100.35209179535082
