@@ -2203,7 +2203,8 @@ class Network:
             elevation_dict[node_id] = {'z': z}
 
         if run_validation is True:
-            print(elevation.validation_report_for_node_elevation(elevation_dict))
+            report = elevation.validation_report_for_node_elevation(elevation_dict)
+            logging.info(report['summary'])
 
         return elevation_dict
 

@@ -3,6 +3,7 @@ import logging
 import os
 import json
 
+from genet import read_matsim
 from genet.utils.persistence import ensure_dir
 import genet.outputs_handler.sanitiser as sanitiser
 
@@ -35,8 +36,8 @@ if __name__ == '__main__':
                             required=True)
 
     arg_parser.add_argument('-sj',
-                            '--save_jsons',
-                            help='Whether dictionaries and report are saved; defaults to True',
+                            '--save_elevation_jsons',
+                            help='Whether elevation and slope dictionaries and report are saved; defaults to True',
                             default=True)
 
     args = vars(arg_parser.parse_args())
@@ -45,8 +46,9 @@ if __name__ == '__main__':
     elevation = args['elevation']
     tif_null_value = args['null_value']
     output_dir = args['output_dir']
-    save_jsons = args['save_jsons']
-    ensure_dir(output_dir)
+    save_elevation_jsons = args['save_jsons']
+    elevation_output_dir = os.path.join(output_dir, 'elevation')
+    ensure_dir(elevation_output_dir)
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
@@ -60,21 +62,27 @@ if __name__ == '__main__':
     logging.info('Creating elevation dictionary for network nodes')
     elevation_dictionary = n.get_node_elevation_dictionary(elevation_tif_file_path=elevation, null_value=tif_null_value)
 
-    with open(os.path.join(output_dir, 'elevation/node_elevation_dictionary.json'), 'w', encoding='utf-8') as f:
-        json.dump(sanitiser.sanitise_dictionary(elevation_dictionary), f, ensure_ascii=False, indent=4)
+    if save_elevation_jsons is True:
+        with open(os.path.join(elevation_output_dir, 'elevation/node_elevation_dictionary.json'), 'w',
+                  encoding='utf-8') as f:
+            json.dump(sanitiser.sanitise_dictionary(elevation_dictionary), f, ensure_ascii=False, indent=4)
 
     logging.info('Validating the elevation data added to network nodes')
     report = elevation.validation_report_for_node_elevation(elevation_dictionary)
-    logging.info(report)
+    logging.info(report['summary'])
 
-    with open(os.path.join(output_dir, 'elevation/validation_report_for_elevation.json'), 'w', encoding='utf-8') as f:
-        json.dump(sanitiser.sanitise_dictionary(report), f, ensure_ascii=False, indent=4)
+    if save_elevation_jsons is True:
+        with open(os.path.join(elevation_output_dir, 'elevation/validation_report_for_elevation.json'), 'w',
+                  encoding='utf-8') as f:
+            json.dump(sanitiser.sanitise_dictionary(report), f, ensure_ascii=False, indent=4)
 
     logging.info('Creating slope dictionary for network links')
     slope_dictionary = n.get_link_slope_dictionary(elevation_dict=elevation_dictionary)
 
-    with open(os.path.join(output_dir, 'elevation/link_slope_dictionary.json'), 'w', encoding='utf-8') as f:
-        json.dump(sanitiser.sanitise_dictionary(report), f, ensure_ascii=False, indent=4)
+    if save_elevation_jsons is True:
+        with open(os.path.join(elevation_output_dir, 'elevation/link_slope_dictionary.json'), 'w',
+                  encoding='utf-8') as f:
+            json.dump(sanitiser.sanitise_dictionary(report), f, ensure_ascii=False, indent=4)
 
     logging.info('Adding link slope as attribute to the network')
 
@@ -87,4 +95,4 @@ if __name__ == '__main__':
     n.apply_attributes_to_links(attrib_dict)
 
     logging.info('Writing the updated network')
-    n.write_to_matsim(output_dir)
+    n.write_to_matsim(elevation_output_dir)
