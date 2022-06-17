@@ -345,7 +345,9 @@ def read_schedule(schedule_path, epsg):
 
             elif elem.tag == 'departure':
                 transitRoutes[current_route_id]['departure_list'].append({'departure': elem.attrib})
-            elif elem.tag == 'attribute':
+
+        elif event == 'end':
+            if elem.tag == 'attribute':
                 if elem_type_for_additional_attributes == 'transitSchedule':
                     schedule_attribs = update_additional_attrib(elem, schedule_attribs)
                 elif elem_type_for_additional_attributes == 'stopFacility':
@@ -366,8 +368,8 @@ def read_schedule(schedule_path, epsg):
                         elem,
                         transitRoutes[current_route_id]['attributes']
                     )
-        elif (event == 'end') and (elem.tag == "transportMode"):
-            transportMode = {'transportMode': elem.text}
+            elif elem.tag == "transportMode":
+                transportMode = {'transportMode': elem.text}
 
     # add the last one
     write_transitLinesTransitRoute(transitLine, transitRoutes, transportMode)
