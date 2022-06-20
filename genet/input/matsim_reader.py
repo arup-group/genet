@@ -8,6 +8,7 @@ from pyproj import Transformer, Proj
 from genet.schedule_elements import Route, Stop, Service
 from genet.utils import dict_support
 from genet.utils import spatial
+from genet.utils import java_dtypes
 
 
 def read_node(elem, g, node_id_mapping, node_attribs, transformer):
@@ -89,8 +90,8 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
 
     if link_attribs:
         if 'geometry' in link_attribs:
-            if link_attribs['geometry']['text']:
-                attribs['geometry'] = spatial.decode_polyline_to_shapely_linestring(link_attribs['geometry']['text'])
+            if link_attribs['geometry']:
+                attribs['geometry'] = spatial.decode_polyline_to_shapely_linestring(link_attribs['geometry'])
                 del link_attribs['geometry']
         if link_attribs:
             attribs['attributes'] = link_attribs
@@ -115,15 +116,19 @@ def update_additional_attrib(elem, attribs):
 
 
 def read_additional_attrib(elem):
-    d = elem.attrib
     if elem.text is None:
-        d['text'] = ''
-        logging.warning(f"Elem {elem.attrib['name']} is being read as None.")
+        t = ''
+        logging.warning(f"Elem {elem.attrib['name']} is being read as None. Defaulting value to empty string.")
     elif (',' in elem.text) and elem.attrib['name'] != 'geometry':
-        d['text'] = set(elem.text.split(','))
+        t = set(elem.text.split(','))
     else:
-        d['text'] = elem.text
-    return d
+        if 'class' in elem.attrib:
+            t = java_dtypes.java_to_python_dtype(elem.attrib['class'])(elem.text)
+        else:
+            logging.warning(f"Elem {elem.attrib['name']} does not have a JAVA class declared. "
+                            "Defaulting type to string.")
+            t = elem.text
+    return t
 
 
 def unique_link_id(link_id, link_id_mapping):

@@ -3,6 +3,7 @@ JAVA_DTYPE_MAP = {
     'java.lang.Boolean': bool,
     'java.lang.Double': float,
     'java.lang.Float': float,
+    'java.lang.Long': float,
     'java.lang.Integer': int,
     'java.lang.String': str
 }

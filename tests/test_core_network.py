@@ -741,8 +741,8 @@ def test_reading_back_simplified_network():
         if 'attributes' in attribs:
             assert not 'geometry' in attribs['attributes']
             for k, v in attribs['attributes'].items():
-                if isinstance(v['text'], str):
-                    assert not ',' in v['text']
+                if isinstance(v, str):
+                    assert not ',' in v
 
 
 def test_network_with_missing_link_attribute_elem_text_is_read_and_able_to_save_again(tmpdir):

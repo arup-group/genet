@@ -379,10 +379,7 @@ def test_saving_network_with_geometry_produces_polyline_if_link_already_has_othe
 def network_with_additional_node_attrib():
     network = Network('epsg:27700')
     network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2,
-                                   'attributes': {
-                                       'osm:node:data': {'name': 'osm:node:data',
-                                                         'class': 'java.lang.String',
-                                                         'text': '3'}}})
+                                   'attributes': {'osm:node:data': '3'}})
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                              'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car']})
@@ -417,10 +414,7 @@ def test_saving_network_with_additional_node_attribs_does_not_change_data_post_s
         network_with_additional_node_attrib, tmpdir):
     network_with_additional_node_attrib.write_to_matsim(tmpdir)
     assert network_with_additional_node_attrib.node('0')['attributes'] == {
-        'osm:node:data': {'name': 'osm:node:data',
-                          'class': 'java.lang.String',
-                          'text': '3'}
-    }
+        'osm:node:data': '3'}
 
 
 @pytest.fixture()
@@ -499,13 +493,7 @@ def schedule_with_additional_attrib_stop():
                   departure_offsets=['00:00:00', '00:01:00'],
                   headway_spec={('07:00:00', '08:00:00'): 20},
                   stops=[Stop('s1', x=1, y=1, epsg='epsg:27700',
-                              attributes={'carAccessible': {'name': 'carAccessible',
-                                                            'class': 'java.lang.String',
-                                                            'text': 'true'},
-                                          'accessLinkId_car': {'name': 'accessLinkId_car',
-                                                               'class': 'java.lang.String',
-                                                               'text': 'linkID'}
-                                          }),
+                              attributes={'carAccessible': 'true', 'accessLinkId_car': 'linkID'}),
                          Stop('s2', x=1, y=1, epsg='epsg:27700')
                          ])]))
     return schedule
@@ -539,12 +527,8 @@ def test_saving_schedule_with_additional_stop_attribs_does_not_change_data_post_
         schedule_with_additional_attrib_stop, tmpdir):
     schedule_with_additional_attrib_stop.write_to_matsim(tmpdir)
     assert schedule_with_additional_attrib_stop.stop('s1').attributes == {
-        'carAccessible': {'name': 'carAccessible',
-                          'class': 'java.lang.String',
-                          'text': 'true'},
-        'accessLinkId_car': {'name': 'accessLinkId_car',
-                             'class': 'java.lang.String',
-                             'text': 'linkID'}
+        'carAccessible': 'true',
+        'accessLinkId_car': 'linkID'
     }
 
 
@@ -557,9 +541,7 @@ def schedule_with_additional_route_attrib():
                   arrival_offsets=['00:00:00', '00:01:00'],
                   departure_offsets=['00:00:00', '00:01:00'],
                   headway_spec={('07:00:00', '08:00:00'): 20},
-                  attributes={'additional_attrib': {'name': 'additional_attrib',
-                                                    'class': 'java.lang.String',
-                                                    'text': 'attrib_value'}},
+                  attributes={'additional_attrib': 'attrib_value'},
                   stops=[Stop('s1', x=1, y=1, epsg='epsg:27700'),
                          Stop('s2', x=1, y=1, epsg='epsg:27700')])]))
     return schedule
@@ -592,11 +574,7 @@ def test_schedule_with_additional_route_attribs_saves_all_data_to_xml(
 def test_saving_schedule_with_additional_route_attribs_does_not_change_data_post_save(
         schedule_with_additional_route_attrib, tmpdir):
     schedule_with_additional_route_attrib.write_to_matsim(tmpdir)
-    assert schedule_with_additional_route_attrib.route('r1').attributes['additional_attrib'] == {
-        'name': 'additional_attrib',
-        'class': 'java.lang.String',
-        'text': 'attrib_value'
-    }
+    assert schedule_with_additional_route_attrib.route('r1').attributes['additional_attrib'] == 'attrib_value'
 
 
 @pytest.fixture()
@@ -610,9 +588,7 @@ def schedule_with_additional_service_attrib():
                   headway_spec={('07:00:00', '08:00:00'): 20},
                   stops=[Stop('s1', x=1, y=1, epsg='epsg:27700'),
                          Stop('s2', x=1, y=1, epsg='epsg:27700')])],
-                attributes={'additional_attrib': {'name': 'additional_attrib',
-                                                  'class': 'java.lang.String',
-                                                  'text': 'attrib_value'}}
+                attributes={'additional_attrib': 'attrib_value'}
                 ))
     return schedule
 
@@ -645,21 +621,13 @@ def test_schedule_with_additional_service_attribs_saves_all_data_to_xml(
 def test_saving_schedule_with_additional_service_attribs_does_not_change_data_post_save(
         schedule_with_additional_service_attrib, tmpdir):
     schedule_with_additional_service_attrib.write_to_matsim(tmpdir)
-    assert schedule_with_additional_service_attrib['s1'].attributes['additional_attrib'] == {
-        'name': 'additional_attrib',
-        'class': 'java.lang.String',
-        'text': 'attrib_value'
-    }
+    assert schedule_with_additional_service_attrib['s1'].attributes['additional_attrib'] == 'attrib_value'
 
 
 @pytest.fixture()
 def schedule_with_additional_attrib():
     schedule = Schedule('epsg:27700')
-    schedule.attributes['additional_attrib'] = {
-        'name': 'additional_attrib',
-        'class': 'java.lang.String',
-        'text': 'attrib_value'
-    }
+    schedule.attributes['additional_attrib'] = 'attrib_value'
     schedule.add_service(
         Service(id='s1', routes=[
             Route(id='r1', route_short_name='r1', mode='bus',
@@ -699,11 +667,7 @@ def test_schedule_with_additional_attribs_saves_all_data_to_xml(
 def test_saving_schedule_with_additional_attribs_does_not_change_data_post_save(schedule_with_additional_attrib,
                                                                                 tmpdir):
     schedule_with_additional_attrib.write_to_matsim(tmpdir)
-    assert schedule_with_additional_attrib.attributes['additional_attrib'] == {
-        'name': 'additional_attrib',
-        'class': 'java.lang.String',
-        'text': 'attrib_value'
-    }
+    assert schedule_with_additional_attrib.attributes['additional_attrib'] == 'attrib_value'
 
 
 def test_generates_valid_matsim_vehicles_xml_file(tmpdir, vehicles_xsd, vehicle_types):

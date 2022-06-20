@@ -41,7 +41,7 @@ class Network:
         self.epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
         self.graph = nx.MultiDiGraph(name='Network graph', crs=epsg)
-        self.attributes = {'crs': {'name': 'crs', 'class': 'java.lang.String', 'text': epsg}}
+        self.attributes = {'crs': epsg}
         self.schedule = schedule_elements.Schedule(epsg)
         self.change_log = change_log.ChangeLog()
         self.auxiliary_files = {'node': {}, 'link': {}}
@@ -262,11 +262,12 @@ class Network:
         self._mark_as_simplified()
 
     def _mark_as_simplified(self):
-        self.attributes['simplified'] = {'name': 'simplified', 'class': 'java.lang.String', 'text': 'true'}
+        self.attributes['simplified'] = True
 
     def is_simplified(self):
         if 'simplified' in self.attributes:
-            return self.attributes['simplified']['text'] in {'true', 'True', True}
+            # range of values for backwards compatibility
+            return self.attributes['simplified'] in {'true', 'True', True}
         return False
 
     def node_attribute_summary(self, data=False):

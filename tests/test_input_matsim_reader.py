@@ -1,6 +1,7 @@
 from pyproj import Proj, Transformer
 from shapely.geometry import LineString
 from genet.input import matsim_reader, read
+from genet.utils import java_dtypes
 from tests.fixtures import *
 from tests.test_output_matsim_xml_writer import \
     network_with_additional_node_attrib_xml_file, network_with_additional_node_attrib, \
@@ -44,10 +45,10 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
         's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
         'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
         'modes': {'subway', 'metro', 'walk', 'car'}, 'attributes': {
-            'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
-            'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
-            'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
-            'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}
+            'osm:way:access': 'permissive',
+            'osm:way:highway': 'unclassified',
+            'osm:way:id': 26997928.0,
+            'osm:way:name': 'Brunswick Place'
         }}}
 
     transformer = Transformer.from_proj(Proj('epsg:27700'), Proj('epsg:4326'), always_xy=True)
@@ -80,7 +81,7 @@ def test_reading_NZ_network():
         '1': {'id': '1', 'from': '7858001326813216825', 'to': '7872447671905026061', 'freespeed': 4.166666666666667,
               'capacity': 600.0, 'permlanes': 1.0, 'oneway': '1', 'modes': {'car', 'walk'},
               's2_from': 7858001326813216825, 's2_to': 7872447671905026061, 'attributes': {
-                'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}},
+                'osm:way:access': 'permissive'},
               'length': 52.765151087870265}})
 
 
@@ -97,23 +98,22 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
             's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
             'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
             'modes': {'walk', 'car'}, 'attributes': {
-                'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
-                'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
-                'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
-                'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}}
+                'osm:way:access': 'permissive',
+                'osm:way:highway': 'unclassified',
+                'osm:way:id': 26997928.0,
+                'osm:way:name': 'Brunswick Place'}
         },
         1: {
             'id': "2", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
             's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
             'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
             'modes': {'bus'}, 'attributes': {
-                'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '1'},
-                'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
-                'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
-                'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'},
-                'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'},
-                'osm:relation:route': {'class': 'java.lang.String', 'name': 'osm:relation:route',
-                                       'text': {'bus', 'bicycle'}}
+                'osm:way:lanes': '1',
+                'osm:way:highway': 'unclassified',
+                'osm:way:id': 26997928.0,
+                'osm:way:name': 'Brunswick Place',
+                'osm:way:oneway': 'yes',
+                'osm:relation:route': {'bus', 'bicycle'}
             }
         }}}
 
@@ -154,23 +154,22 @@ def test_read_network_builds_graph_with_unique_links_given_matsim_network_with_c
             's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
             'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
             'modes': {'walk', 'car'}, 'attributes': {
-                'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
-                'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
-                'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
-                'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}}
+                'osm:way:access': 'permissive',
+                'osm:way:highway': 'unclassified',
+                'osm:way:id': 26997928.0,
+                'osm:way:name': 'Brunswick Place'}
         },
         1: {
             'id': "1_1", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
             's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
             'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
             'modes': {'bus'}, 'attributes': {
-                'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '1'},
-                'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
-                'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
-                'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'},
-                'osm:way:oneway': {'name': 'osm:way:oneway', 'class': 'java.lang.String', 'text': 'yes'},
-                'osm:relation:route': {'class': 'java.lang.String', 'name': 'osm:relation:route',
-                                       'text': {'bus', 'bicycle'}}
+                'osm:way:lanes': '1',
+                'osm:way:highway': 'unclassified',
+                'osm:way:id': 26997928.0,
+                'osm:way:name': 'Brunswick Place',
+                'osm:way:oneway': 'yes',
+                'osm:relation:route': {'bus', 'bicycle'}
             }
         }}}
 
@@ -212,10 +211,10 @@ def test_read_network_rejects_non_unique_nodes():
             's2_from': 5221390301001263407, 's2_to': 5221390302696205321,
             'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
             'modes': {'walk', 'car'}, 'attributes': {
-                'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
-                'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
-                'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
-                'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}}
+                'osm:way:access': 'permissive',
+                'osm:way:highway': 'unclassified',
+                'osm:way:id': 26997928.0,
+                'osm:way:name': 'Brunswick Place'}
         }}}
 
     correct_link_id_map = {'1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 0}}
@@ -257,18 +256,13 @@ def test_reading_matsim_output_network():
     correct_edge = {'id': '1', 'from': '25508485', 'to': '21667818', 'freespeed': 4.166666666666667,
                     'capacity': 600.0, 'permlanes': 1.0, 'oneway': '1', 'modes': {'car', 'subway', 'metro', 'walk'},
                     's2_from': 5221390301001263407, 's2_to': 5221390302696205321, 'length': 52.765151087870265,
-                    'attributes': {'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String',
-                                                      'text': 'permissive'},
-                                   'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                                       'text': 'unclassified'},
-                                   'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long',
-                                                  'text': '26997928'},
-                                   'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String',
-                                                    'text': 'Brunswick Place'}}}
+                    'attributes': {'osm:way:access': 'permissive',
+                                   'osm:way:highway': 'unclassified',
+                                   'osm:way:id': 26997928.0,
+                                   'osm:way:name': 'Brunswick Place'}}
     correct_attributes = {
-        'coordinateReferenceSystem': {'class': 'java.lang.String', 'name': 'coordinateReferenceSystem',
-                                      'text': 'EPSG:27700'},
-        'crs': {'class': 'java.lang.String', 'name': 'crs', 'text': 'epsg:27700'}
+        'coordinateReferenceSystem': 'EPSG:27700',
+        'crs': 'epsg:27700'
     }
 
     assert_semantically_equal(dict(n.graph.nodes(data=True)), correct_nodes)
@@ -283,10 +277,10 @@ def test_reading_network_with_geometry_attributes():
         'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
         'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
         'modes': {'car'}, 'attributes': {
-            'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
-            'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
-            'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
-            'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}
+            'osm:way:access': 'permissive',
+            'osm:way:highway': 'unclassified',
+            'osm:way:id': 26997928.0,
+            'osm:way:name': 'Brunswick Place'
         }},
         '2': {
             'id': "2", 'from': "25508485", 'to': "21667818", 'length': 52.765151087870265,
@@ -294,10 +288,10 @@ def test_reading_network_with_geometry_attributes():
             'freespeed': 4.166666666666667, 'capacity': 600.0, 'permlanes': 1.0, 'oneway': "1",
             'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
             'modes': {'car'}, 'attributes': {
-                'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
-                'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
-                'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
-                'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}
+                'osm:way:access': 'permissive',
+                'osm:way:highway': 'unclassified',
+                'osm:way:id': 26997928.0,
+                'osm:way:name': 'Brunswick Place'
             }}
     }
     n = read.read_matsim(path_to_network=pt2matsim_network_with_geometry_file, epsg='epsg:27700')
@@ -426,26 +420,10 @@ def test_uses_node_elevation_data_when_present_in_network_file(tmpdir):
             's2_from': 3748121220106005759,
             's2_to': 3748121226099361651,
             'attributes': {
-                'osm:way:access': {
-                    'name': 'osm:way:access',
-                    'class': 'java.lang.String',
-                    'text': 'permissive'
-                },
-                'osm:way:highway': {
-                    'name': 'osm:way:highway',
-                    'class': 'java.lang.String',
-                    'text': 'unclassified'
-                },
-                'osm:way:id': {
-                    'name': 'osm:way:id',
-                    'class': 'java.lang.Long',
-                    'text': '26997928564'
-                },
-                'osm:way:name': {
-                    'name': 'osm:way:name',
-                    'class': 'java.lang.String',
-                    'text': 'Elevation Lane'
-                }
+                'osm:way:access': 'permissive',
+                'osm:way:highway': 'unclassified',
+                'osm:way:id': 26997928564.0,
+                'osm:way:name': 'Elevation Lane',
             },
             'length': 52.765151087870265
         }
@@ -504,8 +482,10 @@ def make_network_with_elevations_xml_string(nodes_with_elevations_dict, link_dic
         network_xml += ' <attributes> '
         for attr_name, attr_value in link_value['attributes'].items():
             network_xml += '<attribute name="{}" class="{}">{}</attribute> '.format(attr_name,
-                                                                                    attr_value['class'],
-                                                                                    attr_value['text'])
+                                                                                    java_dtypes.python_to_java_dtype(
+                                                                                        type(attr_value)),
+                                                                                    attr_value
+                                                                                    )
         network_xml += ' </attributes> </link>'
     network_xml += ' </links> </network>'
     return network_xml

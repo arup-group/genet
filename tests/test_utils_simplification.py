@@ -46,7 +46,8 @@ def graph_with_junctions_directed_both_ways_and_loop():
     return g
 
 
-def test_getting_endpoints_with_graph_with_junctions_directed_both_ways(graph_with_junctions_directed_both_ways_and_loop):
+def test_getting_endpoints_with_graph_with_junctions_directed_both_ways(
+        graph_with_junctions_directed_both_ways_and_loop):
     g = graph_with_junctions_directed_both_ways_and_loop
     endpts = simplification._is_endpoint(
         {node: {'successors': set(g.successors(node)), 'predecessors': set(g.predecessors(node))}
@@ -55,10 +56,12 @@ def test_getting_endpoints_with_graph_with_junctions_directed_both_ways(graph_wi
     assert set(endpts) == {1, 2, 5, 6, 11}
 
 
-def test_simplified_paths_with_graph_with_junctions_directed_both_ways(graph_with_junctions_directed_both_ways_and_loop):
+def test_simplified_paths_with_graph_with_junctions_directed_both_ways(
+        graph_with_junctions_directed_both_ways_and_loop):
     g = graph_with_junctions_directed_both_ways_and_loop
     edge_groups = simplification._get_edge_groups_to_simplify(g)
-    assert_correct_edge_groups(edge_groups, [[2, 3, 4, 5], [2, 22, 33, 44, 55, 5], [5, 4, 3, 2], [5, 55, 44, 33, 22, 2]])
+    assert_correct_edge_groups(edge_groups,
+                               [[2, 3, 4, 5], [2, 22, 33, 44, 55, 5], [5, 4, 3, 2], [5, 55, 44, 33, 22, 2]])
 
 
 @pytest.fixture()
@@ -97,14 +100,12 @@ def indexed_edge_groups():
                       's2_to': [5221390326036762795, 5221390326952602895],
                       'length': [12.0, 14.0, 5.0],
                       'attributes': [
-                          {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
-                           'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '18769878'},
-                           'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                               'text': 'trunk'}},
-                          {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
-                           'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '18769879'},
-                           'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                               'text': 'unclassified'}}]},
+                          {'osm:way:lanes': '3',
+                           'osm:way:osmid': '18769878',
+                           'osm:way:highway': 'trunk'},
+                          {'osm:way:lanes': '3',
+                           'osm:way:osmid': '18769879',
+                           'osm:way:highway': 'unclassified'}]},
         'node_data': {
             1: {'id': 1, 'x': 528915.9309752393, 'y': 181899.48948011652, 'lon': -0.14327038749428384,
                 'lat': 51.52130909540579, 's2_id': 5221390326122671999},
@@ -135,11 +136,9 @@ def test_merging_edge_data(indexed_edge_groups):
             's2_to': 5221390326952602895,
             'length': 31,
             'attributes': {
-                'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
-                'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                                  'text': {'18769878' ,'18769879'}},
-                'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                    'text': {'trunk', 'unclassified'}}
+                'osm:way:lanes': '3',
+                'osm:way:osmid': {'18769878', '18769879'},
+                'osm:way:highway': {'trunk', 'unclassified'}
             },
             'geometry': LineString([(528915.9309752393, 181899.48948011652), (528888.1581643537, 181892.3086225874),
                                     (528780.3405144282, 181859.84184561518), (528780.3405144282, 181859.84184561518)]),
@@ -206,14 +205,15 @@ def test_merging_edge_data_without_attributes():
 def test_merging_set_attribute_values():
     edge_group = {'new_link_id': {
         'path': [1, 2, 3],
-        'link_data': {'permlanes': [3.0, 3.0], 'freespeed': [20, 20], 'capacity': [1000.0, 1000.0], 'oneway': ['1', '1'],
+        'link_data': {'permlanes': [3.0, 3.0], 'freespeed': [20, 20], 'capacity': [1000.0, 1000.0],
+                      'oneway': ['1', '1'],
                       'modes': [['car'], ['car']], 'from': [1, 2], 'to': [2, 3], 'id': ['1926', '1927'],
                       's2_from': [5221390326122671999, 5221390326036762795],
                       's2_to': [5221390326036762795, 5221390326952602895],
                       'length': [12.0, 14.0],
                       'attributes': [
-                          {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': {'1', '2'}}},
-                          {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'}}]},
+                          {'osm:way:lanes': {'1', '2'}},
+                          {'osm:way:lanes': '3'}]},
         'node_data': {
             1: {'id': 1, 'x': 528915.9309752393, 'y': 181899.48948011652, 'lon': -0.14327038749428384,
                 'lat': 51.52130909540579, 's2_id': 5221390326122671999},
@@ -239,10 +239,10 @@ def test_merging_set_attribute_values():
             's2_to': 5221390326952602895,
             'length': 26,
             'attributes': {
-                'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': {'1','2','3'}}
+                'osm:way:lanes': {'1', '2', '3'}
             },
             'geometry': LineString([(528915.9309752393, 181899.48948011652), (528888.1581643537, 181892.3086225874),
-                                     (528780.3405144282, 181859.84184561518)]),
+                                    (528780.3405144282, 181859.84184561518)]),
             'ids': ['1926', '1927']}})
 
 
