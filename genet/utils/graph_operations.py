@@ -215,7 +215,7 @@ def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
     inherits index from the iterator.
     :param iterator: list or iterator yielding (index, attribute_dictionary)
     :param key: either a string e.g. 'modes', or if accessing nested information, a dictionary
-        e.g. {'attributes': {'osm:way:name': 'text'}}
+        e.g. {'attributes': 'osm:way:name'} or {'attributes': {'osm:way:name': 'text'}}
     :return: dictionary where keys are indices and values are data stored under the key
     """
 
@@ -225,7 +225,7 @@ def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
                 if k in attributes:
                     if isinstance(v, dict):
                         get_the_data(attributes[k], v)
-                    else:
+                    elif v in attributes[k]:
                         data[_id] = attributes[k][v]
         else:
             if key in attributes:

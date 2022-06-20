@@ -96,7 +96,7 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
     osm_to_network_dict which is also saved to .json in the `outpath` location
     """
 
-    osm_df = pd.read_csv(osm_csv_path, dtype=str)
+    osm_df = pd.read_csv(osm_csv_path)
     osm_df['network_id'] = pd.Series(dtype=str)
 
     target_osm_ids = set(osm_df['osm_id'].values)
