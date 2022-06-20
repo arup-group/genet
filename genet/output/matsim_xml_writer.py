@@ -6,7 +6,15 @@ from pandas import DataFrame
 from genet.output import sanitiser
 from genet.validate.network_validation import validate_attribute_data
 from genet.utils.spatial import encode_shapely_linestring_to_polyline
+from genet.exceptions import MalformedAdditionalAttributeError
 import genet.variables as variables
+import genet.utils.java_dtypes as java_dtypes
+
+EXPECTED_FORMAT_FOR_ADDITIONAL_ATTRIBUTES_MESSAGE = 'The expected format is either a nested dictionary: ' \
+    '`{"attribute_name": {"name": "attribute_name", "class": "java.lang.DTYPE", ' \
+    '"text": attribute_value}}`, or' \
+    '`{"attribute_name": attribute_value}` with `attribute_value` of supported python format:' \
+    f'{list(java_dtypes.PYTHON_DTYPE_MAP)}'
 
 
 def get_allowable_attributes(elem_type):
@@ -35,21 +43,52 @@ def retain_allowed_attributes_for_xml(d, elem_type):
     return d
 
 
+def is_of_matsim_format(attribute_value):
+    if {'name', 'class', 'text'}.issubset(set(attribute_value.keys())):
+        return True
+    return False
+
+
+def can_be_put_in_matsim_format(attrib_value):
+    if type(attrib_value) in java_dtypes.PYTHON_DTYPE_MAP:
+        return True
+    return False
+
+
+def put_in_matsim_format(attrib_name, attrib_value):
+    return {
+        'name': attrib_name,
+        'class': java_dtypes.python_to_java_dtype(type(attrib_value)),
+        'text': attrib_value
+    }
+
+
+def format_to_matsim(k, _attrib):
+    if isinstance(_attrib, dict) and is_of_matsim_format(_attrib):
+        return deepcopy(_attrib)
+    elif can_be_put_in_matsim_format(_attrib):
+        return put_in_matsim_format(k, _attrib)
+    else:
+        raise MalformedAdditionalAttributeError(f'Attribute: {k} with data: {_attrib} is not of the required '
+                                                f'format. {EXPECTED_FORMAT_FOR_ADDITIONAL_ATTRIBUTES_MESSAGE}')
+
+
 def check_additional_attributes(attribs):
     if 'attributes' in attribs:
         if isinstance(attribs['attributes'], dict):
             attribs_to_delete = []
             for attrib, value in attribs['attributes'].items():
-                try:
-                    attribs['attributes'][attrib]['name']
-                    attribs['attributes'][attrib]['class']
-                    attribs['attributes'][attrib]['text']
-                except Exception as e:
-                    logging.warning(f'Attempt to access required keys in data under "attributes:{attrib}" key '
-                                    f'resulted in {type(e)} with message "{e}".')
+                if isinstance(value, dict) and is_of_matsim_format(value):
+                    pass
+                elif can_be_put_in_matsim_format(value):
+                    pass
+                else:
+                    logging.warning(
+                        f'Data under "attributes:{attrib}" key is not of supported format. '
+                        f'{EXPECTED_FORMAT_FOR_ADDITIONAL_ATTRIBUTES_MESSAGE}')
                     attribs_to_delete.append(attrib)
             for attrib in attribs_to_delete:
-                logging.warning(f'Deleting {attrib} under key "attributes"')
+                logging.warning(f'Deleting malformed {attrib} under key "attributes"')
                 del attribs['attributes'][attrib]
             if not attribs['attributes']:
                 logging.warning(f'Attributes are not formatted correctly and will be deleted: {attribs}')
@@ -62,24 +101,26 @@ def check_additional_attributes(attribs):
 
 def save_attributes(attributes, xf, elem_type):
     if 'attributes' in attributes:
-        save_with_additional_attributes(sanitiser.sanitise_dictionary_for_xml(attributes), xf, elem_type)
+        save_with_additional_attributes(attributes, xf, elem_type)
     else:
         xf.write(etree.Element(elem_type, sanitiser.sanitise_dictionary_for_xml(attributes)))
 
 
-def save_with_additional_attributes(additional_attributes, xf, elem_type):
-    attributes = additional_attributes.pop('attributes')
-    with xf.element(elem_type, additional_attributes):
-        save_additional_attributes(attributes, xf)
-
-
-def save_additional_attributes(_attributes, xf):
+def save_with_additional_attributes(_attributes, xf, elem_type):
     attributes = deepcopy(_attributes)
+    additional_attributes = attributes.pop('attributes')
+    attributes = sanitiser.sanitise_dictionary_for_xml(attributes)
+    with xf.element(elem_type, attributes):
+        save_additional_attributes(additional_attributes, xf)
+
+
+def save_additional_attributes(attributes, xf):
     with xf.element("attributes"):
-        for k, attrib in attributes.items():
+        for k, _attrib in attributes.items():
+            attrib = format_to_matsim(k, _attrib)
             text = attrib.pop('text')
             rec = etree.Element("attribute", attrib)
-            rec.text = text
+            rec.text = str(text)
             xf.write(rec)
 
 

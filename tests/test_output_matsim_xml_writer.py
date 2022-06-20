@@ -1,6 +1,7 @@
 import os, sys
 import pytest
 import lxml
+import xmltodict
 from copy import deepcopy
 from shapely.geometry import LineString
 from tests.fixtures import network_object_from_test_data, full_fat_default_config_path, assert_semantically_equal
@@ -226,10 +227,11 @@ def test_saving_network_with_geometry_produces_correct_polyline_in_link_attribut
     assert found_geometry_attrib
 
 
-def test_saving_network_with_wrongly_formatted_attributes_with_geometry(tmpdir):
-    # attributes are assumed to be a nested dictionary of very specific format. Due to the fact that user can
-    # do virtually anything to edge attributes, or due to calculation error, this may not be the case. If it's not
-    # of correct format, we don't expect it to get saved to the matsim network.xml
+@pytest.fixture()
+def network_with_badly_formatted_attributes_and_geometry():
+    # attributes are assumed to be a dictionary of format: key = name of attribute, value = value under that named
+    # attribute. Due to the fact that user can do virtually anything to edge attributes, or due to calculation error,
+    # this may not be the case. If it's not of correct format, we don't expect it to get saved to the matsim network.xml
     network = Network('epsg:27700')
     network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
@@ -237,27 +239,43 @@ def test_saving_network_with_wrongly_formatted_attributes_with_geometry(tmpdir):
     link_attribs = {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                     'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
                     'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
-                    'attributes': {'heyo': 'whoop'}
+                    'attributes': 'heyo'
                     }
 
     network.add_link('0', '0', '1', attribs=link_attribs)
-    network.write_to_matsim(tmpdir)
+    return {'network': network,
+            'encoded_geometry': '_ibE_seK_ibE_ibE_ibE_ibE',
+            'original_link_attributes': link_attribs}
 
-    assert_semantically_equal(dict(network.links()), {'0': link_attribs})
 
-    assert_semantically_equal(matsim_xml_writer.check_additional_attributes(link_attribs),
-                              {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
-                               'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
-                               'geometry': LineString([(1, 2), (2, 3), (3, 4)])
-                               }
-                              )
+def test_saving_network_with_wrongly_formatted_attributes_with_geometry_does_not_alter_attributes_data(
+        tmpdir, network_with_badly_formatted_attributes_and_geometry):
+    network_with_badly_formatted_attributes_and_geometry['network'].write_to_matsim(tmpdir)
+
+    assert_semantically_equal(
+        network_with_badly_formatted_attributes_and_geometry['network'].link('0'),
+        network_with_badly_formatted_attributes_and_geometry['original_link_attributes'])
+
+
+def test_saving_network_with_wrongly_formatted_attributes_with_geometry_removes_bad_attribute_for_saving_to_xml(
+        network_with_badly_formatted_attributes_and_geometry):
+    assert_semantically_equal(
+        matsim_xml_writer.check_additional_attributes(
+            network_with_badly_formatted_attributes_and_geometry['original_link_attributes']),
+        {k: v for k, v in network_with_badly_formatted_attributes_and_geometry['original_link_attributes'].items() if
+         k != 'attributes'})
+
+
+def test_saving_network_with_badly_formatted_attributes_with_geometry_saves_correct_geometry(
+        tmpdir, network_with_badly_formatted_attributes_and_geometry):
+    network_with_badly_formatted_attributes_and_geometry['network'].write_to_matsim(tmpdir)
 
     found_geometry_attrib = False
     for event, elem in ET.iterparse(os.path.join(tmpdir, 'network.xml'), events=('start', 'end')):
         if event == 'start':
             if elem.tag == 'attribute':
                 if elem.attrib['name'] == 'geometry':
-                    assert elem.text == '_ibE_seK_ibE_ibE_ibE_ibE'
+                    assert elem.text == network_with_badly_formatted_attributes_and_geometry['encoded_geometry']
                     found_geometry_attrib = True
     assert found_geometry_attrib
 
@@ -402,7 +420,37 @@ def test_saving_network_with_additional_node_attribs_does_not_change_data_post_s
         'osm:node:data': {'name': 'osm:node:data',
                           'class': 'java.lang.String',
                           'text': '3'}
-        }
+    }
+
+
+@pytest.fixture()
+def network_with_additional_simple_form_node_attrib():
+    network = Network('epsg:27700')
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'attributes': {'osm:node:data': '3'}})
+    network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2})
+    network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
+                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car']})
+    return network
+
+
+def test_simple_form_additional_attributes_are_indistinguishable_in_xml(
+        tmpdir, network_with_additional_simple_form_node_attrib, network_with_additional_node_attrib_xml_file):
+    network_with_additional_simple_form_node_attrib.write_to_matsim(tmpdir)
+
+    generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+    xml_diff.assert_semantically_equal(generated_network_file_path, network_with_additional_node_attrib_xml_file)
+
+
+def test_non_string_simple_form_additional_attribute_saves_to_xml_correctly(tmpdir):
+    network = Network('epsg:27700')
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'attributes': {'osm:node:data': 3}})
+
+    network.write_to_matsim(tmpdir)
+
+    xml_data = xmltodict.parse(open(os.path.join(tmpdir,'network.xml')).read())
+    assert xml_data['network']['nodes']['node']['attributes']['attribute']['@name'] == 'osm:node:data'
+    assert xml_data['network']['nodes']['node']['attributes']['attribute']['@class'] == 'java.lang.Integer'
+    assert xml_data['network']['nodes']['node']['attributes']['attribute']['#text'] == '3'
 
 
 def test_write_matsim_network_produces_semantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
@@ -497,7 +545,7 @@ def test_saving_schedule_with_additional_stop_attribs_does_not_change_data_post_
         'accessLinkId_car': {'name': 'accessLinkId_car',
                              'class': 'java.lang.String',
                              'text': 'linkID'}
-        }
+    }
 
 
 @pytest.fixture()
