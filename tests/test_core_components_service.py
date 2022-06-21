@@ -375,8 +375,15 @@ def test_is_valid_with_non_network_route(service):
     assert not service.is_valid_service()
 
 
+def test_building_trips_dataframe_with_stops_accepts_backwards_compatibility(service, mocker, caplog):
+    mocker.patch.object(Service, 'trips_with_stops_to_dataframe')
+    service.trips_with_stops_to_dataframe(service.trips_to_dataframe())
+    service.trips_with_stops_to_dataframe.assert_called_once()
+    assert_logging_warning_caught_with_message_containing(caplog, '`route_trips_with_stops_to_dataframe` method is deprecated')
+
+
 def test_building_trips_dataframe(service):
-    df = service.route_trips_with_stops_to_dataframe()
+    df = service.trips_with_stops_to_dataframe()
 
     correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 13:00:00'), 1: Timestamp('1970-01-01 13:05:00'),
                                                2: Timestamp('1970-01-01 13:09:00'), 3: Timestamp('1970-01-01 13:30:00'),
@@ -396,12 +403,12 @@ def test_building_trips_dataframe(service):
                                           9: '5', 10: '6', 11: '7'},
                             'to_stop': {0: '2', 1: '3', 2: '4', 3: '2', 4: '3', 5: '4', 6: '6', 7: '7', 8: '8', 9: '6',
                                         10: '7', 11: '8'},
-                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2', 6: '1', 7: '1', 8: '1', 9: '2',
+                            'trip_id': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2', 6: '1', 7: '1', 8: '1', 9: '2',
                                      10: '2', 11: '2'},
                             'vehicle_id': {0: 'veh_1_bus', 1: 'veh_1_bus', 2: 'veh_1_bus', 3: 'veh_2_bus',
                                            4: 'veh_2_bus', 5: 'veh_2_bus', 6: 'veh_3_bus', 7: 'veh_3_bus',
                                            8: 'veh_3_bus', 9: 'veh_4_bus', 10: 'veh_4_bus', 11: 'veh_4_bus'},
-                            'route': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '2', 7: '2', 8: '2', 9: '2',
+                            'route_id': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '2', 7: '2', 8: '2', 9: '2',
                                       10: '2', 11: '2'},
                             'route_name': {0: 'name', 1: 'name', 2: 'name', 3: 'name', 4: 'name', 5: 'name',
                                            6: 'name_2', 7: 'name_2', 8: 'name_2', 9: 'name_2', 10: 'name_2',
@@ -412,13 +419,30 @@ def test_building_trips_dataframe(service):
                                                10: '', 11: ''},
                             'to_stop_name': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '', 6: '', 7: '', 8: '', 9: '',
                                              10: '', 11: ''},
-                            'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
+                            'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
                                         5: 'service', 6: 'service', 7: 'service', 8: 'service', 9: 'service',
                                         10: 'service', 11: 'service'},
                             'service_name': {0: 'name', 1: 'name', 2: 'name', 3: 'name', 4: 'name', 5: 'name',
                                              6: 'name', 7: 'name', 8: 'name', 9: 'name', 10: 'name', 11: 'name'}})
 
     assert_frame_equal(df, correct_df)
+
+
+def test_generating_trips_dataframe(service):
+    df = service.trips_to_dataframe()
+
+    assert_frame_equal(
+        df,
+        DataFrame(
+            {'trip_id': {0: '1', 1: '2', 2: '1', 3: '2'},
+             'trip_departure_time': {0: Timestamp('1970-01-01 13:00:00'), 1: Timestamp('1970-01-01 13:30:00'),
+                                     2: Timestamp('1970-01-01 11:00:00'), 3: Timestamp('1970-01-01 13:00:00')},
+             'vehicle_id': {0: 'veh_1_bus', 1: 'veh_2_bus', 2: 'veh_3_bus', 3: 'veh_4_bus'},
+             'route_id': {0: '1', 1: '1', 2: '2', 3: '2'},
+             'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus'},
+             'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service'}}
+        )
+    )
 
 
 def test_vehicles(service):

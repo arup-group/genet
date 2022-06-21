@@ -84,6 +84,102 @@ def google_directions_api_response():
                             "text": "1 min",
                             "value": 71
                         },
+                        "duration_in_traffic": {
+                            "text": "1 min",
+                            "value": 35
+                        },
+                        "end_address": "65 Cleveland St, Fitzrovia, London W1T 4JZ, UK",
+                        "end_location": {
+                            "lat": 51.5208376,
+                            "lng": -0.1391098
+                        },
+                        "start_address": "49 Newman St, Fitzrovia, London W1T 3DZ, UK",
+                        "start_location": {
+                            "lat": 51.5188908,
+                            "lng": -0.1369381
+                        },
+                        "steps": [
+                            {
+                                "distance": {
+                                    "text": "0.3 km",
+                                    "value": 264
+                                },
+                                "duration": {
+                                    "text": "1 min",
+                                    "value": 71
+                                },
+                                "end_location": {
+                                    "lat": 51.5208376,
+                                    "lng": -0.1391098
+                                },
+                                "html_instructions": "Head \u003cb\u003enorth-west\u003c/b\u003e on \u003cb\u003eCleveland St\u003c/b\u003e towards \u003cb\u003eTottenham St\u003c/b\u003e",
+                                "polyline": {
+                                    "points": "ahmyHzvYCBCFs@t@oAtAaAdAy@bAA@WX_AjAc@f@"
+                                },
+                                "start_location": {
+                                    "lat": 51.5188908,
+                                    "lng": -0.1369381
+                                },
+                                "travel_mode": "DRIVING"
+                            }
+                        ],
+                        "traffic_speed_entry": [],
+                        "via_waypoint": []
+                    }
+                ],
+                "overview_polyline": {
+                    "points": "ahmyHzvYkCvCuCdDcBrB"
+                },
+                "summary": "Cleveland St",
+                "warnings": [],
+                "waypoint_order": []
+            }
+        ],
+        "status": "OK"
+    }).encode('utf-8')
+    return response
+
+
+@pytest.fixture()
+def google_directions_api_response_without_traffic_info():
+    response = Response()
+    response.status_code = 200
+    response._content = json.dumps({
+        "geocoded_waypoints": [
+            {
+                "geocoder_status": "OK",
+                "place_id": "ChIJQbcuHzwbdkgRamIMZzZGjxg",
+                "types": ["cafe", "establishment", "food", "point_of_interest"]
+            },
+            {
+                "geocoder_status": "OK",
+                "place_id": "ChIJi8rZjSkbdkgRBluJBmAZK1w",
+                "types": ["street_address"]
+            }
+        ],
+        "routes": [
+            {
+                "bounds": {
+                    "northeast": {
+                        "lat": 51.5208376,
+                        "lng": -0.1369381
+                    },
+                    "southwest": {
+                        "lat": 51.5188908,
+                        "lng": -0.1391098
+                    }
+                },
+                "copyrights": "Map data ©2020 Google",
+                "legs": [
+                    {
+                        "distance": {
+                            "text": "0.3 km",
+                            "value": 264
+                        },
+                        "duration": {
+                            "text": "1 min",
+                            "value": 71
+                        },
                         "end_address": "65 Cleveland St, Fitzrovia, London W1T 4JZ, UK",
                         "end_location": {
                             "lat": 51.5208376,
@@ -176,6 +272,10 @@ def google_directions_api_response_multiple_legs():
                             "text": "1 min",
                             "value": 44
                         },
+                        "duration_in_traffic": {
+                            "text": "1 min",
+                            "value": 35
+                        },
                         "end_address": "49 Newman St, Fitzrovia, London W1T 3DZ, UK",
                         "end_location": {
                             "lat": 51.5188908,
@@ -222,6 +322,10 @@ def google_directions_api_response_multiple_legs():
                         "duration": {
                             "text": "1 min",
                             "value": 44
+                        },
+                        "duration_in_traffic": {
+                            "text": "1 min",
+                            "value": 35
                         },
                         "end_address": "49 Newman St, Fitzrovia, London W1T 3DZ, UK",
                         "end_location": {
@@ -309,14 +413,14 @@ def test_send_requests_for_road_network(mocker, tmpdir, generated_request, googl
     mocker.patch.object(Future, 'result', return_value=google_directions_api_response)
 
     n = Network('epsg:27700')
-    google_directions.send_requests_for_network(n, 10, tmpdir)
+    google_directions.send_requests_for_network(n, 10, tmpdir, None)
     google_directions.generate_requests.assert_called_once_with(n)
-    google_directions.send_requests.assert_called_once_with(google_directions.generate_requests.return_value, None,
-                                                            None, None, False)
+    google_directions.send_requests.assert_called_once_with(google_directions.generate_requests.return_value,
+                                                            None , None, None, None, None)
 
 
-def test_read_saved_api_results():
-    api_requests = google_directions.read_saved_api_results(example_google_speed_data)
+def test_read_api_requests():
+    api_requests = google_directions.read_api_requests(example_google_speed_data)
     assert_semantically_equal(api_requests, {
         ('9791490', '4698712638'): {'path_nodes': ('9791490', '4698712638'), 'path_polyline': 'mvmyHpqYb@lA',
                                     'origin': {'id': '9791490', 'x': 529414.5591563961, 'y': 181898.4902840198,
@@ -327,28 +431,43 @@ def test_read_saved_api_results():
                                     'parsed_response': {'google_speed': 6.8, 'google_polyline': 'mvmyHpqYb@pA'}}})
 
 
-def test_queries_build_correctly_without_traffic():
+def test_queries_build_correctly_without_traffic_model_specified():
     request = google_directions.make_request(
         origin_attributes={'lat': 1, 'lon': 2},
         destination_attributes={'lat': 3, 'lon': 4},
         key='super_awesome_key',
-        traffic=False
-    )
-    result = request.result()
-    assert result.status_code == 200
-    assert result.url == 'https://maps.googleapis.com/maps/api/directions/json?origin=1%2C2&destination=3%2C4&key=super_awesome_key'
-
-
-def test_queries_build_correctly_with_traffic():
-    request = google_directions.make_request(
-        origin_attributes={'lat': 1, 'lon': 2},
-        destination_attributes={'lat': 3, 'lon': 4},
-        key='super_awesome_key',
-        traffic=True
+        departure_time='now',
+        traffic_model=None
     )
     result = request.result()
     assert result.status_code == 200
     assert result.url == 'https://maps.googleapis.com/maps/api/directions/json?origin=1%2C2&destination=3%2C4&key=super_awesome_key&departure_time=now'
+
+
+def test_queries_build_correctly_with_optimistic_traffic_model():
+    request = google_directions.make_request(
+        origin_attributes={'lat': 1, 'lon': 2},
+        destination_attributes={'lat': 3, 'lon': 4},
+        key='super_awesome_key',
+        departure_time='now',
+        traffic_model='optimistic'
+    )
+    result = request.result()
+    assert result.status_code == 200
+    assert result.url == 'https://maps.googleapis.com/maps/api/directions/json?origin=1%2C2&destination=3%2C4&key=super_awesome_key&traffic_model=optimistic&departure_time=now'
+
+
+def test_queries_build_correctly_with_correct_unix_time():
+    request = google_directions.make_request(
+        origin_attributes={'lat': 1, 'lon': 2},
+        destination_attributes={'lat': 3, 'lon': 4},
+        key='super_awesome_key',
+        departure_time=1893506400,
+        traffic_model=None
+    )
+    result = request.result()
+    assert result.status_code == 200
+    assert result.url == 'https://maps.googleapis.com/maps/api/directions/json?origin=1%2C2&destination=3%2C4&key=super_awesome_key&departure_time=1893506400'
 
 
 def test_generating_requests_on_non_simplified_graphs():
@@ -438,7 +557,7 @@ def test_sending_requests(mocker, google_directions_api_response):
         (5, 3): {'path_nodes': [5, 4, 3], 'path_polyline': '_ibE_seK????', 'origin': {'lat': 1, 'lon': 2},
                  'destination': {'lat': 1, 'lon': 2}}}
 
-    api_requests = google_directions.send_requests(api_requests)
+    api_requests = google_directions.send_requests(api_requests, None)
 
     assert_semantically_equal(api_requests, {
         (1, 10): {'path_nodes': (1, 10), 'path_polyline': '_ibE_seK??', 'origin': {'lat': 1, 'lon': 2},
@@ -455,19 +574,34 @@ def test_sending_requests(mocker, google_directions_api_response):
 def test_sending_requests_throws_error_if_key_not_found(mocker):
     mocker.patch.object(secrets_vault, 'get_google_directions_api_key', return_value=None)
     with pytest.raises(RuntimeError) as e:
-        google_directions.send_requests({})
+        google_directions.send_requests({}, None)
     assert 'API key was not found' in str(e.value)
 
 
 def test_parsing_routes_with_a_good_response(google_directions_api_response, generated_request):
+    legs = google_directions_api_response.json()['routes'][0]['legs']
+    expected_speed = sum([leg['distance']['value'] for leg in legs]) / sum([leg['duration_in_traffic']['value'] for leg in legs])
+
     data = google_directions.parse_routes(google_directions_api_response, generated_request['path_polyline'])
-    assert_semantically_equal(data, {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'})
+    assert_semantically_equal(data, {'google_speed': expected_speed, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'})
+
+
+def test_parsing_routes_with_a_response_without_traffic_info(google_directions_api_response_without_traffic_info, generated_request, caplog):
+    legs = google_directions_api_response_without_traffic_info.json()['routes'][0]['legs']
+    expected_speed = sum([leg['distance']['value'] for leg in legs]) / sum([leg['duration']['value'] for leg in legs])
+
+    data = google_directions.parse_routes(google_directions_api_response_without_traffic_info, generated_request['path_polyline'])
+    assert_semantically_equal(data, {'google_speed': expected_speed, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'})
+    assert_logging_warning_caught_with_message_containing(caplog, 'duration_in_traffic was not found')
 
 
 def test_parsing_routes_with_multiple_legs_response(google_directions_api_response_multiple_legs, generated_request):
+    legs = google_directions_api_response_multiple_legs.json()['routes'][0]['legs']
+    expected_speed = sum([leg['distance']['value'] for leg in legs]) / sum([leg['duration_in_traffic']['value'] for leg in legs])
+
     data = google_directions.parse_routes(google_directions_api_response_multiple_legs,
                                           generated_request['path_polyline'])
-    assert_semantically_equal(data, {'google_speed': 2.3636363636363638, 'google_polyline': 'ekmyH~nYbBzFblahblah'})
+    assert_semantically_equal(data, {'google_speed': expected_speed, 'google_polyline': 'ekmyH~nYbBzFblahblah'})
 
 
 def test_parsing_routes_with_a_bad_response(caplog, request_denied_google_directions_api_response, generated_request):
@@ -497,7 +631,7 @@ def test_parsing_routes_with_bad_request(caplog, bad_request_google_directions_a
     assert_logging_warning_caught_with_message_containing(caplog, 'Request was not successful.')
 
 
-def test_parse_results(mocker, tmpdir, generated_request, google_directions_api_response):
+def test_parse_results(mocker, generated_request, google_directions_api_response):
     request = FuturesSession(max_workers=1).get('http://hello.com')
     mocker.patch.object(request, 'result', return_value=google_directions_api_response)
     o_d = generated_request['path_nodes'][0], generated_request['path_nodes'][-1]
@@ -511,7 +645,9 @@ def test_parse_results(mocker, tmpdir, generated_request, google_directions_api_
                        '2503102618', '107351', '5411344775', '2440651577', '2440651556', '2440651552', '107352'],
         'path_polyline': 'ahmyHzvYGJyBbCGHq@r@EDIJGBu@~@SToAzAEFEDIJ', 'origin': {'lat': 51.5188864, 'lon': -0.1369442},
         'destination': {'lat': 51.5208299, 'lon': -0.1391027}, 'timestamp': 12345,
-        'parsed_response': {'google_speed': 3.7183098591549295, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'}}})
+        'parsed_response': {'google_speed': 7.542857142857143, 'google_polyline': 'ahmyHzvYkCvCuCdDcBrB'},
+        'request_payload': google_directions_api_response.json()
+    }})
 
 
 def test_mapping_results_to_edges_with_singular_route_data():

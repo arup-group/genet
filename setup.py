@@ -12,7 +12,7 @@ if os.path.isfile(requirementPath):
 
 setup(
     name="genet",
-    version="0.0.1",
+    version="1.0.1",
     author="Kasia Kozlowska",
     author_email="",
     description="MATSim network scenario generator",

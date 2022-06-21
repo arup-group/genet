@@ -1,18 +1,16 @@
 from shapely.geometry import Polygon, GeometryCollection
-from pandas import DataFrame, Timestamp
+from pandas import DataFrame, Timestamp, Timedelta
 from pandas.testing import assert_frame_equal
-from tests.fixtures import *
-from tests.test_core_components_route import self_looping_route, route
-from tests.test_core_components_service import service
-from genet.inputs_handler import read, matsim_reader, gtfs_reader
 
 from genet.exceptions import ServiceIndexError, ConflictingStopData, InconsistentVehicleModeError
+from genet.inputs_handler import read, matsim_reader, gtfs_reader
 from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation
 from tests.fixtures import *
 from tests.test_core_components_service import service
 from tests.test_core_components_route import self_looping_route, route
+from tests.test_core_schedule_elements import schedule_graph
 
 import pytest
 
@@ -456,6 +454,154 @@ def test_getting_services_contained_spatial_region(schedule):
     routes = schedule.services_on_spatial_condition(p, how='within')
     assert set(routes) == {'service'}
 
+@pytest.fixture()
+def schedule_with_two_services():
+    bus_route = Route(route_short_name='bus_route',
+                      mode='bus', id='bus_route',
+                      stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700', linkRefId='1'),
+                             Stop(id='2', x=1, y=2, epsg='epsg:27700', linkRefId='2'),
+                             Stop(id='3', x=3, y=3, epsg='epsg:27700', linkRefId='3'),
+                             Stop(id='4', x=7, y=5, epsg='epsg:27700', linkRefId='4')],
+                      trips={'trip_id': ['1', '2'],
+                             'trip_departure_time': ['13:00:00', '13:30:00'],
+                             'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
+                      route=['1','2','3','4'],
+                      arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                      departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    rail_route = Route(route_short_name='rail_route',
+                       mode='rail', id='rail_route',
+                       stops=[Stop(id='4', x=4, y=2, epsg='epsg:27700', linkRefId='4'),
+                              Stop(id='5', x=1, y=2, epsg='epsg:27700', linkRefId='5'),
+                              Stop(id='6', x=3, y=3, epsg='epsg:27700', linkRefId='6'),
+                              Stop(id='7', x=7, y=5, epsg='epsg:27700', linkRefId='7')],
+                       trips={'trip_id': ['1', '2'],
+                              'trip_departure_time': ['11:00:00', '13:00:00'],
+                              'vehicle_id': ['veh_3_bus', 'veh_4_bus']},
+                       route=['4', '5', '6', '7'],
+                       arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                       departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    bus_service = Service(id='bus_service', routes=[bus_route])
+    rail_service = Service(id='rail_service', routes=[rail_route])
+    return Schedule(epsg='epsg:27700', services=[bus_service, rail_service],
+                    minimal_transfer_times={'7': {'6':0.0}, '2': {'1':0.0}, '4': {'3':0.0}})
+
+
+def test_removing_service_from_copied_schedule_does_not_affect_services_in_original(schedule_with_two_services):
+    assert set(schedule_with_two_services.service_ids()) == {'bus_service', 'rail_service'}
+
+    subschedule = schedule_with_two_services.__copy__()
+    subschedule.remove_service('rail_service')
+
+    assert set(schedule_with_two_services.service_ids()) == {'bus_service', 'rail_service'}
+    assert set(subschedule.service_ids()) == {'bus_service'}
+
+
+def test_removing_service_from_copied_schedule_does_not_affect_graph_nodes_of_original(schedule_with_two_services):
+    subschedule = schedule_with_two_services.__copy__()
+    subschedule.remove_service('rail_service')
+
+    assert_semantically_equal(
+        dict(subschedule._graph.nodes(data=True)),
+        {'4': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '4', 'x': 7.0, 'y': 5.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.557068195637501, 'lat': 49.766856648946295,
+               's2_id': 5205973754097123809, 'linkRefId': '4'},
+         '5': {'services': set(), 'routes': set(), 'id': '5', 'x': 1.0, 'y': 2.0, 'epsg': 'epsg:27700', 'name': '',
+               'lon': -7.55714803952495, 'lat': 49.766825803756994, 's2_id': 5205973754090365183, 'linkRefId': '5'},
+         '6': {'services': set(), 'routes': set(), 'id': '6', 'x': 3.0, 'y': 3.0, 'epsg': 'epsg:27700', 'name': '',
+               'lon': -7.557121424907426, 'lat': 49.76683608549253, 's2_id': 5205973754090203369, 'linkRefId': '6'},
+         '7': {'services': set(), 'routes': set(), 'id': '7', 'x': 7.0, 'y': 5.0, 'epsg': 'epsg:27700', 'name': '',
+               'lon': -7.557068195637501, 'lat': 49.766856648946295, 's2_id': 5205973754097123809, 'linkRefId': '7'},
+         '3': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '3', 'x': 3.0, 'y': 3.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.557121424907426, 'lat': 49.76683608549253,
+               's2_id': 5205973754090203369, 'linkRefId': '3'},
+         '1': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '1', 'x': 4.0, 'y': 2.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.5571065776837285, 'lat': 49.76682779861248,
+               's2_id': 5205973754090531959, 'linkRefId': '1'},
+         '2': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '2', 'x': 1.0, 'y': 2.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.55714803952495, 'lat': 49.766825803756994,
+               's2_id': 5205973754090365183, 'linkRefId': '2'}}
+    )
+    assert_semantically_equal(
+        dict(schedule_with_two_services._graph.nodes(data=True)),
+        {'4': {'services': {'bus_service', 'rail_service'}, 'routes': {'bus_route', 'rail_route'}, 'id': '4', 'x': 7.0,
+               'y': 5.0, 'epsg': 'epsg:27700', 'name': '', 'lon': -7.557068195637501, 'lat': 49.766856648946295,
+               's2_id': 5205973754097123809, 'linkRefId': '4'},
+         '5': {'services': {'rail_service'}, 'routes': {'rail_route'}, 'id': '5', 'x': 1.0, 'y': 2.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.55714803952495, 'lat': 49.766825803756994,
+               's2_id': 5205973754090365183, 'linkRefId': '5'},
+         '6': {'services': {'rail_service'}, 'routes': {'rail_route'}, 'id': '6', 'x': 3.0, 'y': 3.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.557121424907426, 'lat': 49.76683608549253,
+               's2_id': 5205973754090203369, 'linkRefId': '6'},
+         '7': {'services': {'rail_service'}, 'routes': {'rail_route'}, 'id': '7', 'x': 7.0, 'y': 5.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.557068195637501, 'lat': 49.766856648946295,
+               's2_id': 5205973754097123809, 'linkRefId': '7'},
+         '3': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '3', 'x': 3.0, 'y': 3.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.557121424907426, 'lat': 49.76683608549253,
+               's2_id': 5205973754090203369, 'linkRefId': '3'},
+         '1': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '1', 'x': 4.0, 'y': 2.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.5571065776837285, 'lat': 49.76682779861248,
+               's2_id': 5205973754090531959, 'linkRefId': '1'},
+         '2': {'services': {'bus_service'}, 'routes': {'bus_route'}, 'id': '2', 'x': 1.0, 'y': 2.0,
+               'epsg': 'epsg:27700', 'name': '', 'lon': -7.55714803952495, 'lat': 49.766825803756994,
+               's2_id': 5205973754090365183, 'linkRefId': '2'}}
+    )
+
+def test_removing_service_from_copied_schedule_does_not_affect_vehicles_of_original(schedule_with_two_services):
+    subschedule = schedule_with_two_services.__copy__()
+    subschedule.remove_service('rail_service')
+
+    assert_semantically_equal(
+        subschedule.vehicles,
+        {'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'}}
+    )
+    assert_semantically_equal(
+        schedule_with_two_services.vehicles,
+        {'veh_3_bus': {'type': 'rail'}, 'veh_4_bus': {'type': 'rail'}, 'veh_1_bus': {'type': 'bus'}, 'veh_2_bus': {'type': 'bus'}}
+    )
+
+
+def test_changing_copied_schedule_does_not_affect_transfer_times_of_original(schedule_with_two_services):
+    subschedule = schedule_with_two_services.__copy__()
+    subschedule.remove_stops_from_minimal_transfer_times(['7'])
+
+    assert_semantically_equal(
+        subschedule.minimal_transfer_times,
+        {'2': {'1': 0.0}, '4': {'3': 0.0}}
+    )
+    assert_semantically_equal(
+        schedule_with_two_services.minimal_transfer_times,
+        {'7': {'6': 0.0}, '2': {'1': 0.0}, '4': {'3': 0.0}}
+    )
+
+
+def test_creating_subschedule_results_in_correct_schedule_elems(schedule_with_two_services):
+    assert set(schedule_with_two_services.service_ids()) == {'bus_service', 'rail_service'}
+    assert set(schedule_with_two_services.route_ids()) == {'bus_route', 'rail_route'}
+    assert {s.id for s in schedule_with_two_services.stops()} == {'4', '3', '5', '7', '2', '6', '1'}
+
+    subschedule = schedule_with_two_services.subschedule(['bus_service'])
+
+    assert set(subschedule.service_ids()) == {'bus_service'}
+    assert set(subschedule.route_ids()) == {'bus_route'}
+    # 6 and 7 are there because we keep unused stops if they have transfers
+    assert {s.id for s in subschedule.stops()} == {'4', '3', '2', '1', '6', '7'}
+
+
+def test_creating_subschedule_results_in_valid_schedule(schedule_with_two_services):
+    assert schedule_with_two_services.is_valid_schedule()
+    subschedule = schedule_with_two_services.subschedule(['bus_service'])
+    assert subschedule.is_valid_schedule()
+
+
+def test_subnetwork_on_spatial_condition_delagates_to_spatial_methods_to_get_subset_items(mocker, schedule_with_two_services):
+    mocker.patch.object(Schedule, 'services_on_spatial_condition', return_value={'service'})
+    mocker.patch.object(Schedule, 'subschedule')
+
+    schedule_with_two_services.subschedule_on_spatial_condition(region_input='region')
+
+    Schedule.services_on_spatial_condition.assert_called_once_with(region_input='region', how='intersect')
+    Schedule.subschedule.assert_called_once_with(service_ids={'service'})
+
 
 def test_applying_attributes_to_service(schedule):
     assert schedule._graph.graph['services']['service']['name'] == 'name'
@@ -614,6 +760,46 @@ def test_adding_service(schedule, service):
                                'different_service': ['different_service_1', 'different_service_2']})
 
 
+@pytest.fixture()
+def services_to_add():
+    services = []
+    for i in range(2):
+        routes = []
+        for j in range(2):
+            routes.append(Route(route_short_name='name',
+                                mode='bus', id=f'new_route_{i}_{j}',
+                                stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'),
+                                       Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                                       Stop(id='3', x=3, y=3, epsg='epsg:27700'),
+                                       Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                                trips={'trip_id': ['1', '2'],
+                                       'trip_departure_time': ['13:00:00', '13:30:00'],
+                                       'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
+                                arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                                departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+                          )
+        services.append(Service(id=f'new_service_{i}', routes=routes))
+    return services
+
+
+def test_multiple_services_are_present_in_schedule_after_adding(schedule, services_to_add):
+    existing_routes = set(schedule.route_ids())
+    expected_routes_after_adding = existing_routes | {r.id for s in services_to_add for r in s.routes()}
+    existing_services = set(schedule.service_ids())
+    expected_services_after_adding = existing_services | {s.id for s in services_to_add}
+
+    schedule.add_services(services_to_add)
+
+    assert set(schedule.service_ids()) == expected_services_after_adding
+    assert set(schedule.route_ids()) == expected_routes_after_adding
+
+
+def test_adding_multiple_services_updates_changelog(schedule, services_to_add):
+    schedule.add_services(services_to_add)
+    assert list(schedule.change_log().iloc[-len(services_to_add):][['change_event', 'new_id']].itertuples(
+        index=False,name=None)) == [('add', s.id) for s in services_to_add]
+
+
 def test_adding_service_with_clashing_route_ids(schedule, service):
     service.reindex('different_service')
     schedule.add_service(service)
@@ -631,7 +817,7 @@ def test_adding_service_with_clashing_route_ids(schedule, service):
 def test_adding_service_with_clashing_id_throws_error(schedule, service):
     with pytest.raises(ServiceIndexError) as e:
         schedule.add_service(service)
-    assert 'already exists' in str(e.value)
+    assert 'already exist' in str(e.value)
 
 
 def test_adding_service_with_clashing_stops_data_does_not_overwrite_existing_stops(schedule):
@@ -702,6 +888,21 @@ def test_removing_service_updates_vehicles(schedule):
     assert schedule.vehicles == {}
 
 
+def test_multiple_services_are_no_longer_present_in_schedule_after_removing(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    s.remove_services(list(s.service_ids()))
+    assert set(s.service_ids()) == set()
+    assert set(s.route_ids()) == set()
+
+
+def test_removing_multiple_services_updates_changelog(schedule, schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    services_to_remove = list(s.service_ids())
+    s.remove_services(services_to_remove)
+    assert list(s.change_log().iloc[-len(services_to_remove):][['change_event', 'old_id']].itertuples(
+        index=False,name=None)) == [('remove', s) for s in services_to_remove]
+
+
 def test_adding_route(schedule, route):
     route.reindex('new_id')
     schedule.add_route('service', route)
@@ -728,7 +929,48 @@ def test_adding_route_with_clashing_id(schedule, route):
 def test_adding_route_to_non_existing_service_throws_error(schedule, route):
     with pytest.raises(ServiceIndexError) as e:
         schedule.add_route('service_that_doesnt_exist', route)
-    assert 'does not exist' in str(e.value)
+    assert 'do not exist' in str(e.value)
+
+
+@pytest.fixture()
+def routes_to_add():
+    route_1 = Route(route_short_name='name',
+                    mode='bus', id='route_to_add1',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['13:00:00', '13:30:00'],
+                           'vehicle_id': ['veh_1', 'veh_2']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    route_2 = Route(route_short_name='name_2',
+                    mode='bus', id='route_to_add2',
+                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['11:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_3', 'veh_4']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    return {'service': [route_1, route_2]}
+
+
+def test_multiple_routes_are_present_in_schedule_after_adding(schedule, routes_to_add):
+    existing_routes= set(schedule.route_ids())
+    expected_routes_after_adding = existing_routes | {r.id for s, rs in routes_to_add.items() for r in rs}
+    existing_services = set(schedule.service_ids())
+    expected_services_after_adding = existing_services | set(routes_to_add)
+
+    schedule.add_routes(routes_to_add)
+
+    assert set(schedule.service_ids()) == expected_services_after_adding
+    assert set(schedule.route_ids()) == expected_routes_after_adding
+
+
+def test_adding_multiple_routes_updates_changelog(schedule, routes_to_add):
+    schedule.add_routes(routes_to_add)
+    assert list(schedule.change_log().iloc[-sum([len(rs) for s, rs in routes_to_add.items()]):][['change_event', 'new_id']].itertuples(
+        index=False,name=None)) == [('add', r.id) for s, rs in routes_to_add.items() for r in rs]
 
 
 def test_creating_a_route_to_add_using_id_references_to_existing_stops_inherits_schedule_stops_data(schedule):
@@ -952,9 +1194,39 @@ def test_removing_route_with_overlapping_vehicles_leaves_all_vehicles(schedule, 
                                'veh_3_bus': {'type': 'bus'}, 'veh_4_bus': {'type': 'bus'}})
 
 
+def test_multiple_routes_are_no_longer_present_in_schedule_after_removing(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    assert set(s.service_ids()) == {'service1', 'service2'}
+    assert set(s.route_ids()) == {'2', '1', '4', '3'}
+    s.remove_routes(['1', '3'])
+    assert set(s.service_ids()) == {'service1', 'service2'}
+    assert set(s.route_ids()) == {'4', '2'}
+
+
+def test_service_is_no_longer_present_after_removing_all_its_routes(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    assert set(s.service_ids()) == {'service1', 'service2'}
+    assert set(s.route_ids()) == {'2', '1', '4', '3'}
+    s.remove_routes(['1', '2'])
+    assert set(s.service_ids()) == {'service2'}
+    assert set(s.route_ids()) == {'4', '3'}
+
+
+def test_removing_multiple_routes_updates_changelog(schedule_graph):
+    s = Schedule(_graph=schedule_graph)
+    route_to_remove=['1', '2']
+    s.remove_routes(route_to_remove)
+    assert list(s.change_log().iloc[-len(route_to_remove):][['change_event', 'old_id']].itertuples(index=False,name=None)) == [('remove', r) for r in route_to_remove]
+
+
 def test_removing_stop(schedule):
     schedule.remove_stop('5')
     assert {stop.id for stop in schedule.stops()} == {'1', '3', '4', '7', '8', '6', '2'}
+
+
+def test_removing_multiple_stops(schedule):
+    schedule.remove_stops(['5', '3'])
+    assert {stop.id for stop in schedule.stops()} == {'1', '4', '7', '8', '6', '2'}
 
 
 def test_removing_stop_updates_minimal_tranfer_times(schedule):
@@ -968,6 +1240,57 @@ def test_removing_stop_updates_minimal_tranfer_times(schedule):
                               {
                                   '2': {'3': 0.0},
                                   '3': {'2': 0.0},
+                              })
+
+
+def test_removing_multiple_stops_updates_minimal_tranfer_times(schedule):
+    schedule.minimal_transfer_times = {
+        '5': {'2': 0.0},
+        '2': {'5': 0.0, '3': 0.0},
+        '3': {'2': 0.0},
+    }
+    schedule.remove_stops(['5', '3'])
+    assert_semantically_equal(schedule.minimal_transfer_times, {})
+
+
+def test_removing_key_stops_from_minimal_transfert_times(schedule):
+    schedule.minimal_transfer_times = {
+        '5': {'2': 0.0},
+        '2': {'5': 0.0, '3': 0.0},
+        '3': {'2': 0.0},
+        '4': {'3': 0.0}
+    }
+    schedule.remove_stops_from_minimal_transfer_times(['4'])
+    assert_semantically_equal(schedule.minimal_transfer_times,
+                              {
+                                  '5': {'2': 0.0},
+                                  '2': {'5': 0.0, '3': 0.0},
+                                  '3': {'2': 0.0},
+                              })
+
+
+def test_removing_val_stops_from_minimal_transfert_times(schedule):
+    schedule.minimal_transfer_times = {
+        '2': {'5': 0.0, '3': 0.0},
+        '3': {'2': 0.0},
+    }
+    schedule.remove_stops_from_minimal_transfer_times(['5'])
+    assert_semantically_equal(schedule.minimal_transfer_times,
+                              {
+                                  '2': {'3': 0.0},
+                                  '3': {'2': 0.0},
+                              })
+
+
+def test_removing_stops_from_minimal_transfert_times_cleans_up_empties(schedule):
+    schedule.minimal_transfer_times = {
+        '4': {'5': 0.0, '3': 0.0},
+        '3': {'2': 0.0},
+    }
+    schedule.remove_stops_from_minimal_transfer_times(['2'])
+    assert_semantically_equal(schedule.minimal_transfer_times,
+                              {
+                                  '4': {'5': 0.0, '3': 0.0},
                               })
 
 
@@ -1198,8 +1521,15 @@ def test_build_graph_builds_correct_graph(strongly_connected_schedule):
                                '3': {'4': {'services': {'service'}, 'routes': {'1'}}}})
 
 
-def test_building_trips_dataframe(schedule):
-    df = schedule.route_trips_with_stops_to_dataframe()
+def test_building_trips_dataframe_with_stops_accepts_backwards_compatibility(schedule, mocker, caplog):
+    mocker.patch.object(Schedule, 'trips_with_stops_to_dataframe')
+    schedule.trips_with_stops_to_dataframe(schedule.trips_to_dataframe())
+    schedule.trips_with_stops_to_dataframe.assert_called_once()
+    assert_logging_warning_caught_with_message_containing(caplog, '`route_trips_with_stops_to_dataframe` method is deprecated')
+
+
+def test_building_trips_dataframe_with_stops(schedule):
+    df = schedule.trips_with_stops_to_dataframe()
 
     correct_df = DataFrame({'departure_time': {0: Timestamp('1970-01-01 13:00:00'), 1: Timestamp('1970-01-01 13:05:00'),
                                                2: Timestamp('1970-01-01 13:09:00'), 3: Timestamp('1970-01-01 13:30:00'),
@@ -1219,12 +1549,12 @@ def test_building_trips_dataframe(schedule):
                                           9: '5', 10: '6', 11: '7'},
                             'to_stop': {0: '2', 1: '3', 2: '4', 3: '2', 4: '3', 5: '4', 6: '6', 7: '7', 8: '8', 9: '6',
                                         10: '7', 11: '8'},
-                            'trip': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2', 6: '1', 7: '1', 8: '1', 9: '2',
+                            'trip_id': {0: '1', 1: '1', 2: '1', 3: '2', 4: '2', 5: '2', 6: '1', 7: '1', 8: '1', 9: '2',
                                      10: '2', 11: '2'},
                             'vehicle_id': {0: 'veh_1_bus', 1: 'veh_1_bus', 2: 'veh_1_bus', 3: 'veh_2_bus',
                                            4: 'veh_2_bus', 5: 'veh_2_bus', 6: 'veh_3_bus', 7: 'veh_3_bus',
                                            8: 'veh_3_bus', 9: 'veh_4_bus', 10: 'veh_4_bus', 11: 'veh_4_bus'},
-                            'route': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '2', 7: '2', 8: '2', 9: '2',
+                            'route_id': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '2', 7: '2', 8: '2', 9: '2',
                                       10: '2', 11: '2'},
                             'route_name': {0: 'name', 1: 'name', 2: 'name', 3: 'name', 4: 'name', 5: 'name',
                                            6: 'name_2', 7: 'name_2', 8: 'name_2', 9: 'name_2', 10: 'name_2',
@@ -1235,13 +1565,13 @@ def test_building_trips_dataframe(schedule):
                                                10: '', 11: ''},
                             'to_stop_name': {0: '', 1: '', 2: '', 3: '', 4: '', 5: '', 6: '', 7: '', 8: '', 9: '',
                                              10: '', 11: ''},
-                            'service': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
+                            'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service',
                                         5: 'service', 6: 'service', 7: 'service', 8: 'service', 9: 'service',
                                         10: 'service', 11: 'service'},
                             'service_name': {0: 'name', 1: 'name', 2: 'name', 3: 'name', 4: 'name', 5: 'name',
                                              6: 'name', 7: 'name', 8: 'name', 9: 'name', 10: 'name',
                                              11: 'name'}}).sort_values(
-        by=['route', 'trip', 'departure_time']).reset_index(drop=True)
+        by=['route_id', 'trip_id', 'departure_time']).reset_index(drop=True)
 
     assert_frame_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1))
 
@@ -1322,10 +1652,18 @@ def test_rejects_inconsistent_modes_when_generating_vehicles(mocker, schedule):
     assert "{'v_1': ['bus', 'rail']}" in str(e.value)
 
 
-def test_generating_route_trips_dataframe(schedule):
-    df = schedule.route_trips_to_dataframe(gtfs_day='19700102')
+def test_generating_route_trips_dataframe_is_backwards_compatible(schedule, mocker, caplog):
+    mocker.patch.object(Schedule, 'trips_to_dataframe')
+    schedule.route_trips_to_dataframe(gtfs_day='19700102')
+    schedule.trips_to_dataframe.assert_called_once_with('19700102')
+    assert_logging_warning_caught_with_message_containing(caplog, '`route_trips_to_dataframe` method is deprecated')
+
+
+def test_generating_trips_dataframe(schedule):
+    df = schedule.trips_to_dataframe(gtfs_day='19700102')
     assert_frame_equal(df.sort_index(axis=1), DataFrame(
-        {'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service'},
+        {'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus'},
+         'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service'},
          'route_id': {0: '2', 1: '2', 2: '1', 3: '1'}, 'trip_id': {0: '1', 1: '2', 2: '1', 3: '2'},
          'trip_departure_time': {0: Timestamp('1970-01-02 11:00:00'), 1: Timestamp('1970-01-02 13:00:00'),
                                  2: Timestamp('1970-01-02 13:00:00'), 3: Timestamp('1970-01-02 13:30:00')},
@@ -1333,7 +1671,14 @@ def test_generating_route_trips_dataframe(schedule):
     ).sort_index(axis=1))
 
 
-def test_applying_route_trips_dataframe(schedule):
+def test_applying_trips_dataframe_accepts_backwards_compatibility(schedule, mocker, caplog):
+    mocker.patch.object(Schedule, 'set_trips_dataframe')
+    schedule.set_route_trips_dataframe(schedule.trips_to_dataframe())
+    schedule.set_trips_dataframe.assert_called_once()
+    assert_logging_warning_caught_with_message_containing(caplog, '`set_route_trips_dataframe` method is deprecated')
+
+
+def test_applying_trips_dataframe(schedule):
     df_to_change = DataFrame(
         {'service_id': {0: 'service', 1: 'service', 2: 'service'},
          'route_id': {0: '2', 1: '2', 2: '1'}, 'trip_id': {0: '2-1', 1: '2-2', 2: '1-1'},
@@ -1341,12 +1686,172 @@ def test_applying_route_trips_dataframe(schedule):
                                  2: Timestamp('1970-01-01 13:23:00')},
          'vehicle_id': {0: 'veh_3_bus', 1: 'veh_1_bus', 2: 'veh_1_bus'}}
     )
-    schedule.set_route_trips_dataframe(df_to_change.copy())
+    schedule.set_trips_dataframe(df_to_change.copy())
 
     assert_frame_equal(
         df_to_change.sort_values(by=['route_id', 'trip_id']).sort_index(axis=1),
-        schedule.route_trips_to_dataframe(gtfs_day='19700101').sort_values(by=['route_id', 'trip_id']).sort_index(
-            axis=1))
+        schedule.trips_to_dataframe(gtfs_day='19700101').sort_values(by=['route_id', 'trip_id']).sort_index(
+            axis=1).drop('mode', axis=1))
+
+
+def test_generating_trips_headways(schedule):
+    df = schedule.trips_headways(gtfs_day='19700102')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'mode': {0: 'bus', 1: 'bus', 2: 'bus', 3: 'bus'},
+         'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service'},
+         'route_id': {0: '1', 1: '1', 2: '2', 3: '2'}, 'trip_id': {0: '1', 1: '2', 2: '1', 3: '2'},
+         'trip_departure_time': {0: Timestamp('1970-01-02 13:00:00'), 1: Timestamp('1970-01-02 13:30:00'),
+                                 2: Timestamp('1970-01-02 11:00:00'), 3: Timestamp('1970-01-02 13:00:00')},
+         'vehicle_id': {0: 'veh_1_bus', 1: 'veh_2_bus', 2: 'veh_3_bus', 3: 'veh_4_bus'},
+         'headway': {0: Timedelta('0 days 00:00:00'), 1: Timedelta('0 days 00:30:00'), 2: Timedelta('0 days 00:00:00'),
+                     3: Timedelta('0 days 02:00:00')},
+         'headway_mins': {0: 0.0, 1: 30.0, 2: 0.0, 3: 120.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_route_trips_headways_with_a_time_bound_finds_only_one_trip(schedule):
+    df = schedule.trips_headways(gtfs_day='19700102', from_time='10:00:00', to_time='12:00:00')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'route_id': {2: '2'}, 'service_id': {2: 'service'}, 'mode': {2: 'bus'}, 'trip_id': {2: '1'},
+         'trip_departure_time': {2: Timestamp('1970-01-02 11:00:00')}, 'vehicle_id': {2: 'veh_3_bus'},
+         'headway': {2: Timedelta('0 days 00:00:00')}, 'headway_mins': {2: 0.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_route_trips_headways_with_a_lower_time_bound_misses_one_trip(schedule):
+    df = schedule.trips_headways(gtfs_day='19700102', from_time='12:00:00')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'mode': {0: 'bus', 1: 'bus', 3: 'bus'},
+         'service_id': {0: 'service', 1: 'service', 3: 'service'},
+         'route_id': {0: '1', 1: '1', 3: '2'},
+         'trip_id': {0: '1', 1: '2', 3: '2'},
+         'trip_departure_time': {0: Timestamp('1970-01-02 13:00:00'), 1: Timestamp('1970-01-02 13:30:00'),
+                                 3: Timestamp('1970-01-02 13:00:00')},
+         'vehicle_id': {0: 'veh_1_bus', 1: 'veh_2_bus', 3: 'veh_4_bus'},
+         'headway': {0: Timedelta('0 days 00:00:00'), 1: Timedelta('0 days 00:30:00'), 3: Timedelta('0 days 00:00:00')},
+         'headway_mins': {0: 0.0, 1: 30.0, 3: 0.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_route_trips_headways_with_an_upper_time_bound_misses_one_trip(schedule):
+    df = schedule.trips_headways(gtfs_day='19700102', to_time='13:00:00')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'mode': {0: 'bus', 2: 'bus', 3: 'bus'},
+         'service_id': {0: 'service', 2: 'service', 3: 'service'},
+         'route_id': {0: '1', 2: '2', 3: '2'},
+         'trip_id': {0: '1', 2: '1', 3: '2'},
+         'trip_departure_time': {0: Timestamp('1970-01-02 13:00:00'), 2: Timestamp('1970-01-02 11:00:00'),
+                                 3: Timestamp('1970-01-02 13:00:00')},
+         'vehicle_id': {0: 'veh_1_bus', 2: 'veh_3_bus', 3: 'veh_4_bus'},
+         'headway': {0: Timedelta('0 days 00:00:00'), 2: Timedelta('0 days 00:00:00'), 3: Timedelta('0 days 02:00:00')},
+         'headway_mins': {0: 0.0, 2: 0.0, 3: 120.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_headways(schedule):
+    df = schedule.headway_stats(gtfs_day='19700102')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'service_id': {0: 'service', 1: 'service'}, 'route_id': {0: '1', 1: '2'}, 'mode': {0: 'bus', 1: 'bus'},
+         'mean_headway_mins': {0: 15.0, 1: 60.0}, 'std_headway_mins': {0: 21.213203435596427, 1: 84.8528137423857},
+         'max_headway_mins': {0: 30.0, 1: 120.0}, 'min_headway_mins': {0: 0.0, 1: 0.0}, 'trip_count': {0: 2.0, 1: 2.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_headways_with_a_time_bound_finds_only_one_trip(schedule):
+    df = schedule.headway_stats(gtfs_day='19700102', from_time='10:00:00', to_time='12:00:00')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'service_id': {0: 'service'}, 'route_id': {0: '2'}, 'mode': {0: 'bus'}, 'mean_headway_mins': {0: 0.0},
+         'std_headway_mins': {0: float('nan')}, 'max_headway_mins': {0: 0.0}, 'min_headway_mins': {0: 0.0},
+         'trip_count': {0: 1.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_headways_with_a_lower_time_bound_misses_one_trip(schedule):
+    df = schedule.headway_stats(gtfs_day='19700102', from_time='12:00:00')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'service_id': {0: 'service', 1: 'service'}, 'route_id': {0: '1', 1: '2'}, 'mode': {0: 'bus', 1: 'bus'},
+         'mean_headway_mins': {0: 15.0, 1: 0.0}, 'std_headway_mins': {0: 21.213203435596427, 1: float('nan')},
+         'max_headway_mins': {0: 30.0, 1: 0.0}, 'min_headway_mins': {0: 0.0, 1: 0.0}, 'trip_count': {0: 2.0, 1: 1.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_headways_with_an_upper_time_bound_misses_one_trip(schedule):
+    df = schedule.headway_stats(gtfs_day='19700102', to_time='13:00:00')
+    assert_frame_equal(df.sort_index(axis=1), DataFrame(
+        {'service_id': {0: 'service', 1: 'service'}, 'route_id': {0: '1', 1: '2'}, 'mode': {0: 'bus', 1: 'bus'},
+         'mean_headway_mins': {0: 0.0, 1: 60.0}, 'std_headway_mins': {0: float('nan'), 1: 84.8528137423857},
+         'max_headway_mins': {0: 0.0, 1: 120.0}, 'min_headway_mins': {0: 0.0, 1: 0.0}, 'trip_count': {0: 1.0, 1: 2.0}}
+    ).sort_index(axis=1))
+
+
+def test_generating_trip_departures():
+    from genet.schedule_elements import generate_trip_departures_from_headway
+    trip_deps = generate_trip_departures_from_headway(
+        {('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30}
+    )
+    assert {t.strftime("%H:%M:%S") for t in trip_deps} == {'01:20:00', '01:00:00', '01:40:00', '02:30:00', '03:00:00', '02:00:00'}
+
+
+def test_generating_trips_dataframe_from_headway(schedule):
+    df = schedule.generate_trips_dataframe_from_headway(
+        '1', {('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
+    assert_frame_equal(
+        df.sort_values(by='trip_id').reset_index(drop=True),
+        DataFrame(
+            {'trip_id': {0: '1_01:20:00', 1: '1_02:00:00', 2: '1_03:00:00', 3: '1_02:30:00', 4: '1_01:40:00',
+                         5: '1_01:00:00'},
+             'trip_departure_time': {0: Timestamp('1970-01-01 01:20:00'), 1: Timestamp('1970-01-01 02:00:00'),
+                                     2: Timestamp('1970-01-01 03:00:00'), 3: Timestamp('1970-01-01 02:30:00'),
+                                     4: Timestamp('1970-01-01 01:40:00'), 5: Timestamp('1970-01-01 01:00:00')},
+             'vehicle_id': {0: 'veh_bus_1_01:20:00', 1: 'veh_bus_1_02:00:00', 2: 'veh_bus_1_03:00:00',
+                            3: 'veh_bus_1_02:30:00', 4: 'veh_bus_1_01:40:00', 5: 'veh_bus_1_01:00:00'},
+             'route_id': {0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1'},
+             'service_id': {0: 'service', 1: 'service', 2: 'service', 3: 'service', 4: 'service', 5: 'service'}}
+        ).sort_values(by='trip_id').reset_index(drop=True)
+    )
+
+
+def test_generating_trips_from_headway_creates_trips_with_vehicles(schedule):
+    assert_semantically_equal(
+        schedule.route('1').trips,
+        {'trip_id': ['1', '2'],
+         'trip_departure_time': ['13:00:00', '13:30:00'],
+         'vehicle_id': ['veh_1_bus', 'veh_2_bus']}
+    )
+
+    schedule.generate_trips_from_headway('1', {('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
+
+    assert_semantically_equal(
+        schedule.route('1').trips,
+        {'trip_id': ['1_01:00:00', '1_01:20:00', '1_01:40:00', '1_02:00:00', '1_02:30:00', '1_03:00:00'],
+         'trip_departure_time': ['01:00:00', '01:20:00', '01:40:00', '02:00:00', '02:30:00', '03:00:00'],
+         'vehicle_id': ['veh_bus_1_01:00:00', 'veh_bus_1_01:20:00', 'veh_bus_1_01:40:00', 'veh_bus_1_02:00:00',
+                        'veh_bus_1_02:30:00', 'veh_bus_1_03:00:00']}
+    )
+
+
+def test_generating_trips_from_headway_updates_vehicles(schedule):
+    assert_semantically_equal(
+        schedule.vehicles,
+        {'veh_3_bus': {'type': 'bus'},
+         'veh_4_bus': {'type': 'bus'},
+         'veh_1_bus': {'type': 'bus'},
+         'veh_2_bus': {'type': 'bus'}}
+    )
+
+    schedule.generate_trips_from_headway('1', {('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
+
+    assert_semantically_equal(
+        schedule.vehicles,
+        {'veh_bus_1_01:00:00': {'type': 'bus'},
+         'veh_bus_1_02:00:00': {'type': 'bus'},
+         'veh_bus_1_01:40:00': {'type': 'bus'},
+         'veh_bus_1_01:20:00': {'type': 'bus'},
+         'veh_bus_1_03:00:00': {'type': 'bus'},
+         'veh_bus_1_02:30:00': {'type': 'bus'},
+         'veh_3_bus': {'type': 'bus'},
+         'veh_4_bus': {'type': 'bus'}}
+    )
 
 
 def test_overlapping_vehicles(schedule):

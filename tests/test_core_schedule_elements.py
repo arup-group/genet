@@ -4,7 +4,7 @@ from genet.schedule_elements import Schedule, Service, Route, Stop, verify_graph
 from genet.exceptions import ServiceIndexError, RouteIndexError, ScheduleElementGraphSchemaError
 from tests.fixtures import assert_semantically_equal
 from genet.inputs_handler import gtfs_reader
-
+import genet.modify.change_log as change_log
 
 def assert_all_elements_share_graph(elem):
     if isinstance(elem, Schedule):
@@ -101,37 +101,38 @@ def schedule_graph():
         service_to_route_map={'service1': ['1', '2'], 'service2': ['3', '4']},
         crs='epsg:27700'
     )
-    nodes = {'4': {'services': ['service2'], 'routes': ['3', '4'], 'id': '4', 'x': 529350.7866124967,
+    nodes = {'4': {'services': {'service2'}, 'routes': {'3', '4'}, 'id': '4', 'x': 529350.7866124967,
                    'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
                    'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
                    'additional_attributes': {'linkRefId'}, 'linkRefId': '4'},
-             '5': {'services': ['service2'], 'routes': ['4'], 'id': '5', 'x': 529350.7866124967,
+             '5': {'services': {'service2'}, 'routes': {'4'}, 'id': '5', 'x': 529350.7866124967,
                    'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
                    'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
                    'additional_attributes': {'linkRefId'}, 'linkRefId': '5'},
-             '3': {'services': ['service2'], 'routes': ['3'], 'id': '3', 'x': 529455.7452394223,
+             '3': {'services': {'service2'}, 'routes': {'3'}, 'id': '3', 'x': 529455.7452394223,
                    'y': 182401.37630677427, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.525696033239186,
                    'lon': -0.13530998708775874, 's2_id': 5221390668020036699,
                    'additional_attributes': {'linkRefId'}, 'linkRefId': '3'},
-             '1': {'services': ['service1'], 'routes': ['2', '1'], 'id': '1', 'x': 529350.7866124967,
+             '1': {'services': {'service1'}, 'routes': {'2', '1'}, 'id': '1', 'x': 529350.7866124967,
                    'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
                    'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
                    'additional_attributes': {'linkRefId'}, 'linkRefId': '1'},
-             '2': {'services': ['service1'], 'routes': ['2'], 'id': '2', 'x': 529350.7866124967,
+             '2': {'services': {'service1'}, 'routes': {'2'}, 'id': '2', 'x': 529350.7866124967,
                    'y': 182388.0201078112, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.52560003323918,
                    'lon': -0.13682698708848137, 's2_id': 5221390668558830581,
                    'additional_attributes': {'linkRefId'}, 'linkRefId': '2'},
-             '0': {'services': ['service1'], 'routes': ['1'], 'id': '0', 'x': 529455.7452394223,
+             '0': {'services': {'service1'}, 'routes': {'1'}, 'id': '0', 'x': 529455.7452394223,
                    'y': 182401.37630677427, 'epsg': 'epsg:27700', 'name': '', 'lat': 51.525696033239186,
                    'lon': -0.13530998708775874, 's2_id': 5221390668020036699,
                    'additional_attributes': {'linkRefId'}, 'linkRefId': '0'}}
-    edges = [('4', '5', {'services': ['service2'], 'routes': ['4'], 'modes': ['rail']}),
-             ('3', '4', {'services': ['service2'], 'routes': ['3'], 'modes': ['rail']}),
-             ('1', '2', {'services': ['service1'], 'routes': ['2'], 'modes': ['bus']}),
-             ('0', '1', {'services': ['service1'], 'routes': ['1'], 'modes': ['bus']})]
+    edges = [('4', '5', {'services': {'service2'}, 'routes': {'4'}, 'modes': {'rail'}}),
+             ('3', '4', {'services': {'service2'}, 'routes': {'3'}, 'modes': {'rail'}}),
+             ('1', '2', {'services': {'service1'}, 'routes': {'2'}, 'modes': {'bus'}}),
+             ('0', '1', {'services': {'service1'}, 'routes': {'1'}, 'modes': {'bus'}})]
     graph.add_nodes_from(nodes)
     graph.add_edges_from(edges)
     set_node_attributes(graph, nodes)
+    graph.graph['change_log'] = change_log.ChangeLog()
     return graph
 
 

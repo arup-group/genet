@@ -19,13 +19,6 @@ def modal_subset(row, modes):
         return False
 
 
-def setify(x):
-    if not isinstance(x, set):
-        return {x}
-    else:
-        return x
-
-
 def generate_geodataframes(graph):
     def line_geometry():
         from_node = nodes.loc[_u, :]
@@ -74,7 +67,7 @@ def save_geodataframe(gdf, filename, output_dir, include_shp_files=False):
 def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700101', include_shp_files=False):
     logging.info('Generating geojson standard outputs for schedule')
     schedule_links = schedule.to_geodataframe()['links'].to_crs("epsg:4326")
-    df = schedule.route_trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
+    df = schedule.trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
     df_all_modes_vph = None
 
     vph_dir = os.path.join(output_dir, 'vehicles_per_hour')
@@ -132,7 +125,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
     logging.info('Generating csv for vehicles per hour for each service')
     use_schedule.vehicles_per_hour(
         df,
-        aggregate_by=['service', 'service_name', 'mode'],
+        aggregate_by=['service_id', 'service_name', 'mode'],
         output_path=os.path.join(vph_dir, 'vph_per_service.csv'))
 
     logging.info('Generating csv for vehicles per hour per stop')
@@ -178,7 +171,7 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
 
     logging.info('Generating geojson outputs for different highway tags in car modal subgraph')
     highway_tags = n.link_attribute_data_under_key({'attributes': {'osm:way:highway': 'text'}})
-    highway_tags = set(chain.from_iterable(highway_tags.apply(lambda x: setify(x))))
+    highway_tags = set(chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
     for tag in highway_tags:
         tag_links = n.extract_links_on_edge_attributes(
             conditions={'attributes': {'osm:way:highway': {'text': tag}}},

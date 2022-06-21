@@ -13,7 +13,7 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 from geopandas.testing import assert_geodataframe_equal
 from shapely.geometry import LineString, Polygon, Point
 
-from genet.core import Network
+from genet.core import Network, MissingElevationException
 from genet.inputs_handler import matsim_reader
 from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule, Stop
@@ -128,6 +128,95 @@ def network2():
                                                          'class': 'java.lang.String',
                                                          'text': 'Brunswick Place'}}})
     return n2
+
+
+@pytest.fixture()
+def network3():
+    n3 = Network('epsg:4326')
+    n3.add_node('101982',
+                {'id': '101982',
+                 'x': '114.161432',
+                 'y': '22.279784',
+                 'lon': 114.161432,
+                 'lat': 22.279784,
+                 's2_id': 5221390329378179871})
+    n3.add_node('101986',
+                {'id': '101986',
+                 'x': '114.155850',
+                 'y': '22.290983',
+                 'lon': 114.155850,
+                 'lat': 22.290983,
+                 's2_id': 5221390328605860382})
+    n3.add_link('0', '101982', '101986',
+                attribs={'id': '0',
+                         'from': '101982',
+                         'to': '101986',
+                         'freespeed': 4.166666666666667,
+                         'capacity': 600.0,
+                         'permlanes': 1.0,
+                         'oneway': '1',
+                         'modes': ['car'],
+                         's2_from': 5221390329378179871,
+                         's2_to': 5221390328605860382,
+                         'length': 52.765151087870265,
+                         'attributes': {'osm:way:access': {'name': 'osm:way:access',
+                                                           'class': 'java.lang.String',
+                                                           'text': 'permissive'},
+                                        'osm:way:highway': {'name': 'osm:way:highway',
+                                                            'class': 'java.lang.String',
+                                                            'text': 'unclassified'},
+                                        'osm:way:id': {'name': 'osm:way:id',
+                                                       'class': 'java.lang.Long',
+                                                       'text': '26997928564'},
+                                        'osm:way:name': {'name': 'osm:way:name',
+                                                         'class': 'java.lang.String',
+                                                         'text': 'Garden Road'}}})
+    return n3
+
+@pytest.fixture()
+def network4():
+    n4 = Network('epsg:4326')
+    n4.add_node('101982',
+                {'id': '101982',
+                 'x': '114.161432',
+                 'y': '22.279784',
+                 'z': -51,
+                 'lon': 114.161432,
+                 'lat': 22.279784,
+                 's2_id': 5221390329378179871})
+    n4.add_node('101986',
+                {'id': '101986',
+                 'x': '114.155850',
+                 'y': '22.290983',
+                 'z': 100,
+                 'lon': 114.155850,
+                 'lat': 22.290983,
+                 's2_id': 5221390328605860382})
+    n4.add_link('0', '101982', '101986',
+                attribs={'id': '0',
+                         'from': '101982',
+                         'to': '101986',
+                         'freespeed': 4.166666666666667,
+                         'capacity': 600.0,
+                         'permlanes': 1.0,
+                         'oneway': '1',
+                         'modes': ['car'],
+                         's2_from': 5221390329378179871,
+                         's2_to': 5221390328605860382,
+                         'length': 52.765151087870265,
+                         'attributes': {'osm:way:access': {'name': 'osm:way:access',
+                                                           'class': 'java.lang.String',
+                                                           'text': 'permissive'},
+                                        'osm:way:highway': {'name': 'osm:way:highway',
+                                                            'class': 'java.lang.String',
+                                                            'text': 'unclassified'},
+                                        'osm:way:id': {'name': 'osm:way:id',
+                                                       'class': 'java.lang.Long',
+                                                       'text': '26997928564'},
+                                        'osm:way:name': {'name': 'osm:way:name',
+                                                         'class': 'java.lang.String',
+                                                         'text': 'Garden Road'}}})
+    return n4
 
 
 def test_network_graph_initiates_as_not_simplififed():
@@ -475,50 +564,115 @@ def test_attempt_to_simplify_already_simplified_network_throws_error():
     assert "cannot simplify" in str(error_info.value)
 
 
-def test_simplifing_puma_network_results_in_correct_record_of_removed_links_and_expected_graph_data():
-    n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
-                         path_to_schedule=puma_schedule_test_file)
+@pytest.fixture()
+def puma_network():
+    return read.read_matsim(
+        path_to_network=puma_network_test_file, epsg='epsg:27700', path_to_schedule=puma_schedule_test_file)
 
-    link_ids_pre_simplify = set(dict(n.links()).keys())
 
-    n.simplify()
+@pytest.fixture()
+def puma_network_with_pt_stops_at_risk_of_oversimplification(puma_network):
+    return {
+        'network':puma_network,
+        'pt_stops_at_risk': ['5221390681543854913', '5221390302070799085', '5221390323679791901']
+    }
 
-    assert n.is_simplified()
+@pytest.fixture()
+def network_with_simplified_schema():
+    # characterised by complex geometry link attribute and set text value in nested attributes dictionary
+    n = Network('epsg:27700')
+    n.add_node('101982',
+                {'id': '101982',
+                 'x': '528704.1425925883',
+                 'y': '182068.78193707118',
+                 'lon': -0.14625948709424305,
+                 'lat': 51.52287873323954,
+                 's2_id': 5221390329378179879})
+    n.add_node('101986',
+                {'id': '101986',
+                 'x': '528835.203274008',
+                 'y': '182006.27331298392',
+                 'lon': -0.14439428709377497,
+                 'lat': 51.52228713323965,
+                 's2_id': 5221390328605860387})
+    n.add_link('0', '101982', '101986',
+                attribs={'id': '0',
+                         'from': '101982',
+                         'to': '101986',
+                         'freespeed': 4.166666666666667,
+                         'capacity': 600.0,
+                         'permlanes': 1.0,
+                         'oneway': '1',
+                         'modes': {'car'},
+                         'geometry': LineString([(528704.1425925883, 182068.78193707118),  (528754.425925883, 182038.78193707118), (528835.203274008,182006.27331298392)]),
+                         's2_from': 5221390329378179879,
+                         's2_to': 5221390328605860387,
+                         'length': 52.765151087870265,
+                         'attributes': {'osm:way:highway': {'name': 'osm:way:highway',
+                                                            'class': 'java.lang.String',
+                                                            'text': {'unclassified', 'other'}}}})
+    return n
 
-    link_ids_post_simplify = set(dict(n.links()).keys())
 
-    assert link_ids_post_simplify & link_ids_pre_simplify
+def test_simplifing_puma_network_results_in_correct_record_of_simplified_links(puma_network):
+    assert not puma_network.is_simplified()
+    link_ids_pre_simplify = set(dict(puma_network.links()).keys())
+
+    puma_network.simplify()
+    assert puma_network.is_simplified()
+
+    link_ids_post_simplify = set(dict(puma_network.links()).keys())
+
     new_links = link_ids_post_simplify - link_ids_pre_simplify
     deleted_links = link_ids_pre_simplify - link_ids_post_simplify
-    assert set(n.link_simplification_map.keys()) == deleted_links
-    assert set(n.link_simplification_map.values()) == new_links
-    assert (set(n.link_id_mapping.keys()) & new_links) == new_links
 
-    report = n.generate_validation_report()
+    # check the links removed in simplification are mapped to new links
+    assert set(puma_network.link_simplification_map.keys()).issubset(deleted_links)
+    # check map points to new links
+    assert set(puma_network.link_simplification_map.values()) == new_links
+    # check all new links in the network have edge mappings (present in link_id_mapping)
+    assert (set(puma_network.link_id_mapping.keys()) & new_links) == new_links
 
-    assert report['routing']['services_have_routes_in_the_graph']
-    assert report['schedule']['schedule_level']['is_valid_schedule']
+
+def test_simplifing_puma_network_results_in_a_valid_schedule(puma_network):
+    puma_network.simplify()
+    puma_network.schedule.is_valid_schedule()
 
 
-def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, schedule_dtd):
-    n = read.read_matsim(path_to_network=puma_network_test_file, epsg='epsg:27700',
-                         path_to_schedule=puma_schedule_test_file)
+def test_simplifing_puma_network_results_in_a_schedule_with_valid_network_routes(puma_network):
+    puma_network.simplify()
+    puma_network.has_schedule_with_valid_network_routes()
 
-    n.simplify()
 
-    n.write_to_matsim(tmpdir)
+def test_simplify_does_not_oversimplify_PT_endpoints(puma_network_with_pt_stops_at_risk_of_oversimplification):
+    puma_network = puma_network_with_pt_stops_at_risk_of_oversimplification['network']
+    pt_stops_at_risk = puma_network_with_pt_stops_at_risk_of_oversimplification['pt_stops_at_risk']
+
+    assert not puma_network.is_simplified()
+    for s in pt_stops_at_risk:
+        assert puma_network.link(puma_network.schedule.stop(s).linkRefId)['length'] == 1
+
+    puma_network.simplify()
+
+    for s in pt_stops_at_risk:
+        assert puma_network.link(puma_network.schedule.stop(s).linkRefId)['length'] == 1
+
+
+def test_simplify_keeps_pt_stop_loops(puma_network):
+    puma_network.simplify()
+    for stop in puma_network.schedule.stops():
+        assert puma_network.link(stop.linkRefId)['from'] == puma_network.link(stop.linkRefId)['to']
+        assert puma_network.link(stop.linkRefId)['length'] == 1
+
+
+def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, network_with_simplified_schema):
+    network_with_simplified_schema.write_to_matsim(tmpdir)
 
     generated_network_file_path = os.path.join(tmpdir, 'network.xml')
     xml_obj = lxml.etree.parse(generated_network_file_path)
     assert network_dtd.validate(xml_obj), \
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
                                                                         network_dtd.error_log.filter_from_errors())
-
-    generated_schedule_file_path = os.path.join(tmpdir, 'schedule.xml')
-    xml_obj = lxml.etree.parse(generated_schedule_file_path)
-    assert schedule_dtd.validate(xml_obj), \
-        'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
-                                                                        schedule_dtd.error_log.filter_from_errors())
 
 
 def test_simplifying_network_with_multi_edges_resulting_in_multi_paths():
@@ -1104,6 +1258,95 @@ def test_links_on_spatial_condition_with_containement_and_complex_geometry_that_
             [(528504.1342843144, 182155.7435136598), (508400, 162050), (528489.467895946, 182206.20303669578)])})
     links = network_object_from_test_data.links_on_spatial_condition(region, how='within')
     assert set(links) == {'1'}
+
+
+@pytest.fixture()
+def network_to_subset():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': ['car'], 'length': 1})
+    n.add_link('1', 2, 3, attribs={'modes': ['car'], 'length': 1})
+    n.add_link('2', 3, 2, attribs={'modes': ['car'], 'length': 1})
+    n.add_link('3', 2, 1, attribs={'modes': ['car'], 'length': 1})
+    return n
+
+
+def test_modifying_subnetwork_does_not_affect_the_original(network_to_subset):
+    assert {_id for _id, dat in network_to_subset.links()} == {'0', '1', '2', '3'}
+
+    subnet = network_to_subset.subnetwork({'0', '3'})
+
+    assert {_id for _id, dat in subnet.links()} == {'0', '3'}
+    assert set(subnet.link_id_mapping.keys()) == {'0', '3'}
+    assert {_id for _id, dat in network_to_subset.links()} == {'0', '1', '2', '3'}
+    assert set(network_to_subset.link_id_mapping.keys()) == {'0', '1', '2', '3'}
+
+
+def test_extracting_subnetwork_results_in_strongly_connected_graph(network_to_subset):
+    subnet = network_to_subset.subnetwork({'0', '2', '3'})
+    assert {_id for _id, dat in subnet.links()} == {'0', '3'}
+
+
+def test_extracting_subnetwork_updates_link_id_map(network_to_subset):
+    subnet = network_to_subset.subnetwork({'0', '3'})
+    assert set(subnet.link_id_mapping.keys()) == {'0', '3'}
+
+
+def test_extracting_subnetwork_with_schedule_retains_pt_routes(network_object_from_test_data):
+    subnet = network_object_from_test_data.subnetwork({}, {'10314'})
+    assert set(subnet.link_id_mapping.keys()) == {'1'}
+
+
+def test_extracting_subnetwork_with_schedule_returns_subschedule(network_object_from_test_data):
+    subnet = network_object_from_test_data.subnetwork({}, {'10314'})
+    assert set(subnet.schedule.service_ids()) == {'10314'}
+
+
+def test_subnetwork_on_spatial_condition_delagates_to_spatial_methods_to_get_subset_items(mocker, network_object_from_test_data):
+    mocker.patch.object(Schedule, 'services_on_spatial_condition', return_value={'service'})
+    mocker.patch.object(Network, 'links_on_spatial_condition', return_value={'link'})
+    mocker.patch.object(Network, 'subnetwork')
+
+    network_object_from_test_data.subnetwork_on_spatial_condition(region_input='region')
+
+    Schedule.services_on_spatial_condition.assert_called_once_with(region_input='region', how='intersect')
+    Network.links_on_spatial_condition.assert_called_once_with(region_input='region', how='intersect')
+    Network.subnetwork.assert_called_once_with(links={'link'}, services={'service'}, n_connected_components=1,
+                                               strongly_connected_modes=None)
+
+
+def test_removing_mode_from_links_updates_the_modes():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': {'car', 'bike'}, 'length': 1})
+    n.add_link('1', 2, 3, attribs={'modes': {'car'}, 'length': 1})
+    n.add_link('2', 2, 3, attribs={'modes': {'bike'}, 'length': 1})
+    n.add_link('3', 2, 3, attribs={'modes': {'walk'}, 'length': 1})
+
+    n.remove_mode_from_links(links=['0'], mode='bike')
+    assert n.link('0')['modes'] == {'car'}
+
+
+def test_removing_multiple_modes_from_links_updates_the_modes():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': {'car', 'bike'}, 'length': 1})
+    n.add_link('1', 2, 3, attribs={'modes': {'car'}, 'length': 1})
+    n.add_link('2', 2, 3, attribs={'modes': {'bike'}, 'length': 1})
+    n.add_link('3', 2, 3, attribs={'modes': {'walk', 'car'}, 'length': 1})
+
+    n.remove_mode_from_links(links=['0', '3'], mode=['bike', 'walk'])
+    assert n.link('0')['modes'] == {'car'}
+    assert n.link('3')['modes'] == {'car'}
+
+
+def test_removing_mode_from_links_removes_empty_links():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'modes': {'car', 'bike'}, 'length': 1})
+    n.add_link('1', 2, 3, attribs={'modes': {'car'}, 'length': 1})
+    n.add_link('2', 2, 3, attribs={'modes': {'bike'}, 'length': 1})
+    n.add_link('3', 2, 3, attribs={'modes': {'walk'}, 'length': 1})
+
+    n.remove_mode_from_links(links=['0', '2'], mode='bike')
+    assert not n.has_link('2')
+    assert n.has_link('0')
 
 
 def test_find_shortest_path_when_graph_has_no_extra_edge_choices():
@@ -2732,3 +2975,43 @@ def test_saving_network_to_csv(network1, correct_schedule, tmpdir):
          'oneway': {0: 1}, 'freespeed': {0: 4.166666666666667}, 'permlanes': {0: 1.0}, 'attributes': {
             0: "{'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}, 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'}, 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'}, 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}}"}}
     )
+
+
+def test_adding_elevation_to_nodes(network3):
+    elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
+    elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
+
+    network3.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
+    output = network3.node_attribute_data_under_key('z')
+
+    # elevation value (25m) that corresponds to the coordinate of this node in the network has been double checked here:
+    # https://www.freemaptools.com/elevation-finder.htm
+    assert output['101982'] == 25
+
+
+def test_adding_elevation_to_nodes_with_null_value_mapping(network3):
+    elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
+    elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
+
+    network3.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
+    output = network3.node_attribute_data_under_key('z')
+
+    # the coordinate of this node in the network corresponds to a pixel with null (no data) value in the tif file
+    assert output['101986'] == 0
+
+
+def test_validation_report_for_node_elevation(network4):
+    n = network4
+    report = n.validation_report_for_node_elevation()
+    correct_report = {'summary': {'extremely_high_values_count': 0, 'extremely_low_values_count': 1, 'max_value': 100,
+                                  'mean': 24, 'median': 24, 'min_value': -51, 'total_nodes': 2},
+                      'values': {'extremely_high_values_dict': {}, 'extremely_low_values_dict': {'101982': -51}}}
+
+    assert_semantically_equal(report, correct_report)
+
+
+def test_validation_report_for_network_without_node_elevation(network3):
+    n = network3
+    with pytest.raises(MissingElevationException) as error_info:
+        n.validation_report_for_node_elevation()
+    assert "do not contain elevation" in str(error_info.value)

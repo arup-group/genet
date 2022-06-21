@@ -33,6 +33,32 @@ def test_swallows_exceptions_making_new_directories(mocker):
     os.makedirs.assert_called_once()
 
 
+def test_setifying_list_returns_expected_set():
+    assert persistence.setify(['ABC', 2]) == {'ABC', 2}
+
+def test_setifying_string_returns_expected_single_item_set():
+    assert persistence.setify('ABC') == {'ABC'}
+
+def test_setifying_set_makes_no_difference():
+    assert persistence.setify({'ABC', 2}) == {'ABC', 2}
+
+def test_setifying_none_returns_empty_set():
+    assert persistence.setify(None) == set()
+
+
+def test_listifying_list_makes_no_difference():
+    assert persistence.listify(['ABC', 2]) == ['ABC', 2]
+
+def test_listifying_string_returns_expected_single_item_list():
+    assert persistence.listify('ABC') == ['ABC']
+
+def test_listifying_set_returns_expected_list():
+    listified_set = persistence.listify({'ABC', 2})
+    assert listified_set == ['ABC', 2] or listified_set == [2, 'ABC']
+
+def test_listifying_none_returns_empty_list():
+    assert persistence.listify(None) == []
+
 def test_is_yml_identifies_yml():
     assert persistence.is_yml(os.path.join('path', 'to', 'dir', 'file.yml'))
 
