@@ -144,7 +144,7 @@ def _generate_requests_for_non_simplified_network(n, osm_tags=all):
     else:
         g = n.subgraph_on_link_conditions(
                 conditions=[
-                    {'attributes': {'osm:way:highway': {'text': osm_tags}}},
+                    {'attributes': {'osm:way:highway': osm_tags}},
                     {'modes': 'car'}],
                 how=all,
                 mixed_dtypes=True)
