@@ -27,14 +27,9 @@ def test_get_elevation_data():
     assert output == 446
 
 
-@pytest.fixture()
-def elevation_dictionary():
+def test_validation_report_for_node_elevation_dictionary():
     # based on network4() fixture
     elevation_dictionary = {'101982': {'z': -51}, '101990': {'z': 100}}
-    return elevation_dictionary
-
-
-def test_validation_report_for_node_elevation_dictionary(elevation_dictionary):
     report = elevation.validation_report_for_node_elevation(elevation_dictionary)
     correct_report = {'summary': {'extremely_high_values_count': 0, 'extremely_low_values_count': 1, 'max_value': 100,
                                   'mean': 24, 'median': 24, 'min_value': -51, 'total_nodes': 2},
