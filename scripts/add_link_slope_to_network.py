@@ -36,7 +36,7 @@ if __name__ == '__main__':
                             required=True)
 
     arg_parser.add_argument('-sj',
-                            '--save_elevation_jsons',
+                            '--save_jsons',
                             help='Whether elevation and slope dictionaries and report are saved; defaults to True',
                             default=True)
 
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     elevation = args['elevation']
     tif_null_value = args['null_value']
     output_dir = args['output_dir']
-    save_elevation_jsons = args['save_jsons']
+    save_dict_to_json = args['save_jsons']
     elevation_output_dir = os.path.join(output_dir, 'elevation')
     ensure_dir(elevation_output_dir)
 
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     logging.info('Creating elevation dictionary for network nodes')
     elevation_dictionary = n.get_node_elevation_dictionary(elevation_tif_file_path=elevation, null_value=tif_null_value)
 
-    if save_elevation_jsons is True:
+    if save_dict_to_json is True:
         with open(os.path.join(elevation_output_dir, 'elevation/node_elevation_dictionary.json'), 'w',
                   encoding='utf-8') as f:
             json.dump(sanitiser.sanitise_dictionary(elevation_dictionary), f, ensure_ascii=False, indent=4)
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     report = elevation.validation_report_for_node_elevation(elevation_dictionary)
     logging.info(report['summary'])
 
-    if save_elevation_jsons is True:
+    if save_dict_to_json is True:
         with open(os.path.join(elevation_output_dir, 'elevation/validation_report_for_elevation.json'), 'w',
                   encoding='utf-8') as f:
             json.dump(sanitiser.sanitise_dictionary(report), f, ensure_ascii=False, indent=4)
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     logging.info('Creating slope dictionary for network links')
     slope_dictionary = n.get_link_slope_dictionary(elevation_dict=elevation_dictionary)
 
-    if save_elevation_jsons is True:
+    if save_dict_to_json is True:
         with open(os.path.join(elevation_output_dir, 'elevation/link_slope_dictionary.json'), 'w',
                   encoding='utf-8') as f:
             json.dump(sanitiser.sanitise_dictionary(report), f, ensure_ascii=False, indent=4)

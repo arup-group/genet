@@ -2977,7 +2977,7 @@ def test_saving_network_to_csv(network1, correct_schedule, tmpdir):
     )
 
 
-def test_getting_node_elevation_dictionary(network3):
+def test_reads_node_elevations_from_tif_file(network3):
     elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
     elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
 
@@ -2988,7 +2988,7 @@ def test_getting_node_elevation_dictionary(network3):
     assert elev_dict['101982']['z'] == 25
 
 
-def test_getting_node_elevation_dictionary_with_null_value_mapping(network3):
+def test_replaces_missing_node_elevations_with_zero(network3):
     elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
     elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
 
@@ -2997,13 +2997,12 @@ def test_getting_node_elevation_dictionary_with_null_value_mapping(network3):
     assert elev_dict['101986']['z'] == 0
 
 
-@pytest.fixture()
-def elevation_dictionary():
+def test_getting_link_slope_dictionary(network3):
     # based on network4() fixture
     elevation_dictionary = {'101982': {'z': -51}, '101986': {'z': 100}}
-    return elevation_dictionary
-
-
-def test_getting_link_slope_dictionary(network3, elevation_dictionary):
+    z_1 = elevation_dictionary['101982']['z']
+    z_2 = elevation_dictionary['101986']['z']
+    length = 52.765151087870265
+    link_slope = (z_2 - z_1) / length
     slope_dict = network3.get_link_slope_dictionary(elevation_dictionary)
-    assert slope_dict['0']['slope'] == 100.96654702864528
+    assert slope_dict['0']['slope'] == link_slope

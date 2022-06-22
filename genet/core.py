@@ -2210,11 +2210,11 @@ class Network:
 
     def get_link_slope_dictionary(self, elevation_dict):
         """
-        Takes an elevation raster file in .tif format, finds the elevation of the end nodes for each link, calculates
-        link slope and adds returns a dictionary of link IDs and their slopes; can then use
+        Takes a dictionary of z-value for each network node (as created by get_node_elevation_dictionary() function,
+        calculates link slope and returns a dictionary of link IDs and their slopes; can then use
         self.apply_attributes_to_links() function to add slope as a link attribute to the network.
-        :param elevation_dict: contains node_id as key and elevation in meters as value
-        :return: dict in format {link_id : {'slope': slope}}
+        :param elevation_dict: dict in format {node_id : {'z': z}}
+        :return: dict in format {link_id : {'slope': slope}}, where slope is a float
         """
         slope_dict = {}
 
@@ -2225,14 +2225,14 @@ class Network:
             z_1 = elevation_dict[node_1]['z']
             z_2 = elevation_dict[node_2]['z']
 
-            # TO-DO: calculate crow-fly distance between the 2 nodes
+            # TO-DO: calculate crow-fly distance between the 2 nodes instead of using routed distance
             length = self.link(link_id)['length']
 
             if length == 0:
                 link_slope = 0
             else:
                 # calculate slope by dividing the difference between elevations of two nodes by distance between them
-                link_slope = z_2 - z_1 / length
+                link_slope = (z_2 - z_1) / length
 
             slope_dict[link_id] = {'slope': link_slope}
 

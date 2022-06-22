@@ -20,8 +20,10 @@ def validation_report_for_node_elevation(elev_dict, low_limit=-50, mont_blanc_he
     """
     Generates a validation report for the node elevation dictionary.
     :param elev_dict: contains node_id as key and elevation in meters as value
-    :param low_limit: set at -50 by default, can optionally set a different value
-    :param mont_blanc_height: defaults to 4809m is the height of Mont Blank, can optionally set a different value
+    :param low_limit: values below this param get flagged as possibly wrong; set at -50m (below sea level) by default,
+    can optionally set a different value
+    :param mont_blanc_height: values above this param get flagged as possibly wrong; defaults to 4809m,
+    the height of Mont Blank, can optionally set a different value
     :return: dict, with 2 data subsets - summary statistics, and extreme values lists
     """
 
