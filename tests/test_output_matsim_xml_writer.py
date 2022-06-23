@@ -3,6 +3,7 @@ import pytest
 import lxml
 import xmltodict
 from copy import deepcopy
+from collections import OrderedDict
 from shapely.geometry import LineString
 from tests.fixtures import network_object_from_test_data, full_fat_default_config_path, assert_semantically_equal
 from tests import xml_diff
@@ -10,6 +11,7 @@ from genet.output import matsim_xml_writer
 from genet.core import Network
 from genet.schedule_elements import read_vehicle_types, Schedule, Service, Route, Stop
 from genet.input import read
+from genet.exceptions import MalformedAdditionalAttributeError
 import xml.etree.cElementTree as ET
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -373,6 +375,64 @@ def test_saving_network_with_geometry_produces_polyline_if_link_already_has_othe
                     assert elem.text == '_ibE_seK_ibE_ibE_ibE_ibE'
                     found_geometry_attrib = True
     assert found_geometry_attrib
+
+
+@pytest.fixture()
+def attribute_in_different_forms():
+    return {
+        'long_form': {'attrib': {'name': 'attrib', 'class': 'java.lang.String', 'text': '3'}},
+        'short_form': {'attrib': '3'},
+    }
+
+
+def test_long_form_is_of_matsim_format(attribute_in_different_forms):
+    assert matsim_xml_writer.is_of_matsim_format(attribute_in_different_forms['long_form']['attrib'])
+
+
+def test_short_form_is_not_of_matsim_format(attribute_in_different_forms):
+    assert not matsim_xml_writer.is_of_matsim_format(attribute_in_different_forms['short_form']['attrib'])
+
+
+def test_short_form_can_be_put_in_matsim_format(attribute_in_different_forms):
+    assert matsim_xml_writer.can_be_put_in_matsim_format(attribute_in_different_forms['short_form']['attrib'])
+
+
+def test_the_value_of_short_form_being_put_in_matsim_format(attribute_in_different_forms):
+    assert_semantically_equal(
+        matsim_xml_writer.format_to_matsim('attrib', attribute_in_different_forms['short_form']['attrib']),
+        attribute_in_different_forms['long_form']['attrib']
+    )
+
+
+def test_malformed_attrib_throws_exception_when_requested_to_put_in_matsim_format(mocker):
+    mocker.patch.object(matsim_xml_writer, 'can_be_put_in_matsim_format', return_value=False)
+    with pytest.raises(MalformedAdditionalAttributeError) as e:
+        matsim_xml_writer.format_to_matsim('', '')
+    assert matsim_xml_writer.EXPECTED_FORMAT_FOR_ADDITIONAL_ATTRIBUTES_MESSAGE in str(e.value)
+
+
+def test_particular_attribute_is_deleted_if_deemed_malformed(mocker):
+    mocker.patch.object(matsim_xml_writer, 'can_be_put_in_matsim_format', side_effect=[True, False])
+    link_attribs = {
+        'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1, 'capacity': 20, 'permlanes': 1, 'oneway': '1',
+        'modes': ['car'], 'attributes': OrderedDict({'attrib1': '1', 'malformed_attrib2': '2'})
+    }
+    assert_semantically_equal(matsim_xml_writer.check_additional_attributes(link_attribs), {
+        'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1, 'capacity': 20, 'permlanes': 1, 'oneway': '1',
+        'modes': ['car'], 'attributes': OrderedDict({'attrib1': '1'})
+    })
+
+
+def test_attributes_are_deleted_if_all_are_deemed_malformed(mocker):
+    mocker.patch.object(matsim_xml_writer, 'can_be_put_in_matsim_format', return_value=False)
+    link_attribs = {
+        'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1, 'capacity': 20, 'permlanes': 1, 'oneway': '1',
+        'modes': ['car'], 'attributes': {'malformed_attrib1': '1', 'malformed_attrib2': '2'}
+    }
+    assert_semantically_equal(matsim_xml_writer.check_additional_attributes(link_attribs), {
+        'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1, 'capacity': 20, 'permlanes': 1, 'oneway': '1',
+        'modes': ['car']
+    })
 
 
 @pytest.fixture()

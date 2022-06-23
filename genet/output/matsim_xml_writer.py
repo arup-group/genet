@@ -44,8 +44,9 @@ def retain_allowed_attributes_for_xml(d, elem_type):
 
 
 def is_of_matsim_format(attribute_value):
-    if {'name', 'class', 'text'}.issubset(set(attribute_value.keys())):
-        return True
+    if isinstance(attribute_value, dict):
+        if {'name', 'class', 'text'}.issubset(set(attribute_value.keys())):
+            return True
     return False
 
 
