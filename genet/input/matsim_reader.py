@@ -426,8 +426,10 @@ def read_schedule(schedule_path, epsg, force_long_form_attributes=False):
                             force_long_form_attributes=force_long_form_attributes
                         )
                     else:
-                        current_stop_data['attributes'] = update_additional_attrib(elem, {},
-                                                                                   force_long_form_attributes=force_long_form_attributes)
+                        current_stop_data['attributes'] = update_additional_attrib(
+                            elem,
+                            {},
+                            force_long_form_attributes=force_long_form_attributes)
                 elif elem_type_for_additional_attributes == 'transitLine':
                     transitLine['attributes'] = update_additional_attrib(
                         elem,
