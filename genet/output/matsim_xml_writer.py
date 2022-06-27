@@ -51,9 +51,7 @@ def is_of_matsim_format(attribute_value):
 
 
 def can_be_put_in_matsim_format(attrib_value):
-    if type(attrib_value) in java_dtypes.PYTHON_DTYPE_MAP:
-        return True
-    return False
+    return type(attrib_value) in java_dtypes.PYTHON_DTYPE_MAP
 
 
 def put_in_matsim_format(attrib_name, attrib_value):
@@ -65,7 +63,7 @@ def put_in_matsim_format(attrib_name, attrib_value):
 
 
 def format_to_matsim(k, _attrib):
-    if isinstance(_attrib, dict) and is_of_matsim_format(_attrib):
+    if is_of_matsim_format(_attrib):
         return deepcopy(_attrib)
     elif can_be_put_in_matsim_format(_attrib):
         return put_in_matsim_format(k, _attrib)
@@ -79,11 +77,7 @@ def check_additional_attributes(attribs):
         if isinstance(attribs['attributes'], dict):
             attribs_to_delete = []
             for attrib, value in attribs['attributes'].items():
-                if isinstance(value, dict) and is_of_matsim_format(value):
-                    pass
-                elif can_be_put_in_matsim_format(value):
-                    pass
-                else:
+                if not (is_of_matsim_format(value) or can_be_put_in_matsim_format(value)):
                     logging.warning(
                         f'Data under "attributes:{attrib}" key is not of supported format. '
                         f'{EXPECTED_FORMAT_FOR_ADDITIONAL_ATTRIBUTES_MESSAGE}')

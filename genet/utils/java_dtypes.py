@@ -5,6 +5,9 @@ JAVA_DTYPE_MAP = {
     'java.lang.Float': float,
     'java.lang.Long': float,
     'java.lang.Integer': int,
+    'java.lang.Byte': int,
+    'java.lang.Short': int,
+    'java.lang.Char': str,
     'java.lang.String': str
 }
 
@@ -22,7 +25,7 @@ def java_to_python_dtype(java_dtype: str) -> type:
     if java_dtype in JAVA_DTYPE_MAP:
         return JAVA_DTYPE_MAP[java_dtype]
     else:
-        raise NotImplementedError(f'JAVA type: {java_dtype} is not understood. The following JAVA data types are '
+        raise NotImplementedError(f'Java type: {java_dtype} is not understood. The following Java data types are '
                                   f'supported: {list(JAVA_DTYPE_MAP)}')
 
 
@@ -31,4 +34,4 @@ def python_to_java_dtype(python_dtype: type) -> str:
         return PYTHON_DTYPE_MAP[python_dtype]
     else:
         raise NotImplementedError(f'Python type: {python_dtype} is not recognised or implemented to be mapped to a '
-                                  f'JAVA type. The following types are supported: {list(PYTHON_DTYPE_MAP)}')
+                                  f'Java type. The following types are supported: {list(PYTHON_DTYPE_MAP)}')

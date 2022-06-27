@@ -14,12 +14,28 @@ def test_mapping_java_double_to_python_type():
     assert java_to_python_dtype('java.lang.Double') == float
 
 
+def test_mapping_java_long_to_python_type():
+    assert java_to_python_dtype('java.lang.Long') == float
+
+
 def test_mapping_java_float_to_python_type():
     assert java_to_python_dtype('java.lang.Float') == float
 
 
 def test_mapping_java_integer_to_python_type():
     assert java_to_python_dtype('java.lang.Integer') == int
+
+
+def test_mapping_java_byte_to_python_type():
+    assert java_to_python_dtype('java.lang.Byte') == int
+
+
+def test_mapping_java_short_to_python_type():
+    assert java_to_python_dtype('java.lang.Short') == int
+
+
+def test_mapping_java_char_to_python_type():
+    assert java_to_python_dtype('java.lang.Char') == str
 
 
 def test_mapping_java_string_to_python_type():
