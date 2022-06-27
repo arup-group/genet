@@ -2,6 +2,7 @@ import json
 import os
 import sys
 from collections import OrderedDict
+from dataclasses import dataclass
 
 import dictdiffer
 import pandas as pd
@@ -409,3 +410,15 @@ def slim_default_config():
 def vehicle_definitions_config_path():
     return os.path.abspath(os.path.join(os.path.dirname(__file__),
                                         "..", "genet", "configs", "vehicles", "vehicle_definitions.yml"))
+
+###########################################################
+# XML mocks
+###########################################################
+
+@dataclass()
+class XmlElement:
+    """class for mocking xml elements"""
+    attrib: dict
+    tag: str
+    text: str
+    tail: str = ''

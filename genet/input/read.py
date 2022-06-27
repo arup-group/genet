@@ -16,7 +16,8 @@ import genet.utils.dict_support as dict_support
 from genet.exceptions import NetworkSchemaError
 
 
-def read_matsim(path_to_network: str, epsg: str, path_to_schedule: str = None, path_to_vehicles: str = None):
+def read_matsim(path_to_network: str, epsg: str, path_to_schedule: str = None, path_to_vehicles: str = None,
+                force_long_form_attributes=False):
     """
     Reads MATSim's network.xml to genet.Network object and if give, also the schedule.xml and vehicles.xml into
     genet.Schedule object, part of the genet.Network object.
@@ -24,25 +25,50 @@ def read_matsim(path_to_network: str, epsg: str, path_to_schedule: str = None, p
     :param path_to_schedule: path to MATSim's schedule.xml file, optional
     :param path_to_vehicles: path to MATSim's vehicles.xml file, optional, expected to be passed with a schedule
     :param epsg: projection for the network, e.g. 'epsg:27700'
+    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into verbose
+        format:
+            {
+                'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': 'attrib_value'}
+            }
+        where 'attrib_value' is always a python string; instead of the default short form:
+            {
+                'additional_attrib': 'attrib_value'
+            }
+        where the type of attrib_value is mapped to a python type using the declared java class.
+        NOTE! Network and Schedule level attributes cannot be forced to be read into long form.
     :return: genet.Network object
     """
-    n = read_matsim_network(path_to_network=path_to_network, epsg=epsg)
+    n = read_matsim_network(path_to_network=path_to_network, epsg=epsg,
+                            force_long_form_attributes=force_long_form_attributes)
     if path_to_schedule:
         n.schedule = read_matsim_schedule(
-            path_to_schedule=path_to_schedule, path_to_vehicles=path_to_vehicles, epsg=epsg)
+            path_to_schedule=path_to_schedule, path_to_vehicles=path_to_vehicles, epsg=epsg,
+            force_long_form_attributes=force_long_form_attributes)
     return n
 
 
-def read_matsim_network(path_to_network: str, epsg: str):
+def read_matsim_network(path_to_network: str, epsg: str, force_long_form_attributes=False):
     """
     Reads MATSim's network.xml to genet.Network object
     :param path_to_network: path to MATSim's network.xml file
     :param epsg: projection for the network, e.g. 'epsg:27700'
+    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into verbose
+        format:
+            {
+                'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': 'attrib_value'}
+            }
+        where 'attrib_value' is always a python string; instead of the default short form:
+            {
+                'additional_attrib': 'attrib_value'
+            }
+        where the type of attrib_value is mapped to a python type using the declared java class.
+        NOTE! Network level attributes cannot be forced to be read into long form.
     :return: genet.Network object
     """
     n = core.Network(epsg=epsg)
     n.graph, n.link_id_mapping, duplicated_nodes, duplicated_links, network_attributes = \
-        matsim_reader.read_network(path_to_network, n.transformer)
+        matsim_reader.read_network(path_to_network, n.transformer,
+                                   force_long_form_attributes=force_long_form_attributes)
     n.attributes = dict_support.merge_complex_dictionaries(n.attributes, network_attributes)
     n.graph.graph['crs'] = n.epsg
 
@@ -65,16 +91,28 @@ def read_matsim_network(path_to_network: str, epsg: str):
     return n
 
 
-def read_matsim_schedule(path_to_schedule: str, epsg: str, path_to_vehicles: str = None):
+def read_matsim_schedule(path_to_schedule: str, epsg: str, path_to_vehicles: str = None,
+                         force_long_form_attributes=False):
     """
     Reads MATSim's schedule.xml (and possibly vehicles.xml) to genet.Schedule object
     :param path_to_schedule: path to MATSim's schedule.xml file,
     :param path_to_vehicles: path to MATSim's vehicles.xml file, optional but encouraged
     :param epsg: projection for the schedule, e.g. 'epsg:27700'
+    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into verbose
+        format:
+            {
+                'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': 'attrib_value'}
+            }
+        where 'attrib_value' is always a python string; instead of the default short form:
+            {
+                'additional_attrib': 'attrib_value'
+            }
+        where the type of attrib_value is mapped to a python type using the declared java class.
+        NOTE! Schedule level attributes cannot be forced to be read into long form.
     :return: genet.Schedule object
     """
     services, minimal_transfer_times, transit_stop_id_mapping, schedule_attributes = matsim_reader.read_schedule(
-        path_to_schedule, epsg)
+        path_to_schedule, epsg, force_long_form_attributes=force_long_form_attributes)
     if path_to_vehicles:
         vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
         matsim_schedule = schedule_elements.Schedule(

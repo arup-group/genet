@@ -321,6 +321,34 @@ def test_reading_network_with_singular_geometry_attribute_cleans_up_empty_attrib
     assert_semantically_equal(dict(n.links()), correct_links)
 
 
+def test_network_with_additional_attributes_logs_warning_when_long_form_is_forced(caplog):
+    n = read.read_matsim(path_to_network=pt2matsim_network_test_file, epsg='epsg:27700',
+                         force_long_form_attributes=True)
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'Network-level additional attributes are always read into short form' in caplog.records[0].message
+
+
+def test_forcing_long_form_in_network_with_additional_link_attributes_reads_links_data_correctly():
+    n = read.read_matsim(path_to_network=pt2matsim_network_test_file, epsg='epsg:27700',
+                         force_long_form_attributes=True)
+    assert_semantically_equal(
+        n.link('1')['attributes'],
+        {'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
+         'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
+         'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Float', 'text': '26997928.0'},
+         'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}}
+    )
+
+
+def test_forcing_long_form_in_network_with_additional_link_attributes_reads_network_level_attributes_to_short_form():
+    n = read.read_matsim(path_to_network=pt2matsim_network_test_file, epsg='epsg:27700',
+                         force_long_form_attributes=True)
+    assert_semantically_equal(
+        n.attributes,
+        {'crs': 'epsg:27700'}
+    )
+
+
 def test_network_with_additional_node_attributes_reads_data_correctly(
         network_with_additional_node_attrib_xml_file, network_with_additional_node_attrib):
     n = read.read_matsim(path_to_network=network_with_additional_node_attrib_xml_file, epsg='epsg:27700')
@@ -331,6 +359,26 @@ def test_network_with_additional_node_attributes_reads_data_correctly(
         del v['lon']
         del v['s2_id']
     assert_semantically_equal(data_from_xml, dict(network_with_additional_node_attrib.nodes()))
+
+
+def test_forcing_long_form_in_network_with_additional_node_attributes_reads_nodes_data_correctly(
+        network_with_additional_node_attrib_xml_file):
+    n = read.read_matsim(path_to_network=network_with_additional_node_attrib_xml_file, epsg='epsg:27700',
+                         force_long_form_attributes=True)
+    assert_semantically_equal(
+        n.node('0')['attributes'],
+        {'osm:node:data': {'name': 'osm:node:data', 'class': 'java.lang.String', 'text': '3'}}
+    )
+
+
+def test_forcing_long_form_in_network_with_additional_node_attributes_reads_network_level_attributes_to_short_form(
+        network_with_additional_node_attrib_xml_file):
+    n = read.read_matsim(path_to_network=network_with_additional_node_attrib_xml_file, epsg='epsg:27700',
+                         force_long_form_attributes=True)
+    assert_semantically_equal(
+        n.attributes,
+        {'crs': 'epsg:27700'}
+    )
 
 
 def test_read_schedule_reads_the_data_correctly(correct_services_from_test_pt2matsim_schedule):
@@ -351,11 +399,52 @@ def test_schedule_with_additional_stop_attributes_reads_data_correctly(
     assert_semantically_equal(data_from_xml, dict(schedule_with_additional_attrib_stop.graph().nodes()))
 
 
+def test_forcing_long_form_in_schedule_with_additional_stop_attributes_reads_data_correctly(
+        schedule_with_additional_attrib_stop_xml_file):
+    s = read.read_matsim_schedule(schedule_with_additional_attrib_stop_xml_file, 'epsg:27700',
+                                  force_long_form_attributes=True)
+    assert_semantically_equal(
+        s.stop('s1').attributes,
+        {'carAccessible': {'name': 'carAccessible', 'class': 'java.lang.String', 'text': 'true'},
+         'accessLinkId_car': {'name': 'accessLinkId_car', 'class': 'java.lang.String', 'text': 'linkID'}}
+    )
+
+
+def test_forcing_long_form_in_schedule_with_additional_stop_attributes_reads_schedule_level_attributes_to_short_form(
+        schedule_with_additional_attrib_stop_xml_file):
+    s = read.read_matsim_schedule(schedule_with_additional_attrib_stop_xml_file, 'epsg:27700',
+                                  force_long_form_attributes=True)
+    assert_semantically_equal(
+        s.attributes,
+        {'crs': 'epsg:27700'}
+    )
+
+
 def test_schedule_with_additional_route_attributes_reads_data_correctly(
         schedule_with_additional_route_attribs_xml_file, schedule_with_additional_route_attrib):
     s = read.read_matsim_schedule(schedule_with_additional_route_attribs_xml_file, 'epsg:27700')
     assert s.route('r1').has_attrib('attributes')
     assert_semantically_equal(s.route('r1').attributes, schedule_with_additional_route_attrib.route('r1').attributes)
+
+
+def test_forcing_long_form_in_schedule_with_additional_route_attributes_reads_data_correctly(
+        schedule_with_additional_route_attribs_xml_file):
+    s = read.read_matsim_schedule(schedule_with_additional_route_attribs_xml_file, 'epsg:27700',
+                                  force_long_form_attributes=True)
+    assert_semantically_equal(
+        s.route('r1').attributes,
+        {'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': 'attrib_value'}}
+    )
+
+
+def test_forcing_long_form_in_schedule_with_additional_route_attributes_reads_schedule_level_attributes_to_short_form(
+        schedule_with_additional_route_attribs_xml_file):
+    s = read.read_matsim_schedule(schedule_with_additional_route_attribs_xml_file, 'epsg:27700',
+                                  force_long_form_attributes=True)
+    assert_semantically_equal(
+        s.attributes,
+        {'crs': 'epsg:27700'}
+    )
 
 
 def test_schedule_with_additional_service_attributes_reads_data_correctly(
@@ -365,11 +454,71 @@ def test_schedule_with_additional_service_attributes_reads_data_correctly(
     assert_semantically_equal(s['s1'].attributes, schedule_with_additional_service_attrib['s1'].attributes)
 
 
+def test_forcing_long_form_in_schedule_with_additional_service_attributes_reads_data_correctly(
+        schedule_with_additional_service_attribs_xml_file):
+    s = read.read_matsim_schedule(schedule_with_additional_service_attribs_xml_file, 'epsg:27700',
+                                  force_long_form_attributes=True)
+    assert_semantically_equal(
+        s['s1'].attributes,
+        {'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': 'attrib_value'}}
+    )
+
+
+def test_forcing_long_form_in_schedule_with_additional_service_attributes_reads_schedule_level_attributes_to_short_form(
+        schedule_with_additional_service_attribs_xml_file):
+    s = read.read_matsim_schedule(schedule_with_additional_service_attribs_xml_file, 'epsg:27700',
+                                  force_long_form_attributes=True)
+    assert_semantically_equal(
+        s.attributes,
+        {'crs': 'epsg:27700'}
+    )
+
+
 def test_schedule_with_additional_attributes_reads_data_correctly(
         schedule_with_additional_attribs_xml_file, schedule_with_additional_attrib):
     s = read.read_matsim_schedule(schedule_with_additional_attribs_xml_file, 'epsg:27700')
     assert s.has_attrib('attributes')
     assert_semantically_equal(s.attributes, schedule_with_additional_attrib.attributes)
+
+
+def test_schedule_with_additional_attributes_persists_to_short_form_when_long_form_is_forced(
+        schedule_with_additional_attribs_xml_file):
+    s = read.read_matsim_schedule(schedule_with_additional_attribs_xml_file, 'epsg:27700',
+                                  force_long_form_attributes=True)
+    assert_semantically_equal(
+        s.attributes,
+        {'crs': 'epsg:27700', 'additional_attrib': 'attrib_value'}
+    )
+
+
+def test_schedule_with_additional_attributes_logs_warning_when_long_form_is_forced(
+        schedule_with_additional_attribs_xml_file, caplog):
+    s = read.read_matsim_schedule(schedule_with_additional_attribs_xml_file, 'epsg:27700',
+                                  force_long_form_attributes=True)
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'Schedule-level additional attributes are always read into short form' in caplog.records[0].message
+
+
+@pytest.fixture()
+def xml_elem_with_missing_class():
+    return XmlElement(attrib={'name': 'some_attrib'}, tag='attribute', text='hello')
+
+
+def test_reading_additional_attributes_into_short_form_with_missing_class_defaults_to_string(
+        xml_elem_with_missing_class, caplog):
+    t = matsim_reader._read_additional_attrib_to_short_form(elem=xml_elem_with_missing_class)
+    assert isinstance(t, str)
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'does not have a Java class declared.' in caplog.records[0].message
+
+
+def test_reading_additional_attributes_into_long_form_with_missing_class_defaults_to_string(
+        xml_elem_with_missing_class, caplog):
+    d = matsim_reader._read_additional_attrib_to_long_form(elem=xml_elem_with_missing_class)
+    assert isinstance(d['text'], str)
+    assert d['class'] == 'java.lang.String'
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'does not have a Java class declared.' in caplog.records[0].message
 
 
 def test_reading_pt2matsim_vehicles():

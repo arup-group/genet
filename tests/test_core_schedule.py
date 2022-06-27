@@ -1351,7 +1351,7 @@ def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker, r
 
     schedule = read.read_matsim_schedule(pt2matsim_schedule_file, epsg='epsg:27700')
 
-    matsim_reader.read_schedule.assert_called_once_with(pt2matsim_schedule_file, schedule.epsg)
+    matsim_reader.read_schedule.assert_called_once_with(pt2matsim_schedule_file, schedule.epsg, force_long_form_attributes=False)
 
 
 def test_read_matsim_schedule_returns_expected_schedule():
