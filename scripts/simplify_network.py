@@ -46,8 +46,8 @@ if __name__ == '__main__':
                             default=1,
                             type=int)
     
-    arg_parser.add_argument('-sc',
-                            '--scales',
+    arg_parser.add_argument('-vsc',
+                            '--vehicle_scalings',
                             help='Comma seperated string of scales for vehicles, e.g. 1,10,25',
                             required=False,
                             default=None,
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     projection = args['projection']
     processes = args['processes']
     output_dir = args['output_dir']
-    scale_list = args['scales']
+    scale_list = args['vehicle_scalings']
     ensure_dir(output_dir)
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
