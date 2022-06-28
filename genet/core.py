@@ -665,6 +665,7 @@ class Network:
         if attribs is not None:
             self.graph.add_node(node, **attribs)
         else:
+            # TODO do not add nodes without spatial info
             self.graph.add_node(node)
         self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
         if not silent:
@@ -782,6 +783,7 @@ class Network:
             raise RuntimeError('Multi index key needs to be an integer')
 
         self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
+        # TODO calculate length of link if not provided
         compulsory_attribs = {'from': u, 'to': v, 'id': link_id}
         if attribs is None:
             attribs = compulsory_attribs
@@ -2203,15 +2205,15 @@ class Network:
             self.schedule.write_to_csv(schedule_csv_folder, gtfs_day)
         self.write_extras(network_csv_folder)
 
-    def add_elevation_to_nodes(self, elevation_tif_file_path, null_value: float):
+    def get_node_elevation_dictionary(self, elevation_tif_file_path, null_value: float, run_validation=False):
         """
-        Takes an elevation raster file in .tif format, and adds z-value to each network node.
+        Takes an elevation raster file in .tif format, and creates a dictionary with z-value for each network node;
+        can then use self.apply_attributes_to_nodes() function to add elevation as a node attribute to the network
         :param elevation_tif_file_path: path to the elevation raster file in .tif format
         :param null_value: value that represents null in the elevation raster file
-        :return:
+        :return: dict in format {node_id : {'z': z}}
         """
         img = elevation.get_elevation_image(elevation_tif_file_path)
-
         elevation_dict = {}
 
         for node_id, node_attribs in self.nodes():
@@ -2222,54 +2224,38 @@ class Network:
                 z = 0
             elevation_dict[node_id] = {'z': z}
 
-        self.apply_attributes_to_nodes(elevation_dict)
+        if run_validation is True:
+            report = elevation.validation_report_for_node_elevation(elevation_dict)
+            logging.info(report['summary'])
 
-    def validation_report_for_node_elevation(self, low_limit=-50, mont_blanc_height=4809):
+        return elevation_dict
+
+    def get_link_slope_dictionary(self, elevation_dict):
         """
-        Generates a validation report for the elevation data added to the network nodes.
-        :param low_limit: set at -50 by default, can optionally set a different value
-        :param mont_blanc_height: defaults to 4809m is the height of Mont Blank, can optionally set a different value
-        :return: dict, with 2 data subsets - summary statistics, and extreme values lists
+        Takes a dictionary of z-value for each network node (as created by get_node_elevation_dictionary() function,
+        calculates link slope and returns a dictionary of link IDs and their slopes; can then use
+        self.apply_attributes_to_links() function to add slope as a link attribute to the network.
+        :param elevation_dict: dict in format {node_id : {'z': z}}
+        :return: dict in format {link_id : {'slope': slope}}, where slope is a float
         """
-        graph = self.subgraph_on_link_conditions(conditions={'modes': all}, mixed_dtypes=True)
-        gdfs = geojson.generate_geodataframes(graph)
-        nodes = gdfs['nodes']
+        slope_dict = {}
 
-        if 'z' in list(nodes.columns):
-            elevation_list = nodes['z'].to_list()
-            min_value = np.min(elevation_list)
-            max_value = np.max(elevation_list)
-            mean = np.mean(elevation_list)
-            median = np.median(elevation_list)
+        for link in self.links():
+            link_id = link[0]
+            node_1 = self.link(link_id)['from']
+            node_2 = self.link(link_id)['to']
+            z_1 = elevation_dict[node_1]['z']
+            z_2 = elevation_dict[node_2]['z']
 
-            nodes_dictionary = dict(zip(nodes['id'], nodes['z']))
-            too_high = {}
-            too_low = {}
+            # TO-DO: calculate crow-fly distance between the 2 nodes instead of using routed distance
+            length = self.link(link_id)['length']
 
-            for node_id, node_elev in nodes_dictionary.items():
-                if node_elev < low_limit:
-                    too_low[node_id] = node_elev
-                elif node_elev > mont_blanc_height:
-                    too_high[node_id] = node_elev
+            if length == 0:
+                link_slope = 0
+            else:
+                # calculate slope by dividing the difference between elevations of two nodes by distance between them
+                link_slope = (z_2 - z_1) / length
 
-            report = {
-                'summary': {'total_nodes': len(elevation_list),
-                            'min_value': int(min_value),
-                            'max_value': int(max_value),
-                            'mean': int(mean),
-                            'median': int(median),
-                            'extremely_high_values_count': len(too_high),
-                            'extremely_low_values_count': len(too_low)},
+            slope_dict[link_id] = {'slope': link_slope}
 
-                'values': {'extremely_high_values_dict': too_high,
-                           'extremely_low_values_dict': too_low}}
-
-            return report
-
-        else:
-            raise MissingElevationException('Network nodes do not contain elevation data. '
-                                            'Cannot generate validation report.')
-
-
-class MissingElevationException(Exception):
-    pass
+        return slope_dict
