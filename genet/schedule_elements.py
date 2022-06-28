@@ -1363,7 +1363,7 @@ class Schedule(ScheduleElement):
                 self.validate_vehicle_definitions()
             else:
                 self.vehicles = {**df.T.to_dict(), **self.vehicles}
-    
+
     def scale_vehicle_capacity(self, capacity_scale, pce_scale, output_dir):
         """
         This method scales the vehicle capacities and pce to user defined scales and writes a new vehicle.xml.
