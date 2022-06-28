@@ -8,6 +8,7 @@ from pyproj import Transformer, Proj
 from genet.schedule_elements import Route, Stop, Service
 from genet.utils import dict_support
 from genet.utils import spatial
+from genet.utils import java_dtypes
 
 
 def read_node(elem, g, node_id_mapping, node_attribs, transformer):
@@ -89,8 +90,8 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
 
     if link_attribs:
         if 'geometry' in link_attribs:
-            if link_attribs['geometry']['text']:
-                attribs['geometry'] = spatial.decode_polyline_to_shapely_linestring(link_attribs['geometry']['text'])
+            if link_attribs['geometry']:
+                attribs['geometry'] = spatial.decode_polyline_to_shapely_linestring(link_attribs['geometry'])
                 del link_attribs['geometry']
         if link_attribs:
             attribs['attributes'] = link_attribs
@@ -103,27 +104,66 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
     return g, u, v, link_id_mapping, duplicated_link_id
 
 
-def update_additional_attrib(elem, attribs):
+def update_additional_attrib(elem, attribs, force_long_form_attributes=False):
     """
     Reads additional attributes
     :param elem:
     :param attribs: current additional attributes
+    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into long form
     :return:
     """
-    attribs[elem.attrib['name']] = read_additional_attrib(elem)
+    attribs[elem.attrib['name']] = read_additional_attrib(elem, force_long_form_attributes=force_long_form_attributes)
     return attribs
 
 
-def read_additional_attrib(elem):
-    d = elem.attrib
-    if elem.text is None:
-        d['text'] = ''
-        logging.warning(f"Elem {elem.attrib['name']} is being read as None.")
-    elif (',' in elem.text) and elem.attrib['name'] != 'geometry':
-        d['text'] = set(elem.text.split(','))
+def read_additional_attrib(elem, force_long_form_attributes=False):
+    """
+    :param elem:
+    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into long form
+    :return:
+    """
+    if force_long_form_attributes:
+        return _read_additional_attrib_to_long_form(elem)
     else:
-        d['text'] = elem.text
-    return d
+        return _read_additional_attrib_to_short_form(elem)
+
+
+def _read_additional_attrib_text(elem):
+    if elem.text is None:
+        t = ''
+        logging.warning(f"Elem {elem.attrib['name']} is being read as None. Defaulting value to empty string.")
+    elif (',' in elem.text) and elem.attrib['name'] != 'geometry':
+        t = set(elem.text.split(','))
+    else:
+        t = elem.text
+    return t
+
+
+def _read_additional_attrib_class(elem):
+    if 'class' in elem.attrib:
+        c = elem.attrib['class']
+    else:
+        logging.warning(f"Elem {elem.attrib['name']} does not have a Java class declared. "
+                        "Defaulting type to string.")
+        c = 'java.lang.String'
+    return c
+
+
+def _read_additional_attrib_to_short_form(elem):
+    t = _read_additional_attrib_text(elem)
+    if t and isinstance(t, str):
+        c = _read_additional_attrib_class(elem)
+        return java_dtypes.java_to_python_dtype(c)(t)
+    else:
+        return t
+
+
+def _read_additional_attrib_to_long_form(elem):
+    return {
+        'text': _read_additional_attrib_text(elem),
+        'class': _read_additional_attrib_class(elem),
+        'name': elem.attrib['name']
+    }
 
 
 def unique_link_id(link_id, link_id_mapping):
@@ -141,11 +181,22 @@ def unique_link_id(link_id, link_id_mapping):
     return link_id, duplicated_link_id
 
 
-def read_network(network_path, transformer: Transformer):
+def read_network(network_path, transformer: Transformer, force_long_form_attributes=False):
     """
     Read MATSim network
     :param network_path: path to the network.xml file
     :param transformer: pyproj crs transformer
+    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into verbose
+        format:
+            {
+                'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': 'attrib_value'}
+            }
+        where 'attrib_value' is always a python string; instead of the default short form:
+            {
+                'additional_attrib': 'attrib_value'
+            }
+        where the type of attrib_value is mapped to a python type using the declared java class.
+        NOTE! Network level attributes cannot be forced to be read into long form.
     :return: g (nx.MultiDiGraph representing the multimodal network),
         node_id_mapping (dict {matsim network node ids : s2 spatial ids}),
         link_id_mapping (dict {matsim network link ids : {'from': matsim id from node, ,'to': matsim id to
@@ -193,19 +244,33 @@ def read_network(network_path, transformer: Transformer):
                 link_attribs = {}
             elif elem.tag == 'attribute':
                 if elem_type_for_additional_attributes == 'links':
-                    link_attribs = update_additional_attrib(elem, link_attribs)
+                    link_attribs = update_additional_attrib(elem, link_attribs, force_long_form_attributes)
                 elif elem_type_for_additional_attributes == 'network':
-                    network_attributes = update_additional_attrib(elem, network_attributes)
+                    if force_long_form_attributes:
+                        logging.warning('Network-level additional attributes are always read into short form.')
+                    network_attributes = update_additional_attrib(elem, network_attributes,
+                                                                  force_long_form_attributes=False)
                 elif elem_type_for_additional_attributes == 'nodes':
-                    node_attribs = update_additional_attrib(elem, node_attribs)
+                    node_attribs = update_additional_attrib(elem, node_attribs, force_long_form_attributes)
     return g, link_id_mapping, duplicated_node_ids, duplicated_link_ids, network_attributes
 
 
-def read_schedule(schedule_path, epsg):
+def read_schedule(schedule_path, epsg, force_long_form_attributes=False):
     """
     Read MATSim schedule
     :param schedule_path: path to the schedule.xml file
     :param epsg: 'epsg:12345'
+    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into verbose
+        format:
+            {
+                'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': 'attrib_value'}
+            }
+        where 'attrib_value' is always a python string; instead of the default short form:
+            {
+                'additional_attrib': 'attrib_value'
+            }
+        where the type of attrib_value is mapped to a python type using the declared java class.
+        NOTE! Schedule level attributes cannot be forced to be read into long form.
     :return: list of Service objects
     """
     services = []
@@ -349,24 +414,33 @@ def read_schedule(schedule_path, epsg):
         elif event == 'end':
             if elem.tag == 'attribute':
                 if elem_type_for_additional_attributes == 'transitSchedule':
+                    if force_long_form_attributes:
+                        logging.warning('Schedule-level additional attributes are always read into short form.')
                     schedule_attribs = update_additional_attrib(elem, schedule_attribs)
                 elif elem_type_for_additional_attributes == 'stopFacility':
                     current_stop_data = transit_stop_id_mapping[current_stop_id]
                     if 'attributes' in current_stop_data:
                         current_stop_data['attributes'] = update_additional_attrib(
                             elem,
-                            transit_stop_id_mapping[current_stop_id]['attributes'])
+                            transit_stop_id_mapping[current_stop_id]['attributes'],
+                            force_long_form_attributes=force_long_form_attributes
+                        )
                     else:
-                        current_stop_data['attributes'] = update_additional_attrib(elem, {})
+                        current_stop_data['attributes'] = update_additional_attrib(
+                            elem,
+                            {},
+                            force_long_form_attributes=force_long_form_attributes)
                 elif elem_type_for_additional_attributes == 'transitLine':
                     transitLine['attributes'] = update_additional_attrib(
                         elem,
-                        transitLine['attributes']
+                        transitLine['attributes'],
+                        force_long_form_attributes=force_long_form_attributes
                     )
                 elif elem_type_for_additional_attributes == 'transitRoute':
                     transitRoutes[current_route_id]['attributes'] = update_additional_attrib(
                         elem,
-                        transitRoutes[current_route_id]['attributes']
+                        transitRoutes[current_route_id]['attributes'],
+                        force_long_form_attributes=force_long_form_attributes
                     )
             elif elem.tag == "transportMode":
                 transportMode = {'transportMode': elem.text}

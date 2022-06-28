@@ -1,7 +1,9 @@
 import os, sys
 import pytest
 import lxml
+import xmltodict
 from copy import deepcopy
+from collections import OrderedDict
 from shapely.geometry import LineString
 from tests.fixtures import network_object_from_test_data, full_fat_default_config_path, assert_semantically_equal
 from tests import xml_diff
@@ -9,6 +11,7 @@ from genet.output import matsim_xml_writer
 from genet.core import Network
 from genet.schedule_elements import read_vehicle_types, Schedule, Service, Route, Stop
 from genet.input import read
+from genet.exceptions import MalformedAdditionalAttributeError
 import xml.etree.cElementTree as ET
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -226,10 +229,11 @@ def test_saving_network_with_geometry_produces_correct_polyline_in_link_attribut
     assert found_geometry_attrib
 
 
-def test_saving_network_with_wrongly_formatted_attributes_with_geometry(tmpdir):
-    # attributes are assumed to be a nested dictionary of very specific format. Due to the fact that user can
-    # do virtually anything to edge attributes, or due to calculation error, this may not be the case. If it's not
-    # of correct format, we don't expect it to get saved to the matsim network.xml
+@pytest.fixture()
+def network_with_badly_formatted_attributes_and_geometry():
+    # attributes are assumed to be a dictionary of format: key = name of attribute, value = value under that named
+    # attribute. Due to the fact that user can do virtually anything to edge attributes, or due to calculation error,
+    # this may not be the case. If it's not of correct format, we don't expect it to get saved to the matsim network.xml
     network = Network('epsg:27700')
     network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'lat': 1, 'lon': 2})
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2, 'lat': 2, 'lon': 2})
@@ -237,27 +241,43 @@ def test_saving_network_with_wrongly_formatted_attributes_with_geometry(tmpdir):
     link_attribs = {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                     'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
                     'geometry': LineString([(1, 2), (2, 3), (3, 4)]),
-                    'attributes': {'heyo': 'whoop'}
+                    'attributes': 'heyo'
                     }
 
     network.add_link('0', '0', '1', attribs=link_attribs)
-    network.write_to_matsim(tmpdir)
+    return {'network': network,
+            'encoded_geometry': '_ibE_seK_ibE_ibE_ibE_ibE',
+            'original_link_attributes': link_attribs}
 
-    assert_semantically_equal(dict(network.links()), {'0': link_attribs})
 
-    assert_semantically_equal(matsim_xml_writer.check_additional_attributes(link_attribs),
-                              {'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
-                               'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car'],
-                               'geometry': LineString([(1, 2), (2, 3), (3, 4)])
-                               }
-                              )
+def test_saving_network_with_wrongly_formatted_attributes_with_geometry_does_not_alter_attributes_data(
+        tmpdir, network_with_badly_formatted_attributes_and_geometry):
+    network_with_badly_formatted_attributes_and_geometry['network'].write_to_matsim(tmpdir)
+
+    assert_semantically_equal(
+        network_with_badly_formatted_attributes_and_geometry['network'].link('0'),
+        network_with_badly_formatted_attributes_and_geometry['original_link_attributes'])
+
+
+def test_saving_network_with_wrongly_formatted_attributes_with_geometry_removes_bad_attribute_for_saving_to_xml(
+        network_with_badly_formatted_attributes_and_geometry):
+    assert_semantically_equal(
+        matsim_xml_writer.check_additional_attributes(
+            network_with_badly_formatted_attributes_and_geometry['original_link_attributes']),
+        {k: v for k, v in network_with_badly_formatted_attributes_and_geometry['original_link_attributes'].items() if
+         k != 'attributes'})
+
+
+def test_saving_network_with_badly_formatted_attributes_with_geometry_saves_correct_geometry(
+        tmpdir, network_with_badly_formatted_attributes_and_geometry):
+    network_with_badly_formatted_attributes_and_geometry['network'].write_to_matsim(tmpdir)
 
     found_geometry_attrib = False
     for event, elem in ET.iterparse(os.path.join(tmpdir, 'network.xml'), events=('start', 'end')):
         if event == 'start':
             if elem.tag == 'attribute':
                 if elem.attrib['name'] == 'geometry':
-                    assert elem.text == '_ibE_seK_ibE_ibE_ibE_ibE'
+                    assert elem.text == network_with_badly_formatted_attributes_and_geometry['encoded_geometry']
                     found_geometry_attrib = True
     assert found_geometry_attrib
 
@@ -358,13 +378,68 @@ def test_saving_network_with_geometry_produces_polyline_if_link_already_has_othe
 
 
 @pytest.fixture()
+def attribute_in_different_forms():
+    return {
+        'long_form': {'attrib': {'name': 'attrib', 'class': 'java.lang.String', 'text': '3'}},
+        'short_form': {'attrib': '3'},
+    }
+
+
+def test_long_form_is_of_matsim_format(attribute_in_different_forms):
+    assert matsim_xml_writer.is_of_matsim_format(attribute_in_different_forms['long_form']['attrib'])
+
+
+def test_short_form_is_not_of_matsim_format(attribute_in_different_forms):
+    assert not matsim_xml_writer.is_of_matsim_format(attribute_in_different_forms['short_form']['attrib'])
+
+
+def test_short_form_can_be_put_in_matsim_format(attribute_in_different_forms):
+    assert matsim_xml_writer.can_be_put_in_matsim_format(attribute_in_different_forms['short_form']['attrib'])
+
+
+def test_the_value_of_short_form_being_put_in_matsim_format(attribute_in_different_forms):
+    assert_semantically_equal(
+        matsim_xml_writer.format_to_matsim('attrib', attribute_in_different_forms['short_form']['attrib']),
+        attribute_in_different_forms['long_form']['attrib']
+    )
+
+
+def test_malformed_attrib_throws_exception_when_requested_to_put_in_matsim_format(mocker):
+    mocker.patch.object(matsim_xml_writer, 'can_be_put_in_matsim_format', return_value=False)
+    with pytest.raises(MalformedAdditionalAttributeError) as e:
+        matsim_xml_writer.format_to_matsim('', '')
+    assert matsim_xml_writer.EXPECTED_FORMAT_FOR_ADDITIONAL_ATTRIBUTES_MESSAGE in str(e.value)
+
+
+def test_particular_attribute_is_deleted_if_deemed_malformed(mocker):
+    mocker.patch.object(matsim_xml_writer, 'can_be_put_in_matsim_format', side_effect=[True, False])
+    link_attribs = {
+        'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1, 'capacity': 20, 'permlanes': 1, 'oneway': '1',
+        'modes': ['car'], 'attributes': OrderedDict({'attrib1': '1', 'malformed_attrib2': '2'})
+    }
+    assert_semantically_equal(matsim_xml_writer.check_additional_attributes(link_attribs), {
+        'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1, 'capacity': 20, 'permlanes': 1, 'oneway': '1',
+        'modes': ['car'], 'attributes': OrderedDict({'attrib1': '1'})
+    })
+
+
+def test_attributes_are_deleted_if_all_are_deemed_malformed(mocker):
+    mocker.patch.object(matsim_xml_writer, 'can_be_put_in_matsim_format', return_value=False)
+    link_attribs = {
+        'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1, 'capacity': 20, 'permlanes': 1, 'oneway': '1',
+        'modes': ['car'], 'attributes': {'malformed_attrib1': '1', 'malformed_attrib2': '2'}
+    }
+    assert_semantically_equal(matsim_xml_writer.check_additional_attributes(link_attribs), {
+        'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1, 'capacity': 20, 'permlanes': 1, 'oneway': '1',
+        'modes': ['car']
+    })
+
+
+@pytest.fixture()
 def network_with_additional_node_attrib():
     network = Network('epsg:27700')
     network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2,
-                                   'attributes': {
-                                       'osm:node:data': {'name': 'osm:node:data',
-                                                         'class': 'java.lang.String',
-                                                         'text': '3'}}})
+                                   'attributes': {'osm:node:data': '3'}})
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                              'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car']})
@@ -399,10 +474,37 @@ def test_saving_network_with_additional_node_attribs_does_not_change_data_post_s
         network_with_additional_node_attrib, tmpdir):
     network_with_additional_node_attrib.write_to_matsim(tmpdir)
     assert network_with_additional_node_attrib.node('0')['attributes'] == {
-        'osm:node:data': {'name': 'osm:node:data',
-                          'class': 'java.lang.String',
-                          'text': '3'}
-        }
+        'osm:node:data': '3'}
+
+
+@pytest.fixture()
+def network_with_additional_simple_form_node_attrib():
+    network = Network('epsg:27700')
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'attributes': {'osm:node:data': '3'}})
+    network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2})
+    network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
+                                             'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car']})
+    return network
+
+
+def test_simple_form_additional_attributes_are_indistinguishable_in_xml(
+        tmpdir, network_with_additional_simple_form_node_attrib, network_with_additional_node_attrib_xml_file):
+    network_with_additional_simple_form_node_attrib.write_to_matsim(tmpdir)
+
+    generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+    xml_diff.assert_semantically_equal(generated_network_file_path, network_with_additional_node_attrib_xml_file)
+
+
+def test_non_string_simple_form_additional_attribute_saves_to_xml_correctly(tmpdir):
+    network = Network('epsg:27700')
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'attributes': {'osm:node:data': 3}})
+
+    network.write_to_matsim(tmpdir)
+
+    xml_data = xmltodict.parse(open(os.path.join(tmpdir,'network.xml')).read())
+    assert xml_data['network']['nodes']['node']['attributes']['attribute']['@name'] == 'osm:node:data'
+    assert xml_data['network']['nodes']['node']['attributes']['attribute']['@class'] == 'java.lang.Integer'
+    assert xml_data['network']['nodes']['node']['attributes']['attribute']['#text'] == '3'
 
 
 def test_write_matsim_network_produces_semantically_equal_xml_to_input_matsim_xml(network_object_from_test_data,
@@ -451,13 +553,7 @@ def schedule_with_additional_attrib_stop():
                   departure_offsets=['00:00:00', '00:01:00'],
                   headway_spec={('07:00:00', '08:00:00'): 20},
                   stops=[Stop('s1', x=1, y=1, epsg='epsg:27700',
-                              attributes={'carAccessible': {'name': 'carAccessible',
-                                                            'class': 'java.lang.String',
-                                                            'text': 'true'},
-                                          'accessLinkId_car': {'name': 'accessLinkId_car',
-                                                               'class': 'java.lang.String',
-                                                               'text': 'linkID'}
-                                          }),
+                              attributes={'carAccessible': 'true', 'accessLinkId_car': 'linkID'}),
                          Stop('s2', x=1, y=1, epsg='epsg:27700')
                          ])]))
     return schedule
@@ -491,13 +587,9 @@ def test_saving_schedule_with_additional_stop_attribs_does_not_change_data_post_
         schedule_with_additional_attrib_stop, tmpdir):
     schedule_with_additional_attrib_stop.write_to_matsim(tmpdir)
     assert schedule_with_additional_attrib_stop.stop('s1').attributes == {
-        'carAccessible': {'name': 'carAccessible',
-                          'class': 'java.lang.String',
-                          'text': 'true'},
-        'accessLinkId_car': {'name': 'accessLinkId_car',
-                             'class': 'java.lang.String',
-                             'text': 'linkID'}
-        }
+        'carAccessible': 'true',
+        'accessLinkId_car': 'linkID'
+    }
 
 
 @pytest.fixture()
@@ -509,9 +601,7 @@ def schedule_with_additional_route_attrib():
                   arrival_offsets=['00:00:00', '00:01:00'],
                   departure_offsets=['00:00:00', '00:01:00'],
                   headway_spec={('07:00:00', '08:00:00'): 20},
-                  attributes={'additional_attrib': {'name': 'additional_attrib',
-                                                    'class': 'java.lang.String',
-                                                    'text': 'attrib_value'}},
+                  attributes={'additional_attrib': 'attrib_value'},
                   stops=[Stop('s1', x=1, y=1, epsg='epsg:27700'),
                          Stop('s2', x=1, y=1, epsg='epsg:27700')])]))
     return schedule
@@ -544,11 +634,7 @@ def test_schedule_with_additional_route_attribs_saves_all_data_to_xml(
 def test_saving_schedule_with_additional_route_attribs_does_not_change_data_post_save(
         schedule_with_additional_route_attrib, tmpdir):
     schedule_with_additional_route_attrib.write_to_matsim(tmpdir)
-    assert schedule_with_additional_route_attrib.route('r1').attributes['additional_attrib'] == {
-        'name': 'additional_attrib',
-        'class': 'java.lang.String',
-        'text': 'attrib_value'
-    }
+    assert schedule_with_additional_route_attrib.route('r1').attributes['additional_attrib'] == 'attrib_value'
 
 
 @pytest.fixture()
@@ -562,9 +648,7 @@ def schedule_with_additional_service_attrib():
                   headway_spec={('07:00:00', '08:00:00'): 20},
                   stops=[Stop('s1', x=1, y=1, epsg='epsg:27700'),
                          Stop('s2', x=1, y=1, epsg='epsg:27700')])],
-                attributes={'additional_attrib': {'name': 'additional_attrib',
-                                                  'class': 'java.lang.String',
-                                                  'text': 'attrib_value'}}
+                attributes={'additional_attrib': 'attrib_value'}
                 ))
     return schedule
 
@@ -597,21 +681,13 @@ def test_schedule_with_additional_service_attribs_saves_all_data_to_xml(
 def test_saving_schedule_with_additional_service_attribs_does_not_change_data_post_save(
         schedule_with_additional_service_attrib, tmpdir):
     schedule_with_additional_service_attrib.write_to_matsim(tmpdir)
-    assert schedule_with_additional_service_attrib['s1'].attributes['additional_attrib'] == {
-        'name': 'additional_attrib',
-        'class': 'java.lang.String',
-        'text': 'attrib_value'
-    }
+    assert schedule_with_additional_service_attrib['s1'].attributes['additional_attrib'] == 'attrib_value'
 
 
 @pytest.fixture()
 def schedule_with_additional_attrib():
     schedule = Schedule('epsg:27700')
-    schedule.attributes['additional_attrib'] = {
-        'name': 'additional_attrib',
-        'class': 'java.lang.String',
-        'text': 'attrib_value'
-    }
+    schedule.attributes['additional_attrib'] = 'attrib_value'
     schedule.add_service(
         Service(id='s1', routes=[
             Route(id='r1', route_short_name='r1', mode='bus',
@@ -651,11 +727,7 @@ def test_schedule_with_additional_attribs_saves_all_data_to_xml(
 def test_saving_schedule_with_additional_attribs_does_not_change_data_post_save(schedule_with_additional_attrib,
                                                                                 tmpdir):
     schedule_with_additional_attrib.write_to_matsim(tmpdir)
-    assert schedule_with_additional_attrib.attributes['additional_attrib'] == {
-        'name': 'additional_attrib',
-        'class': 'java.lang.String',
-        'text': 'attrib_value'
-    }
+    assert schedule_with_additional_attrib.attributes['additional_attrib'] == 'attrib_value'
 
 
 def test_generates_valid_matsim_vehicles_xml_file(tmpdir, vehicles_xsd, vehicle_types):

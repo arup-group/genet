@@ -370,6 +370,16 @@ def test_get_attribute_data_under_key_with_nested_link_data_and_nested_key():
     assert_semantically_equal(data, {'0': 'primary', '1': 'secondary'})
 
 
+def test_get_nested_attribute_data_with_some_data_missing():
+    input_list = [
+        ('0', {'attributes': {'osm:way:nope': 'primary'}}),
+        ('1', {'attributes': {'osm:way:lanes': '1'}})
+    ]
+
+    data = graph_operations.get_attribute_data_under_key(input_list, {'attributes': 'osm:way:lanes'})
+    assert_semantically_equal(data, {'1': '1'})
+
+
 def test_building_attribute_dataframe_with_a_single_key_string_input():
     df = graph_operations.build_attribute_dataframe(
         [('1', {'key': 1, 'another_key': 2}), ('2', {'key': 3})], keys='key')
