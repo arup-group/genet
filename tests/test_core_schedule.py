@@ -1627,21 +1627,53 @@ def test_generating_new_vehicles_with_overwite_True(schedule):
 
 def test_scale_vehicle_capacity(schedule, tmpdir):
     
-    schedule = read.read_matsim_schedule(
-    path_to_schedule=pt2matsim_schedule_file,
-    path_to_vehicles=pt2matsim_vehicles_file,
-    epsg='epsg:27700')
+    # assert the initial capacity before scaling
+    assert_semantically_equal(schedule.vehicle_types['bus'], {
+        'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}},
+        'length': {'meter': '18.0'},
+        'width': {'meter': '2.5'},
+        'accessTime': {'secondsPerPerson': '0.5'},
+        'egressTime': {'secondsPerPerson': '0.5'},
+        'doorOperation': {'mode': 'serial'},
+        'passengerCarEquivalents': {'pce': '2.8'}})
+        
+    # scale the vehicles by 50%
     schedule.scale_vehicle_capacity(0.5, 0.5, tmpdir)
 
+    # assert the scaled capacity post scaling by 50%
     vehicles, vehicle_types = matsim_reader.read_vehicles(os.path.join(tmpdir,"50_perc_vehicles.xml"))
     assert_semantically_equal(vehicle_types['bus'], {
-    'capacity': {'seats': {'persons': '36'}, 'standingRoom': {'persons': '1'}},
+    'capacity': {'seats': {'persons': '35'}, 'standingRoom': {'persons': '0'}},
     'length': {'meter': '18.0'},
     'width': {'meter': '2.5'},
     'accessTime': {'secondsPerPerson': '0.5'},
     'egressTime': {'secondsPerPerson': '0.5'},
     'doorOperation': {'mode': 'serial'},
     'passengerCarEquivalents': {'pce': '1.4'}})
+
+def test_scaling_vehicle_capacity_does_not_affect_original_values(schedule, tmpdir):
+    # assert the initial capacity before scaling
+    assert_semantically_equal(schedule.vehicle_types['bus'], {
+        'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}},
+        'length': {'meter': '18.0'},
+        'width': {'meter': '2.5'},
+        'accessTime': {'secondsPerPerson': '0.5'},
+        'egressTime': {'secondsPerPerson': '0.5'},
+        'doorOperation': {'mode': 'serial'},
+        'passengerCarEquivalents': {'pce': '2.8'}})
+
+    # scale the vehicles by 50%
+    schedule.scale_vehicle_capacity(0.5, 0.5, tmpdir)
+
+    # assert that vehicle scaling does not change the original values in the schedule
+    assert_semantically_equal(schedule.vehicle_types['bus'], {
+        'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}},
+        'length': {'meter': '18.0'},
+        'width': {'meter': '2.5'},
+        'accessTime': {'secondsPerPerson': '0.5'},
+        'egressTime': {'secondsPerPerson': '0.5'},
+        'doorOperation': {'mode': 'serial'},
+        'passengerCarEquivalents': {'pce': '2.8'}})
 
 def test_rejects_inconsistent_modes_when_generating_vehicles(mocker, schedule):
     mocker.patch.object(DataFrame, 'drop',
