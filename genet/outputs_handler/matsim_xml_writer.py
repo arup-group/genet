@@ -199,8 +199,8 @@ def write_matsim_schedule(output_dir, schedule, epsg=''):
                                     xf.write(etree.Element("departure", trip_attribs))
 
 
-def write_vehicles(output_dir, vehicles, vehicle_types):
-    fname = os.path.join(output_dir, "vehicles.xml")
+def write_vehicles(output_dir, vehicles, vehicle_types, file_name="vehicles.xml"):
+    fname = os.path.join(output_dir, file_name)
     logging.info('Writing {}'.format(fname))
 
     with open(fname, "wb") as f, etree.xmlfile(f, encoding='utf-8') as xf:

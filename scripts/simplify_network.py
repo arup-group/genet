@@ -8,6 +8,11 @@ from genet import read_matsim
 from genet.utils.persistence import ensure_dir
 from genet.outputs_handler.sanitiser import sanitise_dictionary
 
+def write_scaled_vehicles(network, list_of_scales,output_dir):
+    for i in list_of_scales:
+        scale = float(i)/100
+        network.schedule.scale_vehicle_capacity(scale, scale, output_dir)
+
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Simplify a MATSim network by removing '
                                                      'intermediate links from paths')
@@ -40,6 +45,13 @@ if __name__ == '__main__':
                             required=False,
                             default=1,
                             type=int)
+    
+    arg_parser.add_argument('-vsc',
+                            '--vehicle_scalings',
+                            help='Comma seperated string of scales for vehicles, e.g. 1,10,25',
+                            required=False,
+                            default=None,
+                            type=str)
 
     arg_parser.add_argument('-od',
                             '--output_dir',
@@ -53,6 +65,7 @@ if __name__ == '__main__':
     projection = args['projection']
     processes = args['processes']
     output_dir = args['output_dir']
+    scale_list = args['vehicle_scalings']
     ensure_dir(output_dir)
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
@@ -77,6 +90,11 @@ if __name__ == '__main__':
         json.dump(n.link_simplification_map, f, ensure_ascii=False, indent=4)
 
     n.write_to_matsim(output_dir)
+
+    if scale_list:
+        logging.info('Generating scaled vehicles xml.')
+        scale_list = scale_list.split(",")
+        write_scaled_vehicles(n, scale_list, output_dir)
 
     logging.info('Generating validation report')
     report = n.generate_validation_report()

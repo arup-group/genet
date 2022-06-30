@@ -1364,6 +1364,36 @@ class Schedule(ScheduleElement):
             else:
                 self.vehicles = {**df.T.to_dict(), **self.vehicles}
 
+    def scale_vehicle_capacity(self, capacity_scale, pce_scale, output_dir):
+        """
+        This method scales the vehicle capacities and pce to user defined scales and writes a new vehicle.xml.
+        :param capacity_scale: vehicle capacity scale (float)
+        :param pce_scale: passenger car equivalents scale (float)
+        :return:
+        :example invocation for 5%: scale_vehicle_capacity(0.05, 0.05,"")
+        """
+        # save copy of existing vehicle data
+        vehicle_types_dict = deepcopy(self.vehicle_types)
+
+        # scale capacity and pce to defined scale
+        for mode, mode_dict in self.vehicle_types.items():
+            mode_dict['capacity']['seats']['persons'] = str(
+                round(float(mode_dict['capacity']['seats']['persons']) * capacity_scale))
+            mode_dict['capacity']['standingRoom']['persons'] = str(
+                round(float(mode_dict['capacity']['standingRoom']['persons']) * capacity_scale))
+            mode_dict['passengerCarEquivalents']['pce'] = str(
+                round(float(mode_dict['passengerCarEquivalents']['pce']) * pce_scale, 3))
+
+        # export scaled vehicles xml
+        persistence.ensure_dir(output_dir)
+        matsim_xml_writer.write_vehicles(
+            output_dir, self.vehicles, self.vehicle_types, f"{int(capacity_scale*100)}_perc_vehicles.xml")
+
+        self.vehicle_types = vehicle_types_dict
+
+        logging.info(f'Created scaled vehicle file for {int(capacity_scale*100)}% capacity & '
+                     f'{int(pce_scale*100)}% pce.')
+
     def route_trips_to_dataframe(self, gtfs_day='19700101'):
         """
         This method exists for backwards compatibility only
