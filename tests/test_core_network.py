@@ -660,6 +660,7 @@ def test_simplify_does_not_oversimplify_PT_endpoints(puma_network_with_pt_stops_
 
 def test_simplify_keeps_pt_stop_loops(puma_network):
     puma_network.simplify()
+
     for stop in puma_network.schedule.stops():
         assert puma_network.link(stop.linkRefId)['from'] == puma_network.link(stop.linkRefId)['to']
         assert puma_network.link(stop.linkRefId)['length'] == 1
@@ -678,8 +679,10 @@ def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, network_w
 def test_network_tagged_as_simplified_saves_to_correct_dtds(tmpdir, network_dtd):
     n = Network(epsg='epsg:27700')
     n._mark_as_simplified()
+
     n.write_to_matsim(tmpdir)
     generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+
     xml_obj = lxml.etree.parse(generated_network_file_path)
     assert network_dtd.validate(xml_obj), \
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
@@ -720,7 +723,9 @@ def test_simplifying_network_with_multi_edges_resulting_in_multi_paths():
         'l_8': {'from': 'n_4', 'to': 'n_6', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
                 'modes': {'car'}}
     })
+
     n.simplify()
+
     assert set(n.link_simplification_map) == {'l_4', 'l_1', 'l_5', 'l_3', 'l_6', 'l_2'}
 
 
@@ -841,6 +846,7 @@ def test_link_attribute_data_under_keys_returns_dataframe_with_one_col_if_passed
 
 def test_link_attribute_data_under_keys_generates_key_for_nested_data(network1):
     df = network1.link_attribute_data_under_keys([{'attributes': {'osm:way:access': 'text'}}])
+
     assert isinstance(df, pd.DataFrame)
     assert 'attributes::osm:way:access::text' in df.columns
 

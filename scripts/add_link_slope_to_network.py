@@ -90,7 +90,8 @@ if __name__ == '__main__':
     for link_id in slope_dictionary.keys():
         slope_value = slope_dictionary[link_id]['slope']
         attrib_dict[link_id] = {
-            'attributes': {'slope': {'name': 'slope', 'class': 'java.lang.String', 'text': slope_value}}}
+            'attributes': {'slope': str(slope_value)}
+        }
 
     n.apply_attributes_to_links(attrib_dict)
 

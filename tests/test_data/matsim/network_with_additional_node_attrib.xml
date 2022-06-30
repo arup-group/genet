@@ -7,7 +7,7 @@
     <nodes>
         <node id="0" x="1" y="2">
             <attributes>
-                <attribute name="osm:node:data" class="java.lang.String">3</attribute>
+                <attribute name="osm:node:data" class="java.lang.Integer">3</attribute>
             </attributes>
         </node>
         <node id="1" x="2" y="2"/>

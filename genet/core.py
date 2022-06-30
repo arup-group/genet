@@ -67,6 +67,10 @@ class Network:
         for k, v in attribs.items():
             if k not in self.__dict__:
                 setattr(self, k, v)
+            else:
+                logging.warning(
+                    f"{self.__class__.__name__} already has an additional attribute: {k}. "
+                    "Consider overwritting it instead.")
 
     def has_attrib(self, attrib_name):
         return attrib_name in self.__dict__

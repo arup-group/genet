@@ -439,7 +439,7 @@ def test_attributes_are_deleted_if_all_are_deemed_malformed(mocker):
 def network_with_additional_node_attrib():
     network = Network('epsg:27700')
     network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2,
-                                   'attributes': {'osm:node:data': '3'}})
+                                   'attributes': {'osm:node:data': 3}})
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                              'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car']})
@@ -474,13 +474,13 @@ def test_saving_network_with_additional_node_attribs_does_not_change_data_post_s
         network_with_additional_node_attrib, tmpdir):
     network_with_additional_node_attrib.write_to_matsim(tmpdir)
     assert network_with_additional_node_attrib.node('0')['attributes'] == {
-        'osm:node:data': '3'}
+        'osm:node:data': 3}
 
 
 @pytest.fixture()
 def network_with_additional_simple_form_node_attrib():
     network = Network('epsg:27700')
-    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'attributes': {'osm:node:data': '3'}})
+    network.add_node('0', attribs={'id': '0', 'x': 1, 'y': 2, 'attributes': {'osm:node:data': 3}})
     network.add_node('1', attribs={'id': '1', 'x': 2, 'y': 2})
     network.add_link('0', '0', '1', attribs={'id': '0', 'from': '0', 'to': '1', 'length': 1, 'freespeed': 1,
                                              'capacity': 20, 'permlanes': 1, 'oneway': '1', 'modes': ['car']})

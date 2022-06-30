@@ -1,3 +1,4 @@
+import pytest
 from pyproj import Proj, Transformer
 from shapely.geometry import LineString
 from genet.input import matsim_reader, read
@@ -19,7 +20,7 @@ pt2matsim_network_clashing_link_ids_test_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_clashing_link_ids.xml"))
 pt2matsim_network_clashing_node_ids_test_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_clashing_node_ids.xml"))
-matsim_output_network = os.path.abspath(
+matsim_output_network_path = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "matsim_output_network.xml"))
 pt2matsim_network_with_geometry_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_with_geometry.xml"))
@@ -244,30 +245,38 @@ def test_read_network_rejects_non_unique_nodes():
     assert_semantically_equal(duplicated_link_ids, {})
 
 
-def test_reading_matsim_output_network():
-    n = read.read_matsim(path_to_network=matsim_output_network, epsg='epsg:27700')
-
-    correct_nodes = {
-        '21667818': {'id': '21667818', 's2_id': 5221390302696205321, 'x': 528504.1342843144, 'y': 182155.7435136598,
-                     'lon': -0.14910908709500162, 'lat': 51.52370573323939},
-        '25508485': {'id': '25508485', 's2_id': 5221390301001263407, 'x': 528489.467895946, 'y': 182206.20303669578,
-                     'lon': -0.14930198709481451, 'lat': 51.524162533239284}}
-
-    correct_edge = {'id': '1', 'from': '25508485', 'to': '21667818', 'freespeed': 4.166666666666667,
-                    'capacity': 600.0, 'permlanes': 1.0, 'oneway': '1', 'modes': {'car', 'subway', 'metro', 'walk'},
-                    's2_from': 5221390301001263407, 's2_to': 5221390302696205321, 'length': 52.765151087870265,
-                    'attributes': {'osm:way:access': 'permissive',
-                                   'osm:way:highway': 'unclassified',
-                                   'osm:way:id': 26997928.0,
-                                   'osm:way:name': 'Brunswick Place'}}
-    correct_attributes = {
-        'coordinateReferenceSystem': 'EPSG:27700',
-        'crs': 'epsg:27700'
+@pytest.fixture()
+def matsim_output_network():
+    return {
+        'file_path': matsim_output_network_path,
+        'expected_nodes': {
+            '21667818': {'id': '21667818', 's2_id': 5221390302696205321, 'x': 528504.1342843144, 'y': 182155.7435136598,
+                         'lon': -0.14910908709500162, 'lat': 51.52370573323939},
+            '25508485': {'id': '25508485', 's2_id': 5221390301001263407, 'x': 528489.467895946, 'y': 182206.20303669578,
+                         'lon': -0.14930198709481451, 'lat': 51.524162533239284}
+        },
+        'expected_edges': {
+            'id': '1', 'from': '25508485', 'to': '21667818', 'freespeed': 4.166666666666667,
+            'capacity': 600.0, 'permlanes': 1.0, 'oneway': '1', 'modes': {'car', 'subway', 'metro', 'walk'},
+            's2_from': 5221390301001263407, 's2_to': 5221390302696205321, 'length': 52.765151087870265,
+            'attributes': {'osm:way:access': 'permissive',
+                           'osm:way:highway': 'unclassified',
+                           'osm:way:id': 26997928.0,
+                           'osm:way:name': 'Brunswick Place'}
+        },
+        'expected_network_level_attributes': {
+            'coordinateReferenceSystem': 'EPSG:27700',
+            'crs': 'epsg:27700'
+        }
     }
 
-    assert_semantically_equal(dict(n.graph.nodes(data=True)), correct_nodes)
-    assert_semantically_equal(list(n.graph.edges(data=True))[0][2], correct_edge)
-    assert_semantically_equal(n.attributes, correct_attributes)
+
+def test_reading_matsim_output_network(matsim_output_network):
+    n = read.read_matsim(path_to_network=matsim_output_network['file_path'], epsg='epsg:27700')
+
+    assert_semantically_equal(dict(n.graph.nodes(data=True)), matsim_output_network['expected_nodes'])
+    assert_semantically_equal(list(n.graph.edges(data=True))[0][2], matsim_output_network['expected_edges'])
+    assert_semantically_equal(n.attributes, matsim_output_network['expected_network_level_attributes'])
 
 
 def test_reading_network_with_geometry_attributes():
@@ -367,7 +376,7 @@ def test_forcing_long_form_in_network_with_additional_node_attributes_reads_node
                          force_long_form_attributes=True)
     assert_semantically_equal(
         n.node('0')['attributes'],
-        {'osm:node:data': {'name': 'osm:node:data', 'class': 'java.lang.String', 'text': '3'}}
+        {'osm:node:data': {'name': 'osm:node:data', 'class': 'java.lang.Integer', 'text': '3'}}
     )
 
 
