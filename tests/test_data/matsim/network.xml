@@ -15,7 +15,7 @@
 			<attributes>
 				<attribute name="osm:way:access" class="java.lang.String" >permissive</attribute>
 				<attribute name="osm:way:highway" class="java.lang.String" >unclassified</attribute>
-				<attribute name="osm:way:id" class="java.lang.Long" >26997928</attribute>
+				<attribute name="osm:way:id" class="java.lang.Float" >26997928.0</attribute>
 				<attribute name="osm:way:name" class="java.lang.String" >Brunswick Place</attribute>
 			</attributes>
 		</link>

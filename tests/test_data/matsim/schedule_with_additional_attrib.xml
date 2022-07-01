@@ -2,7 +2,7 @@
 <!DOCTYPE transitSchedule SYSTEM "http://www.matsim.org/files/dtd/transitSchedule_v2.dtd">
 <transitSchedule>
     <attributes>
-		<attribute name="crs" class="java.lang.String">epsg:27700</attribute>
+        <attribute name="crs" class="java.lang.String">epsg:27700</attribute>
         <attribute name="additional_attrib" class="java.lang.String">attrib_value</attribute>
     </attributes>
     <transitStops>

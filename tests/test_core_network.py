@@ -13,7 +13,7 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 from geopandas.testing import assert_geodataframe_equal
 from shapely.geometry import LineString, Polygon, Point
 
-from genet.core import Network, MissingElevationException
+from genet.core import Network
 from genet.input import matsim_reader
 from tests.test_output_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule, Stop
@@ -660,6 +660,7 @@ def test_simplify_does_not_oversimplify_PT_endpoints(puma_network_with_pt_stops_
 
 def test_simplify_keeps_pt_stop_loops(puma_network):
     puma_network.simplify()
+
     for stop in puma_network.schedule.stops():
         assert puma_network.link(stop.linkRefId)['from'] == puma_network.link(stop.linkRefId)['to']
         assert puma_network.link(stop.linkRefId)['length'] == 1
@@ -678,8 +679,10 @@ def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, network_w
 def test_network_tagged_as_simplified_saves_to_correct_dtds(tmpdir, network_dtd):
     n = Network(epsg='epsg:27700')
     n._mark_as_simplified()
+
     n.write_to_matsim(tmpdir)
     generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+
     xml_obj = lxml.etree.parse(generated_network_file_path)
     assert network_dtd.validate(xml_obj), \
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
@@ -720,7 +723,9 @@ def test_simplifying_network_with_multi_edges_resulting_in_multi_paths():
         'l_8': {'from': 'n_4', 'to': 'n_6', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
                 'modes': {'car'}}
     })
+
     n.simplify()
+
     assert set(n.link_simplification_map) == {'l_4', 'l_1', 'l_5', 'l_3', 'l_6', 'l_2'}
 
 
@@ -741,8 +746,14 @@ def test_reading_back_simplified_network():
         if 'attributes' in attribs:
             assert not 'geometry' in attribs['attributes']
             for k, v in attribs['attributes'].items():
-                if isinstance(v['text'], str):
-                    assert not ',' in v['text']
+                if isinstance(v, str):
+                    assert not ',' in v
+
+
+def test_simplified_tag_for_network_is_read_correctly_with_bool_attribute():
+    n = read.read_matsim(path_to_network=simplified_network, epsg='epsg:27700',
+                         path_to_schedule=simplified_schedule)
+    assert n.attributes['simplified']
 
 
 def test_network_with_missing_link_attribute_elem_text_is_read_and_able_to_save_again(tmpdir):
@@ -835,6 +846,7 @@ def test_link_attribute_data_under_keys_returns_dataframe_with_one_col_if_passed
 
 def test_link_attribute_data_under_keys_generates_key_for_nested_data(network1):
     df = network1.link_attribute_data_under_keys([{'attributes': {'osm:way:access': 'text'}}])
+
     assert isinstance(df, pd.DataFrame)
     assert 'attributes::osm:way:access::text' in df.columns
 
@@ -2069,75 +2081,62 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '0', 'to': '1', 's2_from': 1152921492875543713, 's2_to': 1152921335974974453,
          'length': 1748.4487354464366,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '0'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 0,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '1', 'to': '0', 's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
          'length': 1748.4487354464366,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '0'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 0,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '0', 'to': '2', 's2_from': 1152921492875543713, 's2_to': 384307157539499829,
          'length': 1748.4488584600201,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '100'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 100,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '2', 'to': '0', 's2_from': 384307157539499829, 's2_to': 1152921492875543713,
          'length': 1748.4488584600201,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '100'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 100,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '1', 'to': '0', 's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
          'length': 1748.4487354464366,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '400'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 400,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '0', 'to': '1', 's2_from': 1152921492875543713, 's2_to': 1152921335974974453,
          'length': 1748.4487354464366,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '400'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 400,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '2', 'to': '0', 's2_from': 384307157539499829, 's2_to': 1152921492875543713,
          'length': 1748.4488584600201,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '700'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 700,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '0', 'to': '2', 's2_from': 1152921492875543713, 's2_to': 384307157539499829,
          'length': 1748.4488584600201,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '700'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 700,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 3.0, 'freespeed': 12.5, 'capacity': 1800.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '2', 'to': '1', 's2_from': 384307157539499829, 's2_to': 1152921335974974453,
          'length': 3496.897593906457,
-         'attributes': {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
-                        'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '47007861'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'tertiary'}}},
+         'attributes': {'osm:way:lanes': '3',
+                        'osm:way:osmid': 47007861,
+                        'osm:way:highway': 'tertiary'}},
         {'permlanes': 3.0, 'freespeed': 12.5, 'capacity': 1800.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '1', 'to': '0', 's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
          'length': 1748.4487354464366,
-         'attributes': {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
-                        'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '47007861'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'tertiary'}}},
+         'attributes': {'osm:way:lanes': '3',
+                        'osm:way:osmid': 47007861,
+                        'osm:way:highway': 'tertiary'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
          'modes': ['car', 'walk', 'bike'], 'from': '1', 'to': '0',
          's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
          'length': 1748.4487354464366, 'attributes': {
-            'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                              'text': '47007862'},
-            'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String',
-                              'text': '3;2'},
-            'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                'text': 'tertiary'}}}
+            'osm:way:osmid': 47007862,
+            'osm:way:lanes': '3;2',
+            'osm:way:highway': 'tertiary'}}
     ]
 
     cols = ['permlanes', 'freespeed', 'capacity', 'oneway', 'modes', 'from', 'to', 's2_from', 's2_to', 'length',
@@ -2152,6 +2151,7 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             try:
                 assert_semantically_equal(attribs_to_test, link_attrib)
                 satisfied = True
+                break
             except AssertionError:
                 pass
         assert satisfied
@@ -2988,41 +2988,32 @@ def test_saving_network_to_csv(network1, correct_schedule, tmpdir):
     )
 
 
-def test_adding_elevation_to_nodes(network3):
+def test_reads_node_elevations_from_tif_file(network3):
     elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
     elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
 
-    network3.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
-    output = network3.node_attribute_data_under_key('z')
+    elev_dict = network3.get_node_elevation_dictionary(elevation_tif_file, null_value=-32768)
 
     # elevation value (25m) that corresponds to the coordinate of this node in the network has been double checked here:
     # https://www.freemaptools.com/elevation-finder.htm
-    assert output['101982'] == 25
+    assert elev_dict['101982']['z'] == 25
 
 
-def test_adding_elevation_to_nodes_with_null_value_mapping(network3):
+def test_replaces_missing_node_elevations_with_zero(network3):
     elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
     elevation_tif_file = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
 
-    network3.add_elevation_to_nodes(elevation_tif_file, null_value=-32768)
-    output = network3.node_attribute_data_under_key('z')
-
+    elev_dict = network3.get_node_elevation_dictionary(elevation_tif_file, null_value=-32768)
     # the coordinate of this node in the network corresponds to a pixel with null (no data) value in the tif file
-    assert output['101986'] == 0
+    assert elev_dict['101986']['z'] == 0
 
 
-def test_validation_report_for_node_elevation(network4):
-    n = network4
-    report = n.validation_report_for_node_elevation()
-    correct_report = {'summary': {'extremely_high_values_count': 0, 'extremely_low_values_count': 1, 'max_value': 100,
-                                  'mean': 24, 'median': 24, 'min_value': -51, 'total_nodes': 2},
-                      'values': {'extremely_high_values_dict': {}, 'extremely_low_values_dict': {'101982': -51}}}
-
-    assert_semantically_equal(report, correct_report)
-
-
-def test_validation_report_for_network_without_node_elevation(network3):
-    n = network3
-    with pytest.raises(MissingElevationException) as error_info:
-        n.validation_report_for_node_elevation()
-    assert "do not contain elevation" in str(error_info.value)
+def test_getting_link_slope_dictionary(network3):
+    # based on network4() fixture
+    elevation_dictionary = {'101982': {'z': -51}, '101986': {'z': 100}}
+    z_1 = elevation_dictionary['101982']['z']
+    z_2 = elevation_dictionary['101986']['z']
+    length = 52.765151087870265
+    link_slope = (z_2 - z_1) / length
+    slope_dict = network3.get_link_slope_dictionary(elevation_dictionary)
+    assert slope_dict['0']['slope'] == link_slope

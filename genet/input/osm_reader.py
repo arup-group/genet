@@ -163,11 +163,7 @@ def generate_graph_edges(edges, reindexing_dict, nodes_and_attributes, config_pa
         link_attributes['attributes'] = {}
         for key, val in attribs.items():
             if key not in link_attributes:
-                link_attributes['attributes']['osm:way:{}'.format(key)] = {
-                    'name': 'osm:way:{}'.format(key),
-                    'class': 'java.lang.String',
-                    'text': str(val),
-                }
+                link_attributes['attributes'][f'osm:way:{key}'] = val
         edges_attributes.append(link_attributes)
     return edges_attributes
 

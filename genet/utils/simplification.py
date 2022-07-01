@@ -23,13 +23,12 @@ def _process_path(indexed_edge_groups_to_simplify):
             for attribs_dict in edge_attributes['attributes']:
                 for key, val in attribs_dict.items():
                     if key in new_attributes:
-                        new_attributes[key]['text'] |= setify(val["text"])
+                        new_attributes[key] |= setify(val)
                     else:
-                        new_attributes[key] = val.copy()
-                        new_attributes[key]['text'] = setify(new_attributes[key]['text'])
+                        new_attributes[key] = setify(val)
             for key, val in new_attributes.items():
-                if len(val['text']) == 1:
-                    val['text'] = list(val['text'])[0]
+                if len(val) == 1:
+                    new_attributes[key] = list(val)[0]
             edge_attributes['attributes'] = new_attributes.copy()
 
         # construct the geometry
