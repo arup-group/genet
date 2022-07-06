@@ -600,13 +600,20 @@ class Network:
         self.remove_mode_from_links(diff_links, mode)
 
     def _find_ids_on_geojson(self, gdf, how, geojson_input):
-        shapely_input = spatial.read_geojson_to_shapely(geojson_input)
-        return self._find_ids_on_shapely_geometry(gdf=gdf, how=how, shapely_input=shapely_input)
+        if how == 'intersect':
+            geojson_input_gdf = gpd.read_file(geojson_input)
+            return list(gpd.sjoin(gdf, geojson_input_gdf, how='inner', op='intersects')['id'])
+        elif how == 'within':
+            shapely_input = spatial.read_geojson_to_shapely(geojson_input)
+            return list(gdf[gdf.within(shapely_input)]['id'])
+        else:
+            raise NotImplementedError('Only `intersect` and `contain` options for `how` param.')
 
     def _find_ids_on_shapely_geometry(self, gdf, how, shapely_input):
         if how == 'intersect':
-            return list(gdf[gdf.intersects(shapely_input)]['id'])
-        if how == 'within':
+            geojson_input_gdf = gpd.GeoDataFrame(index=[0], crs=gdf.crs, geometry=[shapely_input])
+            return list(gpd.sjoin(gdf, geojson_input_gdf, how='inner', op='intersects')['id'])
+        elif how == 'within':
             return list(gdf[gdf.within(shapely_input)]['id'])
         else:
             raise NotImplementedError('Only `intersect` and `contain` options for `how` param.')
