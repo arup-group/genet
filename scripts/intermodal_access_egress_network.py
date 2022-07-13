@@ -43,8 +43,10 @@ def find_closest_links_by_step(network_spatial_tree, df_stops, step_size=10, dis
 
 
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Process to add access and egress links for PT stops of given '
-                                                     'modes.')
+    arg_parser = argparse.ArgumentParser(
+        description='Process to add access and egress links for PT stops of given modes. Intended to generate '
+                    'PT schedules to work with SBB extensions in MATSim: '
+                    'https://github.com/matsim-org/matsim-libs/tree/master/contribs/sbb-extensions#intermodal-access-and-egress')
 
     arg_parser.add_argument('-n',
                             '--network',
@@ -75,12 +77,21 @@ if __name__ == '__main__':
                             default=None)
 
     arg_parser.add_argument('-nm',
-                            '--network_mode',
-                            help='Single mode to subset the network graph. '
+                            '--network_snap_modes',
+                            help='Comma separated modes to subset the network graph. '
                                  'The links from this modal subgraph will be considered for the stop to graph '
-                                 'relationship',
+                                 'relationship. Two new attributes (per mode) will be added to PT stops:'
+                                 'xmodeAccessible = true and accessLinkId_xmode = link_id',
                             required=False,
                             default='car')
+
+    arg_parser.add_argument('-tm',
+                            '--teleport_modes',
+                            help='Comma separated (teleported) modes to enable for given PT stops '
+                                 'No links will be found for these modes. One new attributes (per mode) will be added '
+                                 'to PT stops: xmodeAccessible = true',
+                            required=False,
+                            default=None)
 
     arg_parser.add_argument('-ss',
                             '--step_size',
@@ -111,7 +122,8 @@ if __name__ == '__main__':
     projection = args['projection']
 
     pt_modes = args['pt_modes']
-    network_mode = args['network_mode']
+    network_snap_modes = args['network_snap_modes']
+    teleport_modes = args['teleport_modes']
     step_size = args['step_size']
     distance_threshold = args['distance_threshold']
 
@@ -137,54 +149,73 @@ if __name__ == '__main__':
         logging.info(f'Stops serving the following modes will be considered: {pt_modes}')
         stops_subset = n.schedule.stops_on_modal_condition(modes=pt_modes.split(','))
         df_stops = df_stops.loc[stops_subset]
+        df_stops[['lat', 'lon', 'geometry']].to_file(os.path.join(supporting_outputs, 'stops.geojson'),
+                                                     driver='GeoJSON')
         logging.info(f'Modal subsetting resulted in {len(df_stops)} stops to snap')
 
-    logging.info('Building Spatial Tree')
-    spatial_tree = spatial.SpatialTree(n)
-    sub_tree = spatial_tree.modal_subtree(modes={network_mode})
+    if network_snap_modes is not None:
+        logging.info('Building Spatial Tree')
+        spatial_tree = spatial.SpatialTree(n)
 
-    closest_links = find_closest_links_by_step(
-        network_spatial_tree=sub_tree,
-        df_stops=df_stops,
-        step_size=step_size,
-        distance_threshold=distance_threshold
-    )
+        for snap_mode in network_snap_modes.split(','):
+            logging.info(f'Snapping mode: {snap_mode}')
+            sub_tree = spatial_tree.modal_subtree(modes={snap_mode})
 
-    # TODO There are multiple links to choose from, for the time being we are not precious about which link is selected.
-    selected_links = closest_links.reset_index().groupby('index').first()
-    if len(selected_links) != len(df_stops):
-        logging.warning(f'Only {len(selected_links)} out of {len(df_stops)} stops found a link to snap to. '
-                        'Consider removing the distance threshold if you want all stops to find a nearest link.')
+            closest_links = find_closest_links_by_step(
+                network_spatial_tree=sub_tree,
+                df_stops=df_stops,
+                step_size=step_size,
+                distance_threshold=distance_threshold
+            )
 
-    # Let's create some handy geojson outputs to verify our snapping
-    df_stops[['lat', 'lon', 'geometry']].to_file(os.path.join(supporting_outputs, 'stops.geojson'), driver='GeoJSON')
-    selected_links[['catchment', 'geometry']].to_file(
-        os.path.join(supporting_outputs, 'stop_catchments.geojson'), driver='GeoJSON')
-    # join to get link geoms
-    selected_links = selected_links.join(
-        sub_tree.links[['link_id', 'geometry']], how='left', on='link_id', lsuffix='_left', rsuffix='')
-    selected_links[['geometry']].to_file(
-        os.path.join(supporting_outputs, f'access_egress_links.geojson'), driver='GeoJSON')
-    # get number of stops in each catchment
-    catchment_value_counts = selected_links['catchment'].value_counts().to_dict()
-    with open(os.path.join(supporting_outputs, 'catchment_value_counts.json'), 'w') as outfile:
-        json.dump(sanitiser.sanitise_dictionary(catchment_value_counts), outfile)
-    logging.info(f'Number of stops in each catchment bin: {catchment_value_counts}')
+            # TODO There are multiple links to choose from, for the time being we are not precious about which link is selected.
+            selected_links = closest_links.reset_index().groupby('index').first()
+            if len(selected_links) != len(df_stops):
+                logging.warning(f'Only {len(selected_links)} out of {len(df_stops)} stops found a link to snap to. '
+                                'Consider removing the distance threshold if you want all stops to find a nearest link.')
 
-    # generate the data dictionaries for updating stops data
-    access_link_id_tag = f'accessLinkId_{network_mode}'
-    accessible_tag = f'{network_mode}Accessible'
+            # Let's create some handy geojson outputs to verify our snapping
+            selected_links[['catchment', 'geometry']].to_file(
+                os.path.join(supporting_outputs, f'{snap_mode}_stop_catchments.geojson'), driver='GeoJSON')
+            # join to get link geoms
+            selected_links = selected_links.join(
+                sub_tree.links[['link_id', 'geometry']], how='left', on='link_id', lsuffix='_left', rsuffix='')
+            selected_links[['geometry']].to_file(
+                os.path.join(supporting_outputs, f'{snap_mode}_access_egress_links.geojson'), driver='GeoJSON')
+            # get number of stops in each catchment
+            catchment_value_counts = selected_links['catchment'].value_counts().to_dict()
+            with open(os.path.join(supporting_outputs, f'{snap_mode}_catchment_value_counts.json'), 'w') as outfile:
+                json.dump(sanitiser.sanitise_dictionary(catchment_value_counts), outfile)
+            logging.info(f'Number of stops in each catchment bin: {catchment_value_counts}')
 
-    selected_links[access_link_id_tag] = selected_links['link_id'].apply(
-        lambda x: {'name': access_link_id_tag, 'class': 'java.lang.String', 'text': x})
-    selected_links[accessible_tag] = selected_links.apply(
-        lambda x: {'name': accessible_tag, 'class': 'java.lang.String', 'text': 'true'}, axis=1)
-    selected_links['distance_catchment'] = selected_links['catchment'].apply(
-        lambda x: {'name': 'distance_catchment', 'class': 'java.lang.String', 'text': str(x)})
-    new_stops_data = selected_links[[access_link_id_tag, accessible_tag, 'distance_catchment']].T.to_dict()
-    new_stops_data = {k: {'attributes': v} for k, v in new_stops_data.items()}
+            # generate the data dictionaries for updating stops data
+            access_link_id_tag = f'accessLinkId_{snap_mode}'
+            accessible_tag = f'{snap_mode}Accessible'
+            distance_catchment_tag = f'{snap_mode}_distance_catchment_tag'
 
-    n.schedule.apply_attributes_to_stops(new_stops_data)
+            selected_links[access_link_id_tag] = selected_links['link_id'].apply(
+                lambda x: {'name': access_link_id_tag, 'class': 'java.lang.String', 'text': x})
+            selected_links[accessible_tag] = selected_links.apply(
+                lambda x: {'name': accessible_tag, 'class': 'java.lang.String', 'text': 'true'}, axis=1)
+            selected_links[distance_catchment_tag] = selected_links['catchment'].apply(
+                lambda x: {'name': distance_catchment_tag, 'class': 'java.lang.String', 'text': str(x)})
+            new_stops_data = selected_links[[access_link_id_tag, accessible_tag, distance_catchment_tag]].T.to_dict()
+            new_stops_data = {k: {'attributes': v} for k, v in new_stops_data.items()}
+
+            n.schedule.apply_attributes_to_stops(new_stops_data)
+
+    if teleport_modes is not None:
+        for tele_mode in teleport_modes.split(','):
+            logging.info(f'Adding access to mode: {tele_mode}')
+
+            # generate the data dictionaries for updating stops data
+            accessible_tag = f'{tele_mode}Accessible'
+            df_stops[accessible_tag] = df_stops.apply(
+                lambda x: {'name': accessible_tag, 'class': 'java.lang.String', 'text': 'true'}, axis=1)
+            new_stops_data = df_stops[[accessible_tag]].T.to_dict()
+            new_stops_data = {k: {'attributes': v} for k, v in new_stops_data.items()}
+
+            n.schedule.apply_attributes_to_stops(new_stops_data)
 
     logging.info('Writing the schedule.')
     n.schedule.write_to_matsim(output_dir)
