@@ -66,13 +66,13 @@ def install_jupyter_kernel(kernel_name):
 
 def execute_notebook(notebook_path):
     print("Executing notebook '{}{}{}'...".format(Fore.YELLOW, notebook_path, Style.RESET_ALL))
-    kernel_install_cmd = [
+    cmd = [
         'jupyter', 'nbconvert',
         '--to', 'notebook',
         '--execute', '"{}"'.format(notebook_path),
         '--output-dir=/tmp'
     ]
-    return run_shell_command(kernel_install_cmd)
+    return run_shell_command(cmd)
 
 
 def run_shell_command(shell_cmd):
@@ -128,6 +128,7 @@ if __name__ == '__main__':
     command_args = parse_args(sys.argv[1:])
     if command_args['notebook']:
         notebooks = command_args['notebook']
+        notebooks.sort()
         print("Executing notebooks files {}{}{}".format(Fore.YELLOW,
                                                         notebooks,
                                                         Style.RESET_ALL))
