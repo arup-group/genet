@@ -1,14 +1,35 @@
 # [v3.0.0]
 
 ## What's Changed
-* Addition of elevation and slope data to networks using DEM by @ana-kop in https://github.com/arup-group/genet/pull/115 and https://github.com/arup-group/genet/pull/120
-* Daily CI builds by @mfitz in https://github.com/arup-group/genet/pull/116
-* Vehicle capacity and pce scaling by @elizabethc-arup in https://github.com/arup-group/genet/pull/104
-* Additional attributes for network and schedule elements by @KasiaKoz in https://github.com/arup-group/genet/pull/118
-* Multimodal access/egress for PT stops by @KasiaKoz in https://github.com/arup-group/genet/pull/119
-* **[Breaking changes]** New, **default**, representation of additional attributes by @KasiaKoz in https://github.com/arup-group/genet/pull/124
-    * For backwards compatibility, use: `force_long_form_attributes=True` when reading the network and/or schedule objects
-* **[Breaking changes]** folders renamed:
+
+### New Features
+* Addition of elevation and slope data to networks using [STRM](https://srtm.csi.cgiar.org/srtmdata/) files
+* Vehicle capacity and pce scaling
+  * Conveniently save multiple `vehicle.xml` files for use with simulations at different scales: 1%, 5%, 10%, etc.
+* Ability to read and write additional attributes for different network and schedule elements
+  * Allows you to pass any data to network links and node, PT schedule stops, routes and services and have it be 
+  saved to the MATSim network
+* Multimodal access/egress for PT stops 
+  * Script to add attributes to PT stops of various PT modes that allow agent to 
+  access via network or teleported modes
+
+### Improvements
+* **[Breaking change]** New, **default**, representation of additional attributes
+  ```python
+  'attributes': {
+    'osm:way:highway': 'primary' 
+  }
+  ```
+  Instead of:
+  ```python
+  'attributes': {
+    'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}
+  }
+  ```
+    * This will affect methods that search for different values of OSM data for example
+    * For backwards compatibility, use: `force_long_form_attributes=True` when reading the network and/or schedule 
+  objects
+* **[Breaking change]** folders renamed:
     * `inputs_handler` -> `input`
     * `outputs_handler` -> `output` 
 
