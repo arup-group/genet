@@ -26,7 +26,8 @@
     'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}
   }
   ```
-    * This will affect methods that search for different values of OSM data for example
+    * Crucially, this will affect methods that search for different values of OSM data, for example: find all links 
+  of `highway` type `primary`, or links with particular OSM IDs. 
     * For backwards compatibility, use: `force_long_form_attributes=True` when reading the network and/or schedule 
   objects
 * **[Breaking change]** folders renamed:
