@@ -16,12 +16,16 @@ def parse_args(cmd_args):
     arg_parser = argparse.ArgumentParser(description='Smoke test a set of Jupyter notebook files')
     arg_parser.add_argument('-d',
                             '--notebook-directory',
-                            help='the path to the directory containing the notebooks to test',
-                            required=True)
+                            help='the path to the directory containing the notebooks to test')
     arg_parser.add_argument('-k',
                             '--kernel-name',
-                            help='the name of the Jupyter kernel to install',
+                            help='the name of an iPython kernel to install',
                             required=True)
+    arg_parser.add_argument('-n',
+                            '--notebook',
+                            action='append',
+                            help='an iPython notebook to execute - takes precedence over '
+                                 '--notebook-directory if both are set')
     return vars(arg_parser.parse_args(cmd_args))
 
 
@@ -100,16 +104,22 @@ if __name__ == '__main__':
     print_banner()
     start = datetime.now()
     command_args = parse_args(sys.argv[1:])
-    print("Smoke testing Jupyter notebooks in {}'{}'{} directory".format(Fore.YELLOW,
-                                                                         command_args['notebook_directory'],
-                                                                         Style.RESET_ALL))
-    notebooks = find_notebooks(command_args['notebook_directory'])
-    print("Found {}{}{} notebooks files in {}{}{}".format(Fore.YELLOW,
-                                                          len(notebooks),
-                                                          Style.RESET_ALL,
-                                                          Fore.YELLOW,
-                                                          command_args['notebook_directory'],
-                                                          Style.RESET_ALL))
+    if command_args['notebook']:
+        notebooks = command_args['notebook']
+        print("Executing notebooks files {}{}{}".format(Fore.YELLOW,
+                                                        notebooks,
+                                                        Style.RESET_ALL))
+    elif command_args['notebook_directory']:
+        print("Smoke testing Jupyter notebooks in {}'{}'{} directory".format(Fore.YELLOW,
+                                                                             command_args['notebook_directory'],
+                                                                             Style.RESET_ALL))
+        notebooks = find_notebooks(command_args['notebook_directory'])
+        print("Found {}{}{} notebooks files in {}{}{}".format(Fore.YELLOW,
+                                                              len(notebooks),
+                                                              Style.RESET_ALL,
+                                                              Fore.YELLOW,
+                                                              command_args['notebook_directory'],
+                                                              Style.RESET_ALL))
     if not notebooks:
         print("No notebooks to test - our work here is done. Double check the {}{}{} directory if this seems wrong."
               .format(Fore.YELLOW, command_args['notebook_directory'], Style.RESET_ALL))
