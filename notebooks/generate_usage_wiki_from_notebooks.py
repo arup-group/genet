@@ -7,14 +7,15 @@ from traitlets.config import Config
 
 
 def parse_args(cmd_args):
-    arg_parser = argparse.ArgumentParser(description='Smoke test a set of Jupyter notebook files')
+    arg_parser = argparse.ArgumentParser(description='Generate wiki markdown pages from Jupyter Notebook files')
     arg_parser.add_argument('-nd',
                             '--notebook-directory',
-                            help='the path to the directory containing the notebooks to test',
+                            help='the path to the directory containing the notebooks',
                             default=os.path.dirname(__file__))
     arg_parser.add_argument('-wd',
                             '--wiki_directory',
-                            help='the path to the genet.wiki directory, you need to clone the genet.wiki prior',
+                            help='the path to the genet.wiki directory, you need to clone the genet.wiki prior to '
+                                 'running',
                             default=os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')),
                                                  'genet.wiki'))
     return vars(arg_parser.parse_args(cmd_args))
