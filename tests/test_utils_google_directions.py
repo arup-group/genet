@@ -505,7 +505,7 @@ def test_generating_requests_on_simplified_graphs():
                                                            (528780.3405144282, 181859.84184561518)])})
     n.add_link('4', 1, 10, attribs={'modes': ['car']})
     n.add_link('5', 10, 1, attribs={'modes': ['walk']})
-    n.graph.graph["simplified"] = True
+    n._mark_as_simplified()
 
     n.apply_attributes_to_nodes({1: {'x': 528915.9309752393, 'y': 181899.48948011652},
                                  3: {'x': 528780.3405144282, 'y': 181859.84184561518},

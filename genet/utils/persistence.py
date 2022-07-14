@@ -13,12 +13,14 @@ def ensure_dir(direc):
 
 
 def setify(value: Union[str, list, set]):
-    if isinstance(value, str):
+    if isinstance(value, (str, int, float)):
         return {value}
     elif isinstance(value, (list, set)):
         return set(value)
     elif value is None:
         return set()
+    else:
+        raise NotImplementedError(f'Value: {value} cannot be setified')
 
 
 def listify(value: Union[str, list, set]):

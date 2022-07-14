@@ -12,9 +12,9 @@ import genet.exceptions as exceptions
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
 import genet.modify.schedule as modify_schedule
-import genet.outputs_handler.geojson as geojson
-import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
-import genet.outputs_handler.sanitiser as sanitiser
+import genet.output.geojson as geojson
+import genet.output.matsim_xml_writer as matsim_xml_writer
+import genet.output.sanitiser as sanitiser
 import genet.schedule_elements as schedule_elements
 import genet.utils.dict_support as dict_support
 import genet.utils.elevation as elevation
@@ -37,16 +37,19 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 
 class Network:
-    def __init__(self, epsg):
+    def __init__(self, epsg, **kwargs):
         self.epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
-        self.graph = nx.MultiDiGraph(name='Network graph', crs=self.epsg, simplified=False)
+        self.graph = nx.MultiDiGraph(name='Network graph', crs=epsg)
+        self.attributes = {'crs': epsg}
         self.schedule = schedule_elements.Schedule(epsg)
         self.change_log = change_log.ChangeLog()
         self.auxiliary_files = {'node': {}, 'link': {}}
         # link_id_mapping maps between (usually string literal) index per edge to the from and to nodes that are
         # connected by the edge
         self.link_id_mapping = {}
+        if kwargs:
+            self.add_additional_attributes(kwargs)
 
     def __repr__(self):
         return f"<{self.__class__.__name__} instance at {id(self)}: with \ngraph: {nx.info(self.graph)} and " \
@@ -55,9 +58,26 @@ class Network:
     def __str__(self):
         return self.info()
 
+    def add_additional_attributes(self, attribs: dict):
+        """
+        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
+        :param attribs: the additional attributes {attribute_name: attribute_value}
+        :return:
+        """
+        for k, v in attribs.items():
+            if k not in self.__dict__:
+                setattr(self, k, v)
+            else:
+                logging.warning(
+                    f"{self.__class__.__name__} already has an additional attribute: {k}. "
+                    "Consider overwritting it instead.")
+
+    def has_attrib(self, attrib_name):
+        return attrib_name in self.__dict__
+
     def add(self, other):
         """
-        This let's you add on `other` genet.Network to the network this method is called on.
+        This lets you add on `other` genet.Network to the network this method is called on.
         This is deliberately not a magic function to discourage `new_network = network_1 + network_2` (and memory
         goes out the window)
         :param other:
@@ -243,10 +263,16 @@ class Network:
                                                 v not in useless_self_loops}
 
         # mark graph as having been simplified
-        self.graph.graph["simplified"] = True
+        self._mark_as_simplified()
+
+    def _mark_as_simplified(self):
+        self.attributes['simplified'] = True
 
     def is_simplified(self):
-        return self.graph.graph["simplified"]
+        if 'simplified' in self.attributes:
+            # range of values for backwards compatibility
+            return self.attributes['simplified'] in {'true', 'True', True}
+        return False
 
     def node_attribute_summary(self, data=False):
         """

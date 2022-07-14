@@ -3,7 +3,7 @@ from networkx import Graph, DiGraph, set_node_attributes
 from genet.schedule_elements import Schedule, Service, Route, Stop, verify_graph_schema
 from genet.exceptions import ServiceIndexError, RouteIndexError, ScheduleElementGraphSchemaError
 from tests.fixtures import assert_semantically_equal
-from genet.inputs_handler import gtfs_reader
+from genet.input import gtfs_reader
 import genet.modify.change_log as change_log
 
 def assert_all_elements_share_graph(elem):

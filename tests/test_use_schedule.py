@@ -8,7 +8,7 @@ from geopandas import GeoDataFrame
 from geopandas.testing import assert_geodataframe_equal
 from genet import Stop, Route, Service, Schedule
 import genet.use.schedule as use_schedule
-from genet.outputs_handler import geojson as gngeojson
+from genet.output import geojson as gngeojson
 
 
 @pytest.fixture()

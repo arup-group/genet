@@ -3,7 +3,7 @@ from pandas import DataFrame, Timestamp, Timedelta
 from pandas.testing import assert_frame_equal
 
 from genet.exceptions import ServiceIndexError, ConflictingStopData, InconsistentVehicleModeError
-from genet.inputs_handler import read, matsim_reader, gtfs_reader
+from genet.input import read, matsim_reader, gtfs_reader
 from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.utils import plot, spatial
 from genet.validate import schedule_validation
@@ -131,12 +131,48 @@ def test_initiating_schedule(schedule):
                                'service_to_route_map': {'service': ['1', '2']},
                                'crs': 'epsg:27700'})
 
-
-def test_initiating_schedule_with_non_uniquely_indexed_objects():
+@pytest.fixture()
+def non_uniquely_index_schedule():
     route_1 = Route(route_short_name='name',
-                    mode='bus', id='',
+                    mode='bus', id='route_id',
                     stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
                            Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['13:00:00', '13:30:00'],
+                           'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    route_2 = Route(route_short_name='name_2',
+                    mode='bus', id='route_id',
+                    stops=[Stop(id='5', x=4, y=2, epsg='epsg:27700'), Stop(id='6', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='7', x=3, y=3, epsg='epsg:27700'), Stop(id='8', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['11:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_2_bus', 'veh_3_bus']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
+    service1 = Service(id='service_id', routes=[route_1, route_2])
+    service2 = Service(id='service_id', routes=[route_1, route_2])
+    return Schedule(epsg='epsg:27700', services=[service1, service2])
+
+
+def test_initiating_schedule_with_non_uniquely_indexed_objects_results_in_uniquely_defined_routes(non_uniquely_index_schedule):
+    assert non_uniquely_index_schedule.number_of_routes() == 4
+    assert set(non_uniquely_index_schedule.route_ids()) == {
+        'route_id', 'service_id_1', 'service_id_0_service_id_1', 'service_id_0_route_id'}
+
+
+def test_initiating_schedule_with_non_uniquely_indexed_objects_results_in_uniquely_defined_services(non_uniquely_index_schedule):
+    assert len(non_uniquely_index_schedule) == 2
+    assert set(non_uniquely_index_schedule.service_ids()) == {'service_id_0', 'service_id'}
+
+
+@pytest.fixture()
+def non_uniformly_projected_schedule():
+    route_1 = Route(route_short_name='name',
+                    mode='bus', id='',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:4326'), Stop(id='2', x=1, y=2, epsg='epsg:4326'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:4326'), Stop(id='4', x=7, y=5, epsg='epsg:4326')],
                     trips={'trip_id': ['1', '2'],
                            'trip_departure_time': ['13:00:00', '13:30:00'],
                            'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
@@ -153,9 +189,37 @@ def test_initiating_schedule_with_non_uniquely_indexed_objects():
                     departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
     service1 = Service(id='service', routes=[route_1, route_2])
     service2 = Service(id='service', routes=[route_1, route_2])
-    s = Schedule(epsg='epsg:27700', services=[service1, service2])
-    assert s.number_of_routes() == 4
-    assert len(s) == 2
+    s = Schedule(epsg='epsg:3857', services=[service1, service2])
+    return {
+        'schedule': s,
+        'unique_stop_projections': {'epsg:4326', 'epsg:27700'},
+        'target_projection': s.epsg
+    }
+
+
+def test_schedule_with_non_uniformly_projected_objects_does_not_automatically_reproject(non_uniformly_projected_schedule):
+    assert non_uniformly_projected_schedule['schedule'].stop('1').epsg == 'epsg:4326'
+    assert non_uniformly_projected_schedule['schedule'].stop('5').epsg == 'epsg:27700'
+    assert non_uniformly_projected_schedule['schedule'].epsg == 'epsg:3857'
+
+
+def test_schedule_with_non_uniformly_projected_objects_lists_correct_stop_projections(non_uniformly_projected_schedule):
+    assert non_uniformly_projected_schedule['schedule'].unique_stop_projections() == non_uniformly_projected_schedule['unique_stop_projections']
+
+
+def test_schedule_with_non_uniformly_projected_objects_fails_unique_stop_projects_test(non_uniformly_projected_schedule):
+    assert not non_uniformly_projected_schedule['schedule'].has_uniformly_projected_stops()
+
+
+def test_schedule_with_non_uniformly_projected_objects_can_be_projected_to_uniform_projection(
+        non_uniformly_projected_schedule):
+    assert non_uniformly_projected_schedule['schedule'].epsg == 'epsg:3857'
+    assert non_uniformly_projected_schedule['schedule'].unique_stop_projections() != {'epsg:3857'}
+
+    non_uniformly_projected_schedule['schedule'].reproject('epsg:3857')
+
+    assert non_uniformly_projected_schedule['schedule'].epsg == 'epsg:3857'
+    assert non_uniformly_projected_schedule['schedule'].unique_stop_projections() == {'epsg:3857'}
 
 
 def test__getitem__returns_a_service(test_service):
@@ -1324,11 +1388,14 @@ def test_iter_stops_returns_stops_objects(test_service, different_test_service):
 
 
 def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker, route):
-    mocker.patch.object(matsim_reader, 'read_schedule', return_value=([Service(id='1', routes=[route])], {}, {}))
+    mocker.patch.object(
+        matsim_reader,
+        'read_schedule',
+        return_value=([Service(id='1', routes=[route])], {}, {}, {'attributes': {}}))
 
     schedule = read.read_matsim_schedule(pt2matsim_schedule_file, epsg='epsg:27700')
 
-    matsim_reader.read_schedule.assert_called_once_with(pt2matsim_schedule_file, schedule.epsg)
+    matsim_reader.read_schedule.assert_called_once_with(pt2matsim_schedule_file, schedule.epsg, force_long_form_attributes=False)
 
 
 def test_read_matsim_schedule_returns_expected_schedule():

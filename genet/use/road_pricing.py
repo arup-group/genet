@@ -84,29 +84,31 @@ def merge_osm_tolls_and_network_snapping(osm_df, osm_to_network_dict):
     return df
 
 
-def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpath):
+def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpath, osm_dtype=str):
     """
-    Parse a genet.Network object and find edges whose ['attributes'][attribute_name]['text'] is present in a list
+    Parse a genet.Network object and find edges whose ['attributes'][attribute_name] is present in a list
     of OSM way ids
     :param network: a genet.Network object with attribute_name tags
     :param attribute_name: a string corresponding to the name of the link attribute of interest
     :param osm_csv_path: path to a .csv config file where OSM way ids are stored in column `osm_ids`
     :param outpath: path to a folder
+    :param osm_dtype: data type to pass to pandas.read_csv method. Should match the python dtype for OSM data tags
+        stored in the network as they are being matched
     :return: osm_df which is also written to .csv and a mapping between OSM IDs and network link IDs
     osm_to_network_dict which is also saved to .json in the `outpath` location
     """
 
-    osm_df = pd.read_csv(osm_csv_path, dtype=str)
+    osm_df = pd.read_csv(osm_csv_path, dtype={'osm_id': osm_dtype})
     osm_df['network_id'] = pd.Series(dtype=str)
 
-    target_osm_ids = set(osm_df['osm_id'].values)
+    target_osm_ids = set(osm_df['osm_id'])
 
     osm_to_network_dict = {}
 
     with tqdm(total=len(target_osm_ids)) as pbar:
         for target_id in target_osm_ids:
             links = network.extract_links_on_edge_attributes(
-                conditions={'attributes': {attribute_name: {'text': target_id}}},
+                conditions={'attributes': {attribute_name: target_id}},
             )
 
             # links is now a list of strings

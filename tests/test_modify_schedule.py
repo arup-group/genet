@@ -8,7 +8,7 @@ from pandas import DataFrame
 import genet.utils.spatial as spatial
 from genet import Stop, Route, Service, Schedule, Network, MaxStableSet
 from genet.modify import schedule as mod_schedule
-from genet.inputs_handler import read
+from genet.input import read
 from tests.fixtures import assert_semantically_equal
 
 
