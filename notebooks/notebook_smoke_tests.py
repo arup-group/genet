@@ -7,6 +7,8 @@ from datetime import datetime
 from pprint import pprint
 
 from colorama import Fore, Style
+from rich.console import Console
+from rich.table import Table
 
 TICK_SYMBOL = u'\u2713'
 CROSS_SYMBOL = u'\u274C'
@@ -79,9 +81,11 @@ def execute_notebook(notebook_path):
 
 def run_shell_command(shell_cmd):
     print(Fore.BLUE + ' '.join(shell_cmd))
+    start_time = datetime.now()
     rc = subprocess.call(' '.join(shell_cmd), shell=True)
+    running_time = datetime.now() - start_time
     print("{}Shell process return value was {}{}{}".format(Style.RESET_ALL, Fore.YELLOW, rc, Style.RESET_ALL))
-    return rc, ' '.join(shell_cmd)
+    return rc, ' '.join(shell_cmd), running_time
 
 
 def find_notebooks(notebook_dir):
@@ -90,14 +94,36 @@ def find_notebooks(notebook_dir):
     return notebook_paths
 
 
+def trim_time_delta(time_delta):
+    return str(time_delta).split('.')[0]
+
+
 def print_summary(notebook_results_dict):
-    print("\n                     Summary")
-    print("-------------------------------------------------------------")
+    console = Console()
+    console.print("")
+    passes = [ret_code for ret_code, time in notebook_results.values() if ret_code == 0]
+    failures = [ret_code for ret_code, time in notebook_results.values() if ret_code != 0]
+    table_caption = "{} failed, {} passed in [yellow bold]{}[/yellow bold]"\
+        .format(len(failures),
+                len(passes),
+                trim_time_delta(datetime.now() - start))
+    results_table = Table(show_header=True,
+                          header_style="bold magenta",
+                          title="Smoke Test Summary",
+                          caption=table_caption)
+    results_table.add_column("Notebook", justify="left")
+    results_table.add_column("Result", justify="left")
+    results_table.add_column("Time", style="dim")
     for notebook_file, result in notebook_results_dict.items():
         short_name = notebook_file.split('/')[-1]
-        colour = Fore.GREEN if result == 0 else Fore.RED
-        result_symbol = TICK_SYMBOL if result == 0 else CROSS_SYMBOL
-        print("{}: {}{}{}".format(short_name, colour, result_symbol, Style.RESET_ALL))
+        exit_code, duration = result
+        colour = "green" if exit_code == 0 else "red"
+        outcome = "PASSED" if exit_code == 0 else "FAILED"
+        results_table.add_row(short_name,
+                              "[{}]{}[/{}]".format(colour, outcome, colour),
+                              trim_time_delta(duration))
+    console.print(results_table)
+    console.print("")
 
 
 if __name__ == '__main__':
@@ -126,7 +152,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     pprint(notebooks, width=120)
-    return_code, cmd = install_jupyter_kernel(command_args['kernel_name'])
+    return_code, cmd, run_time = install_jupyter_kernel(command_args['kernel_name'])
     if return_code:
         print("{}Warning: Jupyter kernel installation shell command did not exit normally"
               " - this may cause problems later{}".format(Fore.RED, Style.RESET_ALL))
@@ -134,10 +160,10 @@ if __name__ == '__main__':
     notebook_results = {}
     for notebook in notebooks:
         print('------------------------------------------------------')
-        return_code, cmd = execute_notebook(notebook)
-        notebook_results[notebook] = return_code
+        return_code, cmd, run_time = execute_notebook(notebook)
+        notebook_results[notebook] = (return_code, run_time)
 
     print('------------------------------------------------------')
     print("\nFinished the smoke test in {}{}{}".format(Fore.YELLOW, datetime.now() - start, Style.RESET_ALL))
     print_summary(notebook_results)
-    sys.exit(sum(notebook_results.values()))
+    sys.exit(sum(ret_code for ret_code, time in notebook_results.values()))
