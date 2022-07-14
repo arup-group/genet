@@ -3,7 +3,6 @@
 <network>
 	<attributes>
 		<attribute name="crs" class="java.lang.String">epsg:27700</attribute>
-		<attribute name="simplified" class="java.lang.String">False</attribute>
 	</attributes>
     <nodes>
         <node id="21667818" x="528504.1342843144" y="182155.7435136598" >
@@ -16,7 +15,7 @@
 			<attributes>
 				<attribute name="osm:way:access" class="java.lang.String" >permissive</attribute>
 				<attribute name="osm:way:highway" class="java.lang.String" >unclassified</attribute>
-				<attribute name="osm:way:id" class="java.lang.Long" >26997928</attribute>
+				<attribute name="osm:way:id" class="java.lang.Float" >26997928.0</attribute>
 				<attribute name="osm:way:name" class="java.lang.String" >Brunswick Place</attribute>
 			</attributes>
 		</link>

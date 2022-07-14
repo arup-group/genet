@@ -14,11 +14,11 @@ from geopandas.testing import assert_geodataframe_equal
 from shapely.geometry import LineString, Polygon, Point
 
 from genet.core import Network
-from genet.inputs_handler import matsim_reader
-from tests.test_outputs_handler_matsim_xml_writer import network_dtd, schedule_dtd
+from genet.input import matsim_reader
+from tests.test_output_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule, Stop
 from genet.utils import plot, spatial
-from genet.inputs_handler import read
+from genet.input import read
 from tests.fixtures import assert_semantically_equal, route, stop_epsg_27700, network_object_from_test_data, \
     full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path
 
@@ -221,7 +221,7 @@ def network4():
 
 def test_network_graph_initiates_as_not_simplififed():
     n = Network('epsg:27700')
-    assert not n.graph.graph['simplified']
+    assert not n.is_simplified()
 
 
 def test__repr__shows_graph_info_and_schedule_info():
@@ -489,7 +489,7 @@ def test_adding_disjoint_networks_with_clashing_ids():
 def test_adding_simplified_network_and_not_throws_error():
     n = Network('epsg:2770')
     m = Network('epsg:2770')
-    m.graph.graph['simplified'] = True
+    m._mark_as_simplified()
 
     with pytest.raises(RuntimeError) as error_info:
         n.add(m)
@@ -557,7 +557,7 @@ def test_plot_schedule_saves_to_the_specified_directory(tmpdir, network_object_f
 
 def test_attempt_to_simplify_already_simplified_network_throws_error():
     n = Network('epsg:27700')
-    n.graph.graph["simplified"] = True
+    n._mark_as_simplified()
 
     with pytest.raises(RuntimeError) as error_info:
         n.simplify()
@@ -660,6 +660,7 @@ def test_simplify_does_not_oversimplify_PT_endpoints(puma_network_with_pt_stops_
 
 def test_simplify_keeps_pt_stop_loops(puma_network):
     puma_network.simplify()
+
     for stop in puma_network.schedule.stops():
         assert puma_network.link(stop.linkRefId)['from'] == puma_network.link(stop.linkRefId)['to']
         assert puma_network.link(stop.linkRefId)['length'] == 1
@@ -669,6 +670,19 @@ def test_simplified_network_saves_to_correct_dtds(tmpdir, network_dtd, network_w
     network_with_simplified_schema.write_to_matsim(tmpdir)
 
     generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+    xml_obj = lxml.etree.parse(generated_network_file_path)
+    assert network_dtd.validate(xml_obj), \
+        'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
+                                                                        network_dtd.error_log.filter_from_errors())
+
+
+def test_network_tagged_as_simplified_saves_to_correct_dtds(tmpdir, network_dtd):
+    n = Network(epsg='epsg:27700')
+    n._mark_as_simplified()
+
+    n.write_to_matsim(tmpdir)
+    generated_network_file_path = os.path.join(tmpdir, 'network.xml')
+
     xml_obj = lxml.etree.parse(generated_network_file_path)
     assert network_dtd.validate(xml_obj), \
         'Doc generated at {} is not valid against DTD due to {}'.format(generated_network_file_path,
@@ -709,7 +723,9 @@ def test_simplifying_network_with_multi_edges_resulting_in_multi_paths():
         'l_8': {'from': 'n_4', 'to': 'n_6', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
                 'modes': {'car'}}
     })
+
     n.simplify()
+
     assert set(n.link_simplification_map) == {'l_4', 'l_1', 'l_5', 'l_3', 'l_6', 'l_2'}
 
 
@@ -730,8 +746,14 @@ def test_reading_back_simplified_network():
         if 'attributes' in attribs:
             assert not 'geometry' in attribs['attributes']
             for k, v in attribs['attributes'].items():
-                if isinstance(v['text'], str):
-                    assert not ',' in v['text']
+                if isinstance(v, str):
+                    assert not ',' in v
+
+
+def test_simplified_tag_for_network_is_read_correctly_with_bool_attribute():
+    n = read.read_matsim(path_to_network=simplified_network, epsg='epsg:27700',
+                         path_to_schedule=simplified_schedule)
+    assert n.attributes['simplified']
 
 
 def test_network_with_missing_link_attribute_elem_text_is_read_and_able_to_save_again(tmpdir):
@@ -824,6 +846,7 @@ def test_link_attribute_data_under_keys_returns_dataframe_with_one_col_if_passed
 
 def test_link_attribute_data_under_keys_generates_key_for_nested_data(network1):
     df = network1.link_attribute_data_under_keys([{'attributes': {'osm:way:access': 'text'}}])
+
     assert isinstance(df, pd.DataFrame)
     assert 'attributes::osm:way:access::text' in df.columns
 
@@ -2058,75 +2081,62 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '0', 'to': '1', 's2_from': 1152921492875543713, 's2_to': 1152921335974974453,
          'length': 1748.4487354464366,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '0'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 0,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '1', 'to': '0', 's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
          'length': 1748.4487354464366,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '0'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 0,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '0', 'to': '2', 's2_from': 1152921492875543713, 's2_to': 384307157539499829,
          'length': 1748.4488584600201,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '100'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 100,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '2', 'to': '0', 's2_from': 384307157539499829, 's2_to': 1152921492875543713,
          'length': 1748.4488584600201,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '100'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 100,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '1', 'to': '0', 's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
          'length': 1748.4487354464366,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '400'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 400,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '0', 'to': '1', 's2_from': 1152921492875543713, 's2_to': 1152921335974974453,
          'length': 1748.4487354464366,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '400'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 400,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '2', 'to': '0', 's2_from': 384307157539499829, 's2_to': 1152921492875543713,
          'length': 1748.4488584600201,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '700'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 700,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '0', 'to': '2', 's2_from': 1152921492875543713, 's2_to': 384307157539499829,
          'length': 1748.4488584600201,
-         'attributes': {'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '700'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'unclassified'}}},
+         'attributes': {'osm:way:osmid': 700,
+                        'osm:way:highway': 'unclassified'}},
         {'permlanes': 3.0, 'freespeed': 12.5, 'capacity': 1800.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '2', 'to': '1', 's2_from': 384307157539499829, 's2_to': 1152921335974974453,
          'length': 3496.897593906457,
-         'attributes': {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
-                        'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '47007861'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'tertiary'}}},
+         'attributes': {'osm:way:lanes': '3',
+                        'osm:way:osmid': 47007861,
+                        'osm:way:highway': 'tertiary'}},
         {'permlanes': 3.0, 'freespeed': 12.5, 'capacity': 1800.0, 'oneway': '1', 'modes': ['walk', 'car', 'bike'],
          'from': '1', 'to': '0', 's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
          'length': 1748.4487354464366,
-         'attributes': {'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String', 'text': '3'},
-                        'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String', 'text': '47007861'},
-                        'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                            'text': 'tertiary'}}},
+         'attributes': {'osm:way:lanes': '3',
+                        'osm:way:osmid': 47007861,
+                        'osm:way:highway': 'tertiary'}},
         {'permlanes': 1.0, 'freespeed': 12.5, 'capacity': 600.0, 'oneway': '1',
          'modes': ['car', 'walk', 'bike'], 'from': '1', 'to': '0',
          's2_from': 1152921335974974453, 's2_to': 1152921492875543713,
          'length': 1748.4487354464366, 'attributes': {
-            'osm:way:osmid': {'name': 'osm:way:osmid', 'class': 'java.lang.String',
-                              'text': '47007862'},
-            'osm:way:lanes': {'name': 'osm:way:lanes', 'class': 'java.lang.String',
-                              'text': '3;2'},
-            'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
-                                'text': 'tertiary'}}}
+            'osm:way:osmid': 47007862,
+            'osm:way:lanes': '3;2',
+            'osm:way:highway': 'tertiary'}}
     ]
 
     cols = ['permlanes', 'freespeed', 'capacity', 'oneway', 'modes', 'from', 'to', 's2_from', 's2_to', 'length',
@@ -2141,6 +2151,7 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             try:
                 assert_semantically_equal(attribs_to_test, link_attrib)
                 satisfied = True
+                break
             except AssertionError:
                 pass
         assert satisfied
@@ -2150,7 +2161,7 @@ def test_read_matsim_network_with_duplicated_node_ids_records_removal_in_changel
     dup_nodes = {'21667818': [
         {'id': '21667818', 'x': 528504.1342843144, 'y': 182155.7435136598, 'lon': -0.14910908709500162,
          'lat': 51.52370573323939, 's2_id': 5221390302696205321}]}
-    mocker.patch.object(matsim_reader, 'read_network', return_value=(nx.MultiDiGraph(), 2, dup_nodes, {}))
+    mocker.patch.object(matsim_reader, 'read_network', return_value=(nx.MultiDiGraph(), 2, dup_nodes, {}, {}))
     network = read.read_matsim(path_to_network=pt2matsim_network_test_file, epsg='epsg:27700')
 
     correct_change_log_df = pd.DataFrame(
@@ -2177,7 +2188,7 @@ def test_read_matsim_network_with_duplicated_link_ids_records_reindexing_in_chan
     correct_link_id_map = {'1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 0},
                            '1_1': {'from': '25508485', 'to': '21667818', 'multi_edge_idx': 1}}
     mocker.patch.object(matsim_reader, 'read_network',
-                        return_value=(nx.MultiDiGraph(), correct_link_id_map, {}, dup_links))
+                        return_value=(nx.MultiDiGraph(), correct_link_id_map, {}, dup_links, {}))
     mocker.patch.object(Network, 'link', return_value={'heyooo': '1'})
     network = read.read_matsim(path_to_network=pt2matsim_network_test_file, epsg='epsg:27700')
 

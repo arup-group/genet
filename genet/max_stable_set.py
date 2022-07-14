@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from pyomo.environ import *  # noqa: F403
 
-import genet.outputs_handler.geojson as gngeojson
+import genet.output.geojson as gngeojson
 import genet.utils.dict_support as dict_support
 import genet.utils.graph_operations as graph_operations
 from genet.exceptions import InvalidMaxStableSetProblem

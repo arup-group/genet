@@ -10,7 +10,7 @@ from shapely.geometry import LineString, shape, GeometryCollection, MultiLineStr
 from shapely.ops import linemerge
 import pandas as pd
 import geopandas as gpd
-import genet.outputs_handler.geojson as gngeojson
+import genet.output.geojson as gngeojson
 from genet.exceptions import EmptySpatialTree
 
 APPROX_EARTH_RADIUS = 6371008.8

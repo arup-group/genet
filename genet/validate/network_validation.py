@@ -1,11 +1,10 @@
 import networkx as nx
-from genet.variables import NECESSARY_NETWORK_LINK_ATTRIBUTES
 
 
-def validate_link_data(link_attributes):
-    for necessary_link_attrib in NECESSARY_NETWORK_LINK_ATTRIBUTES:
-        if necessary_link_attrib not in link_attributes:
-            raise AttributeError('Attribute: {} missing from link: {}'.format(necessary_link_attrib, link_attributes))
+def validate_attribute_data(attributes, necessary_attributes):
+    missing_attribs = set(necessary_attributes) - set(attributes)
+    if missing_attribs:
+        raise AttributeError(f'Attributes: {missing_attribs} missing from data: {attributes}')
 
 
 def find_problem_nodes(G):

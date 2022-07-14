@@ -49,7 +49,6 @@ if __name__ == '__main__':
 
     logging.info('Reading in network at {}'.format(osm))
     n = read_osm(osm_file_path=osm, osm_read_config=config, num_processes=processes, epsg=projection)
-    # TODO uncomment when this functionality makes it to master
-    # for mode in ['walk', 'car', 'bike']:
-    #     n.retain_n_connected_subgraphs(n=connected_components, mode=mode)
+    for mode in ['walk', 'car', 'bike']:
+        n.retain_n_connected_subgraphs(n=connected_components, mode=mode)
     n.write_to_matsim(output_dir)

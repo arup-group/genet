@@ -6,7 +6,7 @@ import time
 
 from genet import read_matsim
 from genet.utils.persistence import ensure_dir
-from genet.outputs_handler.sanitiser import sanitise_dictionary
+from genet.output.sanitiser import sanitise_dictionary
 
 def write_scaled_vehicles(network, list_of_scales,output_dir):
     for i in list_of_scales:
