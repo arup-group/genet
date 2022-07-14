@@ -2,16 +2,12 @@ import argparse
 import glob
 import subprocess
 import sys
-
 from datetime import datetime
 from pprint import pprint
 
 from colorama import Fore, Style
 from rich.console import Console
 from rich.table import Table
-
-TICK_SYMBOL = u'\u2713'
-CROSS_SYMBOL = u'\u274C'
 
 
 def parse_args(cmd_args):
