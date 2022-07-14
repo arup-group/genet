@@ -10,7 +10,7 @@
   * Allows you to pass any data to network links and node, PT schedule stops, routes and services and have it be 
   saved to the MATSim network
 * Multimodal access/egress for PT stops 
-  * Script to add attributes to PT stops of various PT modes that allow agent to 
+  * Script to add attributes to PT stops of various PT modes that allow agents to 
   access via network or teleported modes
 
 ### Improvements
