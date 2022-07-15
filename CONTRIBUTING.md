@@ -57,14 +57,23 @@ To find beginner-friendly issues you may want to work on, look [here](https://gi
  covered by the tests (via an output file `reports/coverage/index.html` which can be viewed in a browser).
 3. Ensure the sample notebooks execute without error by running `./bash_scripts/notebooks-smoke-test.sh`. Problems in
 the core GeNet APIs or in the notebooks themselves can both cause notebook failures.
-4. Provide [docstrings](https://www.python.org/dev/peps/pep-0257/) for new methods
-5. Perform linting locally using ```flake8 . --max-line-length 120 --count  --show-source --statistics --exclude=scripts,tests```
+4. Provide [docstrings](https://www.python.org/dev/peps/pep-0257/) for new methods.
+5. Perform linting locally using ```./bash_scripts/lint-check.sh```
 6. Add or update dependencies in `requirements.txt` if applicable
 7. Ensure the CI build pipeline (Actions tab in GitHub) completes successfully for your branch. The pipeline performs
 automated `PEP8` checks and runs unit tests in a fresh environment, as well as installation of all dependencies.
 8. Update/add to or generate a new jupyter notebook in `notebooks` directory which takes the user through your new feature or
-change. You may use example data already in `example_data` directory of this repo, or add more (small amount of) data to
-it to show off your new features.
+change.
+   1. Jupyter notebooks are closely linked to the [wiki pages](https://github.com/arup-group/genet/wiki). 
+      1. Make sure you follow the naming convention: `number.number. Theme: Catchy Title`
+      2. Make sure you structure the notebook in a way that you would like to see it in a wiki page, with a lot of 
+      markdown cells containing quality descriptions. Use existing notebook as examples.
+   2. After your changes have been merged, you may like to update the wiki pages. To do this in an automated way:
+      1. Clone the wiki part of the repo: ```git clone https://github.com/arup-group/genet.wiki.git```
+      2. Run the `notebooks/generate_usage_wiki_from_notebooks.py` script, pointing at the folder containing the 
+      notebooks and the wiki repo folder to receive the output.
+   3. You may use example data already in `example_data` directory of this repo, or add more (small amount of) data to
+   it to show off your new features.
 9. Add section in the `README.md` which shows usage of your new feature. This can be paraphrased from the jupyter
 notebook in point above.
 10. If the feature is to be used in an automated workflow through the docker image, create n example script in the 

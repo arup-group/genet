@@ -7,7 +7,7 @@
 * Vehicle capacity and pce scaling
   * Conveniently save multiple `vehicle.xml` files for use with simulations at different scales: 1%, 5%, 10%, etc.
 * Ability to read and write additional attributes for different network and schedule elements
-  * Allows you to pass any data to network links and node, PT schedule stops, routes and services and have it be 
+  * Allows you to pass any data to network links and nodes, PT schedule stops, routes and services and have it be 
   saved to the MATSim network
 * Multimodal access/egress for PT stops 
   * Script to add attributes to PT stops of various PT modes that allow agents to 
