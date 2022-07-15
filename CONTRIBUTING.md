@@ -69,10 +69,7 @@ change.
       2. Make sure you structure the notebook in a way that you would like to see it in a wiki page, with a lot of 
       markdown cells containing quality descriptions. Use existing notebook as examples.
    2. After your changes have been merged, you may like to update the wiki pages. To do this in an automated way:
-      1. Clone the wiki part of the repo:
-         ```
-         git clone https://github.com/arup-group/genet.wiki.git
-         ```
+      1. Clone the wiki part of the repo: ```git clone https://github.com/arup-group/genet.wiki.git```
       2. Run the `notebooks/generate_usage_wiki_from_notebooks.py` script, pointing at the folder containing the 
       notebooks and the wiki repo folder to receive the output.
    3. You may use example data already in `example_data` directory of this repo, or add more (small amount of) data to
