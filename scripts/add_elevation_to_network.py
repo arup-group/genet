@@ -10,7 +10,7 @@ import genet.output.sanitiser as sanitiser
 import genet.utils.elevation as elevation
 
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Add elevation data to network nodes and validate it')
+    arg_parser = argparse.ArgumentParser(description='Add elevation data to network nodes, validate it, and calculate link slopes.')
 
     arg_parser.add_argument('-n',
                             '--network',
@@ -42,6 +42,11 @@ if __name__ == '__main__':
                             help='Whether node elevation data should be written as attribute to the network; defaults to True',
                             default=True)
 
+    arg_parser.add_argument('-ws',
+                            '--write_slope_to_network',
+                            help='Whether link slope data should be written as attribute to the network; defaults to True',
+                            default=True)
+
     arg_parser.add_argument('-sj',
                             '--save_jsons',
                             help='Whether elevation and slope dictionaries and report are saved; defaults to True',
@@ -54,6 +59,7 @@ if __name__ == '__main__':
     tif_null_value = args['null_value']
     output_dir = args['output_dir']
     write_elevation_to_network = args['write_elevation_to_network']
+    write_slope_to_network = args['write_slope_to_network']
     save_dict_to_json = args['save_jsons']
     elevation_output_dir = os.path.join(output_dir, 'elevation')
     ensure_dir(elevation_output_dir)
@@ -105,14 +111,15 @@ if __name__ == '__main__':
             json.dump(sanitiser.sanitise_dictionary(slope_dictionary), f, ensure_ascii=False, indent=4)
 
 
-    logging.info('Adding link slope as an additional attribute to the network')
-    attrib_dict = {}
-    for link_id in slope_dictionary.keys():
-        slope_value = slope_dictionary[link_id]['slope']
-        attrib_dict[link_id] = {
-            'attributes': {'slope': {'name': 'slope', 'class': 'java.lang.String', 'text': slope_value}}}
+    if write_slope_to_network is True:
+        logging.info('Adding link slope as an additional attribute to the network')
+        attrib_dict = {}
+        for link_id in slope_dictionary.keys():
+            slope_value = slope_dictionary[link_id]['slope']
+            attrib_dict[link_id] = {
+                'attributes': {'slope': {'name': 'slope', 'class': 'java.lang.String', 'text': slope_value}}}
 
-    n.apply_attributes_to_links(attrib_dict)
+        n.apply_attributes_to_links(attrib_dict)
 
 
     logging.info('Writing the updated network')
