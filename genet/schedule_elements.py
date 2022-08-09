@@ -13,9 +13,9 @@ from typing import Union, Dict, List, Set, Tuple
 import dictdiffer
 import genet.modify.change_log as change_log
 import genet.modify.schedule as mod_schedule
-import genet.outputs_handler.geojson as gngeojson
-import genet.outputs_handler.matsim_xml_writer as matsim_xml_writer
-import genet.outputs_handler.sanitiser as sanitiser
+import genet.output.geojson as gngeojson
+import genet.output.matsim_xml_writer as matsim_xml_writer
+import genet.output.sanitiser as sanitiser
 import genet.use.schedule as use_schedule
 import genet.utils.dict_support as dict_support
 import genet.utils.graph_operations as graph_operations
@@ -79,6 +79,25 @@ class ScheduleElement:
 
     def change_log(self):
         return self._graph.graph['change_log']
+
+    @abstractmethod
+    def _add_additional_attribute_to_graph(self, k, v):
+        pass
+
+    def add_additional_attributes(self, attribs: dict):
+        """
+        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
+        :param attribs: the additional attributes {attribute_name: attribute_value}
+        :return:
+        """
+        for k, v in attribs.items():
+            if k not in self.__dict__:
+                setattr(self, k, v)
+                if '_graph' in self.__dict__:
+                    self._add_additional_attribute_to_graph(k, v)
+
+    def has_attrib(self, attrib_name):
+        return attrib_name in self.__dict__
 
     @abstractmethod
     def reference_nodes(self):
@@ -206,9 +225,8 @@ class ScheduleElement:
         :param new_epsg: 'epsg:1234'
         :return:
         """
-        if self.epsg != new_epsg:
+        if not self.stops_have_this_projection(new_epsg):
             g = self.graph()
-
             reprojected_node_attribs = parallel.multiprocess_wrap(
                 data=dict(g.nodes(data=True)),
                 split=parallel.split_dict,
@@ -219,6 +237,15 @@ class ScheduleElement:
             )
             nx.set_node_attributes(self._graph, reprojected_node_attribs)
             self.epsg = new_epsg
+
+    def unique_stop_projections(self):
+        return {x[1] for x in self.graph().nodes(data='epsg')}
+
+    def stops_have_this_projection(self, epsg):
+        return self.unique_stop_projections() == {epsg}
+
+    def has_uniformly_projected_stops(self):
+        return bool(len(self.unique_stop_projections()) == 1)
 
     def find_epsg(self):
         if 'crs' in self._graph.graph:
@@ -503,15 +530,8 @@ class Route(ScheduleElement):
         route_graph.graph['change_log'] = change_log.ChangeLog()
         return route_graph
 
-    def add_additional_attributes(self, attribs: dict):
-        """
-        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
-        :param attribs: the additional attributes {attribute_name: attribute_value}
-        :return:
-        """
-        for k, v in attribs.items():
-            if k not in self.__dict__:
-                setattr(self, k, v)
+    def _add_additional_attribute_to_graph(self, k, v):
+        self._graph.graph['routes'][self.id][k] = v
 
     def reference_nodes(self):
         return self.route_reference_nodes(self.id)
@@ -886,15 +906,8 @@ class Service(ScheduleElement):
         service_graph.graph['service_to_route_map'] = {_id: [route.id for route in routes]}
         return service_graph
 
-    def add_additional_attributes(self, attribs: dict):
-        """
-        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
-        :param attribs: the additional attributes {attribute_name: attribute_value}
-        :return:
-        """
-        for k, v in attribs.items():
-            if k not in self.__dict__:
-                setattr(self, k, v)
+    def _add_additional_attribute_to_graph(self, k, v):
+        self._graph.graph['services'][self.id][k] = v
 
     def _ensure_unique_routes(self, routes: List[Route]):
         unique_routes = []
@@ -1218,7 +1231,8 @@ class Schedule(ScheduleElement):
                  minimal_transfer_times: Dict[str, Dict[str, float]] = None,
                  vehicles=None,
                  vehicle_types: Union[str, dict] = pkgutil.get_data(__name__, os.path.join("configs", "vehicles",
-                                                                                           "vehicle_definitions.yml"))):
+                                                                                           "vehicle_definitions.yml")),
+                 **kwargs):
         if isinstance(vehicle_types, dict):
             self.vehicle_types = vehicle_types
         else:
@@ -1262,6 +1276,7 @@ class Schedule(ScheduleElement):
                 services = []
             self._graph = self._build_graph(services)
         self.init_epsg = epsg
+        self.attributes = {'crs': epsg}
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
         if minimal_transfer_times is not None:
             self.minimal_transfer_times = minimal_transfer_times
@@ -1273,6 +1288,10 @@ class Schedule(ScheduleElement):
         else:
             self.vehicles = vehicles
         self.validate_vehicle_definitions()
+
+        if kwargs:
+            self.add_additional_attributes(kwargs)
+
         super().__init__()
 
     def __nonzero__(self):
@@ -2277,7 +2296,8 @@ class Schedule(ScheduleElement):
         self._verify_no_id_change(new_attributes)
         services = list(new_attributes.keys())
         old_attribs = [deepcopy(self._graph.graph['services'][service]) for service in services]
-        new_attribs = [{**self._graph.graph['services'][service], **new_attributes[service]} for service in services]
+        new_attribs = [dict_support.set_nested_value(self._graph.graph['services'][service], new_attributes[service])
+                       for service in services]
 
         self._graph.graph['change_log'] = self.change_log().modify_bunch('service', services, old_attribs, services,
                                                                          new_attribs)
@@ -2321,7 +2341,8 @@ class Schedule(ScheduleElement):
 
         routes = list(new_attributes.keys())
         old_attribs = [deepcopy(self._graph.graph['routes'][route]) for route in routes]
-        new_attribs = [{**self._graph.graph['routes'][route], **new_attributes[route]} for route in routes]
+        new_attribs = [dict_support.set_nested_value(self._graph.graph['routes'][route], new_attributes[route]) for
+                       route in routes]
 
         self._graph.graph['change_log'] = self.change_log().modify_bunch('route', routes, old_attribs, routes,
                                                                          new_attribs)
@@ -2341,7 +2362,7 @@ class Schedule(ScheduleElement):
         self._verify_no_id_change(new_attributes)
         stops = list(new_attributes.keys())
         old_attribs = [deepcopy(self._graph.nodes[stop]) for stop in stops]
-        new_attribs = [{**self._graph.nodes[stop], **new_attributes[stop]} for stop in stops]
+        new_attribs = [dict_support.set_nested_value(self._graph.nodes[stop], new_attributes[stop]) for stop in stops]
 
         self._graph.graph['change_log'] = self.change_log().modify_bunch('stop', stops, old_attribs, stops, new_attribs)
 
@@ -2798,9 +2819,16 @@ class Schedule(ScheduleElement):
         logging.info('Finished generating standard outputs. Zipping folder.')
         persistence.zip_folder(output_dir)
 
-    def write_to_matsim(self, output_dir):
+    def write_to_matsim(self, output_dir, reproj_processes=1):
+        """
+        Save to MATSim XML format.
+        :param output_dir: path to output directory
+        :param reproj_processes: you can set this in case you have a lot of stops and your stops need to be reprojected
+            it splits the process across given number of processes.
+        :return:
+        """
         persistence.ensure_dir(output_dir)
-        matsim_xml_writer.write_matsim_schedule(output_dir, self)
+        matsim_xml_writer.write_matsim_schedule(output_dir, self, reproj_processes=reproj_processes)
         matsim_xml_writer.write_vehicles(output_dir, self.vehicles, self.vehicle_types)
         self.write_extras(output_dir)
 

@@ -95,3 +95,10 @@ class PartialMaxStableSetProblem(Exception):
     Raised when the maximum stable set to snap PT to the network is partial - some stops found nothing to snap to
     """
     pass
+
+
+class MalformedAdditionalAttributeError(Exception):
+    """
+    Raised when additional attributes can not be saved to MATSim network
+    """
+    pass

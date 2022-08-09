@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v2.dtd">
+<network>
+    <attributes>
+        <attribute name="crs" class="java.lang.String">epsg:27700</attribute>
+    </attributes>
+    <nodes>
+        <node id="0" x="1" y="2">
+            <attributes>
+                <attribute name="osm:node:data" class="java.lang.Integer">3</attribute>
+            </attributes>
+        </node>
+        <node id="1" x="2" y="2"/>
+    </nodes>
+    <links capperiod="01:00:00" effectivecellsize="7.5" effectivelanewidth="3.75">
+        <link id="0" from="0" to="1" length="1" freespeed="1" capacity="20" permlanes="1" oneway="1" modes="car"/>
+    </links>
+</network>

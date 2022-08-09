@@ -2,6 +2,9 @@
 <!DOCTYPE transitSchedule SYSTEM "http://www.matsim.org/files/dtd/transitSchedule_v2.dtd">
 
 <transitSchedule>
+    <attributes>
+		<attribute name="crs" class="java.lang.String">epsg:27700</attribute>
+	</attributes>
     <transitStops>
         <stopFacility id="26997928P" x="528464.1342843144" y="182179.7435136598" name="Brunswick Place (Stop P)" isBlocking="false"/>
 		<stopFacility id="26997928P.link:1" x="528464.1342843144" y="182179.7435136598" linkRefId="1" name="Brunswick Place (Stop P)" isBlocking="false"/>

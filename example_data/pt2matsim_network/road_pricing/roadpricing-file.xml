@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <!DOCTYPE roadpricing SYSTEM "http://www.matsim.org/files/dtd/roadpricing_v1.dtd">
-<roadpricing type="cordon" name="cordon-toll">
-  <description>A simple cordon toll scheme</description>
+<roadpricing type="link" name="simple-toll">
+  <description>A simple toll scheme</description>
   <links>
     <!-- === A3211 === -->
     <link id="998">

@@ -7,7 +7,7 @@ import pytest
 from lxml.etree import Element
 from pandas.testing import assert_frame_equal
 
-from genet.inputs_handler import read
+from genet.input import read
 from genet.use import road_pricing
 
 # paths in use assume we're in the repo's root, so make sure we always are
@@ -39,11 +39,13 @@ def osm_network_snapping(network_object, tmpdir):
         network_object,
         'osm:way:id',
         'tests/test_data/road_pricing/osm_toll_id_ref.csv',
-        tmpdir)
+        tmpdir,
+        osm_dtype=str
+    )
 
 @pytest.fixture
 def osm_tolls_df():
-    return pd.DataFrame({'toll_amount': {0: '1.9', 1: '1.9', 2: '1.9', 3: '1.9', 4: '1.9', 5: '1.9', 6: '1.9', 7: '1.9',
+    df = pd.DataFrame({'toll_amount': {0: '1.9', 1: '1.9', 2: '1.9', 3: '1.9', 4: '1.9', 5: '1.9', 6: '1.9', 7: '1.9',
                                   8: '1.9', 9: '1.9', 10: '1.9', 11: '1.9', 12: '1.9', 13: '1.9', 14: '1.9',
                                   15: '1.9', 16: '1.9', 17: '1.9', 18: '1.9', 19: '1.9', 20: '1.9', 21: '1.9',
                                   22: '1.9', 23: '1.9', 24: '1.9', 25: '1.9', 26: '1.9', 27: '1.9', 28: '1.9',
@@ -148,6 +150,8 @@ def osm_tolls_df():
                                       143: '1089', 144: '1090', 145: '1091', 146: '1092', 147: '1093', 148: '1094',
                                       149: '1095', 150: '1096', 151: '1097', 152: '1098', 153: '1099', 154: '4946',
                                       155: '3986', 156: '4725', 157: '4726'}}).sort_index(axis=1)
+    df['toll_amount'] = df['toll_amount'].astype(float)
+    return df
 
 
 @pytest.fixture
@@ -196,7 +200,7 @@ def test_saving_toll_to_csv_produces_correct_csv(toll, osm_tolls_df, tmpdir):
     assert not os.path.exists(expected_csv)
     toll.write_to_csv(tmpdir)
     assert os.path.exists(expected_csv)
-    df_from_csv = pd.read_csv(expected_csv, dtype=str)
+    df_from_csv = pd.read_csv(expected_csv, dtype={'toll_amount': float, 'network_link_id': str})
     assert_frame_equal(
         df_from_csv.sort_index(axis=1),
         osm_tolls_df,
