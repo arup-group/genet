@@ -2269,26 +2269,32 @@ class Network:
         Returns a report with summary statistics for the network and the schedule.
         """
         logging.info('Creating a summary report')
-        report = {
-            'network_graph_info': {},
-            'schedule_info': {},
-            'modes': {},
-        }
-
-        schedule_stats = {'Number of services': self.schedule.__len__(),
-                          'Number of routes': self.schedule.number_of_routes(),
-                          'Number of stops:': len(self.schedule.reference_nodes())}
+        report = {}
 
         network_stats = {'Number of network links': nx.number_of_nodes(self.graph),
                          'Number of network nodes': nx.number_of_edges(self.graph)}
-
         report['network_graph_info'] = network_stats
-        report['schedule_info'] = schedule_stats
-        report['modes'] = {'Modes on network links': self.modes(),
-                           'Modes in schedule': self.schedule.modes()}
+        report['modes'] = {'Modes on network links': self.modes()}
 
-        # TO-DO
-        # - summary by mode
-        # - summary of OSM tags
+        highway_tags = self.link_attribute_data_under_key({'attributes': 'osm:way:highway'})
+        highway_tags = set(itertools.chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+        osm_highway_tags = {}
+        for tag in highway_tags:
+            tag_links = self.extract_links_on_edge_attributes(conditions={'attributes': {'osm:way:highway': tag}},
+                                                              mixed_dtypes=True)
+            osm_highway_tags[tag] = len(tag_links)
+        report['osm_highway_tags'] = {'Number of links by tag': osm_highway_tags}
+
+        links_by_mode = {}
+        for mode in self.modes():
+            mode_links = self.extract_links_on_edge_attributes(conditions={'modes': mode}, mixed_dtypes=True)
+            links_by_mode[mode] = len(mode_links)
+
+        if self.schedule:
+            schedule_stats = {'Number of services': self.schedule.__len__(),
+                              'Number of routes': self.schedule.number_of_routes(),
+                              'Number of stops:': len(self.schedule.reference_nodes())}
+            report['schedule_info'] = schedule_stats
+            report['modes'] = {'Modes in schedule': self.schedule.modes()}
 
         return report
