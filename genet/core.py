@@ -1999,12 +1999,12 @@ class Network:
         return [route.id for route in self.schedule.routes() if
                 not route.has_network_route() or not self.is_valid_network_route(route)]
 
-    def generate_validation_report(self, link_length_threshold=1000):
+    def generate_validation_report(self, link_metre_length_threshold=1000):
         """
         Generates a dictionary with keys: 'graph', 'schedule' and 'routing' describing validity of the Network's
         underlying graph, the schedule services and then the intersection of the two which is the routing of schedule
         services onto the graph.
-        :param link_length_threshold: in meters defaults to 1000, i.e. 1km
+        :param link_metre_length_threshold: in meters defaults to 1000, i.e. 1km
         :return:
         """
         logging.info('Checking validity of the Network')
@@ -2021,16 +2021,16 @@ class Network:
             report['graph']['graph_connectivity'][mode] = network_validation.describe_graph_connectivity(G_mode)
 
         def links_over_threshold_length(value):
-            return value >= link_length_threshold
+            return value >= link_metre_length_threshold
 
-        links_over_1km_length = self.extract_links_on_edge_attributes(
+        links_over_threshold = self.extract_links_on_edge_attributes(
             conditions={'length': links_over_threshold_length})
 
         report['graph']['link_attributes'] = {
-            'links_over_1km_length': {
-                'number_of': len(links_over_1km_length),
-                'percentage': len(links_over_1km_length) / self.graph.number_of_edges(),
-                'link_ids': links_over_1km_length
+            f'links_over_{link_metre_length_threshold}_length': {
+                'number_of': len(links_over_threshold),
+                'percentage': len(links_over_threshold) / self.graph.number_of_edges(),
+                'link_ids': links_over_threshold
             }
         }
 
