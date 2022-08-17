@@ -2651,6 +2651,32 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
     assert_semantically_equal(report, correct_report)
 
 
+def test_long_links_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': 10000, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['links_over_1000_length'],
+        {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+    )
+
+
+def test_values_of_ids_are_not_flagged_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('0', 1, 2, attribs={'length': 1, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['zero_attributes'],
+        {}
+    )
+
+
 def test_zero_value_attributes_show_up_in_validation_report():
     n = Network('epsg:27700')
     n.add_link('1', 1, 2, attribs={'length': 0, 'capacity': 0.0, 'freespeed': '0.0', "modes": ['car', 'bus']})

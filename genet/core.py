@@ -2026,31 +2026,19 @@ class Network:
         def links_over_threshold_length(value):
             return value >= link_metre_length_threshold
 
-        links_over_threshold = self.extract_links_on_edge_attributes(
-            conditions={'length': links_over_threshold_length})
-
-        report['graph']['link_attributes'] = {
-            f'links_over_{link_metre_length_threshold}_length': {
-                'number_of': len(links_over_threshold),
-                'percentage': len(links_over_threshold) / self.graph.number_of_edges(),
-                'link_ids': links_over_threshold
-            }
-        }
+        report['graph']['link_attributes'] = {}
+        report['graph']['link_attributes']['links_over_1000_length'] = self.report_on_link_attribute_condition(
+            'length', links_over_threshold_length)
 
         def zero_value(value):
             return (value == 0) or (value == '0') or (value == '0.0')
 
         report['graph']['link_attributes']['zero_attributes'] = {}
-        for attrib in [d.name for d in graph_operations.get_attribute_schema(self.links()).descendants]:
-            links_with_zero_attrib = self.extract_links_on_edge_attributes(
-                conditions={attrib: zero_value}, mixed_dtypes=False)
-            if links_with_zero_attrib:
+        for attrib in {d.name for d in graph_operations.get_attribute_schema(self.links()).descendants} - {'id'}:
+            links_with_zero_attrib = self.report_on_link_attribute_condition(attrib, zero_value)
+            if links_with_zero_attrib['number_of']:
                 logging.warning(f'{len(links_with_zero_attrib)} of links have values of 0 for `{attrib}`')
-                report['graph']['link_attributes']['zero_attributes'][attrib] = {
-                    'number_of': len(links_with_zero_attrib),
-                    'percentage': len(links_with_zero_attrib) / self.graph.number_of_edges(),
-                    'link_ids': links_with_zero_attrib
-                }
+                report['graph']['link_attributes']['zero_attributes'][attrib] = links_with_zero_attrib
 
         if self.schedule:
             report['schedule'] = self.schedule.generate_validation_report()
@@ -2068,6 +2056,20 @@ class Network:
                 'route_to_crow_fly_ratio': route_to_crow_fly_ratio
             }
         return report
+
+    def report_on_link_attribute_condition(self, attribute, condition):
+        """
+        :param attribute: one of the link attributes, e.g. 'length'
+        :param condition: callable, conditon for link['attribute'] to satisfy
+        :return:
+        """
+        links_satifying_condition = self.extract_links_on_edge_attributes(
+            conditions={attribute: condition}, mixed_dtypes=False)
+        return {
+            'number_of': len(links_satifying_condition),
+            'percentage': len(links_satifying_condition) / self.graph.number_of_edges(),
+            'link_ids': links_satifying_condition
+        }
 
     def check_connectivity_for_mode(self, mode):
         logging.info(f'Checking network connectivity for mode: {mode}')
