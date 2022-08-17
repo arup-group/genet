@@ -2263,3 +2263,32 @@ class Network:
             slope_dict[link_id] = {'slope': link_slope}
 
         return slope_dict
+
+    def summary(self):
+        """
+        Returns a report with summary statistics for the network and the schedule.
+        """
+        logging.info('Creating a summary report')
+        report = {
+            'network_graph_info': {},
+            'schedule_info': {},
+            'modes': {},
+        }
+
+        schedule_stats = {'Number of services': self.schedule.__len__(),
+                          'Number of routes': self.schedule.number_of_routes(),
+                          'Number of stops:': len(self.schedule.reference_nodes())}
+
+        network_stats = {'Number of network links': nx.number_of_nodes(self.graph),
+                         'Number of network nodes': nx.number_of_edges(self.graph)}
+
+        report['network_graph_info'] = network_stats
+        report['schedule_info'] = schedule_stats
+        report['modes'] = {'Modes on network links': self.modes(),
+                           'Modes in schedule': self.schedule.modes()}
+
+        # TO-DO
+        # - summary by mode
+        # - summary of OSM tags
+
+        return report
