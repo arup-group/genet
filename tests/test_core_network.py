@@ -18,6 +18,7 @@ from genet.input import matsim_reader
 from tests.test_output_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule, Stop
 from genet.utils import plot, spatial
+from genet.validate import network_validation
 from genet.input import read
 from tests.fixtures import assert_semantically_equal, route, stop_epsg_27700, network_object_from_test_data, \
     full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path
@@ -2591,7 +2592,7 @@ def test_generate_validation_report_with_pt2matsim_network(network_object_from_t
                 'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
                          'number_of_connected_subgraphs': 0}},
             'link_attributes': {
-                'links_over_1km_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
+                'links_over_1000_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
                 'zero_attributes': {}}},
         'schedule': {
             'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
@@ -2631,7 +2632,7 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
                                             'number_of_connected_subgraphs': 0},
                                    'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
                                             'number_of_connected_subgraphs': 0}},
-            'link_attributes': {'links_over_1km_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
+            'link_attributes': {'links_over_1000_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
                                 'zero_attributes': {}}},
         'schedule': {'schedule_level': {'is_valid_schedule': True, 'invalid_stages': [], 'has_valid_services': True,
                                         'invalid_services': []},
@@ -2656,18 +2657,25 @@ def test_zero_value_attributes_show_up_in_validation_report():
     n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
 
     report = n.generate_validation_report()
-    correct_report = {'graph': {
-        'graph_connectivity': {
-            'car': {'problem_nodes': {'dead_ends': [3], 'unreachable_node': [1]}, 'number_of_connected_subgraphs': 3},
-            'walk': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0},
-            'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0}},
-        'link_attributes': {
-            'links_over_1km_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
-            'zero_attributes': {
-                'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
-                'capacity': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
-                'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}}}}}
-    assert_semantically_equal(report, correct_report)
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['zero_attributes'],
+        {
+            'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'capacity': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+def test_check_connectivity_for_mode_warns_of_graphs_with_more_than_single_component(mocker, caplog):
+    mocker.patch.object(network_validation, 'describe_graph_connectivity',
+                        return_value={'problem_nodes': {'dead_ends': [], 'unreachable_node': ['1']},
+                                      'number_of_connected_subgraphs': 2})
+
+    Network('epsg:27700').check_connectivity_for_mode('car')
+
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'more than one connected component' in caplog.records[0].message
 
 
 def test_write_to_matsim_generates_three_matsim_files(network_object_from_test_data, tmpdir):

@@ -1999,26 +1999,29 @@ class Network:
         return [route.id for route in self.schedule.routes() if
                 not route.has_network_route() or not self.is_valid_network_route(route)]
 
-    def generate_validation_report(self, link_metre_length_threshold=1000):
+    def generate_validation_report(self, modes=None, link_metre_length_threshold=1000):
         """
         Generates a dictionary with keys: 'graph', 'schedule' and 'routing' describing validity of the Network's
         underlying graph, the schedule services and then the intersection of the two which is the routing of schedule
         services onto the graph.
+        :param modes: list of modes in the network that need to be checked for strong connectivity. Defaults to
+            'car', 'walk' and 'bike'
         :param link_metre_length_threshold: in meters defaults to 1000, i.e. 1km
         :return:
         """
         logging.info('Checking validity of the Network')
         logging.info('Checking validity of the Network graph')
         report = {}
+
         # describe network connectivity
-        modes = ['car', 'walk', 'bike']
-        report['graph'] = {'graph_connectivity': {}}
+        if modes is None:
+            modes = ['car', 'walk', 'bike']
+            logging.info(f'Defaulting to checking graph connectivity for modes: {modes}. You can change this by '
+                         'passing a `modes` param')
+        graph_connectivity = {}
         for mode in modes:
-            logging.info(f'Checking network connectivity for mode: {mode}')
-            # subgraph for the mode to be tested
-            G_mode = self.modal_subgraph(mode)
-            # calculate how many connected subgraphs there are
-            report['graph']['graph_connectivity'][mode] = network_validation.describe_graph_connectivity(G_mode)
+            graph_connectivity[mode] = self.check_connectivity_for_mode(mode)
+        report['graph'] = {'graph_connectivity': graph_connectivity}
 
         def links_over_threshold_length(value):
             return value >= link_metre_length_threshold
@@ -2065,6 +2068,23 @@ class Network:
                 'route_to_crow_fly_ratio': route_to_crow_fly_ratio
             }
         return report
+
+    def check_connectivity_for_mode(self, mode):
+        logging.info(f'Checking network connectivity for mode: {mode}')
+        # subgraph for the mode to be tested
+        G_mode = self.modal_subgraph(mode)
+        # calculate how many connected subgraphs there are
+        con_desc = network_validation.describe_graph_connectivity(G_mode)
+        no_of_components = con_desc["number_of_connected_subgraphs"]
+        logging.info(f'The graph for mode: {mode} has: '
+                     f'{no_of_components} connected components, '
+                     f'{len(con_desc["problem_nodes"]["dead_ends"])} sinks/dead_ends and '
+                     f'{len(con_desc["problem_nodes"]["unreachable_node"])} sources/unreachable nodes.')
+        if no_of_components > 1:
+            logging.warning(f'The graph has more than one connected component for mode {mode}! '
+                            'If this is not expected, consider using the `connect_components` method to connect the '
+                            'components, or `retain_n_connected_subgraphs` with `n=1` to extract the largest component')
+        return con_desc
 
     def generate_standard_outputs(self, output_dir, gtfs_day='19700101', include_shp_files=False):
         """
