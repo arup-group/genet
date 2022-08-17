@@ -2593,7 +2593,10 @@ def test_generate_validation_report_with_pt2matsim_network(network_object_from_t
                          'number_of_connected_subgraphs': 0}},
             'link_attributes': {
                 'links_over_1000_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
-                'zero_attributes': {}}},
+                'zero_attributes': {},
+                'negative_attributes': {},
+                'infinite_attributes': {}
+            }},
         'schedule': {
             'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
                                'has_valid_services': False, 'invalid_services': ['10314']},
@@ -2633,7 +2636,10 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
                                    'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
                                             'number_of_connected_subgraphs': 0}},
             'link_attributes': {'links_over_1000_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
-                                'zero_attributes': {}}},
+                                'zero_attributes': {},
+                                'negative_attributes': {},
+                                'infinite_attributes': {}
+                                }},
         'schedule': {'schedule_level': {'is_valid_schedule': True, 'invalid_stages': [], 'has_valid_services': True,
                                         'invalid_services': []},
                      'service_level': {
@@ -2664,15 +2670,46 @@ def test_long_links_show_up_in_validation_report():
     )
 
 
-def test_values_of_ids_are_not_flagged_in_validation_report():
+offending_link_attribute_values_and_names = [('zero', '0'), ('negative', '-1'), ('infinite', 'inf'), ('fractional', '0.1')]
+
+@pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
+def test_values_of_ids_are_not_flagged_in_validation_report(value, offending_value):
     n = Network('epsg:27700')
-    n.add_link('0', 1, 2, attribs={'length': 1, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link(offending_value, 1, 2, attribs={'length': 1, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
     n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
 
     report = n.generate_validation_report()
 
     assert_semantically_equal(
-        report['graph']['link_attributes']['zero_attributes'],
+        report['graph']['link_attributes'][f'{value}_attributes'],
+        {}
+    )
+
+
+@pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
+def test_values_of_from_node_are_not_flagged_in_validation_report(value, offending_value):
+    n = Network('epsg:27700')
+    n.add_link('1', offending_value, 2, attribs={'length': 1, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes'][f'{value}_attributes'],
+        {}
+    )
+
+
+@pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
+def test_values_of_to_node_are_not_flagged_in_validation_report(value, offending_value):
+    n = Network('epsg:27700')
+    n.add_link('1', 1, offending_value, attribs={'length': 1, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes'][f'{value}_attributes'],
         {}
     )
 
@@ -2692,6 +2729,55 @@ def test_zero_value_attributes_show_up_in_validation_report():
             'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
         }
     )
+
+
+def test_negative_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': -1, 'capacity': 1, 'freespeed': '-5', "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['negative_attributes'],
+        {
+            'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_infinite_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': float('inf'), 'capacity': 0.0, 'freespeed': 'inf', "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['infinite_attributes'],
+        {
+            'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_fractional_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': 0.1, 'capacity': '0.0', 'freespeed': '0.2', "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['fractional_attributes'],
+        {
+            'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
 
 def test_check_connectivity_for_mode_warns_of_graphs_with_more_than_single_component(mocker, caplog):
     mocker.patch.object(network_validation, 'describe_graph_connectivity',

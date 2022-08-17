@@ -2023,22 +2023,27 @@ class Network:
             graph_connectivity[mode] = self.check_connectivity_for_mode(mode)
         report['graph'] = {'graph_connectivity': graph_connectivity}
 
+        # attribute checks
+        link_attribute_validation_toolbox = network_validation.get_link_attribute_validation_toolbox()
+        report['graph']['link_attributes'] = {f'{k}_attributes': {} for k in link_attribute_validation_toolbox}
+
+        # checks on length attribute specifically
         def links_over_threshold_length(value):
             return value >= link_metre_length_threshold
 
-        report['graph']['link_attributes'] = {}
         report['graph']['link_attributes']['links_over_1000_length'] = self.report_on_link_attribute_condition(
             'length', links_over_threshold_length)
 
-        def zero_value(value):
-            return (value == 0) or (value == '0') or (value == '0.0')
-
-        report['graph']['link_attributes']['zero_attributes'] = {}
-        for attrib in {d.name for d in graph_operations.get_attribute_schema(self.links()).descendants} - {'id'}:
-            links_with_zero_attrib = self.report_on_link_attribute_condition(attrib, zero_value)
-            if links_with_zero_attrib['number_of']:
-                logging.warning(f'{len(links_with_zero_attrib)} of links have values of 0 for `{attrib}`')
-                report['graph']['link_attributes']['zero_attributes'][attrib] = links_with_zero_attrib
+        # more general attribute value checks
+        link_attributes = {d.name for d in graph_operations.get_attribute_schema(self.links()).descendants}
+        for attrib in link_attributes - {'id', 'from', 'to'}:
+            logging.info(f'Checking link values for {attrib}')
+            for value, condition in link_attribute_validation_toolbox.items():
+                links_satifying_condition = self.report_on_link_attribute_condition(attrib, condition)
+                if links_satifying_condition['number_of']:
+                    logging.warning(
+                        f'{links_satifying_condition["number_of"]} of links have {value} values for `{attrib}`')
+                    report['graph']['link_attributes'][f'{value}_attributes'][attrib] = links_satifying_condition
 
         if self.schedule:
             report['schedule'] = self.schedule.generate_validation_report()
@@ -2063,8 +2068,7 @@ class Network:
         :param condition: callable, conditon for link['attribute'] to satisfy
         :return:
         """
-        links_satifying_condition = self.extract_links_on_edge_attributes(
-            conditions={attribute: condition}, mixed_dtypes=False)
+        links_satifying_condition = self.extract_links_on_edge_attributes(conditions={attribute: condition})
         return {
             'number_of': len(links_satifying_condition),
             'percentage': len(links_satifying_condition) / self.graph.number_of_edges(),

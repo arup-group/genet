@@ -1,4 +1,5 @@
 import networkx as nx
+import math
 
 
 def validate_attribute_data(attributes, necessary_attributes):
@@ -35,3 +36,34 @@ def describe_graph_connectivity(G):
     # find number of connected subgraphs
     dict_to_return['number_of_connected_subgraphs'] = len(find_connected_subgraphs(G))
     return dict_to_return
+
+
+def get_link_attribute_validation_toolbox():
+    return {
+        'zero': zero_value,
+        'negative': negative_value,
+        'infinite': infinity_value,
+        'fractional': fractional_value
+    }
+
+
+def zero_value(value):
+    return value in {0, '0', '0.0'}
+
+
+def negative_value(value):
+    if isinstance(value, str):
+        return '-' in value
+    return value < 0
+
+
+def infinity_value(value):
+    if isinstance(value, str):
+        return value in ['inf', '-inf']
+    return math.isinf(value)
+
+
+def fractional_value(value):
+    if isinstance(value, str):
+        return ('0.' in value) and (value != '0.0')
+    return 1 > value > 0
