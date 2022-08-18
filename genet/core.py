@@ -2274,7 +2274,8 @@ class Network:
         network_stats = {'Number of network links': nx.number_of_nodes(self.graph),
                          'Number of network nodes': nx.number_of_edges(self.graph)}
         report['network_graph_info'] = network_stats
-        report['modes'] = {'Modes on network links': self.modes()}
+        report['modes'] = {}
+        report['modes']['Modes on network links'] = self.modes()
 
         highway_tags = self.link_attribute_data_under_key({'attributes': 'osm:way:highway'})
         highway_tags = set(itertools.chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
@@ -2289,12 +2290,20 @@ class Network:
         for mode in self.modes():
             mode_links = self.extract_links_on_edge_attributes(conditions={'modes': mode}, mixed_dtypes=True)
             links_by_mode[mode] = len(mode_links)
+        report['modes']['Number of links by mode'] = links_by_mode
 
         if self.schedule:
             schedule_stats = {'Number of services': self.schedule.__len__(),
                               'Number of routes': self.schedule.number_of_routes(),
                               'Number of stops:': len(self.schedule.reference_nodes())}
             report['schedule_info'] = schedule_stats
-            report['modes'] = {'Modes in schedule': self.schedule.modes()}
+
+            schedule_modes = self.schedule.modes()
+            report['modes']['Modes in schedule'] = schedule_modes
+
+            services_by_modes = {}
+            for mode in schedule_modes:
+                services_by_modes[mode] = len(self.schedule.services_on_modal_condition(mode))
+            report['modes']['Services by mode'] = services_by_modes
 
         return report
