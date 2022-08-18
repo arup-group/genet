@@ -2595,7 +2595,8 @@ def test_generate_validation_report_with_pt2matsim_network(network_object_from_t
                 'links_over_1000_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
                 'zero_attributes': {},
                 'negative_attributes': {},
-                'infinite_attributes': {}
+                'infinite_attributes': {},
+                'fractional_attributes': {}
             }},
         'schedule': {
             'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
@@ -2638,7 +2639,8 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
             'link_attributes': {'links_over_1000_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
                                 'zero_attributes': {},
                                 'negative_attributes': {},
-                                'infinite_attributes': {}
+                                'infinite_attributes': {},
+                                'fractional_attributes': {}
                                 }},
         'schedule': {'schedule_level': {'is_valid_schedule': True, 'invalid_stages': [], 'has_valid_services': True,
                                         'invalid_services': []},
@@ -2775,6 +2777,23 @@ def test_fractional_value_attributes_show_up_in_validation_report():
         {
             'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
             'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_nested_values_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2,
+               attribs={'length': 1, 'capacity': '0.0', 'freespeed': '2', "modes": ['car', 'bus'],
+                        'attributes': {'osm:way:lanes': -1}
+                        })
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['negative_attributes'],
+        {
+            'attributes::osm:way:lanes': {'number_of': 1, 'percentage': 1, 'link_ids': ['1']},
         }
     )
 

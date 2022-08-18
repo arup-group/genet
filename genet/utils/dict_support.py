@@ -113,6 +113,11 @@ def combine_edge_data_lists(l1, l2):
     return [(u, v, dat) for (u, v), dat in edges.items()]
 
 
+def dict_to_string(d):
+    # turn a (potentially) nested dictionary into a string
+    return str(d).replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
+
+
 def dataframe_to_dict(df):
     return {_id: {k: v for k, v in m.items() if notna(v)} for _id, m in df.to_dict().items()}
 

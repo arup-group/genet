@@ -2035,14 +2035,19 @@ class Network:
             'length', links_over_threshold_length)
 
         # more general attribute value checks
-        link_attributes = {d.name for d in graph_operations.get_attribute_schema(self.links()).descendants}
-        for attrib in link_attributes - {'id', 'from', 'to'}:
+        non_testable = ['id', 'from', 'to', 's2_to', 's2_from', 'geometry']
+        link_attributes = [graph_operations.parse_leaf(leaf) for leaf in
+                           graph_operations.get_attribute_schema(self.links()).leaves]
+        link_attributes = [attrib for attrib in link_attributes if attrib not in non_testable]
+        for attrib in link_attributes:
             logging.info(f'Checking link values for {attrib}')
             for value, condition in link_attribute_validation_toolbox.items():
                 links_satifying_condition = self.report_on_link_attribute_condition(attrib, condition)
                 if links_satifying_condition['number_of']:
                     logging.warning(
                         f'{links_satifying_condition["number_of"]} of links have {value} values for `{attrib}`')
+                    if isinstance(attrib, dict):
+                        attrib = dict_support.dict_to_string(attrib)
                     report['graph']['link_attributes'][f'{value}_attributes'][attrib] = links_satifying_condition
 
         if self.schedule:
@@ -2068,7 +2073,12 @@ class Network:
         :param condition: callable, conditon for link['attribute'] to satisfy
         :return:
         """
-        links_satifying_condition = self.extract_links_on_edge_attributes(conditions={attribute: condition})
+        if isinstance(attribute, dict):
+            conditions = dict_support.nest_at_leaf(deepcopy(attribute), condition)
+        else:
+            conditions = {attribute: condition}
+
+        links_satifying_condition = self.extract_links_on_edge_attributes(conditions=conditions)
         return {
             'number_of': len(links_satifying_condition),
             'percentage': len(links_satifying_condition) / self.graph.number_of_edges(),
