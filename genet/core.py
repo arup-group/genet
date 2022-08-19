@@ -2311,4 +2311,10 @@ class Network:
                 stops_by_modes[mode] = len(self.schedule.stops_on_modal_condition(mode))
             report['modes']['PT stops by mode'] = stops_by_modes
 
+            report['accessibility_tags'] = {}
+            report['accessibility_tags']['Stops with tag bikeAccessible'] = len(
+                self.schedule.stop_attribute_data({'attributes': 'bikeAccessible'}))
+            report['accessibility_tags']['Stops with tag carAccessible'] = len(
+                self.schedule.stop_attribute_data({'attributes': 'carAccessible'}))
+
         return report
