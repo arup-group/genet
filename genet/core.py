@@ -37,7 +37,7 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 
 class Network:
-    def __init__(self, epsg, **kwargs):
+    def __init__(self, epsg, **kwargs) -> object:
         self.epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
         self.graph = nx.MultiDiGraph(name='Network graph', crs=epsg)
@@ -2305,5 +2305,10 @@ class Network:
             for mode in schedule_modes:
                 services_by_modes[mode] = len(self.schedule.services_on_modal_condition(mode))
             report['modes']['Services by mode'] = services_by_modes
+
+            stops_by_modes = {}
+            for mode in schedule_modes:
+                stops_by_modes[mode] = len(self.schedule.stops_on_modal_condition(mode))
+            report['modes']['PT stops by mode'] = stops_by_modes
 
         return report
