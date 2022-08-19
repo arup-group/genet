@@ -221,39 +221,17 @@ def network4():
 
 
 @pytest.fixture()
-def network5():
-    n5 = Network('epsg:27700')
-    n5.add_node('101982',
-                {'id': '101982',
-                 'x': '528704.1425925883',
-                 'y': '182068.78193707118',
-                 'lon': -0.14625948709424305,
-                 'lat': 51.52287873323954,
-                 's2_id': 5221390329378179879})
-    n5.add_node('101986',
-                {'id': '101986',
-                 'x': '528835.203274008',
-                 'y': '182006.27331298392',
-                 'lon': -0.14439428709377497,
-                 'lat': 51.52228713323965,
-                 's2_id': 5221390328605860387})
+def network5(correct_schedule):
+    n = Network('epsg:27700')
+    n.add_node('0', attribs={'x': 528704.1425925883, 'y': 182068.78193707118})
+    n.add_node('1', attribs={'x': 528804.1425925883, 'y': 182168.78193707118})
+    n.add_link('link_0', '0', '1', attribs={'length': 123, 'modes': ['car', 'walk'], 'freespeed': 10, 'capacity': 5})
+    n.add_link('link_1', '0', '1', attribs={'length': 123, 'modes': ['bike'],
+                                            'attributes': {'osm:way:highway': 'secondary'}})
+    n.add_link('link_2', '1', '0', attribs={'length': 123, 'modes': ['rail']})
 
-    n5.add_link('0', '101982', '101986',
-                attribs={'id': '0',
-                         'from': '101982',
-                         'to': '101986',
-                         'freespeed': 4.166666666666667,
-                         'capacity': 600.0,
-                         'permlanes': 1.0,
-                         'oneway': '1',
-                         'modes': ['car', 'bus'],
-                         's2_from': 5221390329378179879,
-                         's2_to': 5221390328605860387,
-                         'length': 52.765151087870265,
-                         'attributes': {'osm:way:access': 'permissive', 'osm:way:highway': 'secondary',
-                                        'osm:way:id': '26997928', 'osm:way:name': 'Garden Road'}})
-
-    return n5
+    n.schedule = correct_schedule
+    return n
 
 
 def test_network_graph_initiates_as_not_simplififed():
@@ -3067,14 +3045,60 @@ def test_getting_link_slope_dictionary(network3):
 
 
 def test_generating_summary_report(network5):
+    network5.schedule = Schedule(epsg='epsg:27700', services=[
+        Service(id='bus_service',
+                routes=[
+                    Route(id='1', route_short_name='', mode='bus',
+                          stops=[
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700',
+                                   linkRefId='link_1'),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700',
+                                   linkRefId='link_2')],
+                          trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+                                 'trip_departure_time': ['04:40:00'],
+                                 'vehicle_id': ['veh_1_bus']},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00'],
+                          route=['link_1', 'link_2']),
+                    Route(id='2', route_short_name='route2', mode='bus',
+                          stops=[
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700',
+                                   linkRefId='link_1'),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700',
+                                   linkRefId='link_2')],
+                          trips={'trip_id': ['1_05:40:00', '2_05:45:00', '3_05:50:00', '4_06:40:00', '5_06:46:00'],
+                                 'trip_departure_time': ['05:40:00', '05:45:00', '05:50:00', '06:40:00', '06:46:00'],
+                                 'vehicle_id': ['veh_2_bus', 'veh_3_bus', 'veh_4_bus', 'veh_5_bus', 'veh_6_bus']},
+                          arrival_offsets=['00:00:00', '00:03:00'],
+                          departure_offsets=['00:00:00', '00:05:00'],
+                          route=['link_1', 'link_2'])
+                ]),
+        Service(id='rail_service',
+                routes=[Route(
+                    route_short_name=r"RTR_I/love\_being//difficult",
+                    mode='rail',
+                    stops=[
+                        Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326', name=r"I/love\_being//difficult"),
+                        Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
+                    trips={'trip_id': ['RT1', 'RT2', 'RT3', 'RT4'],
+                           'trip_departure_time': ['03:21:00', '03:31:00', '03:41:00', '03:51:00'],
+                           'vehicle_id': ['veh_7_rail', 'veh_8_rail', 'veh_9_rail', 'veh_10_rail']},
+                    arrival_offsets=['0:00:00', '0:02:00'],
+                    departure_offsets=['0:00:00', '0:02:00']
+                )])
+    ])
+
     report = network5.summary()
     correct_report = {'network_graph_info':
                           {'Number of network links': 2,
-                           'Number of network nodes': 1},
-                      'modes':
-                          {'Modes on network links': {'car', 'bus'},
-                           'Number of links by mode': {'car': 1, 'bus': 1}},
-                      'osm_highway_tags':
-                          {'Number of links by tag': {'secondary': 1}}}
+                           'Number of network nodes': 3},
+                      'modes': {'Modes on network links': {'car', 'bike', 'rail', 'walk'},
+                                'Number of links by mode': {'car': 1, 'bike': 1, 'rail': 1, 'walk': 1},
+                                'Modes in schedule': {'rail', 'bus'}, 'Services by mode': {'rail': 1, 'bus': 1},
+                                'PT stops by mode': {'rail': 2, 'bus': 2}},
+                      'osm_highway_tags': {'Number of links by tag': {'secondary': 1}},
+                      'schedule_info': {'Number of services': 2,
+                                        'Number of routes': 3,
+                                        'Number of stops:': 4}}
 
     assert_semantically_equal(report, correct_report)
