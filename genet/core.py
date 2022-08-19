@@ -37,7 +37,7 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 
 class Network:
-    def __init__(self, epsg, **kwargs) -> object:
+    def __init__(self, epsg, **kwargs):
         self.epsg = epsg
         self.transformer = Transformer.from_crs(epsg, 'epsg:4326', always_xy=True)
         self.graph = nx.MultiDiGraph(name='Network graph', crs=epsg)
