@@ -3099,7 +3099,7 @@ def test_generating_summary_report(network5):
                       'osm_highway_tags': {'Number of links by tag': {'secondary': 1}},
                       'schedule_info': {'Number of services': 2,
                                         'Number of routes': 3,
-                                        'Number of stops:': 4},
+                                        'Number of stops': 4},
                       'accessibility_tags': {'Stops with tag bikeAccessible': 0,
                                              'Stops with tag carAccessible': 0}}
 

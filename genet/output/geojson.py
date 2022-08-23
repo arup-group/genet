@@ -1,6 +1,7 @@
 import logging
 import os
 from itertools import chain
+import json
 
 import geopandas as gpd
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
@@ -210,7 +211,6 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
             include_shp_files=include_shp_files
         )
 
-    # import json
-    # summary_report = n.summary()
-    # with open(os.path.join(output_dir, 'summary_report.json'), 'w', encoding='utf-8') as f:
-    #     json.dump(sanitiser.sanitise_dictionary(summary_report), f, ensure_ascii=False, indent=4)
+    summary_report = n.summary()
+    with open(os.path.join(output_dir, 'summary_report.json'), 'w', encoding='utf-8') as f:
+        json.dump(sanitiser.sanitise_dictionary(summary_report), f, ensure_ascii=False, indent=4)

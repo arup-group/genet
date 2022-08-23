@@ -2277,8 +2277,15 @@ class Network:
         report['modes'] = {}
         report['modes']['Modes on network links'] = self.modes()
 
-        highway_tags = self.link_attribute_data_under_key({'attributes': 'osm:way:highway'})
-        highway_tags = set(itertools.chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+        # check for the old format, i.e. long-form attribute notation
+        if len(graph_operations.get_attribute_data_under_key(
+                self.links(), {'attributes': {'osm:way:highway': 'text'}}).values()) == 0:
+            highway_tags = self.link_attribute_data_under_key({'attributes': 'osm:way:highway'})
+            highway_tags = set(itertools.chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+        else:
+            highway_tags = self.link_attribute_data_under_key({'attributes': {'osm:way:highway': 'text'}})
+            highway_tags = set(itertools.chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+
         osm_highway_tags = {}
         for tag in highway_tags:
             tag_links = self.extract_links_on_edge_attributes(conditions={'attributes': {'osm:way:highway': tag}},
@@ -2295,7 +2302,7 @@ class Network:
         if self.schedule:
             schedule_stats = {'Number of services': self.schedule.__len__(),
                               'Number of routes': self.schedule.number_of_routes(),
-                              'Number of stops:': len(self.schedule.reference_nodes())}
+                              'Number of stops': len(self.schedule.reference_nodes())}
             report['schedule_info'] = schedule_stats
 
             schedule_modes = self.schedule.modes()
