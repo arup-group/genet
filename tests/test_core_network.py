@@ -221,7 +221,7 @@ def network4():
 
 
 @pytest.fixture()
-def network5(correct_schedule):
+def network_for_summary_stats():
     n = Network('epsg:27700')
     n.add_node('0', attribs={'x': 528704.1425925883, 'y': 182068.78193707118})
     n.add_node('1', attribs={'x': 528804.1425925883, 'y': 182168.78193707118})
@@ -230,7 +230,52 @@ def network5(correct_schedule):
                                             'attributes': {'osm:way:highway': 'secondary'}})
     n.add_link('link_2', '1', '0', attribs={'length': 123, 'modes': ['rail']})
 
-    n.schedule = correct_schedule
+    n.schedule = Schedule(epsg='epsg:27700', services=[
+        Service(id='bus_service',
+                routes=[
+                    Route(id='1', route_short_name='', mode='bus',
+                          stops=[
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700',
+                                   linkRefId='link_1', attributes={'bikeAccessible': 'true',
+                                                                   'accessLinkId_car': '1',
+                                                                   'carAccessible': 'true',
+                                                                   'distance_catchment': '25'}),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700',
+                                   linkRefId='link_2')],
+                          trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+                                 'trip_departure_time': ['04:40:00'],
+                                 'vehicle_id': ['veh_1_bus']},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00'],
+                          route=['link_1', 'link_2']),
+                    Route(id='2', route_short_name='route2', mode='bus',
+                          stops=[
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700',
+                                   linkRefId='link_1'),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700',
+                                   linkRefId='link_2')],
+                          trips={'trip_id': ['1_05:40:00', '2_05:45:00', '3_05:50:00', '4_06:40:00', '5_06:46:00'],
+                                 'trip_departure_time': ['05:40:00', '05:45:00', '05:50:00', '06:40:00', '06:46:00'],
+                                 'vehicle_id': ['veh_2_bus', 'veh_3_bus', 'veh_4_bus', 'veh_5_bus', 'veh_6_bus']},
+                          arrival_offsets=['00:00:00', '00:03:00'],
+                          departure_offsets=['00:00:00', '00:05:00'],
+                          route=['link_1', 'link_2'])
+                ]),
+        Service(id='rail_service',
+                routes=[Route(
+                    route_short_name=r"RTR_I/love\_being//difficult",
+                    mode='rail',
+                    stops=[
+                        Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326', name=r"I/love\_being//difficult"),
+                        Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
+                    trips={'trip_id': ['RT1', 'RT2', 'RT3', 'RT4'],
+                           'trip_departure_time': ['03:21:00', '03:31:00', '03:41:00', '03:51:00'],
+                           'vehicle_id': ['veh_7_rail', 'veh_8_rail', 'veh_9_rail', 'veh_10_rail']},
+                    arrival_offsets=['0:00:00', '0:02:00'],
+                    departure_offsets=['0:00:00', '0:02:00']
+                )])
+    ])
+
     return n
 
 
@@ -3044,51 +3089,8 @@ def test_getting_link_slope_dictionary(network3):
     assert slope_dict['0']['slope'] == link_slope
 
 
-def test_generating_summary_report(network5):
-    network5.schedule = Schedule(epsg='epsg:27700', services=[
-        Service(id='bus_service',
-                routes=[
-                    Route(id='1', route_short_name='', mode='bus',
-                          stops=[
-                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700',
-                                   linkRefId='link_1'),
-                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700',
-                                   linkRefId='link_2')],
-                          trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
-                                 'trip_departure_time': ['04:40:00'],
-                                 'vehicle_id': ['veh_1_bus']},
-                          arrival_offsets=['00:00:00', '00:02:00'],
-                          departure_offsets=['00:00:00', '00:02:00'],
-                          route=['link_1', 'link_2']),
-                    Route(id='2', route_short_name='route2', mode='bus',
-                          stops=[
-                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700',
-                                   linkRefId='link_1'),
-                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700',
-                                   linkRefId='link_2')],
-                          trips={'trip_id': ['1_05:40:00', '2_05:45:00', '3_05:50:00', '4_06:40:00', '5_06:46:00'],
-                                 'trip_departure_time': ['05:40:00', '05:45:00', '05:50:00', '06:40:00', '06:46:00'],
-                                 'vehicle_id': ['veh_2_bus', 'veh_3_bus', 'veh_4_bus', 'veh_5_bus', 'veh_6_bus']},
-                          arrival_offsets=['00:00:00', '00:03:00'],
-                          departure_offsets=['00:00:00', '00:05:00'],
-                          route=['link_1', 'link_2'])
-                ]),
-        Service(id='rail_service',
-                routes=[Route(
-                    route_short_name=r"RTR_I/love\_being//difficult",
-                    mode='rail',
-                    stops=[
-                        Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326', name=r"I/love\_being//difficult"),
-                        Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
-                    trips={'trip_id': ['RT1', 'RT2', 'RT3', 'RT4'],
-                           'trip_departure_time': ['03:21:00', '03:31:00', '03:41:00', '03:51:00'],
-                           'vehicle_id': ['veh_7_rail', 'veh_8_rail', 'veh_9_rail', 'veh_10_rail']},
-                    arrival_offsets=['0:00:00', '0:02:00'],
-                    departure_offsets=['0:00:00', '0:02:00']
-                )])
-    ])
-
-    report = network5.summary()
+def test_generating_summary_report(network_for_summary_stats):
+    report = network_for_summary_stats.summary()
     correct_report = {'network_graph_info':
                           {'Number of network links': 2,
                            'Number of network nodes': 3},
@@ -3100,7 +3102,8 @@ def test_generating_summary_report(network5):
                       'schedule_info': {'Number of services': 2,
                                         'Number of routes': 3,
                                         'Number of stops': 4},
-                      'accessibility_tags': {'Stops with tag bikeAccessible': 0,
-                                             'Stops with tag carAccessible': 0}}
-
+                      'accessibility_tags': {'Stops with tag bikeAccessible': 1,
+                                             'Stops with tag carAccessible': 1,
+                                             'Unique values for carAccessible tag': {'true'},
+                                             'Unique values for bikeAccessible tag': {'true'}}}
     assert_semantically_equal(report, correct_report)
