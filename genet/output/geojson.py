@@ -6,7 +6,9 @@ import json
 import geopandas as gpd
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
 from shapely.geometry import Point, LineString
+import networkx as nx
 
+import genet.utils.graph_operations as graph_operations
 import genet.output.sanitiser as sanitiser
 import genet.use.schedule as use_schedule
 import genet.utils.persistence as persistence
@@ -118,7 +120,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
     for h in [7, 8, 9, 13, 16, 17, 18]:
         save_geodataframe(
             df_all_modes_vph[df_all_modes_vph['hour'].dt.hour == h],
-            filename=f'vph_all_modes_within_{h-1}:30-{h}:30',
+            filename=f'vph_all_modes_within_{h - 1}:30-{h}:30',
             output_dir=vph_dir,
             include_shp_files=include_shp_files
         )
@@ -149,6 +151,83 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
     aggregated_per_stops.to_csv(os.path.join(output_dir, 'trips_per_day_per_route_aggregated_per_stop_id_pair.csv'))
     use_schedule.aggregate_by_stop_names(aggregated_per_stops).to_csv(
         os.path.join(output_dir, 'trips_per_day_per_route_aggregated_per_stop_name_pair.csv'))
+
+
+def summary(network):
+    """
+    Returns a report with summary statistics for the network and the schedule.
+    """
+    logging.info('Creating a summary report')
+    report = {}
+
+    network_stats = {'Number of network links': nx.number_of_nodes(network.graph),
+                     'Number of network nodes': nx.number_of_edges(network.graph)}
+    report['network_graph_info'] = network_stats
+    report['modes'] = {}
+    report['modes']['Modes on network links'] = network.modes()
+
+    # check for the old format, i.e. long-form attribute notation
+    if len(graph_operations.get_attribute_data_under_key(
+            network.links(), {'attributes': {'osm:way:highway': 'text'}}).values()) == 0:
+        highway_tags = network.link_attribute_data_under_key({'attributes': 'osm:way:highway'})
+        highway_tags = set(chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+    else:
+        highway_tags = network.link_attribute_data_under_key({'attributes': {'osm:way:highway': 'text'}})
+        highway_tags = set(chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+
+    osm_highway_tags = {}
+    for tag in highway_tags:
+        tag_links = network.extract_links_on_edge_attributes(conditions={'attributes': {'osm:way:highway': tag}},
+                                                             mixed_dtypes=True)
+        osm_highway_tags[tag] = len(tag_links)
+    report['osm_highway_tags'] = {'Number of links by tag': osm_highway_tags}
+
+    links_by_mode = {}
+    for mode in network.modes():
+        mode_links = network.extract_links_on_edge_attributes(conditions={'modes': mode}, mixed_dtypes=True)
+        links_by_mode[mode] = len(mode_links)
+    report['modes']['Number of links by mode'] = links_by_mode
+
+    if network.schedule:
+        schedule = network.schedule
+        schedule_stats = {'Number of services': schedule.__len__(),
+                          'Number of routes': schedule.number_of_routes(),
+                          'Number of stops': len(schedule.reference_nodes())}
+        report['schedule_info'] = schedule_stats
+
+        schedule_modes = schedule.modes()
+        report['modes']['Modes in schedule'] = schedule_modes
+
+        services_by_modes = {}
+        for mode in schedule_modes:
+            services_by_modes[mode] = len(schedule.services_on_modal_condition(mode))
+        report['modes']['Services by mode'] = services_by_modes
+
+        stops_by_modes = {}
+        for mode in schedule_modes:
+            stops_by_modes[mode] = len(schedule.stops_on_modal_condition(mode))
+        report['modes']['PT stops by mode'] = stops_by_modes
+
+        report['accessibility_tags'] = {}
+        report['accessibility_tags']['Stops with tag bikeAccessible'] = len(
+            schedule.stop_attribute_data({'attributes': 'bikeAccessible'}))
+        bike_accessible_keys = []
+        bike_attribs_dict = schedule.stop_attribute_data(
+            {'attributes': 'bikeAccessible'}).to_dict(orient='index')
+        for key in bike_attribs_dict.keys():
+            bike_accessible_keys.append(bike_attribs_dict[key]['attributes']['bikeAccessible'])
+        report['accessibility_tags']['Unique values for bikeAccessible tag'] = set(bike_accessible_keys)
+
+        report['accessibility_tags']['Stops with tag carAccessible'] = len(
+            schedule.stop_attribute_data({'attributes': 'carAccessible'}))
+        car_accessible_keys = []
+        car_attribs_dict = schedule.stop_attribute_data(
+            {'attributes': 'carAccessible'}).to_dict(orient='index')
+        for key in car_attribs_dict.keys():
+            car_accessible_keys.append(car_attribs_dict[key]['attributes']['carAccessible'])
+        report['accessibility_tags']['Unique values for carAccessible tag'] = set(car_accessible_keys)
+
+    return report
 
 
 def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_files=False):
@@ -211,6 +290,6 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
             include_shp_files=include_shp_files
         )
 
-    summary_report = n.summary()
+    summary_report = summary(n, n.schedule())
     with open(os.path.join(output_dir, 'summary_report.json'), 'w', encoding='utf-8') as f:
         json.dump(sanitiser.sanitise_dictionary(summary_report), f, ensure_ascii=False, indent=4)
