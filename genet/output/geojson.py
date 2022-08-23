@@ -290,6 +290,6 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
             include_shp_files=include_shp_files
         )
 
-    summary_report = summary(n, n.schedule())
+    summary_report = summary(n)
     with open(os.path.join(output_dir, 'summary_report.json'), 'w', encoding='utf-8') as f:
         json.dump(sanitiser.sanitise_dictionary(summary_report), f, ensure_ascii=False, indent=4)
