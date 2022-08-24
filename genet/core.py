@@ -32,6 +32,7 @@ import numpy as np
 import pandas as pd
 from pyproj import Transformer
 from s2sphere import CellId
+from shapely.geometry import Point, LineString
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -2263,3 +2264,48 @@ class Network:
             slope_dict[link_id] = {'slope': link_slope}
 
         return slope_dict
+
+    def split_link_at_point(self, link_id, point_lat, point_lon, new_node_id):
+        """
+        Takes a link and point coordinates, and splits the link at the point to create 2 new links;
+        the old link is then deleted.
+        :param link_id: ID of the link to split
+        :param point_lat: latitude of the point to split at
+        :param point_lon: longitude of the point to split at
+        :param new_node_id: ID to give to the new node
+        :return: self
+        """
+
+        # check if point is on the link LineString
+        point = Point(point_lon, point_lat)
+        from_node = self.link(link_id)['from']
+        to_node = self.link(link_id)['to']
+        from_node = self.node(from_node)
+        to_node = self.node(to_node)
+        line = LineString([(float(from_node['lon']), float(from_node['lat'])),
+                           (float(to_node['lon']), float(to_node['lat']))])
+
+        # if not, find nearest point on the link line
+        # (not using 'contains' method due to too high accuracy required to evaluate to True)
+        if line.distance(point) > 1e-8:
+            point = line.interpolate(line.project(point))
+
+        self.add_node(new_node_id, {'id': new_node_id, 'lon': point.x, 'lat': point.y})
+
+        # create 2 new links: from_node -> new_node ; new_node -> to_node
+        new_link_1 = link_id + '_1'
+        new_link_2 = link_id + '_2'
+
+        self.add_link(new_link_1, from_node['id'], new_node_id)
+        self.add_link(new_link_2, new_node_id, to_node['id'])
+
+        # apply attributes from the old link to the 2 new links
+        old_link_attributes = self.link(link_id)
+        for k in ['id', 'from', 'to', 'length', 's2_from', 's2_to']:
+            old_link_attributes.pop(k, None)
+
+        self.apply_attributes_to_link(new_link_1, old_link_attributes)
+        self.apply_attributes_to_link(new_link_2, old_link_attributes)
+        self.remove_link(link_id)
+
+        return self
