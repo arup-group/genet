@@ -2264,7 +2264,6 @@ class Network:
 
         return slope_dict
 
-
     def summary(self):
         report = {}
         network_stats = {'Number of network links': nx.number_of_nodes(self.graph),
@@ -2296,7 +2295,6 @@ class Network:
         report['modes']['Number of links by mode'] = links_by_mode
 
         return report
-
 
     def summary_report(self):
         """

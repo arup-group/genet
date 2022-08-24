@@ -3020,6 +3020,7 @@ class Schedule(ScheduleElement):
 
         return report
 
+
 def verify_graph_schema(graph):
     if not isinstance(graph, nx.DiGraph):
         raise ScheduleElementGraphSchemaError(
