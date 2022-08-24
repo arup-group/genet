@@ -6,9 +6,7 @@ import json
 import geopandas as gpd
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
 from shapely.geometry import Point, LineString
-import networkx as nx
 
-import genet.utils.graph_operations as graph_operations
 import genet.output.sanitiser as sanitiser
 import genet.use.schedule as use_schedule
 import genet.utils.persistence as persistence
