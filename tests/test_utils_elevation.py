@@ -7,6 +7,7 @@ from tests.fixtures import assert_semantically_equal
 
 elevation_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "elevation"))
 tif_path = os.path.join(elevation_test_folder, 'hk_elevation_example.tif')
+tif_path_crs_not_4326 = os.path.join(elevation_test_folder, 'hk_elevation_example_crs_2326.tif')
 array_path = os.path.join(elevation_test_folder, 'elevation_image.nc')
 
 def test_output_type_get_elevation_image():
@@ -16,6 +17,12 @@ def test_output_type_get_elevation_image():
 
 def test_get_elevation_image():
     output = elevation.get_elevation_image(tif_path)
+    image = xr.open_dataset(array_path)
+    assert output == image
+
+
+def test_get_elevation_image_with_crs_not_4326():
+    output = elevation.get_elevation_image(tif_path_crs_not_4326)
     image = xr.open_dataset(array_path)
     assert output == image
 
