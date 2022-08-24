@@ -2279,7 +2279,7 @@ class Network:
             highway_tags = set(itertools.chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
         else:
             highway_tags = self.link_attribute_data_under_key({'attributes': {'osm:way:highway': 'text'}})
-            highway_tags = set(self.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+            highway_tags = set(itertools.chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
 
         osm_highway_tags = {}
         for tag in highway_tags:
