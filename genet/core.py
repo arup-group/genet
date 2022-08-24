@@ -2263,3 +2263,49 @@ class Network:
             slope_dict[link_id] = {'slope': link_slope}
 
         return slope_dict
+
+
+    def summary(self):
+        report = {}
+        network_stats = {'Number of network links': nx.number_of_nodes(self.graph),
+                         'Number of network nodes': nx.number_of_edges(self.graph)}
+        report['network_graph_info'] = network_stats
+        report['modes'] = {}
+        report['modes']['Modes on network links'] = self.modes()
+
+        # check for the old format, i.e. long-form attribute notation
+        if len(graph_operations.get_attribute_data_under_key(
+                self.links(), {'attributes': {'osm:way:highway': 'text'}}).values()) == 0:
+            highway_tags = self.link_attribute_data_under_key({'attributes': 'osm:way:highway'})
+            highway_tags = set(itertools.chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+        else:
+            highway_tags = self.link_attribute_data_under_key({'attributes': {'osm:way:highway': 'text'}})
+            highway_tags = set(self.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+
+        osm_highway_tags = {}
+        for tag in highway_tags:
+            tag_links = self.extract_links_on_edge_attributes(conditions={'attributes': {'osm:way:highway': tag}},
+                                                              mixed_dtypes=True)
+            osm_highway_tags[tag] = len(tag_links)
+        report['osm_highway_tags'] = {'Number of links by tag': osm_highway_tags}
+
+        links_by_mode = {}
+        for mode in self.modes():
+            mode_links = self.extract_links_on_edge_attributes(conditions={'modes': mode}, mixed_dtypes=True)
+            links_by_mode[mode] = len(mode_links)
+        report['modes']['Number of links by mode'] = links_by_mode
+
+        return report
+
+
+    def summary_report(self):
+        """
+        Returns a report with summary statistics for the network and the schedule.
+        """
+        logging.info('Creating a summary report')
+        report = {'network': self.summary()}
+
+        if self.schedule:
+            report['schedule'] = self.schedule.summary()
+
+        return report
