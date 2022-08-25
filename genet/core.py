@@ -2040,7 +2040,7 @@ class Network:
                            graph_operations.get_attribute_schema(self.links()).leaves]
         link_attributes = [attrib for attrib in link_attributes if attrib not in non_testable]
         for attrib in link_attributes:
-            logging.info(f'Checking link values for {attrib}')
+            logging.info(f'Checking link values for `{attrib}`')
             for value, condition in network_validation.LINK_ATTRIBUTE_VALIDATION_TOOLBOX.items():
                 links_satifying_condition = self.report_on_link_attribute_condition(attrib, condition)
                 if links_satifying_condition['number_of']:
