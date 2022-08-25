@@ -1,7 +1,7 @@
 import pytest
 
 from genet import Schedule, Service, Route, Stop, schedule_elements
-from genet.validate import schedule
+from genet.validate import schedule as schedule_validation
 from tests.fixtures import test_schedule, assert_semantically_equal
 
 @pytest.fixture()
