@@ -6,7 +6,7 @@ from genet.exceptions import ServiceIndexError, ConflictingStopData, Inconsisten
 from genet.input import read, matsim_reader, gtfs_reader
 from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.utils import plot, spatial
-from genet.validate import schedule_validation
+from genet.validate import schedule
 from tests.fixtures import *
 from tests.test_core_components_service import service
 from tests.test_core_components_route import self_looping_route, route

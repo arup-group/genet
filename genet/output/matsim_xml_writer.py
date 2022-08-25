@@ -4,7 +4,7 @@ from lxml import etree
 from copy import deepcopy
 from pandas import DataFrame
 from genet.output import sanitiser
-from genet.validate.network_validation import validate_attribute_data
+from genet.validate.network import validate_attribute_data
 from genet.utils.spatial import encode_shapely_linestring_to_polyline
 from genet.exceptions import MalformedAdditionalAttributeError
 import genet.variables as variables

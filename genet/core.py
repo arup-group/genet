@@ -25,7 +25,7 @@ import genet.utils.persistence as persistence
 import genet.utils.plot as plot
 import genet.utils.simplification as simplification
 import genet.utils.spatial as spatial
-import genet.validate.network_validation as network_validation
+import genet.validate.network as network_validation
 import geopandas as gpd
 import networkx as nx
 import numpy as np
@@ -2024,8 +2024,8 @@ class Network:
         report['graph'] = {'graph_connectivity': graph_connectivity}
 
         # attribute checks
-        link_attribute_validation_toolbox = network_validation.get_link_attribute_validation_toolbox()
-        report['graph']['link_attributes'] = {f'{k}_attributes': {} for k in link_attribute_validation_toolbox}
+        report['graph']['link_attributes'] = {
+            f'{k}_attributes': {} for k in network_validation.LINK_ATTRIBUTE_VALIDATION_TOOLBOX}
 
         # checks on length attribute specifically
         def links_over_threshold_length(value):
@@ -2041,7 +2041,7 @@ class Network:
         link_attributes = [attrib for attrib in link_attributes if attrib not in non_testable]
         for attrib in link_attributes:
             logging.info(f'Checking link values for {attrib}')
-            for value, condition in link_attribute_validation_toolbox.items():
+            for value, condition in network_validation.LINK_ATTRIBUTE_VALIDATION_TOOLBOX.items():
                 links_satifying_condition = self.report_on_link_attribute_condition(attrib, condition)
                 if links_satifying_condition['number_of']:
                     logging.warning(
@@ -2070,7 +2070,7 @@ class Network:
     def report_on_link_attribute_condition(self, attribute, condition):
         """
         :param attribute: one of the link attributes, e.g. 'length'
-        :param condition: callable, conditon for link['attribute'] to satisfy
+        :param condition: callable, condition for link[attribute] to satisfy
         :return:
         """
         if isinstance(attribute, dict):

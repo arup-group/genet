@@ -18,7 +18,7 @@ from genet.input import matsim_reader
 from tests.test_output_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule, Stop
 from genet.utils import plot, spatial
-from genet.validate import network_validation
+from genet.validate import network
 from genet.input import read
 from tests.fixtures import assert_semantically_equal, route, stop_epsg_27700, network_object_from_test_data, \
     full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path

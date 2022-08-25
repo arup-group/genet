@@ -23,7 +23,7 @@ import genet.utils.parallel as parallel
 import genet.utils.persistence as persistence
 import genet.utils.plot as plot
 import genet.utils.spatial as spatial
-import genet.validate.schedule_validation as schedule_validation
+import genet.validate.schedule as schedule_validation
 import networkx as nx
 import numpy as np
 import pandas as pd

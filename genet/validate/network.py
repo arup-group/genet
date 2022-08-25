@@ -38,15 +38,6 @@ def describe_graph_connectivity(G):
     return dict_to_return
 
 
-def get_link_attribute_validation_toolbox():
-    return {
-        'zero': zero_value,
-        'negative': negative_value,
-        'infinite': infinity_value,
-        'fractional': fractional_value
-    }
-
-
 def zero_value(value):
     return value in {0, '0', '0.0'}
 
@@ -67,3 +58,11 @@ def fractional_value(value):
     if isinstance(value, str):
         return ('0.' in value) and (value != '0.0')
     return 1 > value > 0
+
+
+LINK_ATTRIBUTE_VALIDATION_TOOLBOX = {
+        'zero': zero_value,
+        'negative': negative_value,
+        'infinite': infinity_value,
+        'fractional': fractional_value
+    }
