@@ -172,7 +172,7 @@ def test_generating_standard_outputs(network, tmpdir):
                                        'network_links_geometry_only.geojson', 'schedule_nodes.geojson',
                                        'schedule_nodes_geometry_only.geojson', 'schedule', 'network_nodes.geojson',
                                        'schedule_links.geojson', 'network_change_log.csv', 'schedule_change_log.csv',
-                                       'routing'}
+                                       'routing', 'summary_report.json'}
     assert set(os.listdir(os.path.join(tmpdir, 'graph'))) == {'car_capacity_subgraph.geojson',
                                                               'car_freespeed_subgraph.geojson',
                                                               'car_osm_highway_unclassified.geojson',
