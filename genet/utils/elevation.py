@@ -4,7 +4,8 @@ import numpy as np
 
 def get_elevation_image(elevation_tif):
     xarr_file = rioxarray.open_rasterio(elevation_tif)
-
+    if str(xarr_file.rio.crs) != 'EPSG:4326':
+        xarr_file = xarr_file.rio.write_crs(4326, inplace=True)
     return xarr_file[0, :, :]
 
 
