@@ -2272,6 +2272,20 @@ def test_has_nodes_when_none_of_the_nodes_in_the_graph():
     assert not n.has_nodes(['10', '20'])
 
 
+def test_network_has_isolated_nodes():
+    n = Network('epsg:27700')
+    n.add_node('1')
+    assert n.has_isolated_nodes()
+
+
+def test_network_does_not_have_isolated_nodes():
+    n = Network('epsg:27700')
+    n.add_node('0')
+    n.add_node('1')
+    n.add_link('link', u='0', v='1')
+    assert not n.has_isolated_nodes()
+
+
 def test_has_edge_when_edge_is_in_the_graph():
     n = Network('epsg:27700')
     n.add_link('1', 1, 2)

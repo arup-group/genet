@@ -1839,6 +1839,12 @@ class Network:
     def has_nodes(self, node_id: list):
         return all([self.has_node(node_id) for node_id in node_id])
 
+    def has_isolated_nodes(self) -> bool:
+        return bool(list(nx.isolates(self.graph)))
+
+    def remove_isolated_nodes(self) -> None:
+        pass
+
     def has_edge(self, u, v):
         return self.graph.has_edge(u, v)
 
@@ -2022,6 +2028,11 @@ class Network:
         for mode in modes:
             graph_connectivity[mode] = self.check_connectivity_for_mode(mode)
         report['graph'] = {'graph_connectivity': graph_connectivity}
+
+        has_isolated_nodes = self.has_isolated_nodes()
+        report['graph']['has_isolated_nodes'] = str(has_isolated_nodes)
+        if has_isolated_nodes:
+            logging.warning('This Network has isolated nodes! Consider cleaning up with `remove_isolated_nodes`')
 
         # attribute checks
         report['graph']['link_attributes'] = {
