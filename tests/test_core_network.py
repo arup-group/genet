@@ -763,8 +763,8 @@ def test_network_with_missing_link_attribute_elem_text_is_read_and_able_to_save_
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
     n = Network('epsg:27700')
-    n.add_node(1, {'a': {'b': 1}})
-    n.add_node(2, {'a': {'b': 4}})
+    n.add_node(1, {'x': 1, 'y': 2, 'a': {'b': 1}})
+    n.add_node(2, {'x': 1, 'y': 2, 'a': {'b': 4}})
 
     output_series = n.node_attribute_data_under_key(key={'a': 'b'})
     assert_series_equal(output_series, pd.Series({1: 1, 2: 4}))
@@ -772,8 +772,8 @@ def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_key
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_flat_keys():
     n = Network('epsg:27700')
-    n.add_node(1, {'b': 1})
-    n.add_node(2, {'b': 4})
+    n.add_node(1, {'x': 1, 'y': 2, 'b': 1})
+    n.add_node(2, {'x': 1, 'y': 2, 'b': 4})
 
     output_series = n.node_attribute_data_under_key(key='b')
     assert_series_equal(output_series, pd.Series({1: 1, 2: 4}))
@@ -853,16 +853,15 @@ def test_link_attribute_data_under_keys_generates_key_for_nested_data(network1):
 
 def test_add_node_adds_node_to_graph_with_attribs():
     n = Network('epsg:27700')
-    n.add_node(1, {'a': 1})
+    n.add_node(1, {'x': 1, 'y': 2, 'a': 1})
     assert n.graph.has_node(1)
-    assert n.node(1) == {'a': 1}
+    assert n.node(1) == {'x': 1, 'y': 2, 'a': 1}
 
 
-def test_add_node_adds_node_to_graph_without_attribs():
-    n = Network('epsg:27700')
-    n.add_node(1)
-    assert n.node(1) == {}
-    assert n.graph.has_node(1)
+def test_add_node_without_attribs_raises_error():
+    with pytest.raises(TypeError):
+        n = Network('epsg:27700')
+        n.add_node(1)
 
 
 def test_add_multiple_nodes():
@@ -877,10 +876,10 @@ def test_add_multiple_nodes():
 
 def test_add_nodes_with_clashing_ids():
     n = Network('epsg:27700')
-    n.add_node(1, {})
+    n.add_node(1, {'x': 1, 'y': 2})
     reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
     assert n.graph.has_node(1)
-    assert n.node(1) == {}
+    assert n.node(1) == {'x': 1, 'y': 2}
     assert n.graph.has_node(2)
     assert n.node(2) == {'x': 2, 'y': 2, 'id': 2}
     assert 1 in reindexing_dict
@@ -890,12 +889,12 @@ def test_add_nodes_with_clashing_ids():
 
 def test_add_nodes_with_multiple_clashing_ids():
     n = Network('epsg:27700')
-    n.add_node(1, {})
-    n.add_node(2, {})
+    n.add_node(1, {'x': 1, 'y': 2})
+    n.add_node(2, {'x': 1, 'y': 2})
     assert n.graph.has_node(1)
-    assert n.node(1) == {}
+    assert n.node(1) == {'x': 1, 'y': 2}
     assert n.graph.has_node(2)
-    assert n.node(2) == {}
+    assert n.node(2) == {'x': 1, 'y': 2}
 
     reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
     assert 1 in reindexing_dict
@@ -1563,16 +1562,17 @@ def test_reindex_link_when_link_id_already_exists(network1):
 
 def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
     n = Network('epsg:27700')
-    n.add_node(1, {'a': 1})
+    n.add_node(1, {'x': 1, 'y': 2, 'a': 1})
     n.apply_attributes_to_node(1, {'b': 1})
 
-    assert n.node(1) == {'b': 1, 'a': 1}
+    assert n.node(1) == {'x': 1, 'y': 2, 'b': 1, 'a': 1}
 
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {0: '2020-05-28 13:49:53', 1: '2020-05-28 13:49:53'}, 'change_event': {0: 'add', 1: 'modify'},
          'object_type': {0: 'node', 1: 'node'}, 'old_id': {0: None, 1: 1}, 'new_id': {0: 1, 1: 1},
-         'old_attributes': {0: None, 1: "{'a': 1}"}, 'new_attributes': {0: "{'a': 1}", 1: "{'a': 1, 'b': 1}"},
-         'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', 1)], 1: [('add', '', [('b', 1)])]}})
+         'old_attributes': {0: None, 1: "{'x': 1, 'y': 2, 'a': 1}"},
+         'new_attributes': {0: "{'x': 1, 'y': 2, 'a': 1}", 1: "{'x': 1, 'y': 2, 'a': 1, 'b': 1}"},
+         'diff': {0: [('add', '', [('x', 1), ('y', 2), ('a', 1)]), ('add', 'id', 1)], 1: [('add', '', [('b', 1)])]}})
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
     assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_names=False,
@@ -1581,38 +1581,46 @@ def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_chan
 
 def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log():
     n = Network('epsg:27700')
-    n.add_node(1, {'a': 1})
+    n.add_node(1, {'x': 1, 'y': 2, 'a': 1})
     n.apply_attributes_to_node(1, {'a': 4})
 
-    assert n.node(1) == {'a': 4}
+    assert n.node(1) == {'x': 1, 'y': 2, 'a': 4}
 
     correct_change_log_df = pd.DataFrame(
-        {'timestamp': {0: '2020-05-28 13:49:53', 1: '2020-05-28 13:49:53'}, 'change_event': {0: 'add', 1: 'modify'},
-         'object_type': {0: 'node', 1: 'node'}, 'old_id': {0: None, 1: 1}, 'new_id': {0: 1, 1: 1},
-         'old_attributes': {0: None, 1: "{'a': 1}"}, 'new_attributes': {0: "{'a': 1}", 1: "{'a': 4}"},
-         'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', 1)], 1: [('change', 'a', (1, 4))]}})
+        {'timestamp': {0: '2020-05-28 13:49:53', 1: '2020-05-28 13:49:53'},
+         'change_event': {0: 'add', 1: 'modify'},
+         'object_type': {0: 'node', 1: 'node'},
+         'old_id': {0: None, 1: 1},
+         'new_id': {0: 1, 1: 1},
+         'old_attributes': {0: None, 1: {'x': 1, 'y': 2, 'a': 1}},
+         'new_attributes': {0: "{'x': 1, 'y': 2, 'a': 1}", 1: "{'x': 1, 'y': 2, 'a': 4}"},
+         'diff': {0: [('add', '', [('x', 1), ('y', 2), ('a', 1)]), ('add', 'id', 1)], 1: [('change', 'a', (1, 4))]}})
 
-    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'new_attributes', 'diff']
     assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
 
 
 def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_recorded_by_change_log():
     n = Network('epsg:27700')
-    n.add_node(1, {'a': 1})
-    n.add_node(2, {'b': 1})
+    n.add_node(1, {'x': 1, 'y': 2, 'a': 1})
+    n.add_node(2, {'x': 1, 'y': 2, 'b': 1})
     n.apply_attributes_to_nodes({1: {'a': 4}, 2: {'a': 1}})
 
-    assert n.node(1) == {'a': 4}
-    assert n.node(2) == {'b': 1, 'a': 1}
+    assert n.node(1) == {'x': 1, 'y': 2, 'a': 4}
+    assert n.node(2) == {'x': 1, 'y': 2, 'b': 1, 'a': 1}
 
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {0: '2020-06-01 15:07:51', 1: '2020-06-01 15:07:51', 2: '2020-06-01 15:07:51',
                        3: '2020-06-01 15:07:51'}, 'change_event': {0: 'add', 1: 'add', 2: 'modify', 3: 'modify'},
          'object_type': {0: 'node', 1: 'node', 2: 'node', 3: 'node'}, 'old_id': {0: None, 1: None, 2: 1, 3: 2},
-         'new_id': {0: 1, 1: 2, 2: 1, 3: 2}, 'old_attributes': {0: None, 1: None, 2: "{'a': 1}", 3: "{'b': 1}"},
-         'new_attributes': {0: "{'a': 1}", 1: "{'b': 1}", 2: "{'a': 4}", 3: "{'b': 1, 'a': 1}"},
-         'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', 1)], 1: [('add', '', [('b', 1)]), ('add', 'id', 2)],
-                  2: [('change', 'a', (1, 4))], 3: [('add', '', [('a', 1)])]}
+         'new_id': {0: 1, 1: 2, 2: 1, 3: 2},
+         'old_attributes': {0: None, 1: None, 2: "{'x': 1, 'y': 2, 'a': 1}", 3: "{'x': 1, 'y': 2, 'b': 1}"},
+         'new_attributes': {0: "{'x': 1, 'y': 2, 'a': 1}", 1: "{'x': 1, 'y': 2, 'b': 1}",
+                            2: "{'x': 1, 'y': 2, 'a': 4}", 3: "{'x': 1, 'y': 2, 'b': 1, 'a': 1}"},
+         'diff': {0: [('add', '', [('x', 1), ('y', 2), ('a', 1)]), ('add', 'id', 1)],
+                  1: [('add', '', [('x', 1), ('y', 2), ('b', 1)]), ('add', 'id', 2)],
+                  2: [('change', 'a', (1, 4))],
+                  3: [('add', '', [('a', 1)])]}
          })
 
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
@@ -1625,12 +1633,12 @@ def multiply_node_attribs(node_attribs):
 
 def test_apply_function_to_nodes():
     n = Network('epsg:27700')
-    n.add_node('0', attribs={'a': 2, 'c': 3})
-    n.add_node('1', attribs={'c': 100})
+    n.add_node('0', attribs={'x': 1, 'y': 2, 'a': 2, 'c': 3})
+    n.add_node('1', attribs={'x': 1, 'y': 2, 'c': 100})
     n.apply_function_to_nodes(function=multiply_node_attribs, location='new_computed_attrib')
     assert_semantically_equal(dict(n.nodes()),
-                              {'0': {'a': 2, 'c': 3, 'new_computed_attrib': 6},
-                               '1': {'c': 100}})
+                              {'0': {'x': 1, 'y': 2, 'a': 2, 'c': 3, 'new_computed_attrib': 6},
+                               '1': {'x': 1, 'y': 2, 'c': 100}})
 
 
 def test_apply_attributes_to_edge_without_filter_conditions():
@@ -2238,7 +2246,7 @@ def test_generating_pt_network_route_geodataframe():
 
 def test_has_node_when_node_is_in_the_graph():
     n = Network('epsg:27700')
-    n.add_node('1')
+    n.add_node('1', {'x': 1, 'y': 2, })
     assert n.has_node('1')
 
 
@@ -2249,25 +2257,25 @@ def test_has_node_when_node_is_not_in_the_graph():
 
 def test_has_nodes_when_nodes_in_the_graph():
     n = Network('epsg:27700')
-    n.add_node('1')
-    n.add_node('2')
-    n.add_node('3')
+    n.add_node('1', {'x': 1, 'y': 2})
+    n.add_node('2', {'x': 1, 'y': 2})
+    n.add_node('3', {'x': 1, 'y': 2})
     assert n.has_nodes(['1', '2'])
 
 
 def test_has_nodes_when_only_some_nodes_in_the_graph():
     n = Network('epsg:27700')
-    n.add_node('1')
-    n.add_node('2')
-    n.add_node('3')
+    n.add_node('1', {'x': 1, 'y': 2})
+    n.add_node('2', {'x': 1, 'y': 2})
+    n.add_node('3', {'x': 1, 'y': 2})
     assert not n.has_nodes(['1', '4'])
 
 
 def test_has_nodes_when_none_of_the_nodes_in_the_graph():
     n = Network('epsg:27700')
-    n.add_node('1')
-    n.add_node('2')
-    n.add_node('3')
+    n.add_node('1', {'x': 1, 'y': 2})
+    n.add_node('2', {'x': 1, 'y': 2})
+    n.add_node('3', {'x': 1, 'y': 2})
     assert not n.has_nodes(['10', '20'])
 
 
@@ -2428,37 +2436,37 @@ def test_network_route_with_incorrect_modes_on_link():
 
 def test_generate_index_for_node_gives_next_integer_string_when_you_have_matsim_usual_integer_index():
     n = Network('epsg:27700')
-    n.add_node('1')
+    n.add_node('1', {'x': 1, 'y': 2})
     assert n.generate_index_for_node() == '2'
 
 
 def test_generate_index_for_node_gives_string_based_on_length_node_ids_when_you_have_mixed_index():
     n = Network('epsg:27700')
-    n.add_node('1')
-    n.add_node('1x')
+    n.add_node('1', {'x': 1, 'y': 2})
+    n.add_node('1x', {'x': 1, 'y': 2})
     assert n.generate_index_for_node() == '3'
 
 
 def test_generate_index_for_node_gives_string_based_on_length_node_ids_when_you_have_all_non_int_index():
     n = Network('epsg:27700')
-    n.add_node('1w')
-    n.add_node('1x')
+    n.add_node('1w', {'x': 1, 'y': 2})
+    n.add_node('1x', {'x': 1, 'y': 2})
     assert n.generate_index_for_node() == '3'
 
 
 def test_generate_index_for_node_gives_uuid4_as_last_resort(mocker):
     mocker.patch.object(uuid, 'uuid4')
     n = Network('epsg:27700')
-    n.add_node('1w')
-    n.add_node('1x')
-    n.add_node('4')
+    n.add_node('1w', {'x': 1, 'y': 2})
+    n.add_node('1x', {'x': 1, 'y': 2})
+    n.add_node('4', {'x': 1, 'y': 2})
     n.generate_index_for_node()
     uuid.uuid4.assert_called_once()
 
 
 def test_generating_n_indicies_for_nodes():
     n = Network('epsg:27700')
-    n.add_nodes({str(i): {} for i in range(10)})
+    n.add_nodes({str(i): {} for i in range(10)}, {'x': 1, 'y': 2})
     idxs = n.generate_indices_for_n_nodes(5)
     assert len(idxs) == 5
     assert not set(dict(n.nodes()).keys()) & idxs

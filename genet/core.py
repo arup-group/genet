@@ -657,24 +657,22 @@ class Network:
         else:
             raise NotImplementedError('Only `intersect` and `within` options for `how` param.')
 
-    def add_node(self, node: Union[str, int], attribs: dict = None, silent: bool = False):
+    def add_node(self, node: Union[str, int], attribs: dict, silent: bool = False):
         """
         Adds a node.
         :param node:
-        :param attribs: should include spatial information x,y in epsg cosistent with the network or lat lon in
-        epsg:4326
+        :param attribs: must include spatial information x,y in epsg cosistent with the network, or lat lon in epsg:4326
         :param silent: whether to mute stdout logging messages
         :return:
         """
-        if attribs is not None:
+        if ('lat' in attribs.keys() and 'lon' in attribs.keys()) or ('x' in attribs.keys() and 'y' in attribs.keys()):
             self.graph.add_node(node, **attribs)
+            self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
+            if not silent:
+                logging.info(f'Added Node with index `{node}` and data={attribs}')
+            return node
         else:
-            # TODO do not add nodes without spatial info
-            self.graph.add_node(node)
-        self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
-        if not silent:
-            logging.info(f'Added Node with index `{node}` and data={attribs}')
-        return node
+            logging.info(f'Cannot add Node without spatial information')
 
     def add_nodes(self, nodes_and_attribs: dict, silent: bool = False, ignore_change_log: bool = False):
         """
