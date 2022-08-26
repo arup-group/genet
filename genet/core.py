@@ -1840,10 +1840,18 @@ class Network:
         return all([self.has_node(node_id) for node_id in node_id])
 
     def has_isolated_nodes(self) -> bool:
-        return bool(list(nx.isolates(self.graph)))
+        return bool(self.isolated_nodes())
+
+    def isolated_nodes(self) -> set:
+        return list(nx.isolates(self.graph))
 
     def remove_isolated_nodes(self) -> None:
-        pass
+        if self.has_isolated_nodes():
+            nodes_to_remove = self.isolated_nodes()
+            logging.info(f'Found {len(nodes_to_remove)} isolated nodes to remove')
+            self.remove_nodes(nodes_to_remove)
+        else:
+            logging.warning('This Network has no isolated nodes to remove')
 
     def has_edge(self, u, v):
         return self.graph.has_edge(u, v)

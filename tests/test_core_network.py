@@ -1,5 +1,6 @@
 import ast
 import json
+import logging
 import os
 import sys
 import uuid
@@ -2272,18 +2273,72 @@ def test_has_nodes_when_none_of_the_nodes_in_the_graph():
     assert not n.has_nodes(['10', '20'])
 
 
-def test_network_has_isolated_nodes():
+@pytest.fixture()
+def network_with_isolated_nodes():
     n = Network('epsg:27700')
     n.add_node('1')
-    assert n.has_isolated_nodes()
+    return {'network': n, 'isolated_nodes': {'1'}}
 
 
-def test_network_does_not_have_isolated_nodes():
+@pytest.fixture()
+def network_without_isolated_nodes():
     n = Network('epsg:27700')
     n.add_node('0')
     n.add_node('1')
     n.add_link('link', u='0', v='1')
-    assert not n.has_isolated_nodes()
+    return {'network': n, 'isolated_nodes': set()}
+
+
+@pytest.fixture()
+def network_cases_for_testing_isolated_nodes(network_with_isolated_nodes, network_without_isolated_nodes):
+    return {
+        'with_isolated_nodes': network_with_isolated_nodes,
+        'without_isolated_nodes': network_without_isolated_nodes
+    }
+
+
+def test_network_has_isolated_nodes(network_with_isolated_nodes):
+    assert network_with_isolated_nodes['network'].has_isolated_nodes()
+
+
+def test_network_does_not_have_isolated_nodes(network_without_isolated_nodes):
+    assert not network_without_isolated_nodes['network'].has_isolated_nodes()
+
+
+@pytest.mark.parametrize("network_case", ['with_isolated_nodes', 'without_isolated_nodes'])
+def test_networks_report_correct_isolated_nodes(network_case, network_cases_for_testing_isolated_nodes):
+    assert network_cases_for_testing_isolated_nodes[network_case]['network'].isolated_nodes() == \
+           network_cases_for_testing_isolated_nodes[network_case]['isolated_nodes']
+
+
+def test_removes_isolated_nodes(network_with_isolated_nodes):
+    n = network_with_isolated_nodes['network']
+    n.remove_isolated_nodes()
+    assert not list(nx.isolates(n.graph))
+
+
+def test_removes_isolated_nodes(network_with_isolated_nodes):
+    n = network_with_isolated_nodes['network']
+    n.remove_isolated_nodes()
+    assert not list(nx.isolates(n.graph))
+
+
+def test_logs_number_of_isolated_nodes_when_removing(network_with_isolated_nodes, caplog):
+    caplog.set_level(logging.INFO)
+    n = network_with_isolated_nodes['network']
+    n.remove_isolated_nodes()
+
+    assert caplog.records[0].levelname == 'INFO'
+    assert '1 isolated node' in caplog.records[0].message
+
+
+def test_warns_of_no_isolated_nodes_when_trying_to_remove(network_without_isolated_nodes, caplog):
+    caplog.set_level(logging.WARNING)
+    n = network_without_isolated_nodes['network']
+    n.remove_isolated_nodes()
+
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'no isolated nodes' in caplog.records[0].message
 
 
 def test_has_edge_when_edge_is_in_the_graph():
