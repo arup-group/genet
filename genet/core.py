@@ -672,7 +672,7 @@ class Network:
                 logging.info(f'Added Node with index `{node}` and data={attribs}')
             return node
         else:
-            logging.info(f'Cannot add Node without spatial information')
+            logging.info('Cannot add Node without spatial information')
 
     def add_nodes(self, nodes_and_attribs: dict, silent: bool = False, ignore_change_log: bool = False):
         """

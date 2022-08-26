@@ -1596,7 +1596,7 @@ def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_r
          'new_attributes': {0: "{'x': 1, 'y': 2, 'a': 1}", 1: "{'x': 1, 'y': 2, 'a': 4}"},
          'diff': {0: [('add', '', [('x', 1), ('y', 2), ('a', 1)]), ('add', 'id', 1)], 1: [('change', 'a', (1, 4))]}})
 
-    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'new_attributes', 'diff']
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
     assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
 
 
