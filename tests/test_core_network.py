@@ -2277,6 +2277,9 @@ def test_has_nodes_when_none_of_the_nodes_in_the_graph():
 def network_with_isolated_nodes():
     n = Network('epsg:27700')
     n.add_node('1')
+    n.add_node('2')
+    n.add_node('3')
+    n.add_link('link', u='2', v='3')
     return {'network': n, 'isolated_nodes': {'1'}}
 
 
@@ -2317,12 +2320,6 @@ def test_removes_isolated_nodes(network_with_isolated_nodes):
     assert not list(nx.isolates(n.graph))
 
 
-def test_removes_isolated_nodes(network_with_isolated_nodes):
-    n = network_with_isolated_nodes['network']
-    n.remove_isolated_nodes()
-    assert not list(nx.isolates(n.graph))
-
-
 def test_logs_number_of_isolated_nodes_when_removing(network_with_isolated_nodes, caplog):
     caplog.set_level(logging.INFO)
     n = network_with_isolated_nodes['network']
@@ -2332,6 +2329,15 @@ def test_logs_number_of_isolated_nodes_when_removing(network_with_isolated_nodes
     assert '1 isolated node' in caplog.records[0].message
 
 
+def test_isolated_nodes_are_recorded_in_changelog_after_removal(network_with_isolated_nodes):
+    n = network_with_isolated_nodes['network']
+    n.remove_isolated_nodes()
+
+    assert len(n.change_log[n.change_log['change_event'] == 'remove']) == 1
+    assert n.change_log.iloc[-1]['change_event'] == 'remove'
+    assert n.change_log.iloc[-1]['old_id'] == '1'
+
+
 def test_warns_of_no_isolated_nodes_when_trying_to_remove(network_without_isolated_nodes, caplog):
     caplog.set_level(logging.WARNING)
     n = network_without_isolated_nodes['network']
@@ -2339,6 +2345,16 @@ def test_warns_of_no_isolated_nodes_when_trying_to_remove(network_without_isolat
 
     assert caplog.records[0].levelname == 'WARNING'
     assert 'no isolated nodes' in caplog.records[0].message
+
+
+def test_isolated_nodes_show_up_in_validation_report(network_with_isolated_nodes):
+    n = network_with_isolated_nodes['network']
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['isolated_nodes'],
+        {'has_isolated_nodes': 'True', 'nodes': ['1']}
+    )
 
 
 def test_has_edge_when_edge_is_in_the_graph():

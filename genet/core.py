@@ -1842,7 +1842,7 @@ class Network:
     def has_isolated_nodes(self) -> bool:
         return bool(self.isolated_nodes())
 
-    def isolated_nodes(self) -> set:
+    def isolated_nodes(self) -> list:
         return list(nx.isolates(self.graph))
 
     def remove_isolated_nodes(self) -> None:
@@ -2038,9 +2038,12 @@ class Network:
         report['graph'] = {'graph_connectivity': graph_connectivity}
 
         has_isolated_nodes = self.has_isolated_nodes()
-        report['graph']['has_isolated_nodes'] = str(has_isolated_nodes)
+        report['graph']['isolated_nodes'] = {
+            'has_isolated_nodes': str(has_isolated_nodes),
+            'nodes': self.isolated_nodes()
+        }
         if has_isolated_nodes:
-            logging.warning('This Network has isolated nodes! Consider cleaning up with `remove_isolated_nodes`')
+            logging.warning('This Network has isolated nodes! Consider cleaning it up with `remove_isolated_nodes`')
 
         # attribute checks
         report['graph']['link_attributes'] = {
