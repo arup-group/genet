@@ -2280,7 +2280,7 @@ def network_with_isolated_nodes():
     n.add_node('2')
     n.add_node('3')
     n.add_link('link', u='2', v='3')
-    return {'network': n, 'isolated_nodes': {'1'}}
+    return {'network': n, 'isolated_nodes': ['1']}
 
 
 @pytest.fixture()
@@ -2289,7 +2289,7 @@ def network_without_isolated_nodes():
     n.add_node('0')
     n.add_node('1')
     n.add_link('link', u='0', v='1')
-    return {'network': n, 'isolated_nodes': set()}
+    return {'network': n, 'isolated_nodes': []}
 
 
 @pytest.fixture()
@@ -2676,6 +2676,10 @@ def test_generate_validation_report_with_pt2matsim_network(network_object_from_t
                          'number_of_connected_subgraphs': 2},
                 'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
                          'number_of_connected_subgraphs': 0}},
+            'isolated_nodes': {
+                'has_isolated_nodes': 'False',
+                'nodes': []
+            },
             'link_attributes': {
                 'links_over_1000_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
                 'zero_attributes': {},
@@ -2721,6 +2725,10 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
                                             'number_of_connected_subgraphs': 0},
                                    'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
                                             'number_of_connected_subgraphs': 0}},
+            'isolated_nodes': {
+                'has_isolated_nodes': 'False',
+                'nodes': []
+            },
             'link_attributes': {'links_over_1000_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
                                 'zero_attributes': {},
                                 'negative_attributes': {},
