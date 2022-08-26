@@ -2172,7 +2172,7 @@ class Schedule(ScheduleElement):
         for s in subschedule.service_ids():
             if s not in service_ids:
                 subschedule.remove_service(s)
-        subschedule.remove_unsused_stops()
+        subschedule.remove_unused_stops()
         return subschedule
 
     def subschedule_on_spatial_condition(self, region_input, how='intersect'):
@@ -2763,6 +2763,11 @@ class Schedule(ScheduleElement):
         [self.minimal_transfer_times.pop(s) for s in empties if s in self.minimal_transfer_times]
 
     def remove_unsused_stops(self):
+        logging.warning('This method has been replaced due to incorrect spelling and is now deprecated. '
+                        'It will be removed in future versions. Please use `remove_unused_stops` instead.')
+        self.remove_unused_stops()
+
+    def remove_unused_stops(self):
         stops_to_remove = set()
         for stop, data in self._graph.nodes(data='routes'):
             if not data:
