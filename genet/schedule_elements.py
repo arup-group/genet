@@ -1467,6 +1467,10 @@ class Schedule(ScheduleElement):
         year = int(gtfs_day[:4])
         month = int(gtfs_day[4:6])
         day = int(gtfs_day[6:8])
+
+        df = df.groupby('route_id').apply(get_headway)
+        df['headway_mins'] = (pd.to_timedelta(df['headway']).dt.total_seconds() / 60)
+
         if from_time is not None:
             hour, minute, second = list(map(int, from_time.split(':')))
             df = df[df['trip_departure_time'] >= datetime(year, month, day, hour, minute, second)]
@@ -1474,8 +1478,6 @@ class Schedule(ScheduleElement):
             hour, minute, second = list(map(int, to_time.split(':')))
             df = df[df['trip_departure_time'] <= datetime(year, month, day, hour, minute, second)]
 
-        df = df.groupby('route_id').apply(get_headway)
-        df['headway_mins'] = (pd.to_timedelta(df['headway']).dt.total_seconds() / 60).fillna(0)
         return df
 
     def generate_trips_dataframe_from_headway(self, route_id, headway_spec: dict):
@@ -1534,12 +1536,17 @@ class Schedule(ScheduleElement):
         """
         df = self.trips_headways(from_time=from_time, to_time=to_time, gtfs_day=gtfs_day)
 
-        df = df.groupby(['service_id', 'route_id', 'mode']).describe()
-        df = df['headway_mins'][['mean', 'std', 'max', 'min', 'count']].reset_index()
-        df = df.rename(
-            columns={'mean': 'mean_headway_mins', 'std': 'std_headway_mins', 'max': 'max_headway_mins',
-                     'min': 'min_headway_mins', 'count': 'trip_count'}
-        )
+        # first trips don't have a headway, they are kept as NaT and NaN
+        if not df.empty:
+            route_groups = df.groupby(['service_id', 'route_id', 'mode'])
+            df = route_groups.describe()
+            df = df['headway_mins'][['mean', 'std', 'max', 'min']]
+            df['trip_count'] = route_groups.apply(len)
+            df.reset_index(inplace=True)
+            df = df.rename(
+                columns={'mean': 'mean_headway_mins', 'std': 'std_headway_mins', 'max': 'max_headway_mins',
+                         'min': 'min_headway_mins'}
+            )
         return df
 
     def unused_vehicles(self):
@@ -3068,7 +3075,7 @@ def read_vehicle_types(yml):
 
 
 def get_headway(group):
-    group['headway'] = group['trip_departure_time'].diff().fillna(pd.Timedelta(seconds=0))
+    group['headway'] = group['trip_departure_time'].diff()
     return group
 
 
