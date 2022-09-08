@@ -1,6 +1,7 @@
 import logging
 import os
 from itertools import chain
+import json
 
 import geopandas as gpd
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
@@ -117,7 +118,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
     for h in [7, 8, 9, 13, 16, 17, 18]:
         save_geodataframe(
             df_all_modes_vph[df_all_modes_vph['hour'].dt.hour == h],
-            filename=f'vph_all_modes_within_{h-1}:30-{h}:30',
+            filename=f'vph_all_modes_within_{h - 1}:30-{h}:30',
             output_dir=vph_dir,
             include_shp_files=include_shp_files
         )
@@ -209,3 +210,7 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
             output_dir=os.path.join(output_dir, 'routing'),
             include_shp_files=include_shp_files
         )
+
+    summary_report = n.summary_report()
+    with open(os.path.join(output_dir, 'summary_report.json'), 'w', encoding='utf-8') as f:
+        json.dump(sanitiser.sanitise_dictionary(summary_report), f, ensure_ascii=False, indent=4)

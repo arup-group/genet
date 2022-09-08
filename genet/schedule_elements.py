@@ -2983,6 +2983,48 @@ class Schedule(ScheduleElement):
         """
         self.write_to_csv(output_dir, gtfs_day=gtfs_day, file_extention='txt')
 
+    def summary(self):
+        report = {}
+        schedule_stats = {'Number of services': self.__len__(),
+                          'Number of routes': self.number_of_routes(),
+                          'Number of stops': len(self.reference_nodes())}
+        report['schedule_info'] = schedule_stats
+
+        report['modes'] = {}
+        schedule_modes = self.modes()
+        report['modes']['Modes in schedule'] = schedule_modes
+
+        services_by_modes = {}
+        for mode in schedule_modes:
+            services_by_modes[mode] = len(self.services_on_modal_condition(mode))
+        report['modes']['Services by mode'] = services_by_modes
+
+        stops_by_modes = {}
+        for mode in schedule_modes:
+            stops_by_modes[mode] = len(self.stops_on_modal_condition(mode))
+        report['modes']['PT stops by mode'] = stops_by_modes
+
+        report['accessibility_tags'] = {}
+        report['accessibility_tags']['Stops with tag bikeAccessible'] = len(
+            self.stop_attribute_data({'attributes': 'bikeAccessible'}))
+        bike_accessible_keys = []
+        bike_attribs_dict = self.stop_attribute_data(
+            {'attributes': 'bikeAccessible'}).to_dict(orient='index')
+        for key in bike_attribs_dict.keys():
+            bike_accessible_keys.append(bike_attribs_dict[key]['attributes']['bikeAccessible'])
+        report['accessibility_tags']['Unique values for bikeAccessible tag'] = set(bike_accessible_keys)
+
+        report['accessibility_tags']['Stops with tag carAccessible'] = len(
+            self.stop_attribute_data({'attributes': 'carAccessible'}))
+        car_accessible_keys = []
+        car_attribs_dict = self.stop_attribute_data(
+            {'attributes': 'carAccessible'}).to_dict(orient='index')
+        for key in car_attribs_dict.keys():
+            car_accessible_keys.append(car_attribs_dict[key]['attributes']['carAccessible'])
+        report['accessibility_tags']['Unique values for carAccessible tag'] = set(car_accessible_keys)
+
+        return report
+
 
 def verify_graph_schema(graph):
     if not isinstance(graph, nx.DiGraph):

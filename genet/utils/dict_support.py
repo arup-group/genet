@@ -114,7 +114,6 @@ def combine_edge_data_lists(l1, l2):
 
 
 def dict_to_string(d):
-    # turn a (potentially) nested dictionary into a string
     return str(d).replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
 
 

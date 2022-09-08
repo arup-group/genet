@@ -942,7 +942,7 @@ class Network:
 
     def modes(self):
         """
-        Scans network for 'modes' attribute and returns list of all modes present int he network
+        Scans network for 'modes' attribute and returns list of all modes present in the network
         :return:
         """
         modes = set()
@@ -2013,13 +2013,13 @@ class Network:
         return [route.id for route in self.schedule.routes() if
                 not route.has_network_route() or not self.is_valid_network_route(route)]
 
-    def generate_validation_report(self, modes=None, link_metre_length_threshold=1000):
+    def generate_validation_report(self, modes_for_strong_connectivity=None, link_metre_length_threshold=1000):
         """
         Generates a dictionary with keys: 'graph', 'schedule' and 'routing' describing validity of the Network's
         underlying graph, the schedule services and then the intersection of the two which is the routing of schedule
         services onto the graph.
-        :param modes: list of modes in the network that need to be checked for strong connectivity. Defaults to
-            'car', 'walk' and 'bike'
+        :param modes_for_strong_connectivity: list of modes in the network that need to be checked for strong
+            connectivity. Defaults to 'car', 'walk' and 'bike'
         :param link_metre_length_threshold: in meters defaults to 1000, i.e. 1km
         :return:
         """
@@ -2028,12 +2028,12 @@ class Network:
         report = {}
 
         # describe network connectivity
-        if modes is None:
-            modes = ['car', 'walk', 'bike']
-            logging.info(f'Defaulting to checking graph connectivity for modes: {modes}. You can change this by '
-                         'passing a `modes` param')
+        if modes_for_strong_connectivity is None:
+            modes_for_strong_connectivity = ['car', 'walk', 'bike']
+            logging.info(f'Defaulting to checking graph connectivity for modes: {modes_for_strong_connectivity}. '
+                         'You can change this by passing a `modes_for_strong_connectivity` param')
         graph_connectivity = {}
-        for mode in modes:
+        for mode in modes_for_strong_connectivity:
             graph_connectivity[mode] = self.check_connectivity_for_mode(mode)
         report['graph'] = {'graph_connectivity': graph_connectivity}
 
@@ -2046,8 +2046,9 @@ class Network:
             logging.warning('This Network has isolated nodes! Consider cleaning it up with `remove_isolated_nodes`')
 
         # attribute checks
+        conditions_toolbox = network_validation.ConditionsToolbox()
         report['graph']['link_attributes'] = {
-            f'{k}_attributes': {} for k in network_validation.LINK_ATTRIBUTE_VALIDATION_TOOLBOX}
+            f'{k}_attributes': {} for k in conditions_toolbox.condition_names()}
 
         # checks on length attribute specifically
         def links_over_threshold_length(value):
@@ -2063,14 +2064,17 @@ class Network:
         link_attributes = [attrib for attrib in link_attributes if attrib not in non_testable]
         for attrib in link_attributes:
             logging.info(f'Checking link values for `{attrib}`')
-            for value, condition in network_validation.LINK_ATTRIBUTE_VALIDATION_TOOLBOX.items():
-                links_satifying_condition = self.report_on_link_attribute_condition(attrib, condition)
+            for condition_name in conditions_toolbox.condition_names():
+                links_satifying_condition = self.report_on_link_attribute_condition(
+                    attrib, conditions_toolbox.get_condition_evaluator(condition_name))
                 if links_satifying_condition['number_of']:
                     logging.warning(
-                        f'{links_satifying_condition["number_of"]} of links have {value} values for `{attrib}`')
+                        f'{links_satifying_condition["number_of"]} of links have '
+                        f'{condition_name} values for `{attrib}`')
                     if isinstance(attrib, dict):
                         attrib = dict_support.dict_to_string(attrib)
-                    report['graph']['link_attributes'][f'{value}_attributes'][attrib] = links_satifying_condition
+                    report['graph']['link_attributes'][f'{condition_name}_attributes'][
+                        attrib] = links_satifying_condition
 
         if self.schedule:
             report['schedule'] = self.schedule.generate_validation_report()
@@ -2109,9 +2113,7 @@ class Network:
 
     def check_connectivity_for_mode(self, mode):
         logging.info(f'Checking network connectivity for mode: {mode}')
-        # subgraph for the mode to be tested
         G_mode = self.modal_subgraph(mode)
-        # calculate how many connected subgraphs there are
         con_desc = network_validation.describe_graph_connectivity(G_mode)
         no_of_components = con_desc["number_of_connected_subgraphs"]
         logging.info(f'The graph for mode: {mode} has: '
@@ -2321,3 +2323,47 @@ class Network:
             slope_dict[link_id] = {'slope': link_slope}
 
         return slope_dict
+
+    def summary(self):
+        report = {}
+        network_stats = {'Number of network links': nx.number_of_nodes(self.graph),
+                         'Number of network nodes': nx.number_of_edges(self.graph)}
+        report['network_graph_info'] = network_stats
+        report['modes'] = {}
+        report['modes']['Modes on network links'] = self.modes()
+
+        # check for the old format, i.e. long-form attribute notation
+        if len(graph_operations.get_attribute_data_under_key(
+                self.links(), {'attributes': {'osm:way:highway': 'text'}}).values()) == 0:
+            highway_tags = self.link_attribute_data_under_key({'attributes': 'osm:way:highway'})
+            highway_tags = set(itertools.chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+        else:
+            highway_tags = self.link_attribute_data_under_key({'attributes': {'osm:way:highway': 'text'}})
+            highway_tags = set(itertools.chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+
+        osm_highway_tags = {}
+        for tag in highway_tags:
+            tag_links = self.extract_links_on_edge_attributes(conditions={'attributes': {'osm:way:highway': tag}},
+                                                              mixed_dtypes=True)
+            osm_highway_tags[tag] = len(tag_links)
+        report['osm_highway_tags'] = {'Number of links by tag': osm_highway_tags}
+
+        links_by_mode = {}
+        for mode in self.modes():
+            mode_links = self.extract_links_on_edge_attributes(conditions={'modes': mode}, mixed_dtypes=True)
+            links_by_mode[mode] = len(mode_links)
+        report['modes']['Number of links by mode'] = links_by_mode
+
+        return report
+
+    def summary_report(self):
+        """
+        Returns a report with summary statistics for the network and the schedule.
+        """
+        logging.info('Creating a summary report')
+        report = {'network': self.summary()}
+
+        if self.schedule:
+            report['schedule'] = self.schedule.summary()
+
+        return report

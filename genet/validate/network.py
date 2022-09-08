@@ -1,5 +1,6 @@
 import networkx as nx
 import math
+from dataclasses import dataclass, fields
 
 
 def validate_attribute_data(attributes, necessary_attributes):
@@ -38,31 +39,63 @@ def describe_graph_connectivity(G):
     return dict_to_return
 
 
+def evaluate_condition_for_floatable(value, condition):
+    try:
+        value = float(value)
+        return condition(value)
+    except (ValueError, TypeError):
+        return False
+
+
 def zero_value(value):
-    return value in {0, '0', '0.0'}
+    return value == 0.0
 
 
 def negative_value(value):
-    if isinstance(value, str):
-        return '-' in value
-    return value < 0
+    return value < 0.0
 
 
 def infinity_value(value):
-    if isinstance(value, str):
-        return value in ['inf', '-inf']
     return math.isinf(value)
 
 
 def fractional_value(value):
-    if isinstance(value, str):
-        return ('0.' in value) and (value != '0.0')
-    return 1 > value > 0
+    return 1.0 > value > 0.0
 
 
-LINK_ATTRIBUTE_VALIDATION_TOOLBOX = {
-        'zero': zero_value,
-        'negative': negative_value,
-        'infinite': infinity_value,
-        'fractional': fractional_value
-    }
+def none_condition(value):
+    return value in [None, 'None']
+
+
+@dataclass()
+class Condition:
+    condition: callable
+
+    def evaluate(self, value):
+        return self.condition(value)
+
+
+@dataclass()
+class FloatCondition(Condition):
+    condition: callable
+
+    def evaluate(self, value):
+        return evaluate_condition_for_floatable(value, self.condition)
+
+
+@dataclass()
+class ConditionsToolbox:
+    zero: Condition = FloatCondition(zero_value)
+    negative: Condition = FloatCondition(negative_value)
+    infinite: Condition = FloatCondition(infinity_value)
+    fractional: Condition = FloatCondition(fractional_value)
+    none: Condition = Condition(none_condition)
+
+    def condition_names(self) -> list:
+        return [field.name for field in fields(self)]
+
+    def get_condition_evaluator(self, condition: str) -> callable:
+        if condition in self.__dict__:
+            return self.__dict__[condition].evaluate
+        else:
+            raise NotImplementedError(f'Condition {condition} is not defined.')
