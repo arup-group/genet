@@ -2043,13 +2043,16 @@ class Network:
         for attrib in link_attributes:
             logging.info(f'Checking link values for `{attrib}`')
             for condition_name in conditions_toolbox.condition_names():
-                links_satifying_condition = self.report_on_link_attribute_condition(attrib, conditions_toolbox.get_condition_evaluator(condition_name))
+                links_satifying_condition = self.report_on_link_attribute_condition(
+                    attrib, conditions_toolbox.get_condition_evaluator(condition_name))
                 if links_satifying_condition['number_of']:
                     logging.warning(
-                        f'{links_satifying_condition["number_of"]} of links have {condition_name} values for `{attrib}`')
+                        f'{links_satifying_condition["number_of"]} of links have '
+                        f'{condition_name} values for `{attrib}`')
                     if isinstance(attrib, dict):
                         attrib = dict_support.dict_to_string(attrib)
-                    report['graph']['link_attributes'][f'{condition_name}_attributes'][attrib] = links_satifying_condition
+                    report['graph']['link_attributes'][f'{condition_name}_attributes'][
+                        attrib] = links_satifying_condition
 
         if self.schedule:
             report['schedule'] = self.schedule.generate_validation_report()
