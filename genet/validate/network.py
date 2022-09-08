@@ -43,7 +43,7 @@ def evaluate_condition_for_floatable(value, condition):
     try:
         value = float(value)
         return condition(value)
-    except ValueError:
+    except (ValueError, TypeError):
         return False
 
 
@@ -63,8 +63,20 @@ def fractional_value(value):
     return 1.0 > value > 0.0
 
 
+def none_condition(value):
+    return value in [None, 'None']
+
+
 @dataclass()
 class Condition:
+    condition: callable
+
+    def evaluate(self, value):
+        return self.condition(value)
+
+
+@dataclass()
+class FloatCondition(Condition):
     condition: callable
 
     def evaluate(self, value):
@@ -73,10 +85,11 @@ class Condition:
 
 @dataclass()
 class ConditionsToolbox:
-    zero: Condition = Condition(zero_value)
-    negative: Condition = Condition(negative_value)
-    infinite: Condition = Condition(infinity_value)
-    fractional: Condition = Condition(fractional_value)
+    zero: Condition = FloatCondition(zero_value)
+    negative: Condition = FloatCondition(negative_value)
+    infinite: Condition = FloatCondition(infinity_value)
+    fractional: Condition = FloatCondition(fractional_value)
+    none: Condition = Condition(none_condition)
 
     def condition_names(self) -> list:
         return [field.name for field in fields(self)]

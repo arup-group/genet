@@ -2736,7 +2736,7 @@ def test_long_links_show_up_in_validation_report():
     )
 
 
-offending_link_attribute_values_and_names = [('zero', '0'), ('negative', '-1'), ('infinite', 'inf'), ('fractional', '0.1')]
+offending_link_attribute_values_and_names = [('zero', '0'), ('negative', '-1'), ('infinite', 'inf'), ('fractional', '0.1'), ('none', 'None')]
 
 @pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
 def test_values_of_ids_are_not_flagged_in_validation_report(value, offending_value):
@@ -2840,6 +2840,22 @@ def test_fractional_value_attributes_show_up_in_validation_report():
         report['graph']['link_attributes']['fractional_attributes'],
         {
             'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_none_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': 1, 'capacity': 'None', 'freespeed': None, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['none_attributes'],
+        {
+            'capacity': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
             'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
         }
     )
