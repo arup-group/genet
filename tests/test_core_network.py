@@ -416,19 +416,18 @@ def test_adding_networks_with_clashing_multiindices():
     n_left.add_link('1', '1', '2', 0, attribs={'modes': ['walk']})
 
     n_right = Network('epsg:27700')
-    n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
+    n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
-    n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
+    n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_left.add_link('1', '1', '2', 0, attribs={'modes': ['walk', 'bike']})
+    n_right.add_link('1', '1', '2', 0, attribs={'modes': ['walk', 'bike']})
 
-    n_left.add(n_right)
     assert len(list(n_left.nodes())) == 2
     assert n_left.node('1') == {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                                 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879}
     assert n_left.node('2') == {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                                 'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387}
-    assert len(n_left.link_id_mapping) == 2
+    assert len(n_left.link_id_mapping) == 1
     assert n_left.link('1') == {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}
     assert n_left.graph['1']['2'][0] == {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}
 
@@ -862,6 +861,15 @@ def test_add_node_without_attribs_raises_error():
     with pytest.raises(TypeError):
         n = Network('epsg:27700')
         n.add_node(1)
+
+
+def test_adding_node_with_clashing_id_throws_error():
+    n = Network('epsg:27700')
+    n.add_node(1, {'x': 1, 'y': 2, 'a': 1})
+
+    with pytest.raises(RuntimeError) as error_info:
+        n.add_node(1, {'x': 2, 'y': 2, 'a': 2})
+    assert "cannot add" in str(error_info.value)
 
 
 def test_add_multiple_nodes():

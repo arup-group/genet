@@ -670,6 +670,10 @@ class Network:
                 ('x' not in attribs.keys() and 'y' not in attribs.keys()):
             raise RuntimeError('Cannot add Node without spatial information')
 
+        # check for clashing node IDs
+        if node in dict(self.nodes()).keys():
+            raise RuntimeError('Node ID already exists in the Network')
+
         self.graph.add_node(node, **attribs)
         self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
         if not silent:
