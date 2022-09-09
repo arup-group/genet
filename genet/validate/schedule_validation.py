@@ -17,19 +17,6 @@ def generate_validation_report(schedule):
             'invalid_stages': invalid_stages
         }
 
-    has_valid_vehicle_def = schedule.validate_vehicle_definitions()
-    missing_vehicle_types = schedule.get_missing_vehicle_information()
-
-    report['vehicle_level'] = {
-        'vehicle_definitions_valid': has_valid_vehicle_def,
-        'vehicle_definitions_validity_components': {
-            'missing_vehicles': {
-                'missing_vehicles_types': missing_vehicle_types['missing_vehicle_types'],
-                'vehicles_affected': missing_vehicle_types['vehicles_affected']},
-            'unused_vehicles': schedule.unused_vehicles(),
-            'multiple_use_vehicles': schedule.check_vehicle_uniqueness()}
-    }
-
     for service_id in schedule.service_ids():
         invalid_stages = []
         invalid_routes = []
@@ -60,6 +47,20 @@ def generate_validation_report(schedule):
     invalid_stages = []
     invalid_services = [service_id for service_id in schedule.service_ids() if
                         not report['service_level'][service_id]['is_valid_service']]
+
+    logging.info('Checking validity of PT vehicles')
+    has_valid_vehicle_def = schedule.validate_vehicle_definitions()
+    missing_vehicle_types = schedule.get_missing_vehicle_information()
+
+    report['vehicle_level'] = {
+        'vehicle_definitions_valid': has_valid_vehicle_def,
+        'vehicle_definitions_validity_components': {
+            'missing_vehicles': {
+                'missing_vehicles_types': missing_vehicle_types['missing_vehicle_types'],
+                'vehicles_affected': missing_vehicle_types['vehicles_affected']},
+            'unused_vehicles': schedule.unused_vehicles(),
+            'multiple_use_vehicles': schedule.check_vehicle_uniqueness()}
+    }
 
     if invalid_services or (not has_valid_vehicle_def):
         is_valid_schedule = False
