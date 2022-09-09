@@ -9,12 +9,18 @@ def generate_validation_report(schedule):
         'route_level': {},
         'vehicle_level': {}
     }
+
+    logging.info('Computing headway stats')
+    df_headway = schedule.headway_stats().set_index('route_id')
+
     route_validity = {}
     for route in schedule.routes():
         is_valid_route, invalid_stages = route.is_valid_route(return_reason=True)
         route_validity[route.id] = {
             'is_valid_route': is_valid_route,
-            'invalid_stages': invalid_stages
+            'invalid_stages': invalid_stages,
+            'headway_stats': df_headway.loc[
+                route.id, ['mean_headway_mins', 'std_headway_mins', 'max_headway_mins', 'min_headway_mins']].to_dict()
         }
 
     for service_id in schedule.service_ids():
@@ -78,6 +84,24 @@ def generate_validation_report(schedule):
         'invalid_stages': invalid_stages,
         'has_valid_services': has_valid_services,
         'invalid_services': invalid_services}
+
+    zero_headways = df_headway[df_headway['min_headway_mins'] == 0]
+    report['schedule_level']['headways'] = {}
+    if not zero_headways.empty:
+        report['schedule_level']['headways']['has_zero_min_headways'] = True
+        report['schedule_level']['headways']['routes'] = {
+            'number_of_affected': len(zero_headways),
+            'ids': list(zero_headways.index)
+        }
+        report['schedule_level']['headways']['services'] = {
+            'number_of_affected': len(zero_headways['service_id'].unique()),
+            'ids': list(zero_headways['service_id'].unique())
+        }
+
+        logging.warning(f"Found {len(zero_headways)} PT Routes 0 minimum headway between trips. "
+                        f"The following Services are affected: {report['schedule_level']['services']}")
+    else:
+        report['schedule_level']['headways']['has_zero_min_headways'] = False
 
     if not is_valid_schedule:
         logging.warning('This schedule is not valid')

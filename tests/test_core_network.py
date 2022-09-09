@@ -2660,13 +2660,19 @@ def test_generate_validation_report_with_pt2matsim_network(network_object_from_t
                 'zero_attributes': {}}},
         'schedule': {
             'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
-                               'has_valid_services': False, 'invalid_services': ['10314']},
+                               'has_valid_services': False, 'invalid_services': ['10314'],
+                               'headways': {'has_zero_min_headways': False}},
             'service_level': {
                 '10314': {'is_valid_service': False, 'invalid_stages': ['not_has_valid_routes'],
                           'has_valid_routes': False, 'invalid_routes': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']}},
-            'route_level': {'10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'is_valid_route': False,
-                                                                                     'invalid_stages': [
-                                                                                         'not_has_correctly_ordered_route']}}},
+            'route_level': {
+                '10314': {
+                    'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {
+                        'is_valid_route': False,
+                        'invalid_stages': ['not_has_correctly_ordered_route'],
+                        'headway_stats': {'max_headway_mins': float('nan'), 'mean_headway_mins': float('nan'),
+                                          'min_headway_mins': float('nan'), 'std_headway_mins': float('nan')}
+                    }}},
             'vehicle_level': {'vehicle_definitions_valid': True,
                               'vehicle_definitions_validity_components': {
                                   'missing_vehicles': {'missing_vehicles_types': set(),
@@ -2699,13 +2705,24 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
             'link_attributes': {'links_over_1km_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
                                 'zero_attributes': {}}},
         'schedule': {'schedule_level': {'is_valid_schedule': True, 'invalid_stages': [], 'has_valid_services': True,
-                                        'invalid_services': []},
+                                        'invalid_services': [], 'headways': {'has_zero_min_headways': False}},
                      'service_level': {
                          'service': {'is_valid_service': True, 'invalid_stages': [], 'has_valid_routes': True,
                                      'invalid_routes': []}},
                      'route_level': {
-                         'service': {'1': {'is_valid_route': True, 'invalid_stages': []},
-                                     '2': {'is_valid_route': True, 'invalid_stages': []}}},
+                         'service': {
+                             '1': {
+                                 'is_valid_route': True,
+                                 'invalid_stages': [],
+                                 'headway_stats': {'max_headway_mins': float('nan'), 'mean_headway_mins': float('nan'),
+                                                   'min_headway_mins': float('nan'), 'std_headway_mins': float('nan')}
+                             },
+                             '2': {
+                                 'is_valid_route': True,
+                                 'invalid_stages': [],
+                                 'headway_stats': {'max_headway_mins': float('nan'), 'mean_headway_mins': float('nan'),
+                                                   'min_headway_mins': float('nan'), 'std_headway_mins': float('nan')}
+                             }}},
                      'vehicle_level': {'vehicle_definitions_valid': True,
                                        'vehicle_definitions_validity_components': {
                                            'missing_vehicles': {'missing_vehicles_types': set(),
