@@ -794,7 +794,7 @@ def test_node_attribute_data_under_keys_with_named_index(network1):
 
 
 def test_node_attribute_data_under_keys_generates_key_for_nested_data(network1):
-    network1.add_node('1', {'key': {'nested_value': {'more_nested': 4}}})
+    network1.add_node('1', {'x': 1, 'y': 2, 'key': {'nested_value': {'more_nested': 4}}})
     df = network1.node_attribute_data_under_keys([{'key': {'nested_value': 'more_nested'}}])
     assert isinstance(df, pd.DataFrame)
     assert 'key::nested_value::more_nested' in df.columns
@@ -1596,7 +1596,7 @@ def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_r
          'new_attributes': {0: "{'x': 1, 'y': 2, 'a': 1}", 1: "{'x': 1, 'y': 2, 'a': 4}"},
          'diff': {0: [('add', '', [('x', 1), ('y', 2), ('a', 1)]), ('add', 'id', 1)], 1: [('change', 'a', (1, 4))]}})
 
-    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'new_attributes', 'diff'] # 'old_attributes'
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'new_attributes', 'diff']
     assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
 
 
@@ -2383,9 +2383,9 @@ def test_calculate_route_distance_with_links_that_have_length_attrib():
 
 def test_calculate_route_distance_with_links_that_dont_have_length_attrib():
     n = Network('epsg:27700')
-    n.add_node(1, attribs={'s2_id': 12345})
-    n.add_node(3, attribs={'s2_id': 345435})
-    n.add_node(4, attribs={'s2_id': 568767})
+    n.add_node(1, attribs={'x': 1, 'y': 2, 's2_id': 12345})
+    n.add_node(3, attribs={'x': 1, 'y': 2, 's2_id': 345435})
+    n.add_node(4, attribs={'x': 1, 'y': 2, 's2_id': 568767})
     n.add_link('1', 1, 3)
     n.add_link('2', 3, 4)
     assert round(n.route_distance(['1', '2']), 6) == 0.013918
@@ -2466,7 +2466,10 @@ def test_generate_index_for_node_gives_uuid4_as_last_resort(mocker):
 
 def test_generating_n_indicies_for_nodes():
     n = Network('epsg:27700')
-    n.add_nodes({str(i): {} for i in range(10)}, {'x': 1, 'y': 2})
+    nodes_dict = {}
+    for i in range(10):
+        nodes_dict[i] = {'x': 1, 'y': 2}
+    n.add_nodes(nodes_dict)
     idxs = n.generate_indices_for_n_nodes(5)
     assert len(idxs) == 5
     assert not set(dict(n.nodes()).keys()) & idxs

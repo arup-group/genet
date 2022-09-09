@@ -665,14 +665,17 @@ class Network:
         :param silent: whether to mute stdout logging messages
         :return:
         """
-        if ('lat' in attribs.keys() and 'lon' in attribs.keys()) or ('x' in attribs.keys() and 'y' in attribs.keys()):
-            self.graph.add_node(node, **attribs)
-            self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
-            if not silent:
-                logging.info(f'Added Node with index `{node}` and data={attribs}')
-            return node
-        else:
-            logging.info('Cannot add Node without spatial information')
+        # check for spatial info
+        if ('lat' not in attribs.keys() and 'lon' not in attribs.keys()) and \
+                ('x' not in attribs.keys() and 'y' not in attribs.keys()):
+            raise RuntimeError('Cannot add Node without spatial information')
+
+        self.graph.add_node(node, **attribs)
+        self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
+        if not silent:
+            logging.info(f'Added Node with index `{node}` and data={attribs}')
+
+        return node
 
     def add_nodes(self, nodes_and_attribs: dict, silent: bool = False, ignore_change_log: bool = False):
         """
@@ -684,14 +687,18 @@ class Network:
         reduce changelog bloat.
         :return:
         """
-        # check for clashing nodes
+        # check for spatial info
+        for node_id, value in nodes_and_attribs.items():
+            if ('lat' not in value.keys() and 'lon' not in value.keys()) and \
+                    ('x' not in value.keys() and 'y' not in value.keys()):
+                raise RuntimeError(f'Cannot add Node `{node_id}` without any spatial information')
+
+        # check for clashing node IDs
         clashing_node_ids = set(dict(self.nodes()).keys()) & set(nodes_and_attribs.keys())
 
         df_nodes = pd.DataFrame(nodes_and_attribs).T
         reindexing_dict = {}
-        if df_nodes.empty:
-            df_nodes = pd.DataFrame({'id': list(nodes_and_attribs.keys())})
-        elif ('id' not in df_nodes.columns) or (df_nodes['id'].isnull().any()):
+        if ('id' not in df_nodes.columns) or (df_nodes['id'].isnull().any()):
             df_nodes['id'] = df_nodes.index
 
         if clashing_node_ids:
