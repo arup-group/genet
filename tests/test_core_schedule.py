@@ -1993,6 +1993,57 @@ def test_generating_trips_from_headway_updates_vehicles(schedule):
     )
 
 
+@pytest.fixture()
+def schedule_for_speed_testing():
+    return {
+        'schedule': Schedule(epsg='epsg:27700', services=[
+            Service(id='service',
+                    routes=[
+                        Route(route_short_name='route', mode='bus',
+                              stops=[Stop(id='0', x=1, y=10, epsg='epsg:27700'),
+                                     Stop(id='1', x=1, y=20, epsg='epsg:27700'),
+                                     Stop(id='2', x=1, y=30, epsg='epsg:27700')],
+                              trips={'trip_id': ['t1'], 'trip_departure_time': ['05:40:00'],
+                                     'vehicle_id': ['veh_1_bus']},
+                              arrival_offsets=['00:00:00', '00:00:01', '00:00:03'],
+                              departure_offsets=['00:00:00', '00:00:01', '00:00:03'])
+                    ])
+        ]),
+        'network_factor': 1.3,
+        'stops_distance': 10 / (1.3),
+        'expected_trips_with_stops_and_speed_df': DataFrame(
+            {'departure_time': {0: Timestamp('1970-01-01 05:40:00'), 1: Timestamp('1970-01-01 05:40:01')},
+             'arrival_time': {0: Timestamp('1970-01-01 05:40:01'), 1: Timestamp('1970-01-01 05:40:03')},
+             'mode': {0: 'bus', 1: 'bus'}, 'service_id': {0: 'service', 1: 'service'},
+             'route_name': {0: 'route', 1: 'route'}, 'route_id': {0: 'service_0', 1: 'service_0'},
+             'to_stop': {0: '1', 1: '2'}, 'from_stop_name': {0: '', 1: ''}, 'from_stop': {0: '0', 1: '1'},
+             'service_name': {0: 'route', 1: 'route'}, 'to_stop_name': {0: '', 1: ''}, 'trip_id': {0: 't1', 1: 't1'},
+             'vehicle_id': {0: 'veh_1_bus', 1: 'veh_1_bus'},
+             'speed': {0: 10.0, 1: 5.0}}
+        ),
+        'expected_route_speeds': {'service_0': 7.5}
+    }
+
+
+def test_speed_calculation_for_schedule(schedule_for_speed_testing, mocker):
+    network_factor = schedule_for_speed_testing['network_factor']
+    mocker.patch.object(spatial, 'distance_between_s2cellids',
+                        return_value=schedule_for_speed_testing['stops_distance'])
+    assert_frame_equal(
+        schedule_for_speed_testing['schedule'].trips_with_stops_and_speed(network_factor=network_factor).sort_index(
+            axis=1),
+        schedule_for_speed_testing['expected_trips_with_stops_and_speed_df'].sort_index(axis=1)
+    )
+
+
+def test_speed_for_each_route_calculation_for_schedule(schedule_for_speed_testing, mocker):
+    network_factor = schedule_for_speed_testing['network_factor']
+    mocker.patch.object(spatial, 'distance_between_s2cellids',
+                        return_value=schedule_for_speed_testing['stops_distance'])
+    assert schedule_for_speed_testing['schedule'].average_route_speeds(network_factor=network_factor) == \
+           schedule_for_speed_testing['expected_route_speeds']
+
+
 def test_overlapping_vehicles(schedule):
     overlapping_vehs = schedule.overlapping_vehicle_ids(vehicles={'veh_2_bus': {'type': 'bus'}})
     assert set(overlapping_vehs) == {'veh_2_bus'}

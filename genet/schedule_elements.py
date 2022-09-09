@@ -260,6 +260,45 @@ class ScheduleElement:
         return None
 
     @abstractmethod
+    def trips_with_stops_to_dataframe(self) -> pd.DataFrame:
+        pass
+
+    def trips_with_stops_and_speed(self, network_factor=1.3) -> pd.DataFrame:
+        """
+        DataFrame: trips_with_stops_to_dataframe, but with speed in metres/second between each of the stops.
+        Note well:
+         - The unit of metres is not guaranteed - this assumes the object is in local metre-based projection.
+         - It does not consider network routes, uses 1.3 network factor as default
+        :param network_factor: Does not consider network routes, network factor (default 1.3) is applied to Euclidean
+            distance.
+        :return:
+        """
+        df = self.trips_with_stops_to_dataframe()
+        df['distance'] = df.apply(
+            lambda row: spatial.distance_between_s2cellids(
+                self._graph.nodes[row['from_stop']]['s2_id'],
+                self._graph.nodes[row['to_stop']]['s2_id']
+            ), axis=1
+        ) * network_factor
+        df['time'] = (df['arrival_time'] - df['departure_time']).dt.total_seconds()
+        df['speed'] = df['distance'] / df['time']
+        df.drop(['distance', 'time'], axis=1, inplace=True)
+        return df
+
+    def average_route_speeds(self, network_factor=1.3) -> dict:
+        """
+        Average speed for each route in object
+        :param network_factor: Does not consider network routes, network factor (default 1.3) is applied to Euclidean
+            distance.
+        :return: Dictionary {route_ID: average_speed_in_m_per_s}
+        """
+        df = self.trips_with_stops_and_speed(network_factor=network_factor)
+        # computing with all trips is redundant as the speeds for each trip for the same route are the same we can
+        # select the first or random trip from each route, but depending on how it's done, it might not improve
+        # performance very much
+        return df.groupby('route_id')['speed'].mean().to_dict()
+
+    @abstractmethod
     def trips_to_dataframe(self, gtfs_day='19700101'):
         pass
 
@@ -1471,12 +1510,12 @@ class Schedule(ScheduleElement):
         # export scaled vehicles xml
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_vehicles(
-            output_dir, self.vehicles, self.vehicle_types, f"{int(capacity_scale*100)}_perc_vehicles.xml")
+            output_dir, self.vehicles, self.vehicle_types, f"{int(capacity_scale * 100)}_perc_vehicles.xml")
 
         self.vehicle_types = vehicle_types_dict
 
-        logging.info(f'Created scaled vehicle file for {int(capacity_scale*100)}% capacity & '
-                     f'{int(pce_scale*100)}% pce.')
+        logging.info(f'Created scaled vehicle file for {int(capacity_scale * 100)}% capacity & '
+                     f'{int(pce_scale * 100)}% pce.')
 
     def route_trips_to_dataframe(self, gtfs_day='19700101'):
         """
