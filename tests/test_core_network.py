@@ -869,7 +869,7 @@ def test_adding_node_with_clashing_id_throws_error():
 
     with pytest.raises(RuntimeError) as error_info:
         n.add_node(1, {'x': 2, 'y': 2, 'a': 2})
-    assert "cannot add" in str(error_info.value)
+    assert "ID already exists" in str(error_info.value)
 
 
 def test_add_multiple_nodes():
