@@ -234,3 +234,73 @@ def test_schedule_with_multiple_use_vehicles(schedule_with_multiple_use_vehicles
     actual_output = schedule_with_multiple_use_vehicles.check_vehicle_uniqueness()
 
     assert_semantically_equal(correct_output, actual_output)
+
+
+@pytest.fixture()
+def nice_schedule_for_testing_headway_reporting():
+    headway_mins = 10
+    return {
+        'schedule': Schedule(epsg='epsg:27700', services=[
+            Service(id='service',
+                routes=[
+                    Route(route_short_name='route', mode='bus',
+                          stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                                 Stop(id='1', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                          headway_spec={('07:00:00', '08:00:00'): headway_mins},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00'])
+                ])
+        ]),
+        'headways': {'has_zero_min_headways': False},
+        'headway_stats': {'mean_headway_mins': headway_mins,
+                        'std_headway_mins': 0.0,
+                        'max_headway_mins': headway_mins,
+                        'min_headway_mins': headway_mins}
+    }
+
+
+def test_nice_schedules_global_headway_evaluation_in_validation_report(nice_schedule_for_testing_headway_reporting):
+    rep = nice_schedule_for_testing_headway_reporting['schedule'].generate_validation_report()
+    rep['schedule_level']['headway_stats'] = nice_schedule_for_testing_headway_reporting['headway_stats']
+
+
+def test_nice_schedules_headway_stats_in_validation_report(nice_schedule_for_testing_headway_reporting):
+    rep = nice_schedule_for_testing_headway_reporting['schedule'].generate_validation_report()
+    rep['route_level']['service']['service_0'] = nice_schedule_for_testing_headway_reporting['headway_stats']
+
+
+@pytest.fixture()
+def bad_schedule_for_testing_headway_reporting():
+    headway_mins = 0.0
+    return {
+        'schedule': Schedule(epsg='epsg:27700', services=[
+        Service(id='service',
+                routes=[
+                    Route(route_short_name='route', mode='bus',
+                          stops=[Stop(id='0', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700'),
+                                 Stop(id='1', x=528504.1342843144, y=182155.7435136598, epsg='epsg:27700')],
+                          trips={'trip_id': ['t1', 't2', 't3'],
+                                 'trip_departure_time': ['05:40:00', '05:40:00', '05:40:00'],
+                                 'vehicle_id': ['veh_1_bus', 'veh_2_bus', 'veh_3_bus']},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00'])
+                ])
+        ]),
+        'headways': {'has_zero_min_headways': True,
+                     'routes': {'number_of_affected': 1, 'ids': ['service_0']},
+                     'services': {'number_of_affected': 1, 'ids': ['service']}},
+        'headway_stats': {'mean_headway_mins': headway_mins,
+                        'std_headway_mins': 0.0,
+                        'max_headway_mins': headway_mins,
+                        'min_headway_mins': headway_mins}
+    }
+
+
+def test_bad_schedules_global_headway_evaluation_in_validation_report(bad_schedule_for_testing_headway_reporting):
+    rep = bad_schedule_for_testing_headway_reporting['schedule'].generate_validation_report()
+    rep['schedule_level']['headway_stats'] = bad_schedule_for_testing_headway_reporting['headway_stats']
+
+
+def test_bad_schedules_headway_stats_in_validation_report(bad_schedule_for_testing_headway_reporting):
+    rep = bad_schedule_for_testing_headway_reporting['schedule'].generate_validation_report()
+    rep['route_level']['service']['service_0'] = bad_schedule_for_testing_headway_reporting['headway_stats']

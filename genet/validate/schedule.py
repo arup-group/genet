@@ -99,7 +99,7 @@ def generate_validation_report(schedule):
         }
 
         logging.warning(f"Found {len(zero_headways)} PT Routes 0 minimum headway between trips. "
-                        f"The following Services are affected: {report['schedule_level']['services']}")
+                        f"The following Services are affected: {report['schedule_level']['headways']['services']}")
     else:
         report['schedule_level']['headways']['has_zero_min_headways'] = False
 
