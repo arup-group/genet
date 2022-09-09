@@ -17,11 +17,11 @@ def generate_validation_report(schedule):
             'invalid_stages': invalid_stages
         }
 
-    is_valid_vehicle_def = schedule.validate_vehicle_definitions()
+    has_valid_vehicle_def = schedule.validate_vehicle_definitions()
     missing_vehicle_types = schedule.get_missing_vehicle_information()
 
     report['vehicle_level'] = {
-        'vehicle_definitions_valid': is_valid_vehicle_def,
+        'vehicle_definitions_valid': has_valid_vehicle_def,
         'vehicle_definitions_validity_components': {
             'missing_vehicles': {
                 'missing_vehicles_types': missing_vehicle_types['missing_vehicle_types'],
@@ -37,7 +37,7 @@ def generate_validation_report(schedule):
         for route_id in schedule.service_to_route_map()[service_id]:
             if not route_validity[route_id]['is_valid_route']:
                 invalid_routes.append(route_id)
-                logging.warning(f'Route id={route_id} under Service id={service_id} is not valid')
+                logging.warning(f'Route ID: {route_id} under Service ID: {service_id} is not valid')
             report['route_level'][service_id][route_id] = route_validity[route_id]
 
         if invalid_routes:
@@ -55,16 +55,19 @@ def generate_validation_report(schedule):
             'invalid_routes': invalid_routes
         }
         if not is_valid_service:
-            logging.warning('Service id={} is not valid'.format(service_id))
+            logging.warning(f'Service with ID: {service_id} is not valid')
 
     invalid_stages = []
     invalid_services = [service_id for service_id in schedule.service_ids() if
                         not report['service_level'][service_id]['is_valid_service']]
 
-    if invalid_services:
+    if invalid_services or (not has_valid_vehicle_def):
         is_valid_schedule = False
         has_valid_services = False
-        invalid_stages.append('not_has_valid_services')
+        if invalid_services:
+            invalid_stages.append('not_has_valid_services')
+        if not has_valid_vehicle_def:
+            invalid_stages.append('not_has_valid_vehicle_definitions')
     else:
         is_valid_schedule = True
         has_valid_services = True
@@ -75,7 +78,7 @@ def generate_validation_report(schedule):
         'has_valid_services': has_valid_services,
         'invalid_services': invalid_services}
 
-    if (not is_valid_schedule) or (not is_valid_vehicle_def):
+    if not is_valid_schedule:
         logging.warning('This schedule is not valid')
 
     return report
