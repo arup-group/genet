@@ -2265,47 +2265,43 @@ class Network:
 
         return slope_dict
 
-    def split_link_at_point(self, link_id, point_lat, point_lon, new_node_id):
+    def split_link_at_point(self, link_id, point_y, point_x):
         """
         Takes a link and point coordinates, and splits the link at the point to create 2 new links;
         the old link is then deleted.
         :param link_id: ID of the link to split
-        :param point_lat: latitude of the point to split at
-        :param point_lon: longitude of the point to split at
-        :param new_node_id: ID to give to the new node
+        :param point_y: y-coordinates of the point to split at
+        :param point_x: x-coordinates of the point to split at
         :return: self
         """
-
+        new_node_id = self.generate_index_for_node()
         # check if point is on the link LineString
-        point = Point(point_lon, point_lat)
+        point = Point(point_x, point_y)
         from_node = self.link(link_id)['from']
         to_node = self.link(link_id)['to']
         from_node = self.node(from_node)
         to_node = self.node(to_node)
-        line = LineString([(float(from_node['lon']), float(from_node['lat'])),
-                           (float(to_node['lon']), float(to_node['lat']))])
+        line = LineString([(float(from_node['x']), float(from_node['y'])),
+                           (float(to_node['x']), float(to_node['y']))])
 
         # if not, find nearest point on the link line
         # (not using 'contains' method due to too high accuracy required to evaluate to True)
         if line.distance(point) > 1e-8:
             point = line.interpolate(line.project(point))
 
-        self.add_node(new_node_id, {'id': new_node_id, 'lon': point.x, 'lat': point.y})
+        self.add_node(new_node_id, {'id': new_node_id, 'x': point.x, 'y': point.y})
 
         # create 2 new links: from_node -> new_node ; new_node -> to_node
-        new_link_1 = link_id + '_1'
-        new_link_2 = link_id + '_2'
-
-        self.add_link(new_link_1, from_node['id'], new_node_id)
-        self.add_link(new_link_2, new_node_id, to_node['id'])
+        new_link_1 = self.generate_index_for_edge()
+        print(new_link_1)
+        new_link_2 = self.generate_index_for_edge()
 
         # apply attributes from the old link to the 2 new links
         old_link_attributes = self.link(link_id)
         for k in ['id', 'from', 'to', 'length', 's2_from', 's2_to']:
             old_link_attributes.pop(k, None)
-
-        self.apply_attributes_to_link(new_link_1, old_link_attributes)
-        self.apply_attributes_to_link(new_link_2, old_link_attributes)
+        self.add_link(link_id=new_link_1, u=from_node['id'], v=new_node_id, attribs=old_link_attributes)
+        self.add_link(link_id=new_link_2, u=new_node_id, v=to_node['id'], attribs=old_link_attributes)
         self.remove_link(link_id)
 
         return self

@@ -3020,11 +3020,11 @@ def test_getting_link_slope_dictionary(network3):
 
 
 def test_splitting_link_at_point(network1):
-    network1.split_link_at_point('0', 51.52287873320000, 0.14625948709420000, 'new_node')
-    correct_link_1_attributes = {'from': '101982', 'to': 'new_node', 'id': '0_1', 'freespeed': 4.166666666666667,
+    network1.split_link_at_point('0', 51.52287873320000, 0.14625948709420000)
+    correct_link_1_attributes = {'from': '101982', 'to': '101987', 'id': '1', 'freespeed': 4.166666666666667,
                                  'capacity': 600.0, 'permlanes': 1.0, 'oneway': '1', 'modes': ['car'],
                                  'attributes': {'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
                                                 'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
                                                 'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
                                                 'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}}}
-    assert network1.link('0_1') == correct_link_1_attributes
+    assert network1.link('1') == correct_link_1_attributes
