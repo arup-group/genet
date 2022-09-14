@@ -2036,7 +2036,7 @@ def test_speed_calculation_for_schedule(schedule_for_speed_testing, mocker):
     )
 
 
-def test_speed_for_each_route_calculation_for_schedule(schedule_for_speed_testing, mocker):
+def test_average_speed_calculation_for_each_route_in_schedule(schedule_for_speed_testing, mocker):
     network_factor = schedule_for_speed_testing['network_factor']
     mocker.patch.object(spatial, 'distance_between_s2cellids',
                         return_value=schedule_for_speed_testing['stops_distance'])
