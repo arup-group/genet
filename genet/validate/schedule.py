@@ -1,4 +1,5 @@
 import logging
+import math
 
 
 def generate_validation_report(schedule):
@@ -102,6 +103,17 @@ def generate_validation_report(schedule):
                         f"The following Services are affected: {report['schedule_level']['headways']['services']}")
     else:
         report['schedule_level']['headways']['has_zero_min_headways'] = False
+
+    logging.info('Computing speeds')
+    df_speeds = schedule.trips_with_stops_and_speed()
+    logging.info('Checking speeds for prohibitive values 0 and infinity. You should verify speed values separately')
+    report['schedule_level']['speeds'] = {}
+    for val in [0, math.inf]:
+        val_df = df_speeds[df_speeds['speed'] == val]
+        if not val_df.empty:
+            report['schedule_level']['speeds'][str(val)] = {
+                'routes': list(val_df['route_id'].unique())
+            }
 
     if not is_valid_schedule:
         logging.warning('This schedule is not valid')
