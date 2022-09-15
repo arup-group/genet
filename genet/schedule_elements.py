@@ -263,9 +263,11 @@ class ScheduleElement:
     def service_attribute_data(self, keys: Union[list, str], index_name: str = None):
         pass
 
+    @abstractmethod
     def route_attribute_data(self, keys: Union[list, str], index_name: str = None):
         pass
 
+    @abstractmethod
     def stop_attribute_data(self, keys: Union[list, str], index_name: str = None):
         pass
 
