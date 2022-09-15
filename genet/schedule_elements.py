@@ -260,6 +260,16 @@ class ScheduleElement:
         return None
 
     @abstractmethod
+    def service_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        pass
+
+    def route_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        pass
+
+    def stop_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        pass
+
+    @abstractmethod
     def trips_with_stops_to_dataframe(self, gtfs_day='19700101') -> pd.DataFrame:
         pass
 
@@ -733,6 +743,38 @@ class Route(ScheduleElement):
         """
         yield self
 
+    def service_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Service IDs, with attribute data stored for Services under `key`
+        :param keys: list of either a string e.g. 'name', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        raise ServiceIndexError('A Route cannot generate a DataFrame with Services data')
+
+    def route_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Route IDs, with attribute data stored for Routes under `key`
+        :param keys: list of either a string e.g. 'mode', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=[(self.id, self.__dict__)], keys=keys, index_name=index_name)
+
+    def stop_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Stop IDs, with attribute data stored for Stops under `key`
+        :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=[(s.id, s.__dict__) for s in self.stops()], keys=keys, index_name=index_name)
+
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
         This method exists for backwards compatibility only
@@ -1187,6 +1229,41 @@ class Service(ScheduleElement):
         :return:
         """
         return self.kepler_map(output_dir, f'service_{self.id}_map', data=data)
+
+    def service_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Service IDs, with attribute data stored for Services under `key`
+        :param keys: list of either a string e.g. 'name', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=[(self.id, self.__dict__)], keys=keys, index_name=index_name)
+
+    def route_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Route IDs, with attribute data stored for Routes under `key`
+        :param keys: list of either a string e.g. 'mode', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=[(rid, self._graph.graph['routes'][rid]) for rid in self.route_ids()],
+            keys=keys,
+            index_name=index_name)
+
+    def stop_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Stop IDs, with attribute data stored for Stops under `key`
+        :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=[(s.id, s.__dict__) for s in self.stops()], keys=keys, index_name=index_name)
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """

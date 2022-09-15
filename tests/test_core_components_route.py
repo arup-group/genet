@@ -5,6 +5,7 @@ from pandas.testing import assert_frame_equal
 from genet.schedule_elements import Route, Stop
 from genet.utils import plot
 from tests.fixtures import stop_epsg_27700, assert_semantically_equal, assert_logging_warning_caught_with_message_containing
+from genet.exceptions import ServiceIndexError
 
 
 @pytest.fixture()
@@ -453,3 +454,34 @@ def test_generating_trips_dataframe(route):
 
 def test_vehicles(route):
     assert route.vehicles() == {'veh_1_bus', 'veh_2_bus'}
+
+
+def test_service_attribute_data_under_keys_throws_error_from_route_object(route, pytest):
+    with pytest.raises(ServiceIndexError) as error_info:
+        df = route.service_attribute_data(keys=['name'])
+
+
+def test_route_attribute_data_under_key(route):
+    df = route.route_attribute_data(keys='route_short_name').sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'route_short_name': {'1': 'name'}}
+    ))
+
+
+def test_route_attribute_data_under_keys(route):
+    df = route.route_attribute_data(keys=['route_short_name', 'mode']).sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'route_short_name': {'1': 'name'}, 'mode': {'1': 'bus'}}
+    ))
+
+
+def test_stop_attribute_data_under_key(route):
+    df = route.stop_attribute_data(keys='x').sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'x': {'1': 4.0, '2': 1.0, '3': 3.0, '4': 7.0}}))
+
+
+def test_stop_attribute_data_under_keys(route):
+    df = route.stop_attribute_data(keys=['x', 'y']).sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'x': {'1': 4.0, '2': 1.0, '3': 3.0, '4': 7.0}, 'y': {'1': 2.0, '2': 2.0, '3': 3.0, '4': 5.0}}))
