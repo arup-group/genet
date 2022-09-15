@@ -260,20 +260,22 @@ class ScheduleElement:
         return None
 
     @abstractmethod
-    def trips_with_stops_to_dataframe(self) -> pd.DataFrame:
+    def trips_with_stops_to_dataframe(self, gtfs_day='19700101') -> pd.DataFrame:
         pass
 
-    def trips_with_stops_and_speed(self, network_factor=1.3) -> pd.DataFrame:
+    def trips_with_stops_and_speed(self, gtfs_day='19700101', network_factor=1.3) -> pd.DataFrame:
         """
         DataFrame: trips_with_stops_to_dataframe, but with speed in metres/second between each of the stops.
         Note well:
          - The unit of metres is not guaranteed - this assumes the object is in local metre-based projection.
          - It does not consider network routes, uses 1.3 network factor as default
+        :param gtfs_day: optional, used to set the day represented by the network in the datetime objects in resulting
+            dataframe.
         :param network_factor: Does not consider network routes, network factor (default 1.3) is applied to Euclidean
             distance.
         :return:
         """
-        df = self.trips_with_stops_to_dataframe()
+        df = self.trips_with_stops_to_dataframe(gtfs_day)
         df['distance'] = df.apply(
             lambda row: spatial.distance_between_s2cellids(
                 self._graph.nodes[row['from_stop']]['s2_id'],

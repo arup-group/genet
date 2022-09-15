@@ -4,6 +4,7 @@ from itertools import chain
 import json
 
 import geopandas as gpd
+import pandas as pd
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
 from shapely.geometry import Point, LineString
 
@@ -68,7 +69,7 @@ def save_geodataframe(gdf, filename, output_dir, include_shp_files=False):
 def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700101', include_shp_files=False):
     logging.info('Generating geojson standard outputs for schedule')
     schedule_links = schedule.to_geodataframe()['links'].to_crs("epsg:4326")
-    df = schedule.trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
+    df = schedule.trips_with_stops_and_speed(gtfs_day=gtfs_day)
     df_all_modes_vph = None
 
     vph_dir = os.path.join(output_dir, 'vehicles_per_hour')
@@ -122,6 +123,20 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
             output_dir=vph_dir,
             include_shp_files=include_shp_files
         )
+
+    logging.info('Generating spatial speed outputs')
+    speeds_gdf = gpd.GeoDataFrame(
+        pd.merge(df, schedule_links[['u', 'v', 'geometry']],
+                 left_on=['from_stop', 'to_stop'], right_on=['u', 'v']),
+        crs=schedule_links.crs)
+    speeds_gdf = speeds_gdf[
+        ['service_id', 'route_id', 'mode', 'from_stop', 'to_stop', 'speed', 'geometry']].drop_duplicates()
+    save_geodataframe(
+        speeds_gdf,
+        filename='pt_speeds',
+        output_dir=output_dir,
+        include_shp_files=include_shp_files
+    )
 
     logging.info('Generating csv for vehicles per hour for each service')
     use_schedule.vehicles_per_hour(
