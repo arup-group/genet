@@ -37,7 +37,7 @@ def correct_schedule():
 def test_generate_validation_report_for_correct_schedule(correct_schedule):
     correct_report = {
         'schedule_level': {'is_valid_schedule': True, 'invalid_stages': [], 'has_valid_services': True,
-                           'invalid_services': [], 'headways': {'has_zero_min_headways': False}},
+                           'invalid_services': [], 'headways': {'has_zero_min_headways': False}, 'speeds': {}},
         'service_level': {
             'service': {'is_valid_service': True, 'invalid_stages': [],
                         'has_valid_routes': True, 'invalid_routes': []}},
@@ -63,7 +63,7 @@ def test_generate_validation_report_for_incorrect_schedule(test_schedule):
     correct_report = {
         'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
                            'has_valid_services': False, 'invalid_services': ['service'],
-                           'headways': {'has_zero_min_headways': False}},
+                           'headways': {'has_zero_min_headways': False}, 'speeds': {'0_m/s': {'routes': ['service_0', 'service_1']}}},
         'service_level': {'service': {'is_valid_service': False,
                         'invalid_stages': ['not_has_valid_routes'],
                         'has_valid_routes': False, 'invalid_routes': ['service_0', 'service_1']}},
@@ -117,42 +117,16 @@ def schedule_with_incomplete_vehicle_definition():
 
 
 def test_generate_validation_report_with_schedule_incomplete_vehicle_definitions(schedule_with_incomplete_vehicle_definition):
-    correct_report = {'route_level':
-                          {'service':
-                               {'service_0': {'invalid_stages': ['not_has_correctly_ordered_route', 'has_self_loops'],
-                                              'is_valid_route': False,
-                                              'headway_stats': {'mean_headway_mins': float('nan'),
-                                                                'std_headway_mins': float('nan'),
-                                                                'max_headway_mins': float('nan'),
-                                                                'min_headway_mins': float('nan')}
-                                              },
-                                'service_1': {'invalid_stages': ['not_has_correctly_ordered_route', 'has_self_loops'],
-                                              'is_valid_route': False,
-                                              'headway_stats': {'mean_headway_mins': float('nan'),
-                                                                'std_headway_mins': float('nan'),
-                                                                'max_headway_mins': float('nan'),
-                                                                'min_headway_mins': float('nan')}
-                                              }}},
-         'schedule_level': {'has_valid_services': False,
-                            'invalid_services': ['service'],
-                            'invalid_stages': ['not_has_valid_services', 'not_has_valid_vehicle_definitions'],
-                            'is_valid_schedule': False,
-                            'headways': {'has_zero_min_headways': False}
-                            },
-         'service_level': {'service': {'has_valid_routes': False,
-                                       'invalid_routes': ['service_0', 'service_1'],
-                                       'invalid_stages': ['not_has_valid_routes'],
-                                       'is_valid_service': False}},
-         'vehicle_level': {'vehicle_definitions_valid': False,
+    correct_vehicle_report = {'vehicle_definitions_valid': False,
                            'vehicle_definitions_validity_components': {
                                'missing_vehicles': {'missing_vehicles_types': {'bus'},
                                                     'vehicles_affected': {'veh_1_bus': {'type': 'bus'},
                                                                           'veh_2_bus': {'type': 'bus'}}},
                                'multiple_use_vehicles': {},
-                               'unused_vehicles': set()}}}
+                               'unused_vehicles': set()}}
 
     report = schedule_validation.generate_validation_report(schedule_with_incomplete_vehicle_definition)
-    assert_semantically_equal(report, correct_report)
+    assert_semantically_equal(report['vehicle_level'], correct_vehicle_report)
 
 
 

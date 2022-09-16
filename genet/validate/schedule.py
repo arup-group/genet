@@ -105,13 +105,13 @@ def generate_validation_report(schedule):
         report['schedule_level']['headways']['has_zero_min_headways'] = False
 
     logging.info('Computing speeds')
-    df_speeds = schedule.trips_with_stops_and_speed()
+    df_speeds = schedule.speed_dataframe()
     logging.info('Checking speeds for prohibitive values 0 and infinity. You should verify speed values separately')
     report['schedule_level']['speeds'] = {}
     for val in [0, math.inf]:
         val_df = df_speeds[df_speeds['speed'] == val]
         if not val_df.empty:
-            report['schedule_level']['speeds'][str(val)] = {
+            report['schedule_level']['speeds'][f'{val}_m/s'] = {
                 'routes': list(val_df['route_id'].unique())
             }
 

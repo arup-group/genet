@@ -456,7 +456,7 @@ def test_vehicles(route):
     assert route.vehicles() == {'veh_1_bus', 'veh_2_bus'}
 
 
-def test_service_attribute_data_under_keys_throws_error_from_route_object(route, pytest):
+def test_service_attribute_data_under_keys_throws_error_from_route_object(route):
     with pytest.raises(ServiceIndexError) as error_info:
         df = route.service_attribute_data(keys=['name'])
 

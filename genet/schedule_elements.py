@@ -275,7 +275,7 @@ class ScheduleElement:
     def trips_with_stops_to_dataframe(self, gtfs_day='19700101') -> pd.DataFrame:
         pass
 
-    def trips_with_stops_and_speed(self, gtfs_day='19700101', network_factor=1.3) -> pd.DataFrame:
+    def speed_dataframe(self, network_factor=1.3) -> pd.DataFrame:
         """
         DataFrame: trips_with_stops_to_dataframe, but with speed in metres/second between each of the stops.
         Note well:
@@ -287,7 +287,7 @@ class ScheduleElement:
             distance.
         :return:
         """
-        df = self.trips_with_stops_to_dataframe(gtfs_day)
+        df = self.trips_with_stops_to_dataframe()
         df['distance'] = df.apply(
             lambda row: spatial.distance_between_s2cellids(
                 self._graph.nodes[row['from_stop']]['s2_id'],
@@ -296,7 +296,8 @@ class ScheduleElement:
         ) * network_factor
         df['time'] = (df['arrival_time'] - df['departure_time']).dt.total_seconds()
         df['speed'] = df['distance'] / df['time']
-        df.drop(['distance', 'time'], axis=1, inplace=True)
+        df = df[['service_id', 'service_name', 'route_id', 'route_name', 'mode', 'from_stop', 'to_stop',
+                 'from_stop_name', 'to_stop_name', 'speed']].drop_duplicates()
         return df
 
     def average_route_speeds(self, network_factor=1.3) -> dict:
@@ -306,7 +307,7 @@ class ScheduleElement:
             distance.
         :return: Dictionary {route_ID: average_speed_in_m_per_s}
         """
-        df = self.trips_with_stops_and_speed(network_factor=network_factor)
+        df = self.speed_dataframe(network_factor=network_factor)
         # computing with all trips is redundant as the speeds for each trip for the same route are the same we can
         # select the first or random trip from each route, but depending on how it's done, it might not improve
         # performance very much

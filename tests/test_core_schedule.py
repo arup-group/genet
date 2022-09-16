@@ -2014,13 +2014,10 @@ def schedule_for_speed_testing():
         'network_factor': 1.3,
         'stops_distance': 10 / (1.3),
         'expected_trips_with_stops_and_speed_df': DataFrame(
-            {'departure_time': {0: Timestamp('1970-01-01 05:40:00'), 1: Timestamp('1970-01-01 05:40:01')},
-             'arrival_time': {0: Timestamp('1970-01-01 05:40:01'), 1: Timestamp('1970-01-01 05:40:03')},
-             'mode': {0: 'bus', 1: 'bus'}, 'service_id': {0: 'service', 1: 'service'},
+            {'mode': {0: 'bus', 1: 'bus'}, 'service_id': {0: 'service', 1: 'service'},
              'route_name': {0: 'route', 1: 'route'}, 'route_id': {0: 'service_0', 1: 'service_0'},
              'to_stop': {0: '1', 1: '2'}, 'from_stop_name': {0: '', 1: ''}, 'from_stop': {0: '0', 1: '1'},
-             'service_name': {0: 'route', 1: 'route'}, 'to_stop_name': {0: '', 1: ''}, 'trip_id': {0: 't1', 1: 't1'},
-             'vehicle_id': {0: 'veh_1_bus', 1: 'veh_1_bus'},
+             'service_name': {0: 'route', 1: 'route'}, 'to_stop_name': {0: '', 1: ''},
              'speed': {0: 10.0, 1: 5.0}}
         ),
         'expected_route_speeds': {'service_0': 7.5},
@@ -2046,17 +2043,14 @@ def schedule_for_testing_0_speed_case():
         'network_factor': 1.3,
         'stops_distance': 0,
         'expected_trips_with_stops_and_speed_df': DataFrame(
-            {'departure_time': {0: Timestamp('1970-01-01 05:40:00')},
-             'arrival_time': {0: Timestamp('1970-01-01 05:40:01')},
-             'mode': {0: 'bus'}, 'service_id': {0: 'service'},
+            {'mode': {0: 'bus'}, 'service_id': {0: 'service'},
              'route_name': {0: 'route'}, 'route_id': {0: 'service_0'},
              'to_stop': {0: '1'}, 'from_stop_name': {0: ''}, 'from_stop': {0: '0'},
-             'service_name': {0: 'route'}, 'to_stop_name': {0: ''}, 'trip_id': {0: 't1'},
-             'vehicle_id': {0: 'veh_1_bus'},
+             'service_name': {0: 'route'}, 'to_stop_name': {0: ''},
              'speed': {0: 0.0}}
         ),
         'expected_route_speeds': {'service_0': 0.0},
-        'expected_speed_report': {'0': {'routes': ['service_0']}}
+        'expected_speed_report': {'0_m/s': {'routes': ['service_0']}}
     }
 
 
@@ -2078,17 +2072,14 @@ def schedule_for_testing_inf_speed_case():
         'network_factor': 1.3,
         'stops_distance': 20,
         'expected_trips_with_stops_and_speed_df': DataFrame(
-            {'departure_time': {0: Timestamp('1970-01-01 05:40:00')},
-             'arrival_time': {0: Timestamp('1970-01-01 05:40:00')},
-             'mode': {0: 'bus'}, 'service_id': {0: 'service'},
+            {'mode': {0: 'bus'}, 'service_id': {0: 'service'},
              'route_name': {0: 'route'}, 'route_id': {0: 'service_0'},
              'to_stop': {0: '1'}, 'from_stop_name': {0: ''}, 'from_stop': {0: '0'},
-             'service_name': {0: 'route'}, 'to_stop_name': {0: ''}, 'trip_id': {0: 't1'},
-             'vehicle_id': {0: 'veh_1_bus'},
+             'service_name': {0: 'route'}, 'to_stop_name': {0: ''},
              'speed': {0: math.inf}}
         ),
         'expected_route_speeds': {'service_0': math.inf},
-        'expected_speed_report': {'inf': {'routes': ['service_0']}}
+        'expected_speed_report': {'inf_m/s': {'routes': ['service_0']}}
     }
 
 @pytest.fixture()
@@ -2107,7 +2098,7 @@ def test_speed_calculation_for_schedule(schedule_case, schedule_cases_for_speed_
     mocker.patch.object(spatial, 'distance_between_s2cellids',
                         return_value=schedule_fixture['stops_distance'])
     assert_frame_equal(
-        schedule_fixture['schedule'].trips_with_stops_and_speed(network_factor=network_factor).sort_index(
+        schedule_fixture['schedule'].speed_dataframe(network_factor=network_factor).sort_index(
             axis=1),
         schedule_fixture['expected_trips_with_stops_and_speed_df'].sort_index(axis=1)
     )
