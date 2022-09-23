@@ -18,6 +18,7 @@ from genet.input import matsim_reader
 from tests.test_output_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule, Stop
 from genet.utils import plot, spatial
+from genet.validate import network as network_validation
 from genet.input import read
 from tests.fixtures import assert_semantically_equal, route, stop_epsg_27700, network_object_from_test_data, \
     full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path
@@ -2643,78 +2644,140 @@ def test_invalid_network_routes_with_empty_route(route):
     assert n.invalid_network_routes() == ['route']
 
 
-def test_generate_validation_report_with_pt2matsim_network(network_object_from_test_data):
-    n = network_object_from_test_data
-    report = n.generate_validation_report()
-    correct_report = {
-        'graph': {
-            'graph_connectivity': {
-                'car': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
-                        'number_of_connected_subgraphs': 2},
-                'walk': {'problem_nodes': {'dead_ends': ['21667818'], 'unreachable_node': ['25508485']},
-                         'number_of_connected_subgraphs': 2},
-                'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
-                         'number_of_connected_subgraphs': 0}},
-            'link_attributes': {
-                'links_over_1km_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
-                'zero_attributes': {}}},
-        'schedule': {
-            'schedule_level': {'is_valid_schedule': False, 'invalid_stages': ['not_has_valid_services'],
-                               'has_valid_services': False, 'invalid_services': ['10314']},
-            'service_level': {
-                '10314': {'is_valid_service': False, 'invalid_stages': ['not_has_valid_routes'],
-                          'has_valid_routes': False, 'invalid_routes': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98']}},
-            'route_level': {'10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'is_valid_route': False,
-                                                                                     'invalid_stages': [
-                                                                                         'not_has_correctly_ordered_route']}}},
-            'vehicle_level': {'vehicle_definitions_valid': True,
-                              'vehicle_definitions_validity_components': {
-                                  'missing_vehicles': {'missing_vehicles_types': set(),
-                                                       'vehicles_affected': {}},
-                                  'multiple_use_vehicles': {},
-                                  'unused_vehicles': set()}}},
-
-        'routing': {'services_have_routes_in_the_graph': False,
-                    'service_routes_with_invalid_network_route': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
-                    'route_to_crow_fly_ratio': {
-                        '10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': 'Division by zero'}}}}
-    assert_semantically_equal(report, correct_report)
+@pytest.fixture()
+def invalid_pt2matsim_network_for_validation(network_object_from_test_data):
+    return {
+        'network': network_object_from_test_data,
+        'subgraph_no_per_mode': {
+            'car': 2,
+            'walk': 2,
+            'bike': 0
+        },
+        'is_valid_schedule': False,
+        'invalid_service_id': '10314',
+        'valid_PT_network_routes': False,
+        'pt_routes_with_invalid_network_route': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
+    }
 
 
-def test_generate_validation_report_with_correct_schedule(correct_schedule):
+def test_connectivity_in_report_with_invalid_network(invalid_pt2matsim_network_for_validation):
+    report = invalid_pt2matsim_network_for_validation['network'].generate_validation_report()
+    for mode, expected_connected_subgraphs in invalid_pt2matsim_network_for_validation['subgraph_no_per_mode'].items():
+        assert report['graph']['graph_connectivity'][mode]['number_of_connected_subgraphs'] == expected_connected_subgraphs
+
+
+def test_schedule_validity_in_report_with_invalid_network(invalid_pt2matsim_network_for_validation):
+    report = invalid_pt2matsim_network_for_validation['network'].generate_validation_report()
+    assert report['schedule']['schedule_level']['is_valid_schedule'] == invalid_pt2matsim_network_for_validation['is_valid_schedule']
+
+
+def test_invalid_service_identified_in_report_with_invalid_network(invalid_pt2matsim_network_for_validation):
+    report = invalid_pt2matsim_network_for_validation['network'].generate_validation_report()
+    invalid_service_id = invalid_pt2matsim_network_for_validation['invalid_service_id']
+    assert not report['schedule']['service_level'][invalid_service_id]['is_valid_service']
+
+
+def test_network_routing_in_report_with_invalid_network(invalid_pt2matsim_network_for_validation):
+    report = invalid_pt2matsim_network_for_validation['network'].generate_validation_report()
+    assert report['routing']['services_have_routes_in_the_graph'] == invalid_pt2matsim_network_for_validation['valid_PT_network_routes']
+
+
+def test_invalid_network_routes_show_in_report_with_invalid_network(invalid_pt2matsim_network_for_validation):
+    report = invalid_pt2matsim_network_for_validation['network'].generate_validation_report()
+    route_ids_with_invalid_network_route = invalid_pt2matsim_network_for_validation['pt_routes_with_invalid_network_route']
+    assert report['routing']['service_routes_with_invalid_network_route'] == route_ids_with_invalid_network_route
+
+
+@pytest.fixture()
+def valid_network_for_validation(correct_schedule):
     n = Network('epsg:27700')
     n.add_link('1', 1, 2, attribs={'length': 2, "modes": ['car', 'bus']})
-    n.add_link('2', 2, 3, attribs={'length': 2, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 1, attribs={'length': 2, "modes": ['car', 'bus']})
     n.schedule = correct_schedule
 
+    return {
+        'network': n,
+        'subgraph_no_per_mode': {
+            'car': 1,
+            'walk': 0,
+            'bike': 0
+        },
+        'is_valid_schedule': True,
+        'has_valid_PT_network_routes': True
+    }
+
+
+def test_connectivity_in_report_with_valid_network(valid_network_for_validation):
+    report = valid_network_for_validation['network'].generate_validation_report()
+    for mode, expected_connected_subgraphs in valid_network_for_validation['subgraph_no_per_mode'].items():
+        assert report['graph']['graph_connectivity'][mode]['number_of_connected_subgraphs'] == expected_connected_subgraphs
+
+
+def test_schedule_validity_in_report_with_valid_network(valid_network_for_validation):
+    report = valid_network_for_validation['network'].generate_validation_report()
+    assert report['schedule']['schedule_level']['is_valid_schedule'] == valid_network_for_validation['is_valid_schedule']
+
+
+def test_network_routing_in_report_with_valid_network(valid_network_for_validation):
+    report = valid_network_for_validation['network'].generate_validation_report()
+    assert report['routing']['services_have_routes_in_the_graph'] == valid_network_for_validation['has_valid_PT_network_routes']
+
+
+def test_long_links_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': 10000, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
     report = n.generate_validation_report()
-    correct_report = {
-        'graph': {
-            'graph_connectivity': {'car': {'problem_nodes': {'dead_ends': [3], 'unreachable_node': [1]},
-                                           'number_of_connected_subgraphs': 3},
-                                   'walk': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
-                                            'number_of_connected_subgraphs': 0},
-                                   'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []},
-                                            'number_of_connected_subgraphs': 0}},
-            'link_attributes': {'links_over_1km_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
-                                'zero_attributes': {}}},
-        'schedule': {'schedule_level': {'is_valid_schedule': True, 'invalid_stages': [], 'has_valid_services': True,
-                                        'invalid_services': []},
-                     'service_level': {
-                         'service': {'is_valid_service': True, 'invalid_stages': [], 'has_valid_routes': True,
-                                     'invalid_routes': []}},
-                     'route_level': {
-                         'service': {'1': {'is_valid_route': True, 'invalid_stages': []},
-                                     '2': {'is_valid_route': True, 'invalid_stages': []}}},
-                     'vehicle_level': {'vehicle_definitions_valid': True,
-                                       'vehicle_definitions_validity_components': {
-                                           'missing_vehicles': {'missing_vehicles_types': set(),
-                                                                'vehicles_affected': {}},
-                                           'multiple_use_vehicles': {},
-                                           'unused_vehicles': set()}}},
-        'routing': {'services_have_routes_in_the_graph': True, 'service_routes_with_invalid_network_route': [],
-                    'route_to_crow_fly_ratio': {'service': {'1': 0.037918141839160244, '2': 0.037918141839160244}}}}
-    assert_semantically_equal(report, correct_report)
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['links_over_1000_length'],
+        {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+    )
+
+
+offending_link_attribute_values_and_names = [('zero', '0'), ('negative', '-1'), ('infinite', 'inf'), ('fractional', '0.1'), ('none', 'None')]
+
+@pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
+def test_values_of_ids_are_not_flagged_in_validation_report(value, offending_value):
+    n = Network('epsg:27700')
+    n.add_link(offending_value, 1, 2, attribs={'length': 1, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes'][f'{value}_attributes'],
+        {}
+    )
+
+
+@pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
+def test_values_of_from_node_are_not_flagged_in_validation_report(value, offending_value):
+    n = Network('epsg:27700')
+    n.add_link('1', offending_value, 2, attribs={'length': 1, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes'][f'{value}_attributes'],
+        {}
+    )
+
+
+@pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
+def test_values_of_to_node_are_not_flagged_in_validation_report(value, offending_value):
+    n = Network('epsg:27700')
+    n.add_link('1', 1, offending_value, attribs={'length': 1, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes'][f'{value}_attributes'],
+        {}
+    )
 
 
 def test_zero_value_attributes_show_up_in_validation_report():
@@ -2723,18 +2786,107 @@ def test_zero_value_attributes_show_up_in_validation_report():
     n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
 
     report = n.generate_validation_report()
-    correct_report = {'graph': {
-        'graph_connectivity': {
-            'car': {'problem_nodes': {'dead_ends': [3], 'unreachable_node': [1]}, 'number_of_connected_subgraphs': 3},
-            'walk': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0},
-            'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0}},
-        'link_attributes': {
-            'links_over_1km_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
-            'zero_attributes': {
-                'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
-                'capacity': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
-                'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}}}}}
-    assert_semantically_equal(report, correct_report)
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['zero_attributes'],
+        {
+            'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'capacity': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_negative_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': -1, 'capacity': 1, 'freespeed': '-5', "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['negative_attributes'],
+        {
+            'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_infinite_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': float('inf'), 'capacity': 0.0, 'freespeed': 'inf', "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['infinite_attributes'],
+        {
+            'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_fractional_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': 0.1, 'capacity': '0.0', 'freespeed': '0.2', "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['fractional_attributes'],
+        {
+            'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_none_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': 1, 'capacity': 'None', 'freespeed': None, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['none_attributes'],
+        {
+            'capacity': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_nested_values_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2,
+               attribs={'length': 1, 'capacity': '0.0', 'freespeed': '2', "modes": ['car', 'bus'],
+                        'attributes': {'osm:way:lanes': -1}
+                        })
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['negative_attributes'],
+        {
+            'attributes::osm:way:lanes': {'number_of': 1, 'percentage': 1, 'link_ids': ['1']},
+        }
+    )
+
+
+def test_check_connectivity_for_mode_warns_of_graphs_with_more_than_single_component(mocker, caplog):
+    mocker.patch.object(network_validation, 'describe_graph_connectivity',
+                        return_value={'problem_nodes': {'dead_ends': [], 'unreachable_node': ['1']},
+                                      'number_of_connected_subgraphs': 2})
+
+    Network('epsg:27700').check_connectivity_for_mode('car')
+
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'more than one connected component' in caplog.records[0].message
 
 
 def test_write_to_matsim_generates_three_matsim_files(network_object_from_test_data, tmpdir):

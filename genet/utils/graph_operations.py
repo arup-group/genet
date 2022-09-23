@@ -6,6 +6,7 @@ import pandas as pd
 from anytree import Node, RenderTree
 
 from genet.utils import pandas_helpers as pd_helpers
+import genet.utils.dict_support as dict_support
 
 
 class Filter:
@@ -209,6 +210,21 @@ def render_tree(root, data=False):
             print("%s%s" % (pre, node.name))
 
 
+def parse_leaf(leaf):
+    """
+    :param leaf: anytree.node.node.Node
+    :return: str or dictionary with string key value pairs, for use as keys to extraction methods
+    """
+    if leaf.depth > 1:
+        dict_path = {leaf.path[1].name: leaf.path[2].name}
+        if leaf.depth > 2:
+            for node in leaf.path[3:]:
+                dict_path = dict_support.nest_at_leaf(dict_path, node.name)
+        return dict_path
+    else:
+        return leaf.name
+
+
 def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
     """
     Returns all data stored under key in attribute dictionaries for iterators yielding (index, attribute_dictionary),
@@ -256,8 +272,7 @@ def build_attribute_dataframe(iterator, keys: Union[list, str], index_name: str 
     for key in keys:
         if isinstance(key, dict):
             # consolidate nestedness to get a name for the column
-            name = str(key)
-            name = name.replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
+            name = dict_support.dict_to_string(key)
         else:
             name = key
 
