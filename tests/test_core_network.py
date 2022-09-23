@@ -2418,7 +2418,7 @@ def test_isolated_nodes_show_up_in_validation_report(network_with_isolated_nodes
 
     assert_semantically_equal(
         report['graph']['isolated_nodes'],
-        {'has_isolated_nodes': 'True', 'nodes': ['1']}
+        {'number_of_nodes': 1, 'nodes': ['1']}
     )
 
 

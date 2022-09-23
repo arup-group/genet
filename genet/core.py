@@ -2037,12 +2037,12 @@ class Network:
             graph_connectivity[mode] = self.check_connectivity_for_mode(mode)
         report['graph'] = {'graph_connectivity': graph_connectivity}
 
-        has_isolated_nodes = self.has_isolated_nodes()
+        isolated_nodes = self.isolated_nodes()
         report['graph']['isolated_nodes'] = {
-            'has_isolated_nodes': str(has_isolated_nodes),
-            'nodes': self.isolated_nodes()
+            'number_of_nodes': len(isolated_nodes),
+            'nodes': isolated_nodes
         }
-        if has_isolated_nodes:
+        if self.has_isolated_nodes():
             logging.warning('This Network has isolated nodes! Consider cleaning it up with `remove_isolated_nodes`')
 
         # attribute checks
