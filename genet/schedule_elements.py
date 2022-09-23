@@ -908,20 +908,33 @@ class Route(ScheduleElement):
     def has_network_route(self):
         return self.route
 
+    def divide_network_route_between_stops(self):
+        if self.has_network_route():
+            stops_linkrefids = [self._graph.nodes[i]['linkRefId'] for i in self.ordered_stops]
+            if not stops_linkrefids:
+                raise RuntimeError('This Stops in this Route are not snapped to the network via `linkRefId` attribute')
+            divided_route = [[]]
+            for link_id in self.route:
+                divided_route[-1].append(link_id)
+                while stops_linkrefids and (link_id == stops_linkrefids[0]):
+                    divided_route.append([stops_linkrefids[0]])
+                    stops_linkrefids = stops_linkrefids[1:]
+            return divided_route[1:-1]
+        else:
+            raise RuntimeError('This Route does not have a network route to divide')
+
     def has_correctly_ordered_route(self):
         if self.has_network_route():
-            # todo replace by accessing graph nodes
-            stops_linkrefids = [stop.linkRefId for stop in self.stops() if stop.has_linkRefId()]
+            stops_linkrefids = [self._graph.nodes[i]['linkRefId'] for i in self.ordered_stops if 'linkRefId' in self._graph.nodes[i]]
             if len(stops_linkrefids) != len(self.ordered_stops):
                 logging.warning('Not all stops reference network link ids.')
                 return False
-            # consecutive stops can snap to the same link but it only needs to be mentioned once
-            stops_linkrefids = [stops_linkrefids[0]] + [stops_linkrefids[i] for i in range(1, len(stops_linkrefids)) if
-                                                        stops_linkrefids[i - 1] != stops_linkrefids[i]]
-            for link_id in self.route:
-                if link_id == stops_linkrefids[0]:
-                    stops_linkrefids = stops_linkrefids[1:]
-            if not stops_linkrefids:
+            divided_route = self.divide_network_route_between_stops()
+            if not divided_route:
+                return False
+            reassembled_route = sum(divided_route, [])
+            reassembled_route = [reassembled_route[0]] + [reassembled_route[i] for i in range(1, len(reassembled_route)) if reassembled_route[i - 1] != reassembled_route[i]]
+            if (len(stops_linkrefids) - 1) == len(divided_route) and (reassembled_route == self.route):
                 return True
         return False
 
