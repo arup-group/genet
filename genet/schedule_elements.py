@@ -913,13 +913,7 @@ class Route(ScheduleElement):
             stops_linkrefids = [self._graph.nodes[i]['linkRefId'] for i in self.ordered_stops]
             if not stops_linkrefids:
                 raise RuntimeError('This Stops in this Route are not snapped to the network via `linkRefId` attribute')
-            divided_route = [[]]
-            for link_id in self.route:
-                divided_route[-1].append(link_id)
-                while stops_linkrefids and (link_id == stops_linkrefids[0]):
-                    divided_route.append([stops_linkrefids[0]])
-                    stops_linkrefids = stops_linkrefids[1:]
-            return divided_route[1:-1]
+            return divide_network_route(self.route, stops_linkrefids)
         else:
             raise RuntimeError('This Route does not have a network route to divide')
 
@@ -3235,3 +3229,26 @@ def generate_trip_departures_from_headway(headway_spec: dict):
         trip_departures |= set(pd.date_range(
             f'1970-01-01 {from_time}', f'1970-01-01 {to_time}', freq=f'{headway_mins}min'))
     return trip_departures
+
+
+def divide_network_route(route: List[str], stops_linkrefids: List[str]) -> List[List[str]]:
+    """
+    Divides into list of lists, the network route traversed by a PT service.
+    E.g.
+    route = ['a-a', 'a-b', 'b-b', 'b-c', 'c-c', 'c-d']
+    stops_linkrefids = ['a-a', 'b-b', 'c-c']
+    For a service with stops A, B, C, where the stops are snapped to network links 'a-a', 'b-b', 'c-c' respectively.
+    This method will give you teh answer:
+    [['a-a', 'a-b', 'b-b'], ['b-b', 'b-c', 'c-c']]
+    i.e. the route between stops A and B, and B and C, in order.
+    :param route: list of network link IDs (str)
+    :param stops_linkrefids: List of network link IDs (str) that the stops on route are snapped to
+    :return:
+    """
+    divided_route = [[]]
+    for link_id in route:
+        divided_route[-1].append(link_id)
+        while stops_linkrefids and (link_id == stops_linkrefids[0]):
+            divided_route.append([stops_linkrefids[0]])
+            stops_linkrefids = stops_linkrefids[1:]
+    return divided_route[1:-1]
