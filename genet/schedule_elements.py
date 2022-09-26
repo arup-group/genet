@@ -27,6 +27,7 @@ import genet.validate.schedule as schedule_validation
 import networkx as nx
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 import yaml
 from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisationError, ServiceInitialisationError, \
     UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData, \
@@ -275,30 +276,57 @@ class ScheduleElement:
     def trips_with_stops_to_dataframe(self, gtfs_day='19700101') -> pd.DataFrame:
         pass
 
-    def speed_dataframe(self, network_factor=1.3) -> pd.DataFrame:
+    def speed_dataframe(self, network_factor=1.3, gdf_network_links=None) -> gpd.GeoDataFrame:
         """
         DataFrame: trips_with_stops_to_dataframe, but with speed in metres/second between each of the stops.
         Note well:
          - The unit of metres is not guaranteed - this assumes the object is in local metre-based projection.
-         - It does not consider network routes, uses 1.3 network factor as default
+         - If you pass a GeoDataFrame of genet.Network links you will get routed speeds as well as teleported with a
+         factor
+         - Assumes genet.Network links geometry if passed. If not, gives the stop-to-stop line geometry
         :param gtfs_day: optional, used to set the day represented by the network in the datetime objects in resulting
             dataframe.
         :param network_factor: Does not consider network routes, network factor (default 1.3) is applied to Euclidean
             distance.
+        :param gdf_network_links: GeoDataFrame of genet.Network links,
+            can be obtained using: genet.Network.to_geodataframe()['links']
         :return:
         """
         df = self.trips_with_stops_to_dataframe()
+        df['time'] = (df['arrival_time'] - df['departure_time']).dt.total_seconds()
+        df = df[['service_id', 'service_name', 'route_id', 'route_name', 'mode', 'from_stop', 'to_stop',
+                 'from_stop_name', 'to_stop_name', 'time']].drop_duplicates()
         df['distance'] = df.apply(
             lambda row: spatial.distance_between_s2cellids(
                 self._graph.nodes[row['from_stop']]['s2_id'],
                 self._graph.nodes[row['to_stop']]['s2_id']
             ), axis=1
         ) * network_factor
-        df['time'] = (df['arrival_time'] - df['departure_time']).dt.total_seconds()
         df['speed'] = df['distance'] / df['time']
-        df = df[['service_id', 'service_name', 'route_id', 'route_name', 'mode', 'from_stop', 'to_stop',
-                 'from_stop_name', 'to_stop_name', 'speed']].drop_duplicates()
-        return df
+        if gdf_network_links is not None:
+            network_distance_df = use_schedule.network_routed_distance_gdf(self, gdf_network_links)
+            df = gpd.GeoDataFrame(
+                df.merge(
+                    network_distance_df,
+                    left_on=['route_id', 'from_stop', 'to_stop'],
+                    right_on=['id', 'from_stop', 'to_stop']
+                )
+            )
+            df['routed_speed'] = df['network_distance'] / df['time']
+        else:
+            df['network_distance'] = float('nan')
+            df['routed_speed'] = float('nan')
+            schedule_links = self.to_geodataframe()['links']
+            df = gpd.GeoDataFrame(
+                pd.merge(
+                    df,
+                    schedule_links[['u', 'v', 'geometry']],
+                    left_on=['from_stop', 'to_stop'],
+                    right_on=['u', 'v']
+                ),
+                crs=schedule_links.crs)
+            df.drop(['u', 'v'], axis=1, inplace=True)
+        return df.drop(['time', 'distance', 'network_distance'], axis=1)
 
     def average_route_speeds(self, network_factor=1.3) -> dict:
         """
@@ -913,7 +941,7 @@ class Route(ScheduleElement):
             stops_linkrefids = [self._graph.nodes[i]['linkRefId'] for i in self.ordered_stops]
             if not stops_linkrefids:
                 raise RuntimeError('This Stops in this Route are not snapped to the network via `linkRefId` attribute')
-            return divide_network_route(self.route, stops_linkrefids)
+            return use_schedule.divide_network_route(self.route, stops_linkrefids)
         else:
             raise RuntimeError('This Route does not have a network route to divide')
 
@@ -3229,26 +3257,3 @@ def generate_trip_departures_from_headway(headway_spec: dict):
         trip_departures |= set(pd.date_range(
             f'1970-01-01 {from_time}', f'1970-01-01 {to_time}', freq=f'{headway_mins}min'))
     return trip_departures
-
-
-def divide_network_route(route: List[str], stops_linkrefids: List[str]) -> List[List[str]]:
-    """
-    Divides into list of lists, the network route traversed by a PT service.
-    E.g.
-    route = ['a-a', 'a-b', 'b-b', 'b-c', 'c-c', 'c-d']
-    stops_linkrefids = ['a-a', 'b-b', 'c-c']
-    For a service with stops A, B, C, where the stops are snapped to network links 'a-a', 'b-b', 'c-c' respectively.
-    This method will give you teh answer:
-    [['a-a', 'a-b', 'b-b'], ['b-b', 'b-c', 'c-c']]
-    i.e. the route between stops A and B, and B and C, in order.
-    :param route: list of network link IDs (str)
-    :param stops_linkrefids: List of network link IDs (str) that the stops on route are snapped to
-    :return:
-    """
-    divided_route = [[]]
-    for link_id in route:
-        divided_route[-1].append(link_id)
-        while stops_linkrefids and (link_id == stops_linkrefids[0]):
-            divided_route.append([stops_linkrefids[0]])
-            stops_linkrefids = stops_linkrefids[1:]
-    return divided_route[1:-1]

@@ -1,9 +1,12 @@
 import os
+from typing import List
+import logging
 import pandas as pd
 from datetime import datetime, timedelta
 import geopandas as gpd
 import numpy as np
 import itertools
+import genet.utils.spatial as spatial
 
 
 def sanitise_time(time, gtfs_day='19700101'):
@@ -137,3 +140,68 @@ def aggregate_by_stop_names(df_aggregate_trips_per_day_per_route_by_end_stop_pai
         df[['station_A_name', 'station_B_name']] = np.sort(df[['station_A_name', 'station_B_name']], axis=1)
         df = df.groupby(['station_A_name', 'station_B_name', 'mode']).sum()['number_of_trips'].reset_index()
     return df
+
+
+def divide_network_route(route: List[str], stops_linkrefids: List[str]) -> List[List[str]]:
+    """
+    Divides into list of lists, the network route traversed by a PT service.
+    E.g.
+    route = ['a-a', 'a-b', 'b-b', 'b-c', 'c-c', 'c-d']
+    stops_linkrefids = ['a-a', 'b-b', 'c-c']
+    For a service with stops A, B, C, where the stops are snapped to network links 'a-a', 'b-b', 'c-c' respectively.
+    This method will give you teh answer:
+    [['a-a', 'a-b', 'b-b'], ['b-b', 'b-c', 'c-c']]
+    i.e. the route between stops A and B, and B and C, in order.
+    :param route: list of network link IDs (str)
+    :param stops_linkrefids: List of network link IDs (str) that the stops on route are snapped to
+    :return:
+    """
+    divided_route = [[]]
+    for link_id in route:
+        divided_route[-1].append(link_id)
+        while stops_linkrefids and (link_id == stops_linkrefids[0]):
+            divided_route.append([stops_linkrefids[0]])
+            stops_linkrefids = stops_linkrefids[1:]
+    return divided_route[1:-1]
+
+
+def network_routed_distance_gdf(schedule, gdf_network_links):
+    def combine_route(group):
+        group = group.sort_values(by='sequence')
+        geom = spatial.merge_linestrings(list(group['geometry']))
+        length = group['length'].sum()
+        group = group.iloc[0, :][['id', 'from_stop', 'to_stop']]
+        group['geometry'] = geom
+        group['network_distance'] = length
+        return group
+
+    # TODO speeds account for snapping to long links
+    logging.warning('Right now routed speeds do not account for services snapping to long network links. '
+                    'Be sure to account for that in your investigations and check the non-routed `pt_speeds`'
+                    'output as well.')
+
+    routes_df = schedule.route_attribute_data(keys=['id', 'route', 'ordered_stops'])
+    routes_df['linkrefids'] = routes_df.apply(lambda x: [schedule._graph.nodes[i]['linkRefId'] for i in
+                                                         schedule._graph.graph['routes'][x['id']]['ordered_stops']],
+                                              axis=1)
+    routes_df['route'] = routes_df.apply(
+        lambda x: divide_network_route(x['route'], x['linkrefids']), axis=1)
+    routes_df.drop('linkrefids', axis=1, inplace=True)
+    routes_df['ordered_stops'] = routes_df['ordered_stops'].apply(lambda x: list(zip(x[:-1], x[1:])))
+    stop_cols = np.concatenate(routes_df['ordered_stops'].values)
+    route_cols = sum(routes_df['route'].values, [])
+    # expand across stop pairs
+    routes_df = pd.DataFrame({
+        col: np.repeat(routes_df[col].values, routes_df['ordered_stops'].str.len())
+        for col in set(routes_df.columns) - {'ordered_stops', 'route'}}
+    ).assign(from_stop=stop_cols[:, 0],
+             to_stop=stop_cols[:, 1],
+             route=route_cols)
+    # expand across route
+    routes_df['sequence'] = routes_df['route'].apply(lambda x: list(range(len(x))))
+    routes_df = pd.DataFrame({
+        col: np.repeat(routes_df[col].values, routes_df['route'].str.len())
+        for col in set(routes_df.columns) - {'route', 'sequence'}}
+    ).assign(route=np.concatenate(routes_df['route'].values), sequence=np.concatenate(routes_df['sequence'].values))
+    routes_df = routes_df.merge(gdf_network_links[['length', 'geometry']], left_on='route', right_index=True)
+    return routes_df.groupby(['id', 'from_stop', 'to_stop']).apply(combine_route).reset_index(drop=True)

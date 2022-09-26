@@ -2018,7 +2018,7 @@ def schedule_for_speed_testing():
              'route_name': {0: 'route', 1: 'route'}, 'route_id': {0: 'service_0', 1: 'service_0'},
              'to_stop': {0: '1', 1: '2'}, 'from_stop_name': {0: '', 1: ''}, 'from_stop': {0: '0', 1: '1'},
              'service_name': {0: 'route', 1: 'route'}, 'to_stop_name': {0: '', 1: ''},
-             'speed': {0: 10.0, 1: 5.0}}
+             'speed': {0: 10.0, 1: 5.0}, 'routed_speed': {0: float('nan'), 1: float('nan')}}
         ),
         'expected_route_speeds': {'service_0': 7.5},
         'expected_speed_report': {}
@@ -2047,7 +2047,7 @@ def schedule_for_testing_0_speed_case():
              'route_name': {0: 'route'}, 'route_id': {0: 'service_0'},
              'to_stop': {0: '1'}, 'from_stop_name': {0: ''}, 'from_stop': {0: '0'},
              'service_name': {0: 'route'}, 'to_stop_name': {0: ''},
-             'speed': {0: 0.0}}
+             'speed': {0: 0.0}, 'routed_speed': {0: float('nan')}}
         ),
         'expected_route_speeds': {'service_0': 0.0},
         'expected_speed_report': {'0_m/s': {'routes': ['service_0']}}
@@ -2076,7 +2076,7 @@ def schedule_for_testing_inf_speed_case():
              'route_name': {0: 'route'}, 'route_id': {0: 'service_0'},
              'to_stop': {0: '1'}, 'from_stop_name': {0: ''}, 'from_stop': {0: '0'},
              'service_name': {0: 'route'}, 'to_stop_name': {0: ''},
-             'speed': {0: math.inf}}
+             'speed': {0: math.inf}, 'routed_speed': {0: float('nan')}}
         ),
         'expected_route_speeds': {'service_0': math.inf},
         'expected_speed_report': {'inf_m/s': {'routes': ['service_0']}}
