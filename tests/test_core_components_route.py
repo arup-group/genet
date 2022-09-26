@@ -330,21 +330,6 @@ def test_dividing_network_route_with_a_longer_invalid_route_cuts_off_the_route()
     assert r.divide_network_route_between_stops() == [['a-a', 'a-b', 'b-b'], ['b-b', 'b-c', 'c-c']]
 
 
-def test_dividing_network_route_with_a_longer_invalid_route_cuts_off_the_route():
-    A = Stop(id='A', x=4, y=2, epsg='epsg:27700', linkRefId='a-a')
-    B = Stop(id='B', x=1, y=2, epsg='epsg:27700', linkRefId='b-b')
-    C = Stop(id='C', x=3, y=3, epsg='epsg:27700', linkRefId='c-c')
-    r = Route(
-        route_short_name='1',
-        mode='bus',
-        stops=[A, B, C],
-        headway_spec={('00:07:00', '08:00:00'): 30},
-        arrival_offsets=['00:00:00', '00:03:00', '00:07:00'],
-        departure_offsets=['00:00:00', '00:05:00', '00:09:00'],
-        route=['a-a', 'a-b', 'b-b', 'b-c', 'c-c', 'c-d'], id='1')
-    assert r.divide_network_route_between_stops() == [['a-a', 'a-b', 'b-b'], ['b-b', 'b-c', 'c-c']]
-
-
 def test_has_correctly_ordered_route_with_a_correct_route():
     a = Stop(id='1', x=4, y=2, epsg='epsg:27700')
     a.add_additional_attributes({'linkRefId': '10'})
