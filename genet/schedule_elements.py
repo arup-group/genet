@@ -947,7 +947,8 @@ class Route(ScheduleElement):
 
     def has_correctly_ordered_route(self):
         if self.has_network_route():
-            stops_linkrefids = [self._graph.nodes[i]['linkRefId'] for i in self.ordered_stops if 'linkRefId' in self._graph.nodes[i]]
+            stops_linkrefids = [self._graph.nodes[i]['linkRefId'] for i in self.ordered_stops if
+                                'linkRefId' in self._graph.nodes[i]]
             if len(stops_linkrefids) != len(self.ordered_stops):
                 logging.warning('Not all stops reference network link ids.')
                 return False
@@ -955,7 +956,8 @@ class Route(ScheduleElement):
             if not divided_route:
                 return False
             reassembled_route = sum(divided_route, [])
-            reassembled_route = [reassembled_route[0]] + [reassembled_route[i] for i in range(1, len(reassembled_route)) if reassembled_route[i - 1] != reassembled_route[i]]
+            reassembled_route = [reassembled_route[0]] + [reassembled_route[i] for i in range(1, len(reassembled_route))
+                                                          if reassembled_route[i - 1] != reassembled_route[i]]
             if (len(stops_linkrefids) - 1) == len(divided_route) and (reassembled_route == self.route):
                 return True
         return False
