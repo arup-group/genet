@@ -276,7 +276,7 @@ class ScheduleElement:
     def trips_with_stops_to_dataframe(self, gtfs_day='19700101') -> pd.DataFrame:
         pass
 
-    def speed_dataframe(self, network_factor=1.3, gdf_network_links=None) -> gpd.GeoDataFrame:
+    def speed_geodataframe(self, network_factor=1.3, gdf_network_links=None) -> gpd.GeoDataFrame:
         """
         DataFrame: trips_with_stops_to_dataframe, but with speed in metres/second between each of the stops.
         Note well:
@@ -335,7 +335,7 @@ class ScheduleElement:
             distance.
         :return: Dictionary {route_ID: average_speed_in_m_per_s}
         """
-        df = self.speed_dataframe(network_factor=network_factor)
+        df = self.speed_geodataframe(network_factor=network_factor)
         # computing with all trips is redundant as the speeds for each trip for the same route are the same we can
         # select the first or random trip from each route, but depending on how it's done, it might not improve
         # performance very much

@@ -127,7 +127,8 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
 
     logging.info(f'Generating stop-to-stop speed outputs with network_factor={schedule_network_factor}')
     speed_dir = os.path.join(output_dir, 'speed')
-    speeds_gdf = schedule.speed_dataframe(network_factor=schedule_network_factor, gdf_network_links=gdf_network_links)
+    speeds_gdf = schedule.speed_geodataframe(
+        network_factor=schedule_network_factor, gdf_network_links=gdf_network_links)
     save_geodataframe(
         speeds_gdf[['service_id', 'route_id', 'mode', 'from_stop', 'to_stop', 'routed_speed', 'geometry']],
         filename='pt_network_speeds',

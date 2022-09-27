@@ -105,7 +105,7 @@ def generate_validation_report(schedule):
         report['schedule_level']['headways']['has_zero_min_headways'] = False
 
     logging.info('Computing speeds')
-    df_speeds = schedule.speed_dataframe()
+    df_speeds = schedule.speed_geodataframe()
     logging.info('Checking speeds for prohibitive values 0 and infinity. You should verify speed values separately')
     report['schedule_level']['speeds'] = {}
     for val in [0, math.inf]:
