@@ -2744,7 +2744,6 @@ def invalid_pt2matsim_network_for_validation(network_object_from_test_data):
         'pt_routes_with_invalid_network_route': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
     }
 
-
 def test_connectivity_in_report_with_invalid_network(invalid_pt2matsim_network_for_validation):
     report = invalid_pt2matsim_network_for_validation['network'].generate_validation_report()
     for mode, expected_connected_subgraphs in invalid_pt2matsim_network_for_validation['subgraph_no_per_mode'].items():
