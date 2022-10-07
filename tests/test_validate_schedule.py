@@ -129,7 +129,6 @@ def test_generate_validation_report_with_schedule_incomplete_vehicle_definitions
     assert_semantically_equal(report['vehicle_level'], correct_vehicle_report)
 
 
-
 def test_schedule_with_no_unused_vehicles(correct_schedule):
     correct_output = set()
     actual_output = correct_schedule.unused_vehicles()
