@@ -131,6 +131,14 @@ def test_merging_dicts_with_lists_when_one_dict_is_empty():
     assert_semantically_equal(d, {'1': [''], '2': []})
 
 
+def test_simple_dict_to_string():
+    assert dict_support.dict_to_string({'simple': 'nest'}) == 'simple::nest'
+
+
+def test_deeper_dict_to_string():
+    assert dict_support.dict_to_string({'deeper': {'nested': 'dict'}}) == 'deeper::nested::dict'
+
+
 def test_dataframe_to_dict_returns_dictionary_ignoring_nan_values():
     df = DataFrame(
         {

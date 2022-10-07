@@ -6,7 +6,7 @@ from genet.exceptions import ServiceIndexError, ConflictingStopData, Inconsisten
 from genet.input import read, matsim_reader, gtfs_reader
 from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
 from genet.utils import plot, spatial
-from genet.validate import schedule_validation
+from genet.validate import schedule as schedule_validation
 from tests.fixtures import *
 from tests.test_core_components_service import service
 from tests.test_core_components_route import self_looping_route, route
@@ -1360,7 +1360,7 @@ def test_removing_stops_from_minimal_transfert_times_cleans_up_empties(schedule)
 
 def test_removing_unused_stops(schedule):
     schedule.remove_route('1')
-    schedule.remove_unsused_stops()
+    schedule.remove_unused_stops()
     assert {stop.id for stop in schedule.stops()} == {'6', '8', '5', '7'}
 
 
@@ -1371,7 +1371,7 @@ def test_unused_stops_featured_in_minimal_transfer_times_are_kept(schedule):
         '3': {'2': 0.0},
     }
     schedule.remove_route('1')
-    schedule.remove_unsused_stops()
+    schedule.remove_unused_stops()
     assert {stop.id for stop in schedule.stops()} == {'5', '2', '3', '6', '8', '7'}
     assert_semantically_equal(schedule.minimal_transfer_times,
                               {
