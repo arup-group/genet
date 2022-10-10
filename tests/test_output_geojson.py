@@ -156,13 +156,14 @@ def test_generating_standard_outputs(network, tmpdir):
                     route_short_name=r"RTR_I/love\_being//difficult",
                     mode='rail',
                     stops=[
-                        Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326', name=r"I/love\_being//difficult"),
-                        Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
+                        Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326', linkRefId='link_0', name=r"I/love\_being//difficult"),
+                        Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326', linkRefId='link_2')],
                     trips={'trip_id': ['RT1', 'RT2', 'RT3', 'RT4'],
                            'trip_departure_time': ['03:21:00', '03:31:00', '03:41:00', '03:51:00'],
                            'vehicle_id': ['veh_7_rail', 'veh_8_rail', 'veh_9_rail', 'veh_10_rail']},
                     arrival_offsets=['0:00:00', '0:02:00'],
-                    departure_offsets=['0:00:00', '0:02:00']
+                    departure_offsets=['0:00:00', '0:02:00'],
+                    route=['link_0', 'link_1', 'link_2']
                 )])
     ])
     assert os.listdir(tmpdir) == []
@@ -210,8 +211,10 @@ def test_generating_standard_outputs(network, tmpdir):
                                                                  'trips_per_day_per_service.csv',
                                                                  'trips_per_day_per_route.csv',
                                                                  'trips_per_day_per_route_aggregated_per_stop_id_pair.csv',
-                                                                 'trips_per_day_per_route_aggregated_per_stop_name_pair.csv'
+                                                                 'trips_per_day_per_route_aggregated_per_stop_name_pair.csv',
+                                                                 'speed'
                                                                  }
+    assert set(os.listdir(os.path.join(tmpdir, 'schedule', 'speed'))) == {'pt_speeds.geojson', 'shp_files', 'pt_network_speeds.geojson'}
     assert set(os.listdir(os.path.join(tmpdir, 'schedule', 'vehicles_per_hour'))) == {'vph_per_service.csv',
                                                                                       'vehicles_per_hour_all_modes.geojson',
                                                                                       'vph_per_stop_departing_from.csv',

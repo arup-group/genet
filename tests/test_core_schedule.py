@@ -1,6 +1,10 @@
-from shapely.geometry import Polygon, GeometryCollection
+import math
+
+from shapely.geometry import Polygon, GeometryCollection, LineString
 from pandas import DataFrame, Timestamp, Timedelta
+from geopandas import GeoDataFrame
 from pandas.testing import assert_frame_equal
+from geopandas.testing import assert_geodataframe_equal
 
 from genet.exceptions import ServiceIndexError, ConflictingStopData, InconsistentVehicleModeError
 from genet.input import read, matsim_reader, gtfs_reader
@@ -1991,6 +1995,141 @@ def test_generating_trips_from_headway_updates_vehicles(schedule):
          'veh_3_bus': {'type': 'bus'},
          'veh_4_bus': {'type': 'bus'}}
     )
+
+
+@pytest.fixture()
+def schedule_for_speed_testing():
+    return {
+        'schedule': Schedule(epsg='epsg:27700', services=[
+            Service(id='service',
+                    routes=[
+                        Route(route_short_name='route', mode='bus',
+                              stops=[Stop(id='0', x=1, y=10, epsg='epsg:27700'),
+                                     Stop(id='1', x=1, y=20, epsg='epsg:27700'),
+                                     Stop(id='2', x=1, y=30, epsg='epsg:27700')],
+                              trips={'trip_id': ['t1'], 'trip_departure_time': ['05:40:00'],
+                                     'vehicle_id': ['veh_1_bus']},
+                              arrival_offsets=['00:00:00', '00:00:01', '00:00:03'],
+                              departure_offsets=['00:00:00', '00:00:01', '00:00:03'])
+                    ])
+        ]),
+        'network_factor': 1.3,
+        'stops_distance': 10 / (1.3),
+        'expected_trips_with_stops_and_speed_df': GeoDataFrame(
+            {'mode': {0: 'bus', 1: 'bus'}, 'service_id': {0: 'service', 1: 'service'},
+             'route_name': {0: 'route', 1: 'route'}, 'route_id': {0: 'service_0', 1: 'service_0'},
+             'to_stop': {0: '1', 1: '2'}, 'from_stop_name': {0: '', 1: ''}, 'from_stop': {0: '0', 1: '1'},
+             'service_name': {0: 'route', 1: 'route'}, 'to_stop_name': {0: '', 1: ''},
+             'speed': {0: 10.0, 1: 5.0}, 'routed_speed': {0: float('nan'), 1: float('nan')},
+             'geometry': {0: LineString([(1,10),(1,20)]), 1: LineString([(1,20),(1,30)])}},
+            crs='epsg:27700'
+        ),
+        'expected_route_speeds': {'service_0': 7.5},
+        'expected_speed_report': {}
+    }
+
+
+@pytest.fixture()
+def schedule_for_testing_0_speed_case():
+    return {
+        'schedule': Schedule(epsg='epsg:27700', services=[
+            Service(id='service',
+                    routes=[
+                        Route(route_short_name='route', mode='bus',
+                              stops=[Stop(id='0', x=1, y=10, epsg='epsg:27700'),
+                                     Stop(id='1', x=1, y=10.001, epsg='epsg:27700')],
+                              trips={'trip_id': ['t1'], 'trip_departure_time': ['05:40:00'],
+                                     'vehicle_id': ['veh_1_bus']},
+                              arrival_offsets=['00:00:00', '00:00:01'],
+                              departure_offsets=['00:00:00', '00:00:01'])
+                    ])
+        ]),
+        'network_factor': 1.3,
+        'stops_distance': 0,
+        'expected_trips_with_stops_and_speed_df': GeoDataFrame(
+            {'mode': {0: 'bus'}, 'service_id': {0: 'service'},
+             'route_name': {0: 'route'}, 'route_id': {0: 'service_0'},
+             'to_stop': {0: '1'}, 'from_stop_name': {0: ''}, 'from_stop': {0: '0'},
+             'service_name': {0: 'route'}, 'to_stop_name': {0: ''},
+             'speed': {0: 0.0}, 'routed_speed': {0: float('nan')},
+             'geometry': {0: LineString([(1, 10), (1, 10.001)])}},
+            crs='epsg:27700'
+        ),
+        'expected_route_speeds': {'service_0': 0.0},
+        'expected_speed_report': {'0_m/s': {'routes': ['service_0']}}
+    }
+
+
+@pytest.fixture()
+def schedule_for_testing_inf_speed_case():
+    return {
+        'schedule': Schedule(epsg='epsg:27700', services=[
+            Service(id='service',
+                    routes=[
+                        Route(route_short_name='route', mode='bus',
+                              stops=[Stop(id='0', x=1, y=10, epsg='epsg:27700'),
+                                     Stop(id='1', x=1, y=30, epsg='epsg:27700')],
+                              trips={'trip_id': ['t1'], 'trip_departure_time': ['05:40:00'],
+                                     'vehicle_id': ['veh_1_bus']},
+                              arrival_offsets=['00:00:00', '00:00:00'],
+                              departure_offsets=['00:00:00', '00:00:00'])
+                    ])
+        ]),
+        'network_factor': 1.3,
+        'stops_distance': 20,
+        'expected_trips_with_stops_and_speed_df': GeoDataFrame(
+            {'mode': {0: 'bus'}, 'service_id': {0: 'service'},
+             'route_name': {0: 'route'}, 'route_id': {0: 'service_0'},
+             'to_stop': {0: '1'}, 'from_stop_name': {0: ''}, 'from_stop': {0: '0'},
+             'service_name': {0: 'route'}, 'to_stop_name': {0: ''},
+             'speed': {0: math.inf}, 'routed_speed': {0: float('nan')},
+             'geometry': {0: LineString([(1,10),(1,30)])}},
+            crs='epsg:27700'
+        ),
+        'expected_route_speeds': {'service_0': math.inf},
+        'expected_speed_report': {'inf_m/s': {'routes': ['service_0']}}
+    }
+
+@pytest.fixture()
+def schedule_cases_for_speed_testing(schedule_for_speed_testing, schedule_for_testing_0_speed_case, schedule_for_testing_inf_speed_case):
+    return {
+        'normal_speeds': schedule_for_speed_testing,
+        '0_speed': schedule_for_testing_0_speed_case,
+        'inf_speed': schedule_for_testing_inf_speed_case
+    }
+
+
+@pytest.mark.parametrize("schedule_case", ['normal_speeds', '0_speed', 'inf_speed'])
+def test_speed_calculation_for_schedule(schedule_case, schedule_cases_for_speed_testing, mocker):
+    schedule_fixture = schedule_cases_for_speed_testing[schedule_case]
+    network_factor = schedule_fixture['network_factor']
+    mocker.patch.object(spatial, 'distance_between_s2cellids',
+                        return_value=schedule_fixture['stops_distance'])
+    assert_geodataframe_equal(
+        schedule_fixture['schedule'].speed_geodataframe(network_factor=network_factor).sort_index(
+            axis=1),
+        schedule_fixture['expected_trips_with_stops_and_speed_df'].sort_index(axis=1)
+    )
+
+
+@pytest.mark.parametrize("schedule_case", ['normal_speeds', '0_speed', 'inf_speed'])
+def test_average_speed_calculation_for_each_route_in_schedule(schedule_case, schedule_cases_for_speed_testing, mocker):
+    schedule_fixture = schedule_cases_for_speed_testing[schedule_case]
+    network_factor = schedule_fixture['network_factor']
+    mocker.patch.object(spatial, 'distance_between_s2cellids',
+                        return_value=schedule_fixture['stops_distance'])
+    assert schedule_fixture['schedule'].average_route_speeds(network_factor=network_factor) == \
+           schedule_fixture['expected_route_speeds']
+
+
+@pytest.mark.parametrize("schedule_case", ['normal_speeds', '0_speed', 'inf_speed'])
+def test_reporting_on_extreme_speed_values(schedule_case, schedule_cases_for_speed_testing, mocker):
+    schedule_fixture = schedule_cases_for_speed_testing[schedule_case]
+    network_factor = schedule_fixture['network_factor']
+    mocker.patch.object(spatial, 'distance_between_s2cellids',
+                        return_value=schedule_fixture['stops_distance'])
+    assert schedule_fixture['schedule'].generate_validation_report()['schedule_level']['speeds'] == \
+           schedule_fixture['expected_speed_report']
 
 
 def test_overlapping_vehicles(schedule):
