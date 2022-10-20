@@ -278,18 +278,16 @@ class ScheduleElement:
 
     def speed_geodataframe(self, network_factor=1.3, gdf_network_links=None) -> gpd.GeoDataFrame:
         """
-        DataFrame: trips_with_stops_to_dataframe, but with speed in metres/second between each of the stops.
+        DataFrame of speed for PT routes, in metres/second for each stop pair.
         Note well:
          - The unit of metres is not guaranteed - this assumes the object is in local metre-based projection.
          - If you pass a GeoDataFrame of genet.Network links you will get routed speeds as well as teleported with a
          factor
          - Assumes genet.Network links geometry if passed. If not, gives the stop-to-stop line geometry
-        :param gtfs_day: optional, used to set the day represented by the network in the datetime objects in resulting
-            dataframe.
-        :param network_factor: Does not consider network routes, network factor (default 1.3) is applied to Euclidean
-            distance.
-        :param gdf_network_links: GeoDataFrame of genet.Network links,
-            can be obtained using: genet.Network.to_geodataframe()['links']
+
+        :param network_factor: Network factor (default 1.3) to be applied to the Euclidean distance between stops
+        :param gdf_network_links: GeoDataFrame of genet.Network links, can be obtained using:
+            genet.Network.to_geodataframe()['links']
         :return:
         """
         df = self.trips_with_stops_to_dataframe()
