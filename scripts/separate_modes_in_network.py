@@ -60,6 +60,8 @@ if __name__ == '__main__':
 
     logging.info(f'Number of links after separating graph: {len(n.link_id_mapping)}')
 
+    n.write_to_matsim(output_dir)
+
     logging.info('Generating validation report')
     report = n.generate_validation_report()
     logging.info(f'Graph validation: {report["graph"]["graph_connectivity"]}')
