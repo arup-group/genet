@@ -8,8 +8,24 @@ from genet.utils.persistence import ensure_dir
 from genet.output.sanitiser import sanitise_dictionary
 
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Generate own links for given modes in a MATSim network, '
-                                                     'creating a separate modal subgraph.')
+    arg_parser = argparse.ArgumentParser(
+        description='Generate new links, each for the use of a singular mode in a MATSim network. This creates '
+                    'separate modal subgraphs for the given modes. It can be used with MATSim to ensure the two modes '
+                    'do not come in contact. Given a link:'
+                    '>>> `n.link("LINK_ID")`'
+                    '   `{"id": "LINK_ID", "modes": {"car", "bike"}, "freespeed": 5, ...}`'
+                    
+                    'The resulting links in the network will be:'
+                    '>>> `n.link("LINK_ID")`'
+                    '   `{"id": "LINK_ID", "modes": {"car"}, "freespeed": 5, ...}`'
+                    '>>> `n.link("bike---LINK_ID")`'
+                    '   `{"id": "bike---LINK_ID", "modes": {"bike"}, "freespeed": 5, ...}`'
+                    'the new bike link will assume all the same attributes apart from the "modes".'
+                    
+                    'In the case when a link already has a single dedicated mode, no updates are made to the link ID, '
+                    'you can assume that all links that were in the network previously are still there, but their '
+                    'allowed modes may have changed, so any simulation outputs may not be valid with this new network.'
+    )
 
     arg_parser.add_argument('-n',
                             '--network',
