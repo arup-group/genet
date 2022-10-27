@@ -823,7 +823,7 @@ class Network:
 
         # generate initial multi_edge_idxes for the links to be added
         if 'multi_edge_idx' not in df_links.columns:
-            df_links['multi_edge_idx'] = 0
+            df_links['multi_edge_idx'] = df_links.apply(lambda x: self.graph.new_edge_key(x['from'], x['to']), axis=1)
             while df_links[['from', 'to', 'multi_edge_idx']].duplicated().any():
                 df_links.loc[df_links[['from', 'to', 'multi_edge_idx']].duplicated(), 'multi_edge_idx'] += 1
 
