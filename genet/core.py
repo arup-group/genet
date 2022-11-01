@@ -661,25 +661,12 @@ class Network:
         """
         Adds a node.
         :param node:
-        :param attribs: must include spatial information x,y in epsg cosistent with the network, or lat lon in epsg:4326
+        :param attribs: must include spatial information x,y in epsg consistent with the network,
+        or lat lon in epsg:4326
         :param silent: whether to mute stdout logging messages
         :return:
         """
-        # check for spatial info
-        if ('lat' not in attribs.keys() and 'lon' not in attribs.keys()) and \
-                ('x' not in attribs.keys() and 'y' not in attribs.keys()):
-            raise RuntimeError('Cannot add Node without spatial information')
-
-        # check for clashing node IDs
-        if node in dict(self.nodes()).keys():
-            raise RuntimeError('Node ID already exists in the Network')
-
-        self.graph.add_node(node, **attribs)
-        self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
-        if not silent:
-            logging.info(f'Added Node with index `{node}` and data={attribs}')
-
-        return node
+        return self.add_nodes({node: attribs}, silent=silent)[0]
 
     def add_nodes(self, nodes_and_attribs: dict, silent: bool = False, ignore_change_log: bool = False):
         """
@@ -692,10 +679,12 @@ class Network:
         :return:
         """
         # check for spatial info
-        for node_id, value in nodes_and_attribs.items():
-            if ('lat' not in value.keys() and 'lon' not in value.keys()) and \
-                    ('x' not in value.keys() and 'y' not in value.keys()):
-                raise RuntimeError(f'Cannot add Node `{node_id}` without any spatial information')
+        for node_id, attribs in nodes_and_attribs.items():
+            keys = set(attribs.keys())
+            if not ({'lat', 'lon'}.issubset(keys) or {'x', 'y'}.issubset(keys)):
+                raise RuntimeError(f'Cannot add Node `{node_id}` without spatial information. '
+                                   f'Given attributes: `{keys}` are not sufficient. This method requires lat, lon '
+                                   f'attributes in epsg:4326 or x, y in epsg of the network: {self.epsg}')
 
         # check for clashing node IDs
         clashing_node_ids = set(dict(self.nodes()).keys()) & set(nodes_and_attribs.keys())
@@ -706,6 +695,7 @@ class Network:
             df_nodes['id'] = df_nodes.index
 
         if clashing_node_ids:
+            logging.warning("Some proposed IDs for nodes are already being used. New, unique IDs will be found.")
             reindexing_dict = dict(
                 zip(clashing_node_ids, self.generate_indices_for_n_nodes(
                     len(nodes_and_attribs), avoid_keys=set(nodes_and_attribs.keys()))))

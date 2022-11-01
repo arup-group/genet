@@ -33,6 +33,7 @@ def test_generating_network_graph_geodataframe(network):
     gdfs = gngeojson.generate_geodataframes(network.graph)
     nodes, links = gdfs['nodes'], gdfs['links']
     correct_nodes = {
+        'id': {'0': '0', '1': '1'},
         'x': {'0': 528704.1425925883, '1': 528804.1425925883},
         'y': {'0': 182068.78193707118, '1': 182168.78193707118}}
     correct_links = {'u': {'link_0': '0', 'link_1': '0', 'link_2': '1'},
