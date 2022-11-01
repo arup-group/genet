@@ -693,6 +693,24 @@ class Network:
         reindexing_dict = {}
         if ('id' not in df_nodes.columns) or (df_nodes['id'].isnull().any()):
             df_nodes['id'] = df_nodes.index
+        if not {'lat', 'lon'}.issubset(set(df_nodes.columns)):
+            df_nodes[['lon', 'lat']] = float('nan')
+        if not {'x', 'y'}.issubset(set(df_nodes.columns)):
+            df_nodes[['x', 'y']] = float('nan')
+        if df_nodes[['lon', 'lat']].isnull().any().any():
+            missing_lat_lon = df_nodes[['lon', 'lat']].isnull().T.any()
+            df_nodes.loc[missing_lat_lon, ['lon', 'lat']] = pd.DataFrame(list(df_nodes.loc[missing_lat_lon].apply(
+                lambda row: spatial.change_proj(row['x'], row['y'], self.transformer), axis=1)),
+                columns=['lon', 'lat'], index=df_nodes.loc[missing_lat_lon].index
+            )
+        if df_nodes[['x', 'y']].isnull().any().any():
+            missing_x_y = df_nodes[['x', 'y']].isnull().T.any()
+            transformer = Transformer.from_crs('epsg:4326', self.epsg, always_xy=True)
+            df_nodes.loc[missing_x_y, ['x', 'y']] = pd.DataFrame(list(df_nodes.loc[missing_x_y].apply(
+                lambda row: spatial.change_proj(
+                    row['lon'], row['lat'], Transformer.from_crs('epsg:4326', self.epsg, always_xy=True)), axis=1)),
+                columns=['x', 'y'], index=df_nodes.loc[missing_x_y].index
+            )
 
         if clashing_node_ids:
             logging.warning("Some proposed IDs for nodes are already being used. New, unique IDs will be found.")

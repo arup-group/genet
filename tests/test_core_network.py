@@ -928,6 +928,34 @@ def test_add_node_without_attribs_raises_error():
         n.add_node(1)
 
 
+def test_adding_node_with_only_lat_lon_attribs_fills_in_x_y():
+    n = Network('epsg:27700')
+    n.add_node(1, {'lat': 51.521719064780775, 'lon': -0.13777870665428316})
+
+    assert round(n.node(1)['x'], 2) == 529295.75
+    assert round(n.node(1)['y'], 2) == 181954.76
+
+
+def test_adding_node_with_only_x_y_attribs_fills_in_lat_lon():
+    n = Network('epsg:27700')
+    n.add_node(1, {'x': 529295.7525339661, 'y': 181954.76039674896})
+
+    assert round(n.node(1)['lat'], 6) == 51.521719
+    assert round(n.node(1)['lon'], 6) == -0.137779
+
+
+def test_adding_node_with_mismatched_spatial_attribs_gets_filled_in():
+    n = Network('epsg:27700')
+    n.add_nodes({1: {'lat': 51.521719064780775, 'lon': -0.13777870665428316},
+                 2: {'x': 529295.7525339661, 'y': 181954.76039674896}})
+
+    assert round(n.node(1)['x'], 2) == 529295.75
+    assert round(n.node(1)['y'], 2) == 181954.76
+
+    assert round(n.node(2)['lat'], 6) == 51.521719
+    assert round(n.node(2)['lon'], 6) == -0.137779
+
+
 def test_adding_node_with_clashing_id_reindexes_new_node():
     n = Network('epsg:27700')
     n.add_node(1, {'x': 1, 'y': 2})
