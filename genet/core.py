@@ -25,7 +25,7 @@ import genet.utils.persistence as persistence
 import genet.utils.plot as plot
 import genet.utils.simplification as simplification
 import genet.utils.spatial as spatial
-import genet.validate.network_validation as network_validation
+import genet.validate.network as network_validation
 import geopandas as gpd
 import networkx as nx
 import numpy as np
@@ -832,7 +832,7 @@ class Network:
 
         # generate initial multi_edge_idxes for the links to be added
         if 'multi_edge_idx' not in df_links.columns:
-            df_links['multi_edge_idx'] = 0
+            df_links['multi_edge_idx'] = df_links.apply(lambda x: self.graph.new_edge_key(x['from'], x['to']), axis=1)
             while df_links[['from', 'to', 'multi_edge_idx']].duplicated().any():
                 df_links.loc[df_links[['from', 'to', 'multi_edge_idx']].duplicated(), 'multi_edge_idx'] += 1
 
@@ -951,7 +951,7 @@ class Network:
 
     def modes(self):
         """
-        Scans network for 'modes' attribute and returns list of all modes present int he network
+        Scans network for 'modes' attribute and returns list of all modes present in the network
         :return:
         """
         modes = set()
@@ -1848,6 +1848,20 @@ class Network:
     def has_nodes(self, node_id: list):
         return all([self.has_node(node_id) for node_id in node_id])
 
+    def has_isolated_nodes(self) -> bool:
+        return bool(self.isolated_nodes())
+
+    def isolated_nodes(self) -> list:
+        return list(nx.isolates(self.graph))
+
+    def remove_isolated_nodes(self) -> None:
+        if self.has_isolated_nodes():
+            nodes_to_remove = self.isolated_nodes()
+            logging.info(f'Found {len(nodes_to_remove)} isolated nodes to remove')
+            self.remove_nodes(nodes_to_remove)
+        else:
+            logging.warning('This Network has no isolated nodes to remove')
+
     def has_edge(self, u, v):
         return self.graph.has_edge(u, v)
 
@@ -2008,55 +2022,68 @@ class Network:
         return [route.id for route in self.schedule.routes() if
                 not route.has_network_route() or not self.is_valid_network_route(route)]
 
-    def generate_validation_report(self, link_length_threshold=1000):
+    def generate_validation_report(self, modes_for_strong_connectivity=None, link_metre_length_threshold=1000):
         """
         Generates a dictionary with keys: 'graph', 'schedule' and 'routing' describing validity of the Network's
         underlying graph, the schedule services and then the intersection of the two which is the routing of schedule
         services onto the graph.
-        :param link_length_threshold: in meters defaults to 1000, i.e. 1km
+        :param modes_for_strong_connectivity: list of modes in the network that need to be checked for strong
+            connectivity. Defaults to 'car', 'walk' and 'bike'
+        :param link_metre_length_threshold: in meters defaults to 1000, i.e. 1km
         :return:
         """
         logging.info('Checking validity of the Network')
         logging.info('Checking validity of the Network graph')
         report = {}
+
         # describe network connectivity
-        modes = ['car', 'walk', 'bike']
-        report['graph'] = {'graph_connectivity': {}}
-        for mode in modes:
-            logging.info(f'Checking network connectivity for mode: {mode}')
-            # subgraph for the mode to be tested
-            G_mode = self.modal_subgraph(mode)
-            # calculate how many connected subgraphs there are
-            report['graph']['graph_connectivity'][mode] = network_validation.describe_graph_connectivity(G_mode)
+        if modes_for_strong_connectivity is None:
+            modes_for_strong_connectivity = ['car', 'walk', 'bike']
+            logging.info(f'Defaulting to checking graph connectivity for modes: {modes_for_strong_connectivity}. '
+                         'You can change this by passing a `modes_for_strong_connectivity` param')
+        graph_connectivity = {}
+        for mode in modes_for_strong_connectivity:
+            graph_connectivity[mode] = self.check_connectivity_for_mode(mode)
+        report['graph'] = {'graph_connectivity': graph_connectivity}
 
-        def links_over_threshold_length(value):
-            return value >= link_length_threshold
-
-        links_over_1km_length = self.extract_links_on_edge_attributes(
-            conditions={'length': links_over_threshold_length})
-
-        report['graph']['link_attributes'] = {
-            'links_over_1km_length': {
-                'number_of': len(links_over_1km_length),
-                'percentage': len(links_over_1km_length) / self.graph.number_of_edges(),
-                'link_ids': links_over_1km_length
-            }
+        isolated_nodes = self.isolated_nodes()
+        report['graph']['isolated_nodes'] = {
+            'number_of_nodes': len(isolated_nodes),
+            'nodes': isolated_nodes
         }
+        if self.has_isolated_nodes():
+            logging.warning('This Network has isolated nodes! Consider cleaning it up with `remove_isolated_nodes`')
 
-        def zero_value(value):
-            return (value == 0) or (value == '0') or (value == '0.0')
+        # attribute checks
+        conditions_toolbox = network_validation.ConditionsToolbox()
+        report['graph']['link_attributes'] = {
+            f'{k}_attributes': {} for k in conditions_toolbox.condition_names()}
 
-        report['graph']['link_attributes']['zero_attributes'] = {}
-        for attrib in [d.name for d in graph_operations.get_attribute_schema(self.links()).descendants]:
-            links_with_zero_attrib = self.extract_links_on_edge_attributes(
-                conditions={attrib: zero_value}, mixed_dtypes=False)
-            if links_with_zero_attrib:
-                logging.warning(f'{len(links_with_zero_attrib)} of links have values of 0 for `{attrib}`')
-                report['graph']['link_attributes']['zero_attributes'][attrib] = {
-                    'number_of': len(links_with_zero_attrib),
-                    'percentage': len(links_with_zero_attrib) / self.graph.number_of_edges(),
-                    'link_ids': links_with_zero_attrib
-                }
+        # checks on length attribute specifically
+        def links_over_threshold_length(value):
+            return value >= link_metre_length_threshold
+
+        report['graph']['link_attributes']['links_over_1000_length'] = self.report_on_link_attribute_condition(
+            'length', links_over_threshold_length)
+
+        # more general attribute value checks
+        non_testable = ['id', 'from', 'to', 's2_to', 's2_from', 'geometry']
+        link_attributes = [graph_operations.parse_leaf(leaf) for leaf in
+                           graph_operations.get_attribute_schema(self.links()).leaves]
+        link_attributes = [attrib for attrib in link_attributes if attrib not in non_testable]
+        for attrib in link_attributes:
+            logging.info(f'Checking link values for `{attrib}`')
+            for condition_name in conditions_toolbox.condition_names():
+                links_satifying_condition = self.report_on_link_attribute_condition(
+                    attrib, conditions_toolbox.get_condition_evaluator(condition_name))
+                if links_satifying_condition['number_of']:
+                    logging.warning(
+                        f'{links_satifying_condition["number_of"]} of links have '
+                        f'{condition_name} values for `{attrib}`')
+                    if isinstance(attrib, dict):
+                        attrib = dict_support.dict_to_string(attrib)
+                    report['graph']['link_attributes'][f'{condition_name}_attributes'][
+                        attrib] = links_satifying_condition
 
         if self.schedule:
             report['schedule'] = self.schedule.generate_validation_report()
@@ -2074,6 +2101,39 @@ class Network:
                 'route_to_crow_fly_ratio': route_to_crow_fly_ratio
             }
         return report
+
+    def report_on_link_attribute_condition(self, attribute, condition):
+        """
+        :param attribute: one of the link attributes, e.g. 'length'
+        :param condition: callable, condition for link[attribute] to satisfy
+        :return:
+        """
+        if isinstance(attribute, dict):
+            conditions = dict_support.nest_at_leaf(deepcopy(attribute), condition)
+        else:
+            conditions = {attribute: condition}
+
+        links_satifying_condition = self.extract_links_on_edge_attributes(conditions=conditions)
+        return {
+            'number_of': len(links_satifying_condition),
+            'percentage': len(links_satifying_condition) / self.graph.number_of_edges(),
+            'link_ids': links_satifying_condition
+        }
+
+    def check_connectivity_for_mode(self, mode):
+        logging.info(f'Checking network connectivity for mode: {mode}')
+        G_mode = self.modal_subgraph(mode)
+        con_desc = network_validation.describe_graph_connectivity(G_mode)
+        no_of_components = con_desc["number_of_connected_subgraphs"]
+        logging.info(f'The graph for mode: {mode} has: '
+                     f'{no_of_components} connected components, '
+                     f'{len(con_desc["problem_nodes"]["dead_ends"])} sinks/dead_ends and '
+                     f'{len(con_desc["problem_nodes"]["unreachable_node"])} sources/unreachable nodes.')
+        if no_of_components > 1:
+            logging.warning(f'The graph has more than one connected component for mode {mode}! '
+                            'If this is not expected, consider using the `connect_components` method to connect the '
+                            'components, or `retain_n_connected_subgraphs` with `n=1` to extract the largest component')
+        return con_desc
 
     def generate_standard_outputs(self, output_dir, gtfs_day='19700101', include_shp_files=False):
         """
@@ -2272,3 +2332,47 @@ class Network:
             slope_dict[link_id] = {'slope': link_slope}
 
         return slope_dict
+
+    def summary(self):
+        report = {}
+        network_stats = {'Number of network links': nx.number_of_nodes(self.graph),
+                         'Number of network nodes': nx.number_of_edges(self.graph)}
+        report['network_graph_info'] = network_stats
+        report['modes'] = {}
+        report['modes']['Modes on network links'] = self.modes()
+
+        # check for the old format, i.e. long-form attribute notation
+        if len(graph_operations.get_attribute_data_under_key(
+                self.links(), {'attributes': {'osm:way:highway': 'text'}}).values()) == 0:
+            highway_tags = self.link_attribute_data_under_key({'attributes': 'osm:way:highway'})
+            highway_tags = set(itertools.chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+        else:
+            highway_tags = self.link_attribute_data_under_key({'attributes': {'osm:way:highway': 'text'}})
+            highway_tags = set(itertools.chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
+
+        osm_highway_tags = {}
+        for tag in highway_tags:
+            tag_links = self.extract_links_on_edge_attributes(conditions={'attributes': {'osm:way:highway': tag}},
+                                                              mixed_dtypes=True)
+            osm_highway_tags[tag] = len(tag_links)
+        report['osm_highway_tags'] = {'Number of links by tag': osm_highway_tags}
+
+        links_by_mode = {}
+        for mode in self.modes():
+            mode_links = self.extract_links_on_edge_attributes(conditions={'modes': mode}, mixed_dtypes=True)
+            links_by_mode[mode] = len(mode_links)
+        report['modes']['Number of links by mode'] = links_by_mode
+
+        return report
+
+    def summary_report(self):
+        """
+        Returns a report with summary statistics for the network and the schedule.
+        """
+        logging.info('Creating a summary report')
+        report = {'network': self.summary()}
+
+        if self.schedule:
+            report['schedule'] = self.schedule.summary()
+
+        return report

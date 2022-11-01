@@ -341,6 +341,24 @@ def test_get_attribute_schema_merges_lists():
     assert output_tree == [(0, None, 'attribute'), (1, 'attribute', 'modes', {'bike', 'car', 'walk'})]
 
 
+def test_parsing_flat_attribute_from_attributes_tree():
+    links = [('1', {'length': 1})]
+    node = list(graph_operations.get_attribute_schema(links).leaves)[0]
+    assert graph_operations.parse_leaf(node) == 'length'
+
+
+def test_parsing_nested_attribute_from_attributes_tree():
+    links = [('1', {'attributes': {'hello': 1}})]
+    node = list(graph_operations.get_attribute_schema(links).leaves)[0]
+    assert graph_operations.parse_leaf(node) == {'attributes': 'hello'}
+
+
+def test_parsing_extra_nested_attribute_from_attributes_tree():
+    links = [('1', {'attributes': {'hello': {'text': {'moar': 1}}}})]
+    node = list(graph_operations.get_attribute_schema(links).leaves)[0]
+    assert graph_operations.parse_leaf(node) == {'attributes': {'hello': {'text': 'moar'}}}
+
+
 def test_get_attribute_data_under_key_with_non_nested_key():
     input_list = [
         ('0', {'attributes': {'osm:way:highway': {'name': 'osm:way:highway',

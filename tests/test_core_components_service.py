@@ -447,3 +447,44 @@ def test_generating_trips_dataframe(service):
 
 def test_vehicles(service):
     assert service.vehicles() == {'veh_1_bus', 'veh_2_bus', 'veh_3_bus', 'veh_4_bus'}
+
+
+def test_service_attribute_data_under_key(service):
+    df = service.service_attribute_data(keys='name').sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'name': {'service': 'name'}}
+    ))
+
+
+def test_service_attribute_data_under_keys(service):
+    df = service.service_attribute_data(keys=['name', 'id']).sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'name': {'service': 'name'}, 'id': {'service': 'service'}}
+    ))
+
+
+def test_route_attribute_data_under_key(service):
+    df = service.route_attribute_data(keys='route_short_name').sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'route_short_name': {'1': 'name', '2': 'name_2'}}
+    ))
+
+
+def test_route_attribute_data_under_keys(service):
+    df = service.route_attribute_data(keys=['route_short_name', 'mode']).sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'route_short_name': {'1': 'name', '2': 'name_2'}, 'mode': {'1': 'bus', '2': 'bus'}}
+    ))
+
+
+def test_stop_attribute_data_under_key(service):
+    df = service.stop_attribute_data(keys='x').sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'x': {'1': 4.0, '2': 1.0, '3': 3.0, '4': 7.0, '5': 4.0, '6': 1.0, '7': 3.0, '8': 7.0}}))
+
+
+def test_stop_attribute_data_under_keys(service):
+    df = service.stop_attribute_data(keys=['x', 'y']).sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'x': {'1': 4.0, '2': 1.0, '3': 3.0, '4': 7.0, '5': 4.0, '6': 1.0, '7': 3.0, '8': 7.0},
+         'y': {'1': 2.0, '2': 2.0, '3': 3.0, '4': 5.0, '5': 2.0, '6': 2.0, '7': 3.0, '8': 5.0}}))
