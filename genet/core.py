@@ -707,21 +707,26 @@ class Network:
             missing_x_y = df_nodes[['x', 'y']].isnull().T.any()
             transformer = Transformer.from_crs('epsg:4326', self.epsg, always_xy=True)
             df_nodes.loc[missing_x_y, ['x', 'y']] = pd.DataFrame(list(df_nodes.loc[missing_x_y].apply(
-                lambda row: spatial.change_proj(
-                    row['lon'], row['lat'], Transformer.from_crs('epsg:4326', self.epsg, always_xy=True)), axis=1)),
+                lambda row: spatial.change_proj(row['lon'], row['lat'], transformer), axis=1)),
                 columns=['x', 'y'], index=df_nodes.loc[missing_x_y].index
             )
 
+        nodes_and_attribs_to_add = dict_support.merge_complex_dictionaries(
+            df_nodes[['x', 'y', 'lon', 'lat', 'id']].T.to_dict(), nodes_and_attribs)
+
+        # pandas is terrible with large numbers so we update them/generate them here
+        for node, attribs in nodes_and_attribs_to_add.items():
+            if 's2_id' not in nodes_and_attribs[node]:
+                attribs['s2_id'] = spatial.generate_index_s2(attribs['lat'], attribs['lon'])
         if clashing_node_ids:
             logging.warning("Some proposed IDs for nodes are already being used. New, unique IDs will be found.")
             reindexing_dict = dict(
                 zip(clashing_node_ids, self.generate_indices_for_n_nodes(
                     len(nodes_and_attribs), avoid_keys=set(nodes_and_attribs.keys()))))
-            clashing_mask = df_nodes['id'].isin(reindexing_dict.keys())
-            df_nodes.loc[clashing_mask, 'id'] = df_nodes.loc[clashing_mask, 'id'].map(reindexing_dict)
-        df_nodes = df_nodes.set_index('id', drop=False)
-
-        nodes_and_attribs_to_add = df_nodes.T.to_dict()
+            for old_id, new_id in reindexing_dict.items():
+                nodes_and_attribs_to_add[new_id] = nodes_and_attribs_to_add[old_id]
+                nodes_and_attribs_to_add[new_id]['id'] = new_id
+                del nodes_and_attribs_to_add[old_id]
 
         self.graph.add_nodes_from([(node_id, attribs) for node_id, attribs in nodes_and_attribs_to_add.items()])
         if not ignore_change_log:

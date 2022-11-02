@@ -919,7 +919,9 @@ def test_add_node_adds_node_to_graph_with_attribs():
     n = Network('epsg:27700')
     n.add_node(1, {'x': 1, 'y': 2, 'a': 1})
     assert n.graph.has_node(1)
-    assert n.node(1) == {'id': 1, 'x': 1, 'y': 2, 'a': 1}
+    assert n.node(1)['x'] == 1
+    assert n.node(1)['y'] == 2
+    assert n.node(1)['a'] == 1
 
 
 def test_add_node_without_attribs_raises_error():
@@ -936,6 +938,13 @@ def test_adding_node_with_only_lat_lon_attribs_fills_in_x_y():
     assert round(n.node(1)['y'], 2) == 181954.76
 
 
+def test_adding_node_with_only_lat_lon_attribs_fills_in_s2_id():
+    n = Network('epsg:27700')
+    n.add_node(1, {'lat': 51.521719064780775, 'lon': -0.13777870665428316})
+
+    assert n.node(1)['s2_id'] == 5221390681084663239
+
+
 def test_adding_node_with_only_x_y_attribs_fills_in_lat_lon():
     n = Network('epsg:27700')
     n.add_node(1, {'x': 529295.7525339661, 'y': 181954.76039674896})
@@ -944,7 +953,7 @@ def test_adding_node_with_only_x_y_attribs_fills_in_lat_lon():
     assert round(n.node(1)['lon'], 6) == -0.137779
 
 
-def test_adding_node_with_mismatched_spatial_attribs_gets_filled_in():
+def test_adding_nodes_with_mismatched_spatial_attribs_gets_filled_in():
     n = Network('epsg:27700')
     n.add_nodes({1: {'lat': 51.521719064780775, 'lon': -0.13777870665428316},
                  2: {'x': 529295.7525339661, 'y': 181954.76039674896}})
@@ -954,6 +963,15 @@ def test_adding_node_with_mismatched_spatial_attribs_gets_filled_in():
 
     assert round(n.node(2)['lat'], 6) == 51.521719
     assert round(n.node(2)['lon'], 6) == -0.137779
+
+
+def test_adding_nodes_with_mismatched_spatial_attribs_generates_s2ids():
+    n = Network('epsg:27700')
+    n.add_nodes({1: {'lat': 51.521719064780775, 'lon': -0.13777870665428316},
+                 2: {'x': 529295.7525339661, 'y': 181954.76039674896}})
+
+    assert n.node(1)['s2_id'] == 5221390681084663239
+    assert n.node(2)['s2_id'] == 5221390681084663239
 
 
 def test_adding_node_with_clashing_id_reindexes_new_node():
@@ -968,9 +986,13 @@ def test_add_multiple_nodes():
     n = Network('epsg:27700')
     reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
     assert n.graph.has_node(1)
-    assert n.node(1) == {'x': 1, 'y': 2, 'id': 1}
+    assert n.node(1)['x'] == 1
+    assert n.node(1)['y'] == 2
+    assert n.node(1)['id'] == 1
     assert n.graph.has_node(2)
-    assert n.node(2) == {'x': 2, 'y': 2, 'id': 2}
+    assert n.node(2)['x'] == 2
+    assert n.node(2)['y'] == 2
+    assert n.node(2)['id'] == 2
     assert reindexing_dict == {}
 
 
@@ -979,12 +1001,18 @@ def test_add_nodes_with_clashing_ids():
     n.add_node(1, {'x': 1, 'y': 2})
     reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
     assert n.graph.has_node(1)
-    assert n.node(1) == {'id': 1, 'x': 1, 'y': 2}
+    assert n.node(1)['x'] == 1
+    assert n.node(1)['y'] == 2
+    assert n.node(1)['id'] == 1
     assert n.graph.has_node(2)
-    assert n.node(2) == {'id': 2, 'x': 2, 'y': 2}
+    assert n.node(2)['x'] == 2
+    assert n.node(2)['y'] == 2
+    assert n.node(2)['id'] == 2
     assert 1 in reindexing_dict
     assert n.graph.has_node(reindexing_dict[1])
-    assert n.node(reindexing_dict[1]) == {'x': 1, 'y': 2, 'id': reindexing_dict[1]}
+    assert n.node(reindexing_dict[1])['x'] == 1
+    assert n.node(reindexing_dict[1])['y'] == 2
+    assert n.node(reindexing_dict[1])['id'] == reindexing_dict[1]
 
 
 def test_add_nodes_with_multiple_clashing_ids():
@@ -992,18 +1020,25 @@ def test_add_nodes_with_multiple_clashing_ids():
     n.add_node(1, {'x': 1, 'y': 2})
     n.add_node(2, {'x': 1, 'y': 2})
     assert n.graph.has_node(1)
-    assert n.node(1) == {'id': 1, 'x': 1, 'y': 2}
+    assert n.node(1)['x'] == 1
+    assert n.node(1)['y'] == 2
+    assert n.node(1)['id'] == 1
     assert n.graph.has_node(2)
-    assert n.node(2) == {'id': 2, 'x': 1, 'y': 2}
-
+    assert n.node(2)['x'] == 1
+    assert n.node(2)['y'] == 2
+    assert n.node(2)['id'] == 2
     reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
     assert 1 in reindexing_dict
     assert n.graph.has_node(reindexing_dict[1])
-    assert n.node(reindexing_dict[1]) == {'x': 1, 'y': 2, 'id': reindexing_dict[1]}
+    assert n.node(reindexing_dict[1])['x'] == 1
+    assert n.node(reindexing_dict[1])['y'] == 2
+    assert n.node(reindexing_dict[1])['id'] == reindexing_dict[1]
 
     assert 2 in reindexing_dict
     assert n.graph.has_node(reindexing_dict[2])
-    assert n.node(reindexing_dict[2]) == {'x': 2, 'y': 2, 'id': reindexing_dict[2]}
+    assert n.node(reindexing_dict[2])['x'] == 2
+    assert n.node(reindexing_dict[2])['y'] == 2
+    assert n.node(reindexing_dict[2])['id'] == reindexing_dict[2]
 
 
 def test_add_edge_generates_a_link_id_and_delegated_to_add_link_id(mocker):
@@ -1667,17 +1702,20 @@ def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_chan
     n.add_node(1, {'id': 1, 'x': 1, 'y': 2, 'a': 1})
     n.apply_attributes_to_node(1, {'b': 1})
 
-    assert n.node(1) == {'id': 1, 'x': 1, 'y': 2, 'b': 1, 'a': 1}
+    assert_semantically_equal(
+        n.node(1),
+        {'id': 1, 'x': 1, 'y': 2, 'b': 1, 'a': 1, 'lat': 49.766825803756994, 'lon': -7.55714803952495,'s2_id': 5205973754090365183})
 
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {0: '2020-05-28 13:49:53', 1: '2020-05-28 13:49:53'}, 'change_event': {0: 'add', 1: 'modify'},
          'object_type': {0: 'node', 1: 'node'}, 'old_id': {0: None, 1: 1}, 'new_id': {0: 1, 1: 1},
          'old_attributes': {0: None, 1: "{'x': 1, 'y': 2, 'a': 1, 'id': 1}"},
          'new_attributes': {0: "{'x': 1, 'y': 2, 'a': 1, 'id': 1}", 1: "{'x': 1, 'y': 2, 'a': 1, 'b': 1, 'id': 1}"},
-         'diff': {0: [('add', '', [('a', 1), ('id', 1), ('x', 1), ('y', 2)]), ('add', 'id', 1)], 1: [('add', '', [('b', 1)])]}})
+         'diff': {0: [('add', '', [('x', 1), ('y', 2), ('lon', -7.55714803952495), ('lat', 49.766825803756994), ('id', 1), ('a', 1), ('s2_id', 5205973754090365183)]), ('add', 'id', 1)],
+                  1: [('add', '', [('b', 1)])]}})
     # no need to test new_attributes and old_attributes columns if testing diff - it depends on those
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'diff']
-    assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_names=False,
+    assert_frame_equal(n.change_log.loc[1, cols_to_compare], correct_change_log_df.loc[1, cols_to_compare], check_names=False,
                        check_dtype=False)
 
 
@@ -1686,7 +1724,10 @@ def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_r
     n.add_node(1, {'x': 1, 'y': 2, 'a': 1})
     n.apply_attributes_to_node(1, {'a': 4})
 
-    assert n.node(1) == {'id': 1, 'x': 1, 'y': 2, 'a': 4}
+    assert_semantically_equal(
+        n.node(1),
+        {'id': 1, 'x': 1, 'y': 2, 'a': 4, 'lat': 49.766825803756994, 'lon': -7.55714803952495, 's2_id': 5205973754090365183}
+    )
 
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {0: '2020-05-28 13:49:53', 1: '2020-05-28 13:49:53'},
@@ -1696,10 +1737,11 @@ def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_r
          'new_id': {0: 1, 1: 1},
          'old_attributes': {0: None, 1: {'x': 1, 'y': 2, 'a': 1}},
          'new_attributes': {0: "{'x': 1, 'y': 2, 'a': 1}", 1: "{'x': 1, 'y': 2, 'a': 4}"},
-         'diff': {0: [('add', '', [('a', 1), ('x', 1), ('y', 2), ('id', 1)]), ('add', 'id', 1)], 1: [('change', 'a', (1, 4))]}})
+         'diff': {0: [('add', '', [('x', 1), ('y', 2), ('lon', -7.55714803952495), ('lat', 49.766825803756994), ('id', 1.0), ('a', 1), ('s2_id', 5205973754090365183)]), ('add', 'id', 1)],
+                  1: [('change', 'a', (1, 4))]}})
     # no need to test new_attributes and old_attributes columns if testing diff - it depends on those
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'diff']
-    assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+    assert_frame_equal(n.change_log.loc[1, cols_to_compare], correct_change_log_df.loc[1, cols_to_compare], check_dtype=False)
 
 
 def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_recorded_by_change_log():
@@ -1708,8 +1750,14 @@ def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_rec
     n.add_node(2, {'x': 1, 'y': 2, 'b': 1})
     n.apply_attributes_to_nodes({1: {'a': 4}, 2: {'a': 1}})
 
-    assert n.node(1) == {'id': 1, 'x': 1, 'y': 2, 'a': 4}
-    assert n.node(2) == {'id': 2, 'x': 1, 'y': 2, 'b': 1, 'a': 1}
+    assert_semantically_equal(
+        n.node(1),
+        {'id': 1, 'x': 1, 'y': 2, 'a': 4, 'lat': 49.766825803756994, 'lon': -7.55714803952495, 's2_id': 5205973754090365183}
+    )
+    assert_semantically_equal(
+        n.node(2),
+        {'id': 2, 'x': 1, 'y': 2, 'b': 1, 'a': 1, 'lat': 49.766825803756994, 'lon': -7.55714803952495, 's2_id': 5205973754090365183}
+    )
 
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {0: '2020-06-01 15:07:51', 1: '2020-06-01 15:07:51', 2: '2020-06-01 15:07:51',
@@ -1719,14 +1767,14 @@ def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_rec
          'old_attributes': {0: None, 1: None, 2: "{'x': 1, 'y': 2, 'a': 1}", 3: "{'x': 1, 'y': 2, 'b': 1}"},
          'new_attributes': {0: "{'x': 1, 'y': 2, 'a': 1}", 1: "{'x': 1, 'y': 2, 'b': 1}",
                             2: "{'x': 1, 'y': 2, 'a': 4}", 3: "{'x': 1, 'y': 2, 'b': 1, 'a': 1}"},
-         'diff': {0: [('add', '', [('a', 1), ('x', 1), ('y', 2), ('id', 1)]), ('add', 'id', 1)],
-                  1: [('add', '', [('b', 1), ('x', 1), ('y', 2), ('id', 2)]), ('add', 'id', 2)],
+         'diff': {0: [('add', '', [('x', 1), ('y', 2), ('lon', -7.55714803952495), ('lat', 49.766825803756994), ('id', 1.0), ('a', 1), ('s2_id', 5205973754090365183)]), ('add', 'id', 1)],
+                  1: [('add', '', [('x', 1), ('y', 2), ('lon', -7.55714803952495), ('lat', 49.766825803756994), ('id', 1.0), ('b', 1), ('s2_id', 5205973754090365183)]), ('add', 'id', 2)],
                   2: [('change', 'a', (1, 4))],
                   3: [('add', '', [('a', 1)])]}
          })
     # no need to test new_attributes and old_attributes columns if testing diff - it depends on those
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'diff']
-    assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+    assert_frame_equal(n.change_log.loc[[2,3], cols_to_compare], correct_change_log_df.loc[[2,3], cols_to_compare], check_dtype=False)
 
 
 def multiply_node_attribs(node_attribs):
@@ -1738,9 +1786,9 @@ def test_apply_function_to_nodes():
     n.add_node('0', attribs={'x': 1, 'y': 2, 'a': 2, 'c': 3})
     n.add_node('1', attribs={'x': 1, 'y': 2, 'c': 100})
     n.apply_function_to_nodes(function=multiply_node_attribs, location='new_computed_attrib')
-    assert_semantically_equal(dict(n.nodes()),
-                              {'0': {'id': '0', 'x': 1, 'y': 2, 'a': 2, 'c': 3, 'new_computed_attrib': 6},
-                               '1': {'id': '1', 'x': 1, 'y': 2, 'c': 100}})
+    assert 'new_computed_attrib' in n.node('0')
+    assert n.node('0')['new_computed_attrib'] == 6
+    assert 'new_computed_attrib' not in n.node('1')
 
 
 def test_apply_attributes_to_edge_without_filter_conditions():
