@@ -1715,7 +1715,7 @@ def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_chan
                   1: [('add', '', [('b', 1)])]}})
     # no need to test new_attributes and old_attributes columns if testing diff - it depends on those
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'diff']
-    assert_frame_equal(n.change_log.loc[1, cols_to_compare], correct_change_log_df.loc[1, cols_to_compare], check_names=False,
+    assert_series_equal(n.change_log.loc[1, cols_to_compare], correct_change_log_df.loc[1, cols_to_compare], check_names=False,
                        check_dtype=False)
 
 
@@ -1741,7 +1741,7 @@ def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_r
                   1: [('change', 'a', (1, 4))]}})
     # no need to test new_attributes and old_attributes columns if testing diff - it depends on those
     cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'diff']
-    assert_frame_equal(n.change_log.loc[1, cols_to_compare], correct_change_log_df.loc[1, cols_to_compare], check_dtype=False)
+    assert_series_equal(n.change_log.loc[1, cols_to_compare], correct_change_log_df.loc[1, cols_to_compare], check_dtype=False)
 
 
 def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_recorded_by_change_log():
