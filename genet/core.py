@@ -2265,43 +2265,60 @@ class Network:
 
         return slope_dict
 
-    def split_link_at_point(self, link_id, point_y, point_x):
+    def split_link_at_point(self, link_id, x=None, y=None, node_id=None):
         """
         Takes a link and point coordinates, and splits the link at the point to create 2 new links;
         the old link is then deleted.
         :param link_id: ID of the link to split
-        :param point_y: y-coordinates of the point to split at
-        :param point_x: x-coordinates of the point to split at
-        :return: self
+        :param x: x-coordinates of the point to split at
+        :param y: y-coordinates of the point to split at
+        :param node_id: Suggested ID for the resulting node in the graph
+        :return: None
         """
-        new_node_id = self.generate_index_for_node()
+        if node_id is None:
+            node_id = self.generate_index_for_node()
+        elif self.has_node(node_id):
+            logging.warning(f'Node with ID {node_id} already exists. Generating new index.')
+            node_id = self.generate_index_for_node()
         # check if point is on the link LineString
-        point = Point(point_x, point_y)
-        from_node = self.link(link_id)['from']
-        to_node = self.link(link_id)['to']
+        point = Point(x, y)
+        link_attribs = self.link(link_id)
+        from_node = link_attribs['from']
+        to_node = link_attribs['to']
         from_node = self.node(from_node)
         to_node = self.node(to_node)
-        line = LineString([(float(from_node['x']), float(from_node['y'])),
-                           (float(to_node['x']), float(to_node['y']))])
+        if 'geometry' in link_attribs:
+            line = link_attribs['geometry']
+        else:
+            line = LineString([(float(from_node['x']), float(from_node['y'])),
+                               (float(to_node['x']), float(to_node['y']))])
 
-        # if not, find nearest point on the link line
-        # (not using 'contains' method due to too high accuracy required to evaluate to True)
-        if line.distance(point) > 1e-8:
-            point = line.interpolate(line.project(point))
+        # find nearest point on the link line - for geometry splitting, the point should be on the line
+        point = spatial.snap_point_to_line(point, line, distance_threshold=0)
 
-        self.add_node(new_node_id, {'id': new_node_id, 'x': point.x, 'y': point.y})
+        node_attributes = {'id': node_id, 'x': point.x, 'y': point.y}
+        self.add_node(node_id, node_attributes)
 
         # create 2 new links: from_node -> new_node ; new_node -> to_node
-        new_link_1 = self.generate_index_for_edge()
-        print(new_link_1)
-        new_link_2 = self.generate_index_for_edge()
+        new_link_1, new_link_2 = self.generate_indices_for_n_edges(2)
+
+        # split geometry
+        new_link_1_geom, new_link_2_geom = spatial.split_line_at_point(point, line)
 
         # apply attributes from the old link to the 2 new links
-        old_link_attributes = self.link(link_id)
-        for k in ['id', 'from', 'to', 'length', 's2_from', 's2_to']:
+        old_link_attributes = deepcopy(self.link(link_id))
+        for k in ['s2_from', 's2_to']:
+            # TODO s2 ids can be updated post https://github.com/arup-group/genet/pull/142/
             old_link_attributes.pop(k, None)
-        self.add_link(link_id=new_link_1, u=from_node['id'], v=new_node_id, attribs=old_link_attributes)
-        self.add_link(link_id=new_link_2, u=new_node_id, v=to_node['id'], attribs=old_link_attributes)
+        links = {
+            new_link_1: {**old_link_attributes, **{
+                'id': new_link_1, 'from': from_node['id'], 'to': node_id, 'geometry': new_link_1_geom,
+                'length': (new_link_1_geom.length / line.length) * old_link_attributes['length']}},
+            new_link_2: {**old_link_attributes, **{
+                'id': new_link_2, 'from': node_id, 'to': to_node['id'], 'geometry': new_link_2_geom,
+                'length': (new_link_2_geom.length / line.length) * old_link_attributes['length']}},
+        }
+        self.add_links(links)
         self.remove_link(link_id)
 
-        return self
+        return {'node': {node_id: node_attributes}, 'links': links}

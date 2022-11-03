@@ -173,6 +173,7 @@ def network3():
                                                          'text': 'Garden Road'}}})
     return n3
 
+
 @pytest.fixture()
 def network4():
     n4 = Network('epsg:4326')
@@ -511,7 +512,7 @@ def test_plot_delegates_to_plot_kepler(mocker, network_object_from_test_data):
 
 def test_plot_saves_to_the_specified_directory(tmpdir, network_object_from_test_data):
     filename = 'network_with_pt_routes'
-    expected_plot_path = os.path.join(tmpdir, filename+'.html')
+    expected_plot_path = os.path.join(tmpdir, filename + '.html')
     assert not os.path.exists(expected_plot_path)
 
     network_object_from_test_data.plot(output_dir=tmpdir)
@@ -529,7 +530,7 @@ def test_plot_graph_delegates_to_plot_kepler(mocker, network_object_from_test_da
 
 def test_plot_graph_saves_to_the_specified_directory(tmpdir, network_object_from_test_data):
     filename = 'network_graph'
-    expected_plot_path = os.path.join(tmpdir, filename+'.html')
+    expected_plot_path = os.path.join(tmpdir, filename + '.html')
     assert not os.path.exists(expected_plot_path)
 
     network_object_from_test_data.plot_graph(output_dir=tmpdir)
@@ -547,7 +548,7 @@ def test_plot_schedule_delegates_to_plot_kepler(mocker, network_object_from_test
 
 def test_plot_schedule_saves_to_the_specified_directory(tmpdir, network_object_from_test_data):
     filename = 'network_and_schedule'
-    expected_plot_path = os.path.join(tmpdir, filename+'.html')
+    expected_plot_path = os.path.join(tmpdir, filename + '.html')
     assert not os.path.exists(expected_plot_path)
 
     network_object_from_test_data.plot_schedule(output_dir=tmpdir)
@@ -573,44 +574,47 @@ def puma_network():
 @pytest.fixture()
 def puma_network_with_pt_stops_at_risk_of_oversimplification(puma_network):
     return {
-        'network':puma_network,
+        'network': puma_network,
         'pt_stops_at_risk': ['5221390681543854913', '5221390302070799085', '5221390323679791901']
     }
+
 
 @pytest.fixture()
 def network_with_simplified_schema():
     # characterised by complex geometry link attribute and set text value in nested attributes dictionary
     n = Network('epsg:27700')
     n.add_node('101982',
-                {'id': '101982',
-                 'x': '528704.1425925883',
-                 'y': '182068.78193707118',
-                 'lon': -0.14625948709424305,
-                 'lat': 51.52287873323954,
-                 's2_id': 5221390329378179879})
+               {'id': '101982',
+                'x': '528704.1425925883',
+                'y': '182068.78193707118',
+                'lon': -0.14625948709424305,
+                'lat': 51.52287873323954,
+                's2_id': 5221390329378179879})
     n.add_node('101986',
-                {'id': '101986',
-                 'x': '528835.203274008',
-                 'y': '182006.27331298392',
-                 'lon': -0.14439428709377497,
-                 'lat': 51.52228713323965,
-                 's2_id': 5221390328605860387})
+               {'id': '101986',
+                'x': '528835.203274008',
+                'y': '182006.27331298392',
+                'lon': -0.14439428709377497,
+                'lat': 51.52228713323965,
+                's2_id': 5221390328605860387})
     n.add_link('0', '101982', '101986',
-                attribs={'id': '0',
-                         'from': '101982',
-                         'to': '101986',
-                         'freespeed': 4.166666666666667,
-                         'capacity': 600.0,
-                         'permlanes': 1.0,
-                         'oneway': '1',
-                         'modes': {'car'},
-                         'geometry': LineString([(528704.1425925883, 182068.78193707118),  (528754.425925883, 182038.78193707118), (528835.203274008,182006.27331298392)]),
-                         's2_from': 5221390329378179879,
-                         's2_to': 5221390328605860387,
-                         'length': 52.765151087870265,
-                         'attributes': {'osm:way:highway': {'name': 'osm:way:highway',
-                                                            'class': 'java.lang.String',
-                                                            'text': {'unclassified', 'other'}}}})
+               attribs={'id': '0',
+                        'from': '101982',
+                        'to': '101986',
+                        'freespeed': 4.166666666666667,
+                        'capacity': 600.0,
+                        'permlanes': 1.0,
+                        'oneway': '1',
+                        'modes': {'car'},
+                        'geometry': LineString(
+                            [(528704.1425925883, 182068.78193707118), (528754.425925883, 182038.78193707118),
+                             (528835.203274008, 182006.27331298392)]),
+                        's2_from': 5221390329378179879,
+                        's2_to': 5221390328605860387,
+                        'length': 52.765151087870265,
+                        'attributes': {'osm:way:highway': {'name': 'osm:way:highway',
+                                                           'class': 'java.lang.String',
+                                                           'text': {'unclassified', 'other'}}}})
     return n
 
 
@@ -703,7 +707,7 @@ def test_simplifying_network_with_multi_edges_resulting_in_multi_paths():
     })
     n.add_links({
         'l_-1': {'from': 'n_-1', 'to': 'n_1', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
-                'modes': {'car'}},
+                 'modes': {'car'}},
         'l_0': {'from': 'n_0', 'to': 'n_1', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
                 'modes': {'car'}},
         'l_1': {'from': 'n_1', 'to': 'n_2', 'freespeed': 1, 'capacity': 1, 'permlanes': 1, 'length': 1,
@@ -1324,7 +1328,8 @@ def test_extracting_subnetwork_with_schedule_returns_subschedule(network_object_
     assert set(subnet.schedule.service_ids()) == {'10314'}
 
 
-def test_subnetwork_on_spatial_condition_delagates_to_spatial_methods_to_get_subset_items(mocker, network_object_from_test_data):
+def test_subnetwork_on_spatial_condition_delagates_to_spatial_methods_to_get_subset_items(mocker,
+                                                                                          network_object_from_test_data):
     mocker.patch.object(Schedule, 'services_on_spatial_condition', return_value={'service'})
     mocker.patch.object(Network, 'links_on_spatial_condition', return_value={'link'})
     mocker.patch.object(Network, 'subnetwork')
@@ -1921,6 +1926,7 @@ def islands_network_in_line():
     })
     return n
 
+
 @pytest.fixture()
 def islands_network_in_circle():
     pass
@@ -1943,17 +1949,17 @@ def test_connecting_components_specifying_mode_results_in_four_links_added(islan
 def test_connecting_components_of_connected_graph_raises_warning_without_changes(network1, caplog):
     # add link to connect it up >_> ....
     network1.add_link('1', '101986', '101982',
-                attribs={'id': '1',
-                         'from': '101986',
-                         'to': '101982',
-                         'freespeed': 4.166666666666667,
-                         'capacity': 600.0,
-                         'permlanes': 1.0,
-                         'oneway': '1',
-                         'modes': ['car'],
-                         's2_from': 5221390329378179879,
-                         's2_to': 5221390328605860387,
-                         'length': 52.765151087870265})
+                      attribs={'id': '1',
+                               'from': '101986',
+                               'to': '101982',
+                               'freespeed': 4.166666666666667,
+                               'capacity': 600.0,
+                               'permlanes': 1.0,
+                               'oneway': '1',
+                               'modes': ['car'],
+                               's2_from': 5221390329378179879,
+                               's2_to': 5221390328605860387,
+                               'length': 52.765151087870265})
     added_links = network1.connect_components()
     assert added_links is None
     assert caplog.records[0].levelname == 'WARNING'
@@ -2225,9 +2231,9 @@ def test_generating_pt_network_route_geodataframe():
 
     gdf = n.schedule_network_routes_geodataframe()
     correct_gdf = gpd.GeoDataFrame(
-            {'service_id': {0: 'service'}, 'route_id': {0: 'service_0'}, 'mode': {0: 'bus'},
-             'route_short_name': {0: 'route'}, 'geometry': {0: LineString([(1,1), (2,2), (1,1)])}},
-        ).set_crs(n.epsg)
+        {'service_id': {0: 'service'}, 'route_id': {0: 'service_0'}, 'mode': {0: 'bus'},
+         'route_short_name': {0: 'route'}, 'geometry': {0: LineString([(1, 1), (2, 2), (1, 1)])}},
+    ).set_crs(n.epsg)
     correct_gdf.columns.name = 0
 
     assert_geodataframe_equal(
@@ -2602,12 +2608,12 @@ def test_generate_validation_report_with_pt2matsim_network(network_object_from_t
             'route_level': {'10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': {'is_valid_route': False,
                                                                                      'invalid_stages': [
                                                                                          'not_has_correctly_ordered_route']}}},
-        'vehicle_level': {'vehicle_definitions_valid': True,
-                          'vehicle_definitions_validity_components': {
-                              'missing_vehicles': {'missing_vehicles_types': set(),
-                                                   'vehicles_affected': {}},
-                              'multiple_use_vehicles': {},
-                              'unused_vehicles': set()}}},
+            'vehicle_level': {'vehicle_definitions_valid': True,
+                              'vehicle_definitions_validity_components': {
+                                  'missing_vehicles': {'missing_vehicles_types': set(),
+                                                       'vehicles_affected': {}},
+                                  'multiple_use_vehicles': {},
+                                  'unused_vehicles': set()}}},
 
         'routing': {'services_have_routes_in_the_graph': False,
                     'service_routes_with_invalid_network_route': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
@@ -2636,15 +2642,17 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
         'schedule': {'schedule_level': {'is_valid_schedule': True, 'invalid_stages': [], 'has_valid_services': True,
                                         'invalid_services': []},
                      'service_level': {
-                         'service': {'is_valid_service': True, 'invalid_stages': [], 'has_valid_routes': True, 'invalid_routes': []}},
+                         'service': {'is_valid_service': True, 'invalid_stages': [], 'has_valid_routes': True,
+                                     'invalid_routes': []}},
                      'route_level': {
-                         'service': {'1': {'is_valid_route': True, 'invalid_stages': []},'2': {'is_valid_route': True, 'invalid_stages': []}}},
-        'vehicle_level': {'vehicle_definitions_valid': True,
-                       'vehicle_definitions_validity_components': {
-                           'missing_vehicles': {'missing_vehicles_types': set(),
-                                                'vehicles_affected': {}},
-                           'multiple_use_vehicles': {},
-                           'unused_vehicles': set()}}},
+                         'service': {'1': {'is_valid_route': True, 'invalid_stages': []},
+                                     '2': {'is_valid_route': True, 'invalid_stages': []}}},
+                     'vehicle_level': {'vehicle_definitions_valid': True,
+                                       'vehicle_definitions_validity_components': {
+                                           'missing_vehicles': {'missing_vehicles_types': set(),
+                                                                'vehicles_affected': {}},
+                                           'multiple_use_vehicles': {},
+                                           'unused_vehicles': set()}}},
         'routing': {'services_have_routes_in_the_graph': True, 'service_routes_with_invalid_network_route': [],
                     'route_to_crow_fly_ratio': {'service': {'1': 0.037918141839160244, '2': 0.037918141839160244}}}}
     assert_semantically_equal(report, correct_report)
@@ -2844,7 +2852,8 @@ def network_1_geo_and_json(network1):
                       's2_to': 5221390328605860387, 'length': 52.765151087870265,
                       'geometry': 'ez~hinaBc~sze|`@gx|~W|uo|J', 'u': '101982', 'v': '101986',
                       'attributes': {
-                          'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
+                          'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String',
+                                             'text': 'permissive'},
                           'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String',
                                               'text': 'unclassified'},
                           'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
@@ -2882,26 +2891,26 @@ def test_transforming_uneven_network_to_json():
     # some nodes and links have different params, we expect only those with values in the json
     n = Network(epsg='epsg:4326')
     n.add_node('101982',
-                {'id': '101982',
-                 'x': '528704.1425925883',
-                 'y': '182068.78193707118',
-                 'lon': -0.14625948709424305,
-                 'lat': 51.52287873323954,
-                 's2_id': 5221390329378179879,
-                 'name': 'hello'
-                 })
+               {'id': '101982',
+                'x': '528704.1425925883',
+                'y': '182068.78193707118',
+                'lon': -0.14625948709424305,
+                'lat': 51.52287873323954,
+                's2_id': 5221390329378179879,
+                'name': 'hello'
+                })
     n.add_node('101986',
-                {'id': '101986',
-                 'x': '528835.203274008',
-                 'y': '182006.27331298392',
-                 'lon': -0.14439428709377497,
-                 'lat': 51.52228713323965,
-                 's2_id': 5221390328605860387})
+               {'id': '101986',
+                'x': '528835.203274008',
+                'y': '182006.27331298392',
+                'lon': -0.14439428709377497,
+                'lat': 51.52228713323965,
+                's2_id': 5221390328605860387})
     n.add_link('0', '101982', '101986',
-                attribs={'id': '0',
-                         'from': '101982',
-                         'to': '101986',
-                         'freespeed': 4})
+               attribs={'id': '0',
+                        'from': '101982',
+                        'to': '101986',
+                        'freespeed': 4})
     n.add_link('0', '101982', '101986',
                attribs={'id': '0',
                         'from': '101982',
@@ -2941,9 +2950,11 @@ def test_transforming_network_to_geodataframe(network_1_geo_and_json):
                  'length', 'geometry', 'attributes', 'u', 'v']
     _network = network_1_geo_and_json['network'].to_geodataframe()
     assert set(_network['nodes'].columns) == set(node_cols)
-    assert_frame_equal(_network['nodes'][node_cols], network_1_geo_and_json['expected_geodataframe']['nodes'][node_cols], check_dtype=False)
+    assert_frame_equal(_network['nodes'][node_cols],
+                       network_1_geo_and_json['expected_geodataframe']['nodes'][node_cols], check_dtype=False)
     assert set(_network['links'].columns) == set(link_cols)
-    assert_frame_equal(_network['links'][link_cols], network_1_geo_and_json['expected_geodataframe']['links'][link_cols], check_dtype=False)
+    assert_frame_equal(_network['links'][link_cols],
+                       network_1_geo_and_json['expected_geodataframe']['links'][link_cols], check_dtype=False)
 
 
 def test_saving_network_to_geojson(network1, correct_schedule, tmpdir):
@@ -3019,12 +3030,75 @@ def test_getting_link_slope_dictionary(network3):
     assert slope_dict['0']['slope'] == link_slope
 
 
-def test_splitting_link_at_point(network1):
-    network1.split_link_at_point('0', 51.52287873320000, 0.14625948709420000)
-    correct_link_1_attributes = {'from': '101982', 'to': '101987', 'id': '1', 'freespeed': 4.166666666666667,
-                                 'capacity': 600.0, 'permlanes': 1.0, 'oneway': '1', 'modes': ['car'],
-                                 'attributes': {'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'},
-                                                'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'unclassified'},
-                                                'osm:way:id': {'name': 'osm:way:id', 'class': 'java.lang.Long', 'text': '26997928'},
-                                                'osm:way:name': {'name': 'osm:way:name', 'class': 'java.lang.String', 'text': 'Brunswick Place'}}}
-    assert network1.link('1') == correct_link_1_attributes
+def test_splitting_link_at_point_gets_data_right(mocker):
+    new_node_ID = 'new_node_ID'
+    new_link_1_ID = 'new_link_1_ID'
+    new_link_2_ID = 'new_link_2_ID'
+    mocker.patch.object(Network, 'generate_index_for_node', return_value=new_node_ID)
+    mocker.patch.object(Network, 'generate_indices_for_n_edges', return_value=(new_link_1_ID, new_link_2_ID))
+
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243}
+    })
+    n.add_links({'l1': {
+        'from': 'n1', 'to': 'n2', 'id': 'l1', 'freespeed': 4, 'capacity': 600.0,
+        'permlanes': 1.0, 'oneway': '1', 'modes': ['car'],
+        'length': 10,
+        'geometry': LineString([(528568, 177243), (528569, 177243), (528570, 177243)]),
+        'attributes': {'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}}}
+    })
+
+    data = n.split_link_at_point('l1', 528568.5, 177243.5)
+
+    assert data['node'][new_node_ID] == {'id': new_node_ID, 'x': 528568.5, 'y': 177243.0}
+    assert list(data['links'][new_link_1_ID].pop('geometry').coords) == [(528568, 177243), (528568.5, 177243)]
+    assert data['links'][new_link_1_ID] == {
+                'from': 'n1', 'to': new_node_ID, 'id': new_link_1_ID, 'freespeed': 4, 'capacity': 600.0,
+                'permlanes': 1.0, 'oneway': '1', 'modes': ['car'],
+                'length': 2.5,
+                'attributes': {
+                    'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}}
+    }
+    assert list(data['links'][new_link_2_ID].pop('geometry').coords) == [(528568.5, 177243), (528569, 177243), (528570, 177243)]
+    assert data['links'][new_link_2_ID] == {
+                'from': new_node_ID, 'to': 'n2', 'id': new_link_2_ID, 'freespeed': 4, 'capacity': 600.0,
+                'permlanes': 1.0, 'oneway': '1', 'modes': ['car'],
+                'length': 7.5,
+                'attributes': {
+                    'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}}
+    }
+
+
+def test_splitting_link_at_point_deletes_old_link(mocker):
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243}
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2', 'id': 'l1', 'length': 10}})
+    assert n.has_link('l1')
+
+    n.split_link_at_point('l1', 528568.5, 177243.5)
+
+    assert not n.has_link('l1')
+
+
+def test_splitting_link_without_geometry_at_point_creates_sensible_geometry_and_length(mocker):
+    new_link_1_ID = 'new_link_1_ID'
+    new_link_2_ID = 'new_link_2_ID'
+    mocker.patch.object(Network, 'generate_indices_for_n_edges', return_value=(new_link_1_ID, new_link_2_ID))
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243}
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2', 'id': 'l1', 'length': 10}})
+
+    n.split_link_at_point('l1', 528568.5, 177243)
+
+    assert list(n.link(new_link_1_ID)['geometry'].coords) == [(528568, 177243), (528568.5, 177243)]
+    assert list(n.link(new_link_2_ID)['geometry'].coords) == [(528568.5, 177243), (528570, 177243)]
+    assert n.link(new_link_1_ID)['length'] == 2.5
+    assert n.link(new_link_2_ID)['length'] == 7.5
