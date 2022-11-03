@@ -68,6 +68,16 @@ def snap_point_to_line(point: Point, line: LineString, distance_threshold=1e-8) 
     return point
 
 
+def continue_line_from_two_points(p1, p2) -> LineString:
+    """
+    Builds a line from p1, p2 and another point, ahead, the same distance and direction from p2 as p1
+    :param p1:
+    :param p2:
+    :return:
+    """
+    return LineString([p1, p2, (p2.x + (p2.x - p1.x), p2.y + (p2.y - p1.y))])
+
+
 def split_line_at_point(point: Point, line: LineString) -> Tuple[LineString, LineString]:
     """
     If the point is not close enough to the line, it will be snapped.
@@ -79,8 +89,21 @@ def split_line_at_point(point: Point, line: LineString) -> Tuple[LineString, Lin
     snap closer to the line
     """
     # the point has to be on the line for shapely split
-    point = snap_point_to_line(point, line, distance_threshold=0)
-    return tuple(split(line, point))
+    # https://shapely.readthedocs.io/en/stable/manual.html#splitting
+    projected_point = snap_point_to_line(point, line, distance_threshold=0)
+    result = tuple(split(line, projected_point))
+    if len(result) == 1:
+        # our lines can have curves which makes them impossible to split with a point, instead we build a line to cut
+        # it, the end points of the linestring will likely not match with the point projected to the curved line, but
+        # are very close.
+        if point.distance(projected_point) < 1e-8:
+            # the points are too close
+            logging.warning("Given point is very close, but not cannot be placed on the line. We move it slightly "
+                            "and the resulting split may not be exact.")
+            point = Point(round(point.x, 2), round(point.y, 2))
+        split_line = continue_line_from_two_points(point, projected_point)
+        result = tuple(split(line, split_line))
+    return result
 
 
 def decode_polyline_to_shapely_linestring(_polyline):

@@ -2294,7 +2294,7 @@ class Network:
                                (float(to_node['x']), float(to_node['y']))])
 
         # find nearest point on the link line - for geometry splitting, the point should be on the line
-        point = spatial.snap_point_to_line(point, line, distance_threshold=0)
+        point = spatial.snap_point_to_line(point, line)
 
         node_attributes = {'id': node_id, 'x': point.x, 'y': point.y}
         self.add_node(node_id, node_attributes)
@@ -2321,4 +2321,4 @@ class Network:
         self.add_links(links)
         self.remove_link(link_id)
 
-        return {'node': {node_id: node_attributes}, 'links': links}
+        return {'node_attributes': node_attributes, 'links': links}

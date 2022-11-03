@@ -3052,7 +3052,7 @@ def test_splitting_link_at_point_gets_data_right(mocker):
 
     data = n.split_link_at_point('l1', 528568.5, 177243.5)
 
-    assert data['node'][new_node_ID] == {'id': new_node_ID, 'x': 528568.5, 'y': 177243.0}
+    assert data['node_attributes'] == {'id': new_node_ID, 'x': 528568.5, 'y': 177243.0}
     assert list(data['links'][new_link_1_ID].pop('geometry').coords) == [(528568, 177243), (528568.5, 177243)]
     assert data['links'][new_link_1_ID] == {
                 'from': 'n1', 'to': new_node_ID, 'id': new_link_1_ID, 'freespeed': 4, 'capacity': 600.0,
