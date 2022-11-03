@@ -2400,6 +2400,19 @@ class Network:
         self.add_links(links)
         self.remove_link(link_id)
 
+        # update network routes in the schedule
+        if self.schedule:
+            logging.info("Updating network routes in the PT schedule.")
+            # update schedule routes
+            df_routes = self.schedule.route_attribute_data(keys=['route'])
+            df_routes = df_routes[df_routes['route'].apply(lambda x: link_id in x)]
+            if not df_routes.empty:
+                df_routes['route'] = df_routes['route'].apply(
+                    lambda x: list(itertools.chain(*[i if i != link_id else [new_link_1, new_link_2] for i in x])))
+                self.schedule.apply_attributes_to_routes(df_routes.T.to_dict())
+            else:
+                logging.info("No PT routes were affected by this change")
+
         return {'node_attributes': node_attribs, 'links': links}
 
     def split_link_at_point(self, link_id, x=None, y=None, node_id=None):

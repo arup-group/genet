@@ -3539,6 +3539,38 @@ def test_splitting_link_at_node_far_away_throws_error():
     assert "does not lie close enough to the geometry of the link" in str(error_info.value)
 
 
+def test_splitting_link_updates_route_in_schedule(mocker):
+    new_link_1_ID = 'new_link_1_ID'
+    new_link_2_ID = 'new_link_2_ID'
+    mocker.patch.object(Network, 'generate_indices_for_n_edges', return_value=(new_link_1_ID, new_link_2_ID))
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243},
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2', 'id': 'l1', 'length': 10}})
+    n.schedule = Schedule(
+        epsg='epsg:27700',
+        services=[Service(id='bus_service',
+                          routes=[Route(id='1', route_short_name='', mode='bus',
+                          stops=[
+                              Stop(id='0', x=528568, y=177243, epsg='epsg:27700',
+                                   linkRefId='A'),
+                              Stop(id='1', x=528570, y=177243, epsg='epsg:27700',
+                                   linkRefId='B')],
+                          trips={'trip_id': ['trip_04:40:00'],
+                                 'trip_departure_time': ['04:40:00'],
+                                 'vehicle_id': ['veh_1_bus']},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00'],
+                          route=['A', 'l1', 'B'])]
+        )]
+    )
+    n.split_link_at_point('l1', 528568.5, 177243)
+
+    assert n.schedule.route('1').route == ['A', new_link_1_ID, new_link_2_ID, 'B']
+
+
 def test_generating_summary_report(network_for_summary_stats):
     report = network_for_summary_stats.summary_report()
     correct_report = {'network':
