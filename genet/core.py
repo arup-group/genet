@@ -2264,8 +2264,8 @@ class Network:
             slope_dict[link_id] = {'slope': link_slope}
 
         return slope_dict
-    
-    def split_link_at_node(self, link_id, node_id):
+
+    def split_link_at_node(self, link_id, node_id, distance_threshold=1):
         """
         Takes a link and node, and splits the link at the point to create 2 new links;
         the old link is then deleted.
@@ -2275,6 +2275,7 @@ class Network:
         `genet.spatial.snap_point_to_line` to align the node before adding it.
         :param link_id: ID of the link to split
         :param node_id: ID of the node in the graph to split at.
+        :param distance_threshold: how close the node needs to be to the link to be allowed to split it
         :return: None
         """
         # check if point is on the link LineString
@@ -2289,11 +2290,12 @@ class Network:
             line = LineString([(float(from_node['x']), float(from_node['y'])),
                                (float(to_node['x']), float(to_node['y']))])
 
-        if point.distance(spatial.snap_point_to_line(point, line, distance_threshold=0)) > 1:
+        if point.distance(spatial.snap_point_to_line(point, line, distance_threshold=0)) > distance_threshold:
             raise exceptions.MisalignedNodeError(
-                f"Node: {node_id} does not lie on the geometry of the link: {link_id} consider using the "
+                f"Node: {node_id} does not lie close enough to the geometry of the link: {link_id} consider using the "
                 f"`genet.spatial.snap_point_to_line` method to align the node before adding it, or using "
-                f"`split_link_at_point` which adds a node for you.")
+                f"`split_link_at_point` which adds a node for you. You can also relax the `distance_threshold` of "
+                f"this method. The unit of distance will depend on the projection the network is in.")
 
         # create 2 new links: from_node -> new_node ; new_node -> to_node
         new_link_1, new_link_2 = self.generate_indices_for_n_edges(2)

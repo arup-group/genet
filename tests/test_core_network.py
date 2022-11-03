@@ -19,6 +19,7 @@ from tests.test_output_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule, Stop
 from genet.utils import plot, spatial
 from genet.input import read
+from genet import exceptions
 from tests.fixtures import assert_semantically_equal, route, stop_epsg_27700, network_object_from_test_data, \
     full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path
 
@@ -3071,7 +3072,7 @@ def test_splitting_link_at_point_gets_data_right(mocker):
     }
 
 
-def test_splitting_link_at_point_deletes_old_link(mocker):
+def test_splitting_link_at_point_deletes_old_link():
     n = Network('epsg:27700')
     n.add_nodes({
         'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
@@ -3102,3 +3103,46 @@ def test_splitting_link_without_geometry_at_point_creates_sensible_geometry_and_
     assert list(n.link(new_link_2_ID)['geometry'].coords) == [(528568.5, 177243), (528570, 177243)]
     assert n.link(new_link_1_ID)['length'] == 2.5
     assert n.link(new_link_2_ID)['length'] == 7.5
+
+
+def test_splitting_link_with_suggested_node_id_uses_that_id():
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243}
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2', 'id': 'l1', 'length': 10}})
+    suggested_node_id = 'suggested_node_id'
+
+    data = n.split_link_at_point('l1', 528568.5, 177243, suggested_node_id)
+
+    assert data['node_attributes']['id'] == suggested_node_id
+
+
+def test_splitting_link_with_existing_node_id_generates_new_index(mocker):
+    mocker.patch.object(Network, 'generate_index_for_node')
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243}
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2', 'id': 'l1', 'length': 10}})
+    suggested_node_id = 'n1'
+
+    data = n.split_link_at_point('l1', 528568.5, 177243, suggested_node_id)
+
+    n.generate_index_for_node.assert_called_once()
+
+
+def test_splitting_link_at_node_far_away_throws_error():
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243},
+        'split_node': {'id': 'split_node', 'x': 628570, 'y': 277243},
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2', 'id': 'l1', 'length': 10}})
+
+    with pytest.raises(exceptions.MisalignedNodeError) as error_info:
+        n.split_link_at_node('l1', 'split_node')
+    assert "does not lie close enough to the geometry of the link" in str(error_info.value)
