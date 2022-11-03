@@ -3444,12 +3444,12 @@ def test_splitting_link_at_point_gets_data_right(mocker):
 
     data = n.split_link_at_point('l1', 528568.5, 177243.5)
 
-    assert data['node_attributes'] == {'id': new_node_ID, 'x': 528568.5, 'y': 177243.0}
+    assert {k: v for k, v in data['node_attributes'].items() if k in ['id', 'x', 'y']} == {'id': new_node_ID, 'x': 528568.5, 'y': 177243.0}
     assert list(data['links'][new_link_1_ID].pop('geometry').coords) == [(528568, 177243), (528568.5, 177243)]
     assert data['links'][new_link_1_ID] == {
                 'from': 'n1', 'to': new_node_ID, 'id': new_link_1_ID, 'freespeed': 4, 'capacity': 600.0,
                 'permlanes': 1.0, 'oneway': '1', 'modes': ['car'],
-                'length': 2.5,
+                'length': 2.5,  's2_from': n.node('n1')['s2_id'], 's2_to': data['node_attributes']['s2_id'],
                 'attributes': {
                     'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}}
     }
@@ -3457,7 +3457,7 @@ def test_splitting_link_at_point_gets_data_right(mocker):
     assert data['links'][new_link_2_ID] == {
                 'from': new_node_ID, 'to': 'n2', 'id': new_link_2_ID, 'freespeed': 4, 'capacity': 600.0,
                 'permlanes': 1.0, 'oneway': '1', 'modes': ['car'],
-                'length': 7.5,
+                'length': 7.5,  's2_from': data['node_attributes']['s2_id'], 's2_to': n.node('n2')['s2_id'],
                 'attributes': {
                     'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}}
     }

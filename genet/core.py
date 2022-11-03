@@ -2387,15 +2387,14 @@ class Network:
 
         # apply attributes from the old link to the 2 new links
         old_link_attributes = deepcopy(self.link(link_id))
-        for k in ['s2_from', 's2_to']:
-            # TODO s2 ids can be updated post https://github.com/arup-group/genet/pull/142/
-            old_link_attributes.pop(k, None)
         links = {
             new_link_1: {**old_link_attributes, **{
-                'id': new_link_1, 'from': from_node['id'], 'to': node_id, 'geometry': new_link_1_geom,
+                'id': new_link_1, 'from': from_node['id'], 'to': node_id,
+                'geometry': new_link_1_geom, 's2_from': from_node['s2_id'], 's2_to': node_attribs['s2_id'],
                 'length': (new_link_1_geom.length / line.length) * old_link_attributes['length']}},
             new_link_2: {**old_link_attributes, **{
-                'id': new_link_2, 'from': node_id, 'to': to_node['id'], 'geometry': new_link_2_geom,
+                'id': new_link_2, 'from': node_id, 'to': to_node['id'],
+                'geometry': new_link_2_geom, 's2_from': node_attribs['s2_id'], 's2_to': to_node['s2_id'],
                 'length': (new_link_2_geom.length / line.length) * old_link_attributes['length']}},
         }
         self.add_links(links)
