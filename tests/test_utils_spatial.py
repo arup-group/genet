@@ -56,6 +56,26 @@ def test_merging_noncontiguous_linestrings_results_in_multilinestring():
     assert spatial.merge_linestrings(linestrings) == MultiLineString([[(1, 2), (3, 4), (5, 6)],[(7, 8), (9, 10)]])
 
 
+def test_snapping_point_on_line_returns_the_same_point():
+    line = LineString([(0, 0), (0, 1), (0, 2)])
+    point = Point(0, 0.5)
+    assert spatial.snap_point_to_line(point, line) == point
+
+
+def test_snapping_point_within_threshold_returns_the_same_point():
+    line = LineString([(0, 0), (0, 1), (0, 2)])
+    distance_threshold = 0.1
+    point = Point(0 - (distance_threshold / 2), 0.5)
+    assert spatial.snap_point_to_line(point, line, distance_threshold) == point
+
+
+def test_snapping_point_over_threshold_moves_the_point():
+    line = LineString([(0, 0), (0, 1), (0, 2)])
+    distance_threshold = 0.1
+    point = Point(0 - (distance_threshold * 2), 0.5)
+    assert spatial.snap_point_to_line(point, line, distance_threshold) == Point(0, 0.5)
+
+
 def test_compute_average_proximity_to_polyline():
     poly_1 = 'ahmyHzvYkCvCuCdDcBrB'
     poly_2 = 'ahmyHzvYGJyBbCGHq@r@EDIJGBu@~@SToAzAEFEDIJ'

@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.neighbors import BallTree
 import statistics
 import json
-from shapely.geometry import LineString, shape, GeometryCollection, MultiLineString
+from shapely.geometry import LineString, shape, GeometryCollection, MultiLineString, Point
 from shapely.ops import linemerge
 import pandas as pd
 import geopandas as gpd
@@ -51,6 +51,19 @@ def merge_linestrings(linestring_list):
     """
     multi_line = MultiLineString(linestring_list)
     return linemerge(multi_line)
+
+
+def snap_point_to_line(point: Point, line: LineString, distance_threshold=1e-8) -> Point:
+    """
+    Snap a point to a line, if over a distance threshold.
+    Not using 'contains' method due to too high accuracy required to evaluate to True.
+    :param point: Point to be snapped to line, IF not close enough
+    :param line: Line to use for the Point to snap to
+    :return:
+    """
+    if line.distance(point) > distance_threshold:
+        point = line.interpolate(line.project(point))
+    return point
 
 
 def decode_polyline_to_shapely_linestring(_polyline):
