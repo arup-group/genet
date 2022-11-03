@@ -1,5 +1,6 @@
 import ast
 import json
+import logging
 import os
 import sys
 import uuid
@@ -18,6 +19,7 @@ from genet.input import matsim_reader
 from tests.test_output_matsim_xml_writer import network_dtd, schedule_dtd
 from genet.schedule_elements import Route, Service, Schedule, Stop
 from genet.utils import plot, spatial
+from genet.validate import network as network_validation
 from genet.input import read
 from genet import exceptions
 from tests.fixtures import assert_semantically_equal, route, stop_epsg_27700, network_object_from_test_data, \
@@ -221,6 +223,65 @@ def network4():
     return n4
 
 
+@pytest.fixture()
+def network_for_summary_stats():
+    n = Network('epsg:27700')
+    n.add_node('0', attribs={'x': 528704.1425925883, 'y': 182068.78193707118})
+    n.add_node('1', attribs={'x': 528804.1425925883, 'y': 182168.78193707118})
+    n.add_link('link_0', '0', '1', attribs={'length': 123, 'modes': ['car', 'walk'], 'freespeed': 10, 'capacity': 5})
+    n.add_link('link_1', '0', '1', attribs={'length': 123, 'modes': ['bike'],
+                                            'attributes': {'osm:way:highway': 'secondary'}})
+    n.add_link('link_2', '1', '0', attribs={'length': 123, 'modes': ['rail']})
+
+    n.schedule = Schedule(epsg='epsg:27700', services=[
+        Service(id='bus_service',
+                routes=[
+                    Route(id='1', route_short_name='', mode='bus',
+                          stops=[
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700',
+                                   linkRefId='link_1', attributes={'bikeAccessible': 'true',
+                                                                   'accessLinkId_car': '1',
+                                                                   'carAccessible': 'true',
+                                                                   'distance_catchment': '25'}),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700',
+                                   linkRefId='link_2')],
+                          trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+                                 'trip_departure_time': ['04:40:00'],
+                                 'vehicle_id': ['veh_1_bus']},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00'],
+                          route=['link_1', 'link_2']),
+                    Route(id='2', route_short_name='route2', mode='bus',
+                          stops=[
+                              Stop(id='0', x=529455.7452394223, y=182401.37630677427, epsg='epsg:27700',
+                                   linkRefId='link_1'),
+                              Stop(id='1', x=529350.7866124967, y=182388.0201078112, epsg='epsg:27700',
+                                   linkRefId='link_2')],
+                          trips={'trip_id': ['1_05:40:00', '2_05:45:00', '3_05:50:00', '4_06:40:00', '5_06:46:00'],
+                                 'trip_departure_time': ['05:40:00', '05:45:00', '05:50:00', '06:40:00', '06:46:00'],
+                                 'vehicle_id': ['veh_2_bus', 'veh_3_bus', 'veh_4_bus', 'veh_5_bus', 'veh_6_bus']},
+                          arrival_offsets=['00:00:00', '00:03:00'],
+                          departure_offsets=['00:00:00', '00:05:00'],
+                          route=['link_1', 'link_2'])
+                ]),
+        Service(id='rail_service',
+                routes=[Route(
+                    route_short_name=r"RTR_I/love\_being//difficult",
+                    mode='rail',
+                    stops=[
+                        Stop(id='RSN', x=-0.1410946, y=51.5231335, epsg='epsg:4326', name=r"I/love\_being//difficult"),
+                        Stop(id='RSE', x=-0.1421595, y=51.5192615, epsg='epsg:4326')],
+                    trips={'trip_id': ['RT1', 'RT2', 'RT3', 'RT4'],
+                           'trip_departure_time': ['03:21:00', '03:31:00', '03:41:00', '03:51:00'],
+                           'vehicle_id': ['veh_7_rail', 'veh_8_rail', 'veh_9_rail', 'veh_10_rail']},
+                    arrival_offsets=['0:00:00', '0:02:00'],
+                    departure_offsets=['0:00:00', '0:02:00']
+                )])
+    ])
+
+    return n
+
+
 def test_network_graph_initiates_as_not_simplififed():
     n = Network('epsg:27700')
     assert not n.is_simplified()
@@ -361,7 +422,7 @@ def test_adding_the_same_networks_but_with_differing_projections():
     assert_semantically_equal(dict(n_left.links()), {'1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}})
 
 
-def test_adding_networks_with_clashing_node_ids():
+def test_adding_networks_with_clashing_node_ids_does_not_duplicate_data():
     n_left = Network('epsg:27700')
     n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
@@ -370,11 +431,11 @@ def test_adding_networks_with_clashing_node_ids():
     n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
 
     n_right = Network('epsg:27700')
-    n_right.add_node('10', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
+    n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                             'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
-    n_right.add_node('20', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
+    n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                             'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_right.add_link('1', '10', '20', attribs={'modes': ['walk']})
+    n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
 
     n_left.add(n_right)
     assert_semantically_equal(dict(n_left.nodes()), {
@@ -418,24 +479,23 @@ def test_adding_networks_with_clashing_multiindices():
     n_left.add_link('1', '1', '2', 0, attribs={'modes': ['walk']})
 
     n_right = Network('epsg:27700')
-    n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
+    n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
-    n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
+    n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_left.add_link('1', '1', '2', 0, attribs={'modes': ['walk', 'bike']})
+    n_right.add_link('1', '1', '2', 0, attribs={'modes': ['walk', 'bike']})
 
-    n_left.add(n_right)
     assert len(list(n_left.nodes())) == 2
     assert n_left.node('1') == {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                                 'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879}
     assert n_left.node('2') == {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                                 'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387}
-    assert len(n_left.link_id_mapping) == 2
+    assert len(n_left.link_id_mapping) == 1
     assert n_left.link('1') == {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}
     assert n_left.graph['1']['2'][0] == {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}
 
 
-def test_adding_disjoint_networks_with_unique_ids():
+def test_adding_disjoint_networks_with_unique_ids_results_in_distinct_data_together():
     n_left = Network('epsg:27700')
     n_left.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
@@ -444,15 +504,15 @@ def test_adding_disjoint_networks_with_unique_ids():
     n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
 
     n_right = Network('epsg:27700')
-    n_right.add_node('10', {'id': '1', 'x': 1, 'y': 1,
+    n_right.add_node('10', {'id': '10', 'x': 1, 'y': 1,
                             'lon': 1, 'lat': 1, 's2_id': 1})
-    n_right.add_node('20', {'id': '2', 'x': 1, 'y': 1,
+    n_right.add_node('20', {'id': '20', 'x': 1, 'y': 1,
                             'lon': 1, 'lat': 1, 's2_id': 2})
     n_right.add_link('100', '10', '20', attribs={'modes': ['walk']})
 
     n_left.add(n_right)
-    assert_semantically_equal(dict(n_left.nodes()), {'10': {'id': '1', 'x': 1, 'y': 1, 'lon': 1, 'lat': 1, 's2_id': 1},
-                                                     '20': {'id': '2', 'x': 1, 'y': 1, 'lon': 1, 'lat': 1, 's2_id': 2},
+    assert_semantically_equal(dict(n_left.nodes()), {'10': {'id': '10', 'x': 1, 'y': 1, 'lon': 1, 'lat': 1, 's2_id': 1},
+                                                     '20': {'id': '20', 'x': 1, 'y': 1, 'lon': 1, 'lat': 1, 's2_id': 2},
                                                      '1': {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                                                            'lon': -0.14625948709424305, 'lat': 51.52287873323954,
                                                            's2_id': 5221390329378179879},
@@ -768,8 +828,8 @@ def test_network_with_missing_link_attribute_elem_text_is_read_and_able_to_save_
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_keys():
     n = Network('epsg:27700')
-    n.add_node(1, {'a': {'b': 1}})
-    n.add_node(2, {'a': {'b': 4}})
+    n.add_node(1, {'x': 1, 'y': 2, 'a': {'b': 1}})
+    n.add_node(2, {'x': 1, 'y': 2, 'a': {'b': 4}})
 
     output_series = n.node_attribute_data_under_key(key={'a': 'b'})
     assert_series_equal(output_series, pd.Series({1: 1, 2: 4}))
@@ -777,8 +837,8 @@ def test_node_attribute_data_under_key_returns_correct_pd_series_with_nested_key
 
 def test_node_attribute_data_under_key_returns_correct_pd_series_with_flat_keys():
     n = Network('epsg:27700')
-    n.add_node(1, {'b': 1})
-    n.add_node(2, {'b': 4})
+    n.add_node(1, {'x': 1, 'y': 2, 'b': 1})
+    n.add_node(2, {'x': 1, 'y': 2, 'b': 4})
 
     output_series = n.node_attribute_data_under_key(key='b')
     assert_series_equal(output_series, pd.Series({1: 1, 2: 4}))
@@ -799,7 +859,7 @@ def test_node_attribute_data_under_keys_with_named_index(network1):
 
 
 def test_node_attribute_data_under_keys_generates_key_for_nested_data(network1):
-    network1.add_node('1', {'key': {'nested_value': {'more_nested': 4}}})
+    network1.add_node('1', {'x': 1, 'y': 2, 'key': {'nested_value': {'more_nested': 4}}})
     df = network1.node_attribute_data_under_keys([{'key': {'nested_value': 'more_nested'}}])
     assert isinstance(df, pd.DataFrame)
     assert 'key::nested_value::more_nested' in df.columns
@@ -858,58 +918,128 @@ def test_link_attribute_data_under_keys_generates_key_for_nested_data(network1):
 
 def test_add_node_adds_node_to_graph_with_attribs():
     n = Network('epsg:27700')
-    n.add_node(1, {'a': 1})
+    n.add_node(1, {'x': 1, 'y': 2, 'a': 1})
     assert n.graph.has_node(1)
-    assert n.node(1) == {'a': 1}
+    assert n.node(1)['x'] == 1
+    assert n.node(1)['y'] == 2
+    assert n.node(1)['a'] == 1
 
 
-def test_add_node_adds_node_to_graph_without_attribs():
+def test_add_node_without_attribs_raises_error():
+    with pytest.raises(TypeError):
+        n = Network('epsg:27700')
+        n.add_node(1)
+
+
+def test_adding_node_with_only_lat_lon_attribs_fills_in_x_y():
     n = Network('epsg:27700')
-    n.add_node(1)
-    assert n.node(1) == {}
-    assert n.graph.has_node(1)
+    n.add_node(1, {'lat': 51.521719064780775, 'lon': -0.13777870665428316})
+
+    assert round(n.node(1)['x'], 2) == 529295.75
+    assert round(n.node(1)['y'], 2) == 181954.76
+
+
+def test_adding_node_with_only_lat_lon_attribs_fills_in_s2_id():
+    n = Network('epsg:27700')
+    n.add_node(1, {'lat': 51.521719064780775, 'lon': -0.13777870665428316})
+
+    assert n.node(1)['s2_id'] == 5221390681084663239
+
+
+def test_adding_node_with_only_x_y_attribs_fills_in_lat_lon():
+    n = Network('epsg:27700')
+    n.add_node(1, {'x': 529295.7525339661, 'y': 181954.76039674896})
+
+    assert round(n.node(1)['lat'], 6) == 51.521719
+    assert round(n.node(1)['lon'], 6) == -0.137779
+
+
+def test_adding_nodes_with_mismatched_spatial_attribs_gets_filled_in():
+    n = Network('epsg:27700')
+    n.add_nodes({1: {'lat': 51.521719064780775, 'lon': -0.13777870665428316},
+                 2: {'x': 529295.7525339661, 'y': 181954.76039674896}})
+
+    assert round(n.node(1)['x'], 2) == 529295.75
+    assert round(n.node(1)['y'], 2) == 181954.76
+
+    assert round(n.node(2)['lat'], 6) == 51.521719
+    assert round(n.node(2)['lon'], 6) == -0.137779
+
+
+def test_adding_nodes_with_mismatched_spatial_attribs_generates_s2ids():
+    n = Network('epsg:27700')
+    n.add_nodes({1: {'lat': 51.521719064780775, 'lon': -0.13777870665428316},
+                 2: {'x': 529295.7525339661, 'y': 181954.76039674896}})
+
+    assert n.node(1)['s2_id'] == 5221390681084663239
+    assert n.node(2)['s2_id'] == 5221390681084663239
+
+
+def test_adding_node_with_clashing_id_reindexes_new_node():
+    n = Network('epsg:27700')
+    n.add_node(1, {'x': 1, 'y': 2})
+
+    new_node = n.add_node(1, {'x': 2, 'y': 2, 'a': 2})
+    assert 1 in new_node
 
 
 def test_add_multiple_nodes():
     n = Network('epsg:27700')
     reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
     assert n.graph.has_node(1)
-    assert n.node(1) == {'x': 1, 'y': 2, 'id': 1}
+    assert n.node(1)['x'] == 1
+    assert n.node(1)['y'] == 2
+    assert n.node(1)['id'] == 1
     assert n.graph.has_node(2)
-    assert n.node(2) == {'x': 2, 'y': 2, 'id': 2}
+    assert n.node(2)['x'] == 2
+    assert n.node(2)['y'] == 2
+    assert n.node(2)['id'] == 2
     assert reindexing_dict == {}
 
 
 def test_add_nodes_with_clashing_ids():
     n = Network('epsg:27700')
-    n.add_node(1, {})
+    n.add_node(1, {'x': 1, 'y': 2})
     reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
     assert n.graph.has_node(1)
-    assert n.node(1) == {}
+    assert n.node(1)['x'] == 1
+    assert n.node(1)['y'] == 2
+    assert n.node(1)['id'] == 1
     assert n.graph.has_node(2)
-    assert n.node(2) == {'x': 2, 'y': 2, 'id': 2}
+    assert n.node(2)['x'] == 2
+    assert n.node(2)['y'] == 2
+    assert n.node(2)['id'] == 2
     assert 1 in reindexing_dict
     assert n.graph.has_node(reindexing_dict[1])
-    assert n.node(reindexing_dict[1]) == {'x': 1, 'y': 2, 'id': reindexing_dict[1]}
+    assert n.node(reindexing_dict[1])['x'] == 1
+    assert n.node(reindexing_dict[1])['y'] == 2
+    assert n.node(reindexing_dict[1])['id'] == reindexing_dict[1]
 
 
 def test_add_nodes_with_multiple_clashing_ids():
     n = Network('epsg:27700')
-    n.add_node(1, {})
-    n.add_node(2, {})
+    n.add_node(1, {'x': 1, 'y': 2})
+    n.add_node(2, {'x': 1, 'y': 2})
     assert n.graph.has_node(1)
-    assert n.node(1) == {}
+    assert n.node(1)['x'] == 1
+    assert n.node(1)['y'] == 2
+    assert n.node(1)['id'] == 1
     assert n.graph.has_node(2)
-    assert n.node(2) == {}
-
+    assert n.node(2)['x'] == 1
+    assert n.node(2)['y'] == 2
+    assert n.node(2)['id'] == 2
     reindexing_dict, actual_nodes_added = n.add_nodes({1: {'x': 1, 'y': 2}, 2: {'x': 2, 'y': 2}})
     assert 1 in reindexing_dict
     assert n.graph.has_node(reindexing_dict[1])
-    assert n.node(reindexing_dict[1]) == {'x': 1, 'y': 2, 'id': reindexing_dict[1]}
+    assert n.node(reindexing_dict[1])['x'] == 1
+    assert n.node(reindexing_dict[1])['y'] == 2
+    assert n.node(reindexing_dict[1])['id'] == reindexing_dict[1]
 
     assert 2 in reindexing_dict
     assert n.graph.has_node(reindexing_dict[2])
-    assert n.node(reindexing_dict[2]) == {'x': 2, 'y': 2, 'id': reindexing_dict[2]}
+    assert n.node(reindexing_dict[2])['x'] == 2
+    assert n.node(reindexing_dict[2])['y'] == 2
+    assert n.node(reindexing_dict[2])['id'] == reindexing_dict[2]
 
 
 def test_add_edge_generates_a_link_id_and_delegated_to_add_link_id(mocker):
@@ -1493,7 +1623,8 @@ def test_reindex_node(network1):
          'diff': {3: [('change', 'from', ('101982', '007'))],
                   4: [('change', 'id', ('101982', '007')), ('change', 'id', ('101982', '007'))],
                   5: [('change', 'id', ('101982', '007'))]}})
-    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
+    # no need to test new_attributes and old_attributes columns if testing diff - it depends on those
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'diff']
     assert_frame_equal(network1.change_log[cols_to_compare].tail(3), correct_change_log_df[cols_to_compare],
                        check_names=False,
                        check_dtype=False)
@@ -1569,60 +1700,82 @@ def test_reindex_link_when_link_id_already_exists(network1):
 
 def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
     n = Network('epsg:27700')
-    n.add_node(1, {'a': 1})
+    n.add_node(1, {'id': 1, 'x': 1, 'y': 2, 'a': 1})
     n.apply_attributes_to_node(1, {'b': 1})
 
-    assert n.node(1) == {'b': 1, 'a': 1}
+    assert_semantically_equal(
+        n.node(1),
+        {'id': 1, 'x': 1, 'y': 2, 'b': 1, 'a': 1, 'lat': 49.766825803756994, 'lon': -7.55714803952495,'s2_id': 5205973754090365183})
 
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {0: '2020-05-28 13:49:53', 1: '2020-05-28 13:49:53'}, 'change_event': {0: 'add', 1: 'modify'},
          'object_type': {0: 'node', 1: 'node'}, 'old_id': {0: None, 1: 1}, 'new_id': {0: 1, 1: 1},
-         'old_attributes': {0: None, 1: "{'a': 1}"}, 'new_attributes': {0: "{'a': 1}", 1: "{'a': 1, 'b': 1}"},
-         'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', 1)], 1: [('add', '', [('b', 1)])]}})
-
-    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_names=False,
+         'old_attributes': {0: None, 1: "{'x': 1, 'y': 2, 'a': 1, 'id': 1}"},
+         'new_attributes': {0: "{'x': 1, 'y': 2, 'a': 1, 'id': 1}", 1: "{'x': 1, 'y': 2, 'a': 1, 'b': 1, 'id': 1}"},
+         'diff': {0: [('add', '', [('x', 1), ('y', 2), ('lon', -7.55714803952495), ('lat', 49.766825803756994), ('id', 1), ('a', 1), ('s2_id', 5205973754090365183)]), ('add', 'id', 1)],
+                  1: [('add', '', [('b', 1)])]}})
+    # no need to test new_attributes and old_attributes columns if testing diff - it depends on those
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'diff']
+    assert_series_equal(n.change_log.loc[1, cols_to_compare], correct_change_log_df.loc[1, cols_to_compare], check_names=False,
                        check_dtype=False)
 
 
 def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log():
     n = Network('epsg:27700')
-    n.add_node(1, {'a': 1})
+    n.add_node(1, {'x': 1, 'y': 2, 'a': 1})
     n.apply_attributes_to_node(1, {'a': 4})
 
-    assert n.node(1) == {'a': 4}
+    assert_semantically_equal(
+        n.node(1),
+        {'id': 1, 'x': 1, 'y': 2, 'a': 4, 'lat': 49.766825803756994, 'lon': -7.55714803952495, 's2_id': 5205973754090365183}
+    )
 
     correct_change_log_df = pd.DataFrame(
-        {'timestamp': {0: '2020-05-28 13:49:53', 1: '2020-05-28 13:49:53'}, 'change_event': {0: 'add', 1: 'modify'},
-         'object_type': {0: 'node', 1: 'node'}, 'old_id': {0: None, 1: 1}, 'new_id': {0: 1, 1: 1},
-         'old_attributes': {0: None, 1: "{'a': 1}"}, 'new_attributes': {0: "{'a': 1}", 1: "{'a': 4}"},
-         'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', 1)], 1: [('change', 'a', (1, 4))]}})
-
-    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+        {'timestamp': {0: '2020-05-28 13:49:53', 1: '2020-05-28 13:49:53'},
+         'change_event': {0: 'add', 1: 'modify'},
+         'object_type': {0: 'node', 1: 'node'},
+         'old_id': {0: None, 1: 1},
+         'new_id': {0: 1, 1: 1},
+         'old_attributes': {0: None, 1: {'x': 1, 'y': 2, 'a': 1}},
+         'new_attributes': {0: "{'x': 1, 'y': 2, 'a': 1}", 1: "{'x': 1, 'y': 2, 'a': 4}"},
+         'diff': {0: [('add', '', [('x', 1), ('y', 2), ('lon', -7.55714803952495), ('lat', 49.766825803756994), ('id', 1.0), ('a', 1), ('s2_id', 5205973754090365183)]), ('add', 'id', 1)],
+                  1: [('change', 'a', (1, 4))]}})
+    # no need to test new_attributes and old_attributes columns if testing diff - it depends on those
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'diff']
+    assert_series_equal(n.change_log.loc[1, cols_to_compare], correct_change_log_df.loc[1, cols_to_compare], check_dtype=False)
 
 
 def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_recorded_by_change_log():
     n = Network('epsg:27700')
-    n.add_node(1, {'a': 1})
-    n.add_node(2, {'b': 1})
+    n.add_node(1, {'x': 1, 'y': 2, 'a': 1})
+    n.add_node(2, {'x': 1, 'y': 2, 'b': 1})
     n.apply_attributes_to_nodes({1: {'a': 4}, 2: {'a': 1}})
 
-    assert n.node(1) == {'a': 4}
-    assert n.node(2) == {'b': 1, 'a': 1}
+    assert_semantically_equal(
+        n.node(1),
+        {'id': 1, 'x': 1, 'y': 2, 'a': 4, 'lat': 49.766825803756994, 'lon': -7.55714803952495, 's2_id': 5205973754090365183}
+    )
+    assert_semantically_equal(
+        n.node(2),
+        {'id': 2, 'x': 1, 'y': 2, 'b': 1, 'a': 1, 'lat': 49.766825803756994, 'lon': -7.55714803952495, 's2_id': 5205973754090365183}
+    )
 
     correct_change_log_df = pd.DataFrame(
         {'timestamp': {0: '2020-06-01 15:07:51', 1: '2020-06-01 15:07:51', 2: '2020-06-01 15:07:51',
                        3: '2020-06-01 15:07:51'}, 'change_event': {0: 'add', 1: 'add', 2: 'modify', 3: 'modify'},
          'object_type': {0: 'node', 1: 'node', 2: 'node', 3: 'node'}, 'old_id': {0: None, 1: None, 2: 1, 3: 2},
-         'new_id': {0: 1, 1: 2, 2: 1, 3: 2}, 'old_attributes': {0: None, 1: None, 2: "{'a': 1}", 3: "{'b': 1}"},
-         'new_attributes': {0: "{'a': 1}", 1: "{'b': 1}", 2: "{'a': 4}", 3: "{'b': 1, 'a': 1}"},
-         'diff': {0: [('add', '', [('a', 1)]), ('add', 'id', 1)], 1: [('add', '', [('b', 1)]), ('add', 'id', 2)],
-                  2: [('change', 'a', (1, 4))], 3: [('add', '', [('a', 1)])]}
+         'new_id': {0: 1, 1: 2, 2: 1, 3: 2},
+         'old_attributes': {0: None, 1: None, 2: "{'x': 1, 'y': 2, 'a': 1}", 3: "{'x': 1, 'y': 2, 'b': 1}"},
+         'new_attributes': {0: "{'x': 1, 'y': 2, 'a': 1}", 1: "{'x': 1, 'y': 2, 'b': 1}",
+                            2: "{'x': 1, 'y': 2, 'a': 4}", 3: "{'x': 1, 'y': 2, 'b': 1, 'a': 1}"},
+         'diff': {0: [('add', '', [('x', 1), ('y', 2), ('lon', -7.55714803952495), ('lat', 49.766825803756994), ('id', 1.0), ('a', 1), ('s2_id', 5205973754090365183)]), ('add', 'id', 1)],
+                  1: [('add', '', [('x', 1), ('y', 2), ('lon', -7.55714803952495), ('lat', 49.766825803756994), ('id', 1.0), ('b', 1), ('s2_id', 5205973754090365183)]), ('add', 'id', 2)],
+                  2: [('change', 'a', (1, 4))],
+                  3: [('add', '', [('a', 1)])]}
          })
-
-    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'old_attributes', 'new_attributes', 'diff']
-    assert_frame_equal(n.change_log[cols_to_compare], correct_change_log_df[cols_to_compare], check_dtype=False)
+    # no need to test new_attributes and old_attributes columns if testing diff - it depends on those
+    cols_to_compare = ['change_event', 'object_type', 'old_id', 'new_id', 'diff']
+    assert_frame_equal(n.change_log.loc[[2,3], cols_to_compare], correct_change_log_df.loc[[2,3], cols_to_compare], check_dtype=False)
 
 
 def multiply_node_attribs(node_attribs):
@@ -1631,12 +1784,12 @@ def multiply_node_attribs(node_attribs):
 
 def test_apply_function_to_nodes():
     n = Network('epsg:27700')
-    n.add_node('0', attribs={'a': 2, 'c': 3})
-    n.add_node('1', attribs={'c': 100})
+    n.add_node('0', attribs={'x': 1, 'y': 2, 'a': 2, 'c': 3})
+    n.add_node('1', attribs={'x': 1, 'y': 2, 'c': 100})
     n.apply_function_to_nodes(function=multiply_node_attribs, location='new_computed_attrib')
-    assert_semantically_equal(dict(n.nodes()),
-                              {'0': {'a': 2, 'c': 3, 'new_computed_attrib': 6},
-                               '1': {'c': 100}})
+    assert 'new_computed_attrib' in n.node('0')
+    assert n.node('0')['new_computed_attrib'] == 6
+    assert 'new_computed_attrib' not in n.node('1')
 
 
 def test_apply_attributes_to_edge_without_filter_conditions():
@@ -2245,7 +2398,7 @@ def test_generating_pt_network_route_geodataframe():
 
 def test_has_node_when_node_is_in_the_graph():
     n = Network('epsg:27700')
-    n.add_node('1')
+    n.add_node('1', {'x': 1, 'y': 2})
     assert n.has_node('1')
 
 
@@ -2256,26 +2409,110 @@ def test_has_node_when_node_is_not_in_the_graph():
 
 def test_has_nodes_when_nodes_in_the_graph():
     n = Network('epsg:27700')
-    n.add_node('1')
-    n.add_node('2')
-    n.add_node('3')
+    n.add_node('1', {'x': 1, 'y': 2})
+    n.add_node('2', {'x': 1, 'y': 2})
+    n.add_node('3', {'x': 1, 'y': 2})
     assert n.has_nodes(['1', '2'])
 
 
 def test_has_nodes_when_only_some_nodes_in_the_graph():
     n = Network('epsg:27700')
-    n.add_node('1')
-    n.add_node('2')
-    n.add_node('3')
+    n.add_node('1', {'x': 1, 'y': 2})
+    n.add_node('2', {'x': 1, 'y': 2})
+    n.add_node('3', {'x': 1, 'y': 2})
     assert not n.has_nodes(['1', '4'])
 
 
 def test_has_nodes_when_none_of_the_nodes_in_the_graph():
     n = Network('epsg:27700')
-    n.add_node('1')
-    n.add_node('2')
-    n.add_node('3')
+    n.add_node('1', {'x': 1, 'y': 2})
+    n.add_node('2', {'x': 1, 'y': 2})
+    n.add_node('3', {'x': 1, 'y': 2})
     assert not n.has_nodes(['10', '20'])
+
+
+@pytest.fixture()
+def network_with_isolated_nodes():
+    n = Network('epsg:27700')
+    n.add_node('1', attribs={'x': 1, 'y': 2})
+    n.add_node('2', attribs={'x': 1, 'y': 2})
+    n.add_node('3', attribs={'x': 1, 'y': 2})
+    n.add_link('link', u='2', v='3')
+    return {'network': n, 'isolated_nodes': ['1']}
+
+
+@pytest.fixture()
+def network_without_isolated_nodes():
+    n = Network('epsg:27700')
+    n.add_node('0', attribs={'x': 1, 'y': 2})
+    n.add_node('1', attribs={'x': 1, 'y': 2})
+    n.add_link('link', u='0', v='1')
+    return {'network': n, 'isolated_nodes': []}
+
+
+@pytest.fixture()
+def network_cases_for_testing_isolated_nodes(network_with_isolated_nodes, network_without_isolated_nodes):
+    return {
+        'with_isolated_nodes': network_with_isolated_nodes,
+        'without_isolated_nodes': network_without_isolated_nodes
+    }
+
+
+def test_network_has_isolated_nodes(network_with_isolated_nodes):
+    assert network_with_isolated_nodes['network'].has_isolated_nodes()
+
+
+def test_network_does_not_have_isolated_nodes(network_without_isolated_nodes):
+    assert not network_without_isolated_nodes['network'].has_isolated_nodes()
+
+
+@pytest.mark.parametrize("network_case", ['with_isolated_nodes', 'without_isolated_nodes'])
+def test_networks_report_correct_isolated_nodes(network_case, network_cases_for_testing_isolated_nodes):
+    assert network_cases_for_testing_isolated_nodes[network_case]['network'].isolated_nodes() == \
+           network_cases_for_testing_isolated_nodes[network_case]['isolated_nodes']
+
+
+def test_removes_isolated_nodes(network_with_isolated_nodes):
+    n = network_with_isolated_nodes['network']
+    n.remove_isolated_nodes()
+    assert not list(nx.isolates(n.graph))
+
+
+def test_logs_number_of_isolated_nodes_when_removing(network_with_isolated_nodes, caplog):
+    caplog.set_level(logging.INFO)
+    n = network_with_isolated_nodes['network']
+    n.remove_isolated_nodes()
+
+    assert caplog.records[0].levelname == 'INFO'
+    assert '1 isolated node' in caplog.records[0].message
+
+
+def test_isolated_nodes_are_recorded_in_changelog_after_removal(network_with_isolated_nodes):
+    n = network_with_isolated_nodes['network']
+    n.remove_isolated_nodes()
+
+    assert len(n.change_log[n.change_log['change_event'] == 'remove']) == 1
+    assert n.change_log.iloc[-1]['change_event'] == 'remove'
+    assert n.change_log.iloc[-1]['old_id'] == '1'
+
+
+def test_warns_of_no_isolated_nodes_when_trying_to_remove(network_without_isolated_nodes, caplog):
+    caplog.set_level(logging.WARNING)
+    n = network_without_isolated_nodes['network']
+    n.remove_isolated_nodes()
+
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'no isolated nodes' in caplog.records[0].message
+
+
+def test_isolated_nodes_show_up_in_validation_report(network_with_isolated_nodes):
+    n = network_with_isolated_nodes['network']
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['isolated_nodes'],
+        {'number_of_nodes': 1, 'nodes': ['1']}
+    )
 
 
 def test_has_edge_when_edge_is_in_the_graph():
@@ -2382,9 +2619,9 @@ def test_calculate_route_distance_with_links_that_have_length_attrib():
 
 def test_calculate_route_distance_with_links_that_dont_have_length_attrib():
     n = Network('epsg:27700')
-    n.add_node(1, attribs={'s2_id': 12345})
-    n.add_node(3, attribs={'s2_id': 345435})
-    n.add_node(4, attribs={'s2_id': 568767})
+    n.add_node(1, attribs={'x': 1, 'y': 2, 's2_id': 12345})
+    n.add_node(3, attribs={'x': 1, 'y': 2, 's2_id': 345435})
+    n.add_node(4, attribs={'x': 1, 'y': 2, 's2_id': 568767})
     n.add_link('1', 1, 3)
     n.add_link('2', 3, 4)
     assert round(n.route_distance(['1', '2']), 6) == 0.013918
@@ -2435,37 +2672,40 @@ def test_network_route_with_incorrect_modes_on_link():
 
 def test_generate_index_for_node_gives_next_integer_string_when_you_have_matsim_usual_integer_index():
     n = Network('epsg:27700')
-    n.add_node('1')
+    n.add_node('1', {'x': 1, 'y': 2})
     assert n.generate_index_for_node() == '2'
 
 
 def test_generate_index_for_node_gives_string_based_on_length_node_ids_when_you_have_mixed_index():
     n = Network('epsg:27700')
-    n.add_node('1')
-    n.add_node('1x')
+    n.add_node('1', {'x': 1, 'y': 2})
+    n.add_node('1x', {'x': 1, 'y': 2})
     assert n.generate_index_for_node() == '3'
 
 
 def test_generate_index_for_node_gives_string_based_on_length_node_ids_when_you_have_all_non_int_index():
     n = Network('epsg:27700')
-    n.add_node('1w')
-    n.add_node('1x')
+    n.add_node('1w', {'x': 1, 'y': 2})
+    n.add_node('1x', {'x': 1, 'y': 2})
     assert n.generate_index_for_node() == '3'
 
 
 def test_generate_index_for_node_gives_uuid4_as_last_resort(mocker):
     mocker.patch.object(uuid, 'uuid4')
     n = Network('epsg:27700')
-    n.add_node('1w')
-    n.add_node('1x')
-    n.add_node('4')
+    n.add_node('1w', {'x': 1, 'y': 2})
+    n.add_node('1x', {'x': 1, 'y': 2})
+    n.add_node('4', {'x': 1, 'y': 2})
     n.generate_index_for_node()
     uuid.uuid4.assert_called_once()
 
 
 def test_generating_n_indicies_for_nodes():
     n = Network('epsg:27700')
-    n.add_nodes({str(i): {} for i in range(10)})
+    nodes_dict = {}
+    for i in range(10):
+        nodes_dict[i] = {'x': 1, 'y': 2}
+    n.add_nodes(nodes_dict)
     idxs = n.generate_indices_for_n_nodes(5)
     assert len(idxs) == 5
     assert not set(dict(n.nodes()).keys()) & idxs
@@ -2585,6 +2825,7 @@ def test_invalid_network_routes_with_empty_route(route):
     assert n.invalid_network_routes() == ['route']
 
 
+<<<<<<< HEAD
 def test_generate_validation_report_with_pt2matsim_network(network_object_from_test_data):
     n = network_object_from_test_data
     report = n.generate_validation_report()
@@ -2615,21 +2856,93 @@ def test_generate_validation_report_with_pt2matsim_network(network_object_from_t
                                                        'vehicles_affected': {}},
                                   'multiple_use_vehicles': {},
                                   'unused_vehicles': set()}}},
+=======
+@pytest.fixture()
+def invalid_pt2matsim_network_for_validation(network_object_from_test_data):
+    return {
+        'network': network_object_from_test_data,
+        'subgraph_no_per_mode': {
+            'car': 2,
+            'walk': 2,
+            'bike': 0
+        },
+        'is_valid_schedule': False,
+        'invalid_service_id': '10314',
+        'valid_PT_network_routes': False,
+        'pt_routes_with_invalid_network_route': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
+    }
+>>>>>>> main
 
-        'routing': {'services_have_routes_in_the_graph': False,
-                    'service_routes_with_invalid_network_route': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
-                    'route_to_crow_fly_ratio': {
-                        '10314': {'VJbd8660f05fe6f744e58a66ae12bd66acbca88b98': 'Division by zero'}}}}
-    assert_semantically_equal(report, correct_report)
+def test_connectivity_in_report_with_invalid_network(invalid_pt2matsim_network_for_validation):
+    report = invalid_pt2matsim_network_for_validation['network'].generate_validation_report()
+    for mode, expected_connected_subgraphs in invalid_pt2matsim_network_for_validation['subgraph_no_per_mode'].items():
+        assert report['graph']['graph_connectivity'][mode]['number_of_connected_subgraphs'] == expected_connected_subgraphs
 
 
-def test_generate_validation_report_with_correct_schedule(correct_schedule):
+def test_schedule_validity_in_report_with_invalid_network(invalid_pt2matsim_network_for_validation):
+    report = invalid_pt2matsim_network_for_validation['network'].generate_validation_report()
+    assert report['schedule']['schedule_level']['is_valid_schedule'] == invalid_pt2matsim_network_for_validation['is_valid_schedule']
+
+
+def test_invalid_service_identified_in_report_with_invalid_network(invalid_pt2matsim_network_for_validation):
+    report = invalid_pt2matsim_network_for_validation['network'].generate_validation_report()
+    invalid_service_id = invalid_pt2matsim_network_for_validation['invalid_service_id']
+    assert not report['schedule']['service_level'][invalid_service_id]['is_valid_service']
+
+
+def test_network_routing_in_report_with_invalid_network(invalid_pt2matsim_network_for_validation):
+    report = invalid_pt2matsim_network_for_validation['network'].generate_validation_report()
+    assert report['routing']['services_have_routes_in_the_graph'] == invalid_pt2matsim_network_for_validation['valid_PT_network_routes']
+
+
+def test_invalid_network_routes_show_in_report_with_invalid_network(invalid_pt2matsim_network_for_validation):
+    report = invalid_pt2matsim_network_for_validation['network'].generate_validation_report()
+    route_ids_with_invalid_network_route = invalid_pt2matsim_network_for_validation['pt_routes_with_invalid_network_route']
+    assert report['routing']['service_routes_with_invalid_network_route'] == route_ids_with_invalid_network_route
+
+
+@pytest.fixture()
+def valid_network_for_validation(correct_schedule):
     n = Network('epsg:27700')
     n.add_link('1', 1, 2, attribs={'length': 2, "modes": ['car', 'bus']})
-    n.add_link('2', 2, 3, attribs={'length': 2, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 1, attribs={'length': 2, "modes": ['car', 'bus']})
     n.schedule = correct_schedule
 
+    return {
+        'network': n,
+        'subgraph_no_per_mode': {
+            'car': 1,
+            'walk': 0,
+            'bike': 0
+        },
+        'is_valid_schedule': True,
+        'has_valid_PT_network_routes': True
+    }
+
+
+def test_connectivity_in_report_with_valid_network(valid_network_for_validation):
+    report = valid_network_for_validation['network'].generate_validation_report()
+    for mode, expected_connected_subgraphs in valid_network_for_validation['subgraph_no_per_mode'].items():
+        assert report['graph']['graph_connectivity'][mode]['number_of_connected_subgraphs'] == expected_connected_subgraphs
+
+
+def test_schedule_validity_in_report_with_valid_network(valid_network_for_validation):
+    report = valid_network_for_validation['network'].generate_validation_report()
+    assert report['schedule']['schedule_level']['is_valid_schedule'] == valid_network_for_validation['is_valid_schedule']
+
+
+def test_network_routing_in_report_with_valid_network(valid_network_for_validation):
+    report = valid_network_for_validation['network'].generate_validation_report()
+    assert report['routing']['services_have_routes_in_the_graph'] == valid_network_for_validation['has_valid_PT_network_routes']
+
+
+def test_long_links_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': 10000, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
     report = n.generate_validation_report()
+<<<<<<< HEAD
     correct_report = {
         'graph': {
             'graph_connectivity': {'car': {'problem_nodes': {'dead_ends': [3], 'unreachable_node': [1]},
@@ -2657,6 +2970,57 @@ def test_generate_validation_report_with_correct_schedule(correct_schedule):
         'routing': {'services_have_routes_in_the_graph': True, 'service_routes_with_invalid_network_route': [],
                     'route_to_crow_fly_ratio': {'service': {'1': 0.037918141839160244, '2': 0.037918141839160244}}}}
     assert_semantically_equal(report, correct_report)
+=======
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['links_over_1000_length'],
+        {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+    )
+
+
+offending_link_attribute_values_and_names = [('zero', '0'), ('negative', '-1'), ('infinite', 'inf'), ('fractional', '0.1'), ('none', 'None')]
+
+@pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
+def test_values_of_ids_are_not_flagged_in_validation_report(value, offending_value):
+    n = Network('epsg:27700')
+    n.add_link(offending_value, 1, 2, attribs={'length': 1, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes'][f'{value}_attributes'],
+        {}
+    )
+
+
+@pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
+def test_values_of_from_node_are_not_flagged_in_validation_report(value, offending_value):
+    n = Network('epsg:27700')
+    n.add_link('1', offending_value, 2, attribs={'length': 1, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes'][f'{value}_attributes'],
+        {}
+    )
+
+
+@pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
+def test_values_of_to_node_are_not_flagged_in_validation_report(value, offending_value):
+    n = Network('epsg:27700')
+    n.add_link('1', 1, offending_value, attribs={'length': 1, 'capacity': 1, 'freespeed': 1, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes'][f'{value}_attributes'],
+        {}
+    )
+>>>>>>> main
 
 
 def test_zero_value_attributes_show_up_in_validation_report():
@@ -2665,18 +3029,107 @@ def test_zero_value_attributes_show_up_in_validation_report():
     n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
 
     report = n.generate_validation_report()
-    correct_report = {'graph': {
-        'graph_connectivity': {
-            'car': {'problem_nodes': {'dead_ends': [3], 'unreachable_node': [1]}, 'number_of_connected_subgraphs': 3},
-            'walk': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0},
-            'bike': {'problem_nodes': {'dead_ends': [], 'unreachable_node': []}, 'number_of_connected_subgraphs': 0}},
-        'link_attributes': {
-            'links_over_1km_length': {'number_of': 0, 'percentage': 0.0, 'link_ids': []},
-            'zero_attributes': {
-                'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
-                'capacity': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
-                'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}}}}}
-    assert_semantically_equal(report, correct_report)
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['zero_attributes'],
+        {
+            'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'capacity': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_negative_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': -1, 'capacity': 1, 'freespeed': '-5', "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['negative_attributes'],
+        {
+            'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_infinite_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': float('inf'), 'capacity': 0.0, 'freespeed': 'inf', "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['infinite_attributes'],
+        {
+            'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_fractional_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': 0.1, 'capacity': '0.0', 'freespeed': '0.2', "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['fractional_attributes'],
+        {
+            'length': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_none_value_attributes_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2, attribs={'length': 1, 'capacity': 'None', 'freespeed': None, "modes": ['car', 'bus']})
+    n.add_link('2', 2, 3, attribs={'length': 2, 'capacity': 1, 'freespeed': 2, "modes": ['car', 'bus']})
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['none_attributes'],
+        {
+            'capacity': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']},
+            'freespeed': {'number_of': 1, 'percentage': 0.5, 'link_ids': ['1']}
+        }
+    )
+
+
+def test_nested_values_show_up_in_validation_report():
+    n = Network('epsg:27700')
+    n.add_link('1', 1, 2,
+               attribs={'length': 1, 'capacity': '0.0', 'freespeed': '2', "modes": ['car', 'bus'],
+                        'attributes': {'osm:way:lanes': -1}
+                        })
+
+    report = n.generate_validation_report()
+
+    assert_semantically_equal(
+        report['graph']['link_attributes']['negative_attributes'],
+        {
+            'attributes::osm:way:lanes': {'number_of': 1, 'percentage': 1, 'link_ids': ['1']},
+        }
+    )
+
+
+def test_check_connectivity_for_mode_warns_of_graphs_with_more_than_single_component(mocker, caplog):
+    mocker.patch.object(network_validation, 'describe_graph_connectivity',
+                        return_value={'problem_nodes': {'dead_ends': [], 'unreachable_node': ['1']},
+                                      'number_of_connected_subgraphs': 2})
+
+    Network('epsg:27700').check_connectivity_for_mode('car')
+
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'more than one connected component' in caplog.records[0].message
 
 
 def test_write_to_matsim_generates_three_matsim_files(network_object_from_test_data, tmpdir):
@@ -3031,6 +3484,7 @@ def test_getting_link_slope_dictionary(network3):
     assert slope_dict['0']['slope'] == link_slope
 
 
+<<<<<<< HEAD
 def test_splitting_link_at_point_gets_data_right(mocker):
     new_node_ID = 'new_node_ID'
     new_link_1_ID = 'new_link_1_ID'
@@ -3146,3 +3600,24 @@ def test_splitting_link_at_node_far_away_throws_error():
     with pytest.raises(exceptions.MisalignedNodeError) as error_info:
         n.split_link_at_node('l1', 'split_node')
     assert "does not lie close enough to the geometry of the link" in str(error_info.value)
+
+
+def test_generating_summary_report(network_for_summary_stats):
+    report = network_for_summary_stats.summary_report()
+    correct_report = {'network':
+                          {'network_graph_info':
+                               {'Number of network links': 2, 'Number of network nodes': 3},
+                           'modes': {'Modes on network links': {'bike', 'walk', 'rail', 'car'},
+                                     'Number of links by mode': {'bike': 1, 'walk': 1, 'rail': 1, 'car': 1}},
+                           'osm_highway_tags': {'Number of links by tag': {'secondary': 1}}},
+                      'schedule':
+                          {'schedule_info':
+                               {'Number of services': 2, 'Number of routes': 3, 'Number of stops': 4},
+                           'modes': {'Modes in schedule': {'rail', 'bus'},
+                                     'Services by mode': {'rail': 1, 'bus': 1},
+                                     'PT stops by mode': {'rail': 2, 'bus': 2}},
+                           'accessibility_tags': {'Stops with tag bikeAccessible': 1,
+                                                  'Unique values for bikeAccessible tag': {'true'},
+                                                  'Stops with tag carAccessible': 1,
+                                                  'Unique values for carAccessible tag': {'true'}}}}
+    assert_semantically_equal(report, correct_report)
