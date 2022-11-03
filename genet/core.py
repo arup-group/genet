@@ -2264,40 +2264,36 @@ class Network:
             slope_dict[link_id] = {'slope': link_slope}
 
         return slope_dict
-
-    def split_link_at_point(self, link_id, x=None, y=None, node_id=None):
+    
+    def split_link_at_node(self, link_id, node_id):
         """
-        Takes a link and point coordinates, and splits the link at the point to create 2 new links;
+        Takes a link and node, and splits the link at the point to create 2 new links;
         the old link is then deleted.
+        Unlike `split_link_at_point` this allows multiple links being split using the same mode - meaning they are
+        connected and using the same junction, e.g. two links going in opposite directions. However, the node has to
+        be situated on the geometry of the links involved so it's recommended you use
+        `genet.spatial.snap_point_to_line` to align the node before adding it.
         :param link_id: ID of the link to split
-        :param x: x-coordinates of the point to split at
-        :param y: y-coordinates of the point to split at
-        :param node_id: Suggested ID for the resulting node in the graph
+        :param node_id: ID of the node in the graph to split at.
         :return: None
         """
-        if node_id is None:
-            node_id = self.generate_index_for_node()
-        elif self.has_node(node_id):
-            logging.warning(f'Node with ID {node_id} already exists. Generating new index.')
-            node_id = self.generate_index_for_node()
         # check if point is on the link LineString
-        point = Point(x, y)
+        node_attribs = self.node(node_id)
+        point = Point(node_attribs['x'], node_attribs['y'])
         link_attribs = self.link(link_id)
-        from_node = link_attribs['from']
-        to_node = link_attribs['to']
-        from_node = self.node(from_node)
-        to_node = self.node(to_node)
+        from_node = self.node(link_attribs['from'])
+        to_node = self.node(link_attribs['to'])
         if 'geometry' in link_attribs:
             line = link_attribs['geometry']
         else:
             line = LineString([(float(from_node['x']), float(from_node['y'])),
                                (float(to_node['x']), float(to_node['y']))])
 
-        # find nearest point on the link line - for geometry splitting, the point should be on the line
-        point = spatial.snap_point_to_line(point, line)
-
-        node_attributes = {'id': node_id, 'x': point.x, 'y': point.y}
-        self.add_node(node_id, node_attributes)
+        if point.distance(spatial.snap_point_to_line(point, line, distance_threshold=0)) > 1:
+            raise exceptions.MisalignedNodeError(
+                f"Node: {node_id} does not lie on the geometry of the link: {link_id} consider using the "
+                f"`genet.spatial.snap_point_to_line` method to align the node before adding it, or using "
+                f"`split_link_at_point` which adds a node for you.")
 
         # create 2 new links: from_node -> new_node ; new_node -> to_node
         new_link_1, new_link_2 = self.generate_indices_for_n_edges(2)
@@ -2321,4 +2317,39 @@ class Network:
         self.add_links(links)
         self.remove_link(link_id)
 
-        return {'node_attributes': node_attributes, 'links': links}
+        return {'node_attributes': node_attribs, 'links': links}
+
+    def split_link_at_point(self, link_id, x=None, y=None, node_id=None):
+        """
+        Takes a link and point coordinates, and splits the link at the point to create 2 new links;
+        the old link is then deleted. A new node is added too
+        :param link_id: ID of the link to split
+        :param x: x-coordinates of the point to split at
+        :param y: y-coordinates of the point to split at
+        :param node_id: Suggested ID for the resulting node in the graph
+        :return: updates the graph, returns data for node and links that were added
+        """
+        if node_id is None:
+            node_id = self.generate_index_for_node()
+        elif self.has_node(node_id):
+            logging.warning(f'Node with ID {node_id} already exists. Generating new index.')
+            node_id = self.generate_index_for_node()
+
+        # align the point if not on the link LineString
+        point = Point(x, y)
+        link_attribs = self.link(link_id)
+        from_node = self.node(link_attribs['from'])
+        to_node = self.node(link_attribs['to'])
+        if 'geometry' in link_attribs:
+            line = link_attribs['geometry']
+        else:
+            line = LineString([(float(from_node['x']), float(from_node['y'])),
+                               (float(to_node['x']), float(to_node['y']))])
+
+        # find nearest point on the link line - for geometry splitting, the point should be on the line
+        point = spatial.snap_point_to_line(point, line)
+
+        node_attributes = {'id': node_id, 'x': point.x, 'y': point.y}
+        self.add_node(node_id, node_attributes)
+
+        return self.split_link_at_node(link_id, node_id)
