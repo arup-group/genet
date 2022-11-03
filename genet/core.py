@@ -2347,7 +2347,6 @@ class Network:
 
         return slope_dict
 
-<<<<<<< HEAD
     def split_link_at_node(self, link_id, node_id, distance_threshold=1):
         """
         Takes a link and node, and splits the link at the point to create 2 new links;
