@@ -657,24 +657,16 @@ class Network:
         else:
             raise NotImplementedError('Only `intersect` and `within` options for `how` param.')
 
-    def add_node(self, node: Union[str, int], attribs: dict = None, silent: bool = False):
+    def add_node(self, node: Union[str, int], attribs: dict, silent: bool = False):
         """
         Adds a node.
         :param node:
-        :param attribs: should include spatial information x,y in epsg cosistent with the network or lat lon in
-        epsg:4326
+        :param attribs: must include spatial information x,y in epsg consistent with the network,
+        or lat lon in epsg:4326
         :param silent: whether to mute stdout logging messages
         :return:
         """
-        if attribs is not None:
-            self.graph.add_node(node, **attribs)
-        else:
-            # TODO do not add nodes without spatial info
-            self.graph.add_node(node)
-        self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
-        if not silent:
-            logging.info(f'Added Node with index `{node}` and data={attribs}')
-        return node
+        return self.add_nodes({node: attribs}, silent=silent)[0]
 
     def add_nodes(self, nodes_and_attribs: dict, silent: bool = False, ignore_change_log: bool = False):
         """
@@ -686,25 +678,55 @@ class Network:
         reduce changelog bloat.
         :return:
         """
-        # check for clashing nodes
+        # check for spatial info
+        for node_id, attribs in nodes_and_attribs.items():
+            keys = set(attribs.keys())
+            if not ({'lat', 'lon'}.issubset(keys) or {'x', 'y'}.issubset(keys)):
+                raise RuntimeError(f'Cannot add Node `{node_id}` without spatial information. '
+                                   f'Given attributes: `{keys}` are not sufficient. This method requires lat, lon '
+                                   f'attributes in epsg:4326 or x, y in epsg of the network: {self.epsg}')
+
+        # check for clashing node IDs
         clashing_node_ids = set(dict(self.nodes()).keys()) & set(nodes_and_attribs.keys())
 
         df_nodes = pd.DataFrame(nodes_and_attribs).T
         reindexing_dict = {}
-        if df_nodes.empty:
-            df_nodes = pd.DataFrame({'id': list(nodes_and_attribs.keys())})
-        elif ('id' not in df_nodes.columns) or (df_nodes['id'].isnull().any()):
+        if ('id' not in df_nodes.columns) or (df_nodes['id'].isnull().any()):
             df_nodes['id'] = df_nodes.index
+        if not {'lat', 'lon'}.issubset(set(df_nodes.columns)):
+            df_nodes[['lon', 'lat']] = float('nan')
+        if not {'x', 'y'}.issubset(set(df_nodes.columns)):
+            df_nodes[['x', 'y']] = float('nan')
+        if df_nodes[['lon', 'lat']].isnull().any().any():
+            missing_lat_lon = df_nodes[['lon', 'lat']].isnull().T.any()
+            df_nodes.loc[missing_lat_lon, ['lon', 'lat']] = pd.DataFrame(list(df_nodes.loc[missing_lat_lon].apply(
+                lambda row: spatial.change_proj(row['x'], row['y'], self.transformer), axis=1)),
+                columns=['lon', 'lat'], index=df_nodes.loc[missing_lat_lon].index
+            )
+        if df_nodes[['x', 'y']].isnull().any().any():
+            missing_x_y = df_nodes[['x', 'y']].isnull().T.any()
+            transformer = Transformer.from_crs('epsg:4326', self.epsg, always_xy=True)
+            df_nodes.loc[missing_x_y, ['x', 'y']] = pd.DataFrame(list(df_nodes.loc[missing_x_y].apply(
+                lambda row: spatial.change_proj(row['lon'], row['lat'], transformer), axis=1)),
+                columns=['x', 'y'], index=df_nodes.loc[missing_x_y].index
+            )
 
+        nodes_and_attribs_to_add = dict_support.merge_complex_dictionaries(
+            df_nodes[['x', 'y', 'lon', 'lat', 'id']].T.to_dict(), nodes_and_attribs)
+
+        # pandas is terrible with large numbers so we update them/generate them here
+        for node, attribs in nodes_and_attribs_to_add.items():
+            if 's2_id' not in nodes_and_attribs[node]:
+                attribs['s2_id'] = spatial.generate_index_s2(attribs['lat'], attribs['lon'])
         if clashing_node_ids:
+            logging.warning("Some proposed IDs for nodes are already being used. New, unique IDs will be found.")
             reindexing_dict = dict(
                 zip(clashing_node_ids, self.generate_indices_for_n_nodes(
                     len(nodes_and_attribs), avoid_keys=set(nodes_and_attribs.keys()))))
-            clashing_mask = df_nodes['id'].isin(reindexing_dict.keys())
-            df_nodes.loc[clashing_mask, 'id'] = df_nodes.loc[clashing_mask, 'id'].map(reindexing_dict)
-        df_nodes = df_nodes.set_index('id', drop=False)
-
-        nodes_and_attribs_to_add = df_nodes.T.to_dict()
+            for old_id, new_id in reindexing_dict.items():
+                nodes_and_attribs_to_add[new_id] = nodes_and_attribs_to_add[old_id]
+                nodes_and_attribs_to_add[new_id]['id'] = new_id
+                del nodes_and_attribs_to_add[old_id]
 
         self.graph.add_nodes_from([(node_id, attribs) for node_id, attribs in nodes_and_attribs_to_add.items()])
         if not ignore_change_log:
