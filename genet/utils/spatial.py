@@ -7,9 +7,10 @@ from sklearn.neighbors import BallTree
 import statistics
 import json
 from shapely.geometry import LineString, shape, GeometryCollection, MultiLineString, Point
-from shapely.ops import linemerge
+from shapely.ops import linemerge, split
 import pandas as pd
 import geopandas as gpd
+from typing import Tuple
 import genet.output.geojson as gngeojson
 from genet.exceptions import EmptySpatialTree
 
@@ -59,11 +60,27 @@ def snap_point_to_line(point: Point, line: LineString, distance_threshold=1e-8) 
     Not using 'contains' method due to too high accuracy required to evaluate to True.
     :param point: Point to be snapped to line, IF not close enough
     :param line: Line to use for the Point to snap to
+    :param distance_threshold: default 1e-8, acceptable distance of point from line before snapping
     :return:
     """
     if line.distance(point) > distance_threshold:
         point = line.interpolate(line.project(point))
     return point
+
+
+def split_line_at_point(point: Point, line: LineString) -> Tuple[LineString, LineString]:
+    """
+    If the point is not close enough to the line, it will be snapped.
+    Returns a two-tuple of linestring slices of given line, split at the given point. The order in the tuple preserves
+    the given line.
+    :param point: point used for dividing the line
+    :param line: line to divide
+    :return: if given line from A - B, the output will be (A - point, point - B) - subject to point needing to
+    snap closer to the line
+    """
+    # the point has to be on the line for shapely split
+    point = snap_point_to_line(point, line, distance_threshold=0)
+    return tuple(split(line, point))
 
 
 def decode_polyline_to_shapely_linestring(_polyline):

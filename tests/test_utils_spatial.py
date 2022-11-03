@@ -76,6 +76,20 @@ def test_snapping_point_over_threshold_moves_the_point():
     assert spatial.snap_point_to_line(point, line, distance_threshold) == Point(0, 0.5)
 
 
+def test_splitting_line_at_point_on_the_line():
+    line = LineString([(0, 0), (0, 1), (0, 2)])
+    point = Point(0, 0.5)
+    assert spatial.split_line_at_point(point, line) == \
+           (LineString([(0, 0), point]),  LineString([point, (0, 1), (0, 2)]))
+
+
+def test_splitting_line_at_point_away_from_the_line_splits_at_point_on_the_line():
+    line = LineString([(0, 0), (0, 1), (0, 2)])
+    point = Point(-0.5, 0.5)
+    assert spatial.split_line_at_point(point, line) == \
+           (LineString([(0, 0), (0, 0.5)]),  LineString([(0, 0.5), (0, 1), (0, 2)]))
+
+
 def test_compute_average_proximity_to_polyline():
     poly_1 = 'ahmyHzvYkCvCuCdDcBrB'
     poly_2 = 'ahmyHzvYGJyBbCGHq@r@EDIJGBu@~@SToAzAEFEDIJ'
