@@ -2825,7 +2825,6 @@ def test_invalid_network_routes_with_empty_route(route):
     assert n.invalid_network_routes() == ['route']
 
 
-<<<<<<< HEAD
 def test_generate_validation_report_with_pt2matsim_network(network_object_from_test_data):
     n = network_object_from_test_data
     report = n.generate_validation_report()
