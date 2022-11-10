@@ -2408,7 +2408,7 @@ class Network:
             df_routes = df_routes[df_routes['route'].apply(lambda x: link_id in x)]
             if not df_routes.empty:
                 df_routes['route'] = df_routes['route'].apply(
-                    lambda x: list(itertools.chain(*[i if i != link_id else [new_link_1, new_link_2] for i in x])))
+                    lambda x: replace_link_on_pt_route(x, {link_id: [new_link_1, new_link_2]}))
                 self.schedule.apply_attributes_to_routes(df_routes.T.to_dict())
             else:
                 logging.info("No PT routes were affected by this change")
@@ -2493,3 +2493,16 @@ class Network:
             report['schedule'] = self.schedule.summary()
 
         return report
+
+
+def replace_link_on_pt_route(route: List[str], map: Dict[str, Union[str, list]]):
+    new_route = []
+    for link in route:
+        if link in map:
+            if isinstance(map[link], list):
+                new_route += map[link]
+            else:
+                new_route.append(link)
+        else:
+            new_route.append(link)
+    return new_route

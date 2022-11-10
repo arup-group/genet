@@ -3563,12 +3563,12 @@ def test_splitting_link_updates_route_in_schedule(mocker):
                                  'vehicle_id': ['veh_1_bus']},
                           arrival_offsets=['00:00:00', '00:02:00'],
                           departure_offsets=['00:00:00', '00:02:00'],
-                          route=['A', 'l1', 'B'])]
+                          route=['AAA', 'l1', 'BBB'])]
         )]
     )
     n.split_link_at_point('l1', 528568.5, 177243)
 
-    assert n.schedule.route('1').route == ['A', new_link_1_ID, new_link_2_ID, 'B']
+    assert n.schedule.route('1').route == ['AAA', new_link_1_ID, new_link_2_ID, 'BBB']
 
 
 def test_generating_summary_report(network_for_summary_stats):
