@@ -1,5 +1,31 @@
 # Network Scenario Generator (GeNet)
 
+## Table of Contents
+
+- [Setup](#setup)
+  * [Using Docker](#using-docker--recommended-)
+    + [Building the image](#build-the-image)
+    + [Running GeNet from the container](#running-a-container-with-a-pre-baked-script)
+  * [Installation as a Python Package](#installation-as-a-python-package--if-you-don-t-want-to-use-docker-)
+    + [Native dependencies](#install-native-dependencies)
+    + [A note on the mathematical solver](#a-note-on-the-mathematical-solver)
+    + [Installing the native dependencies](#installing-the-native-dependencies-into-your-o-s)
+    + [Install dev prereqs](#install-dev-prereqs--use-equivalent-linux-or-windows-package-management-)
+    + [Install Python dependencies](#install-python-dependencies)
+    + [Install GeNet in to the virtual environment](#install-genet-in-to-the-virtual-environment)
+    + [Install Kepler dependencies](#install-kepler-dependencies)
+- [Developing GeNet](#developing-genet)
+  * [Unit tests](#run-the-unit-tests--from-root-dir-)
+  * [Code coverage report](#generate-a-unit-test-code-coverage-report)
+  * [Linting](#lint-the-python-code)
+  * [Smoke testing Jupyter notebooks](#smoke-test-the-jupyter-notebooks)
+
+<small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
+
+
+<small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
+
+
 [![DOI](https://zenodo.org/badge/265256468.svg)](https://zenodo.org/badge/latestdoi/265256468)
 
 This package provides tools to represent and work with a multi-modal transport network with public transport (PT)
@@ -120,14 +146,27 @@ jupyter nbextension enable --py widgetsnbextension
 ```
 
     
-### Unit Testing
+## Developing GeNet
 
-#### Run the unit tests (from root dir)
+We welcome community contributions to GeNet; please see our [guide to contributing](CONTRIBUTING.md) and our
+[community code of conduct](CODE_OF_CONDUCT.md). If you are making changes to the codebase, you should use these tools
+to verify that the code still works.
+
+### Run the unit tests (from root dir)
 
     python -m pytest -vv tests
 
-#### Generate a unit test code coverage report
+### Generate a unit test code coverage report
 
-To generate XML & HTML coverage reports to `reports/coverage`:
-    
+To generate an HTML coverage report at `reports/coverage/index.html`:
+
     ./bash_scripts/code-coverage.sh
+
+### Lint the python code
+
+    ./bash_scripts/lint-check.sh
+
+### Smoke test the Jupyter notebooks
+
+    ./bash_scripts/notebooks-smoke-test.sh
+
