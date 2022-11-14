@@ -2,6 +2,7 @@
 
 [![DOI](https://zenodo.org/badge/265256468.svg)](https://zenodo.org/badge/latestdoi/265256468)
 
+
 ## Table of Contents
 - [Overview](#overview)
 - [Setup](#setup)
@@ -21,6 +22,7 @@
   * [Code coverage report](#generate-a-unit-test-code-coverage-report)
   * [Linting](#lint-the-python-code)
   * [Smoke testing Jupyter notebooks](#smoke-test-the-jupyter-notebooks)
+
 
 ## Overview
 
@@ -43,9 +45,10 @@ and output networks.
 - Provide validation methods to check for simple errors such as: whether a `Route` has more than one `Stop` or that the
 underlying graph doesn't have any dead-ends or sources (a place which you can leave but cannot get back to).
 
+
 ## Setup
 
-To run pre-baked scripts that use genet in a number of different scenarios you can use docker, which will save you the
+To run pre-baked scripts that use GeNet in a number of different scenarios you can use docker, which will save you the
 work of installing GeNet locally:
 
 ### Using Docker
@@ -83,13 +86,13 @@ Docker is the recommended way to use GeNet if you do not plan to make any code c
       -od OUTPUT_DIR, --output_dir OUTPUT_DIR
                             Output directory for the reprojected network
 
-Otherwise, you can install `genet` as a python package, in your base installation of python or a virtual environment.
+Otherwise, you can [install `genet` as a python package](#installation-as-a-python-package), in your base installation
+of python or a virtual environment.
 Run the pre-baked scripts, write your own scripts or use IPython shell or Jupyter Notebook to load up a network, 
 inspect or change it and save it out to file. Check out the 
 [wiki pages](https://github.com/arup-group/genet/wiki/Functionality-and-Usage-Guide) and 
 [example jupyter notebooks](https://github.com/arup-group/genet/tree/master/notebooks) 
 for usage examples.
-
 
 ### Installation as a Python Package
 **Note:** if you plan only to _use_ GeNet rather than make code changes to it, you can avoid having to perform any
@@ -100,7 +103,6 @@ want to use Docker for some reason...
 GeNet uses some Python libraries that rely on underlying native libraries for things like geospatial calculations and
 linear programming solvers. Before you install GeNet's Python dependencies, you must first install these native
 libraries.
-
 
 #### A note on the mathematical solver
 **Note**: The default CBC solver is pre-installed inside [GeNet's Docker image](#using-docker), which can save you some
@@ -146,7 +148,7 @@ use the visualisation methods. To see the maps in a jupyter notebook, make sure 
 jupyter nbextension enable --py widgetsnbextension
 ```
 
-    
+
 ## Developing GeNet
 
 We welcome community contributions to GeNet; please see our [guide to contributing](CONTRIBUTING.md) and our
@@ -171,4 +173,3 @@ To generate an HTML coverage report at `reports/coverage/index.html`:
 ### Smoke test the Jupyter notebooks
 
     ./bash_scripts/notebooks-smoke-test.sh
-
