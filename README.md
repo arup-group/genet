@@ -1,7 +1,9 @@
 # Network Scenario Generator (GeNet)
 
-## Table of Contents
+[![DOI](https://zenodo.org/badge/265256468.svg)](https://zenodo.org/badge/latestdoi/265256468)
 
+## Table of Contents
+- [Overview](#overview)
 - [Setup](#setup)
   * [Using Docker](#using-docker--recommended-)
     + [Building the image](#build-the-image)
@@ -20,13 +22,7 @@
   * [Linting](#lint-the-python-code)
   * [Smoke testing Jupyter notebooks](#smoke-test-the-jupyter-notebooks)
 
-<small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
-
-
-<small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
-
-
-[![DOI](https://zenodo.org/badge/265256468.svg)](https://zenodo.org/badge/latestdoi/265256468)
+## Overview
 
 This package provides tools to represent and work with a multi-modal transport network with public transport (PT)
 services. It is based on [MATSim's](https://www.matsim.org/) representation of such networks. The underlying 
