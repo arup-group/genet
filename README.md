@@ -23,9 +23,10 @@ underlying graph doesn't have any dead-ends or sources (a place which you can le
 
 ## Setup
 
-To run pre-baked scripts that use genet in a number of different scenarios you can use docker:
+To run pre-baked scripts that use genet in a number of different scenarios you can use docker, which will save you the
+work of installing GeNet locally:
 
-### Using Docker
+### Using Docker (recommended)
 #### Build the image
 
     docker build -t "genet" .
@@ -65,28 +66,52 @@ inspect or change it and save it out to file. Check out the
 [example jupyter notebooks](https://github.com/arup-group/genet/tree/master/notebooks) 
 for usage examples.
 
+
+### Installation as a Python Package (if you don't want to use Docker)
+
+#### Install native dependencies
+GeNet uses some Python libraries that rely on underlying native libraries for things like geospatial calculations and
+linear programming solvers. Before you install GeNet's Python dependencies, you must first install these native
+libraries.
+
+**Note:** if you plan only to _use_ GeNet rather than make code changes to it, you can avoid having to perform any
+local installation by using [GeNet's Docker image](#using-docker).
+
+#### A note on the mathematical solver
+
+**Note**: The default CBC solver is pre-installed inside GeNet's Docker image, which can save you some effort
+
+To use methods which snap public transit to the graph, GeNet uses a mathematical solver. If you
+won't be using such functionality, you do not need to install this solver.
+Methods default to [CBC](https://projects.coin-or.org/Cbc), an open source solver.
+Another good open source choice is [GLPK](https://www.gnu.org/software/glpk/).
+The solver needs to support MILP - mixed integer linear programming.
+
+#### Installing the native dependencies into your O/S
+The commands for installing these native libraries vary according to the operating system you are using:
+
+| OS       | Commands |
+|----------|----------|
+|Mac OS    | `brew install spatialindex` <br/> `brew install gdal --HEAD` <br/> `brew install gdal` <br/> `brew tap coin-or-tools/coinor` <br/> `brew install coin-or-tools/coinor/cbc`|
+|Ubuntu    | `sudo apt install libspatialindex-dev` <br/> `sudo apt install libgdal-dev` <br/> `sudo apt install coinor-cbc`|
+
 #### Install dev prereqs (use equivalent linux or windows package management)
 
     brew install python3.7
     brew install virtualenv
-    
-#### Installation  
 
-Create and activate virtual environment
+#### Install Python dependencies
+Create and activate a Python virtual environment
 
     virtualenv -p python3.7 venv
     source venv/bin/activate
-    
-before installing dependencies you may need to install a dependency of `rtree`: `libspatialindex-dev`, the command 
-for linux:
-    
-    sudo apt-get install -y libspatialindex-dev
-    
+
+#### Install GeNet in to the virtual environment
 Finally install `GeNet`'s Python dependencies
 
     pip install -e .
 
-##### Install Kepler dependencies 
+#### Install Kepler dependencies
 
 Please follow [kepler's installation instructions](https://docs.kepler.gl/docs/keplergl-jupyter#install) to be able to 
 use the visualisation methods. To see the maps in a jupyter notebook, make sure you enable widgets.
@@ -94,14 +119,6 @@ use the visualisation methods. To see the maps in a jupyter notebook, make sure 
 jupyter nbextension enable --py widgetsnbextension
 ```
 
-##### Install Mathematical Solver  
-
-**Note**: The default CBC solver is installed inside GeNet's Docker image.
-
-To use methods which snap public transit to the graph, you will also need to install a mathematical solver. 
-Methods default to CBC, an open source solver which can be found [here](https://projects.coin-or.org/Cbc). 
-Another good open source choice is [GLPK](https://www.gnu.org/software/glpk/). 
-The solver needs to support MILP - mixed integer linear programming.
     
 ### Unit Testing
 
