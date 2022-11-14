@@ -151,9 +151,9 @@ jupyter nbextension enable --py widgetsnbextension
 
 We welcome community contributions to GeNet; please see our [guide to contributing](CONTRIBUTING.md) and our
 [community code of conduct](CODE_OF_CONDUCT.md). If you are making changes to the codebase, you should use these tools
-to verify that the code still works.
+to verify that the code still works. All of the following commands assume you are in the project's root directory.
 
-### Run the unit tests (from root dir)
+### Unit tests
 
     python -m pytest -vv tests
 
