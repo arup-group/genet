@@ -5,13 +5,13 @@
 ## Table of Contents
 - [Overview](#overview)
 - [Setup](#setup)
-  * [Using Docker](#using-docker--recommended-)
+  * [Using Docker](#using-docker)
     + [Building the image](#build-the-image)
     + [Running GeNet from the container](#running-a-container-with-a-pre-baked-script)
-  * [Installation as a Python Package](#installation-as-a-python-package--if-you-don-t-want-to-use-docker-)
-    + [Native dependencies](#install-native-dependencies)
+  * [Installation as a Python Package](#installation-as-a-python-package)
+    + [Native dependencies](#native-dependencies)
     + [A note on the mathematical solver](#a-note-on-the-mathematical-solver)
-    + [Installing the native dependencies](#installing-the-native-dependencies-into-your-o-s)
+    + [Installing the native dependencies](#installing-the-native-dependencies)
     + [Install dev prereqs](#install-dev-prereqs--use-equivalent-linux-or-windows-package-management-)
     + [Install Python dependencies](#install-python-dependencies)
     + [Install GeNet in to the virtual environment](#install-genet-in-to-the-virtual-environment)
@@ -48,7 +48,9 @@ underlying graph doesn't have any dead-ends or sources (a place which you can le
 To run pre-baked scripts that use genet in a number of different scenarios you can use docker, which will save you the
 work of installing GeNet locally:
 
-### Using Docker (recommended)
+### Using Docker
+Docker is the recommended way to use GeNet if you do not plan to make any code changes.
+
 #### Build the image
 
     docker build -t "genet" .
@@ -89,35 +91,38 @@ inspect or change it and save it out to file. Check out the
 for usage examples.
 
 
-### Installation as a Python Package (if you don't want to use Docker)
+### Installation as a Python Package
+**Note:** if you plan only to _use_ GeNet rather than make code changes to it, you can avoid having to perform any
+local installation by using [GeNet's Docker image](#using-docker). If you are going to make code changes, or you don't
+want to use Docker for some reason...
 
-#### Install native dependencies
+#### Native dependencies
 GeNet uses some Python libraries that rely on underlying native libraries for things like geospatial calculations and
 linear programming solvers. Before you install GeNet's Python dependencies, you must first install these native
 libraries.
 
-**Note:** if you plan only to _use_ GeNet rather than make code changes to it, you can avoid having to perform any
-local installation by using [GeNet's Docker image](#using-docker).
 
 #### A note on the mathematical solver
+**Note**: The default CBC solver is pre-installed inside [GeNet's Docker image](#using-docker), which can save you some
+installation effort
 
-**Note**: The default CBC solver is pre-installed inside GeNet's Docker image, which can save you some effort
-
-To use methods which snap public transit to the graph, GeNet uses a mathematical solver. If you
-won't be using such functionality, you do not need to install this solver.
+To use methods which snap public transit to the graph, GeNet uses a mathematical solver. If you won't be using such
+functionality, you do not need to install this solver.
 Methods default to [CBC](https://projects.coin-or.org/Cbc), an open source solver.
 Another good open source choice is [GLPK](https://www.gnu.org/software/glpk/).
-The solver needs to support MILP - mixed integer linear programming.
+The solver you use needs to support MILP - mixed integer linear programming.
 
-#### Installing the native dependencies into your O/S
-The commands for installing these native libraries vary according to the operating system you are using:
+#### Installing the native dependencies
+The commands for installing the necessary native libraries vary according to the operating system you are using, for
+example:
 
 | OS       | Commands |
 |----------|----------|
 |Mac OS    | `brew install spatialindex` <br/> `brew install gdal --HEAD` <br/> `brew install gdal` <br/> `brew tap coin-or-tools/coinor` <br/> `brew install coin-or-tools/coinor/cbc`|
 |Ubuntu    | `sudo apt install libspatialindex-dev` <br/> `sudo apt install libgdal-dev` <br/> `sudo apt install coinor-cbc`|
 
-#### Install dev prereqs (use equivalent linux or windows package management)
+#### Install dev prereqs
+(Use equivalent linux or Windows package management as appropriate for your environment)
 
     brew install python3.7
     brew install virtualenv
