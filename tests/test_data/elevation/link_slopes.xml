@@ -1,0 +1,3 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE objectAttributes SYSTEM "http://matsim.org/files/dtd/objectattributes_v1.dtd">
+<objectAttributes><object id="0"><attribute name="slope" class="java.lang.Double">{'slope': 2.861737280890912}</attribute></object><object id="1"><attribute name="slope" class="java.lang.Double">{'slope': -0.1}</attribute></object></objectAttributes>
