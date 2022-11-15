@@ -1,5 +1,7 @@
 import rioxarray
 import numpy as np
+from lxml import etree
+import os
 
 
 def get_elevation_image(elevation_tif):
@@ -60,3 +62,22 @@ def validation_report_for_node_elevation(elev_dict, low_limit=-50, mont_blanc_he
                    'extremely_low_values_dict': too_low}}
 
     return report
+
+
+def write_slope_xml(links, output_dir):
+    fname = os.path.join(output_dir, 'link_slopes.xml')
+    print('Writing {}'.format(fname))
+
+    with open(fname, "wb") as f, etree.xmlfile(f, encoding='UTF-8') as xf:
+        xf.write_declaration(
+            doctype='<!DOCTYPE objectAttributes SYSTEM "http://matsim.org/files/dtd/objectattributes_v1.dtd">')
+        with xf.element("objectAttributes"):
+            for link_id, slope in links.items():
+                with xf.element("object", {'id': link_id}):
+                    attrib = {
+                        'name': 'slope',
+                        'class': 'java.lang.Double',
+                    }
+                    rec = etree.Element("attribute", attrib)
+                    rec.text = str(slope)
+                    xf.write(rec)
