@@ -5,7 +5,6 @@ import os
 from tests.fixtures import assert_semantically_equal
 from tests import xml_diff
 
-
 @pytest.fixture()
 def slope_xml_file():
     return os.path.abspath(
