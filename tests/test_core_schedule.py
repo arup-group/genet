@@ -8,7 +8,7 @@ from geopandas.testing import assert_geodataframe_equal
 
 from genet.exceptions import ServiceIndexError, ConflictingStopData, InconsistentVehicleModeError
 from genet.input import read, matsim_reader, gtfs_reader
-from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types
+from genet.schedule_elements import Schedule, Service, Route, Stop, read_vehicle_types, verify_graph_schema
 from genet.utils import plot, spatial
 from genet.validate import schedule as schedule_validation
 from tests.fixtures import *
@@ -1971,6 +1971,14 @@ def test_generating_trips_from_headway_creates_trips_with_vehicles(schedule):
          'vehicle_id': ['veh_bus_1_01:00:00', 'veh_bus_1_01:20:00', 'veh_bus_1_01:40:00', 'veh_bus_1_02:00:00',
                         'veh_bus_1_02:30:00', 'veh_bus_1_03:00:00']}
     )
+
+
+def test_generating_trips_from_headway_preserves_graph_schema(schedule):
+    verify_graph_schema(schedule.graph())
+
+    schedule.generate_trips_from_headway('1', {('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
+
+    verify_graph_schema(schedule.graph())
 
 
 def test_generating_trips_from_headway_updates_vehicles(schedule):
