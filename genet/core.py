@@ -780,7 +780,7 @@ class Network:
         return self.add_links(df_edges.T.to_dict(), silent=silent, ignore_change_log=ignore_change_log)
 
     def add_link(self, link_id: Union[str, int], u: Union[str, int], v: Union[str, int], multi_edge_idx: int = None,
-                 attribs: dict = None, silent: bool = False):
+                 attribs: dict = None, silent: bool = False, calculate_length: bool = False):
         """
         Adds an link between u and v with id link_id, if available. If a link between u and v already exists,
         adds an additional one.
@@ -791,6 +791,7 @@ class Network:
         Will generate new index if already used.
         :param attribs:
         :param silent: whether to mute stdout logging messages
+        :param calculate_length: whether to calculate length and add it as an attribute
         :return:
         """
         if link_id in self.link_id_mapping:
@@ -809,8 +810,14 @@ class Network:
             raise RuntimeError('Multi index key needs to be an integer')
 
         self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
-        # TODO calculate length of link if not provided
+
         compulsory_attribs = {'from': u, 'to': v, 'id': link_id}
+        if calculate_length and 'length' not in attribs.keys():
+            u_s2_id = self.node(u)['s2_id']
+            v_s2_id = self.node(v)['s2_id']
+            length = spatial.distance_between_s2cellids(u_s2_id, v_s2_id)
+            compulsory_attribs = {'from': u, 'to': v, 'id': link_id, 'length': length}
+
         if attribs is None:
             attribs = compulsory_attribs
         else:
