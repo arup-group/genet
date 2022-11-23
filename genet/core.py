@@ -812,16 +812,18 @@ class Network:
         self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
 
         compulsory_attribs = {'from': u, 'to': v, 'id': link_id}
-        if calculate_length and 'length' not in attribs.keys():
-            u_s2_id = self.node(u)['s2_id']
-            v_s2_id = self.node(v)['s2_id']
-            length = spatial.distance_between_s2cellids(u_s2_id, v_s2_id)
-            compulsory_attribs = {'from': u, 'to': v, 'id': link_id, 'length': length}
 
         if attribs is None:
             attribs = compulsory_attribs
         else:
             attribs = {**attribs, **compulsory_attribs}
+
+        if calculate_length and 'length' not in attribs.keys():
+            u_s2_id = self.node(u)['s2_id']
+            v_s2_id = self.node(v)['s2_id']
+            length = spatial.distance_between_s2cellids(u_s2_id, v_s2_id)
+            attribs['length'] = length
+
         self.graph.add_edge(u, v, key=multi_edge_idx, **attribs)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
         if not silent:

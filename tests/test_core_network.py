@@ -1101,6 +1101,27 @@ def test_add_link_adds_edge_to_graph_without_attribs():
     assert n.link_id_mapping['0'] == {'from': 1, 'to': 2, 'multi_edge_idx': 0}
 
 
+def test_add_link_calculates_new_link_length():
+    n = Network('epsg:27700')
+    n.add_node('101982',
+                {'id': '101982',
+                 'x': '528704.1425925883',
+                 'y': '182068.78193707118',
+                 'lon': -0.14625948709424305,
+                 'lat': 51.52287873323954,
+                 's2_id': 5221390329378179879})
+    n.add_node('101986',
+                {'id': '101986',
+                 'x': '528835.203274008',
+                 'y': '182006.27331298392',
+                 'lon': -0.14439428709377497,
+                 'lat': 51.52228713323965,
+                 's2_id': 5221390328605860387})
+    n.add_link('0', '101982', '101982', calculate_length=True)
+    l = 0
+    assert n.link('0')['length'] == l
+
+
 def test_adding_multiple_links():
     n = Network('epsg:27700')
     n.add_links({'0': {'from': 1, 'to': 2}, '1': {'from': 2, 'to': 3}})
