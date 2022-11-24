@@ -886,7 +886,7 @@ class Route(ScheduleElement):
             'vehicle_id': [f'veh_{self.mode}_{self.id}_{t}' for t in new_trip_departures]
         }
         if 'trips' in self.__dict__:
-            self._graph.graph['routes']['trips'] = trips
+            self._graph.graph['routes'][self.id]['trips'] = trips
             self._graph.graph['change_log'] = self.change_log().modify(
                 object_type='route', old_id=self.id, old_attributes=self.trips, new_id=self.id, new_attributes=trips)
         self.trips = trips
