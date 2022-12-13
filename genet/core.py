@@ -2378,6 +2378,11 @@ class Network:
                 f"`genet.spatial.snap_point_to_line` method to align the node before adding it, or using "
                 f"`split_link_at_point` which adds a node for you. You can also relax the `distance_threshold` of "
                 f"this method. The unit of distance will depend on the projection the network is in.")
+        if distance_threshold > 1:
+            logging.warning("This method does not move the given node closer to the link being split. Setting the "
+                            "distance threshold too high will result in a network that looks disconnected when "
+                            "plotted on a map. We advise moving the node closer, rather than increasing the threshold, "
+                            "or using the `split_link_at_point` method, which will move and add the node instead.")
 
         # create 2 new links: from_node -> new_node ; new_node -> to_node
         new_link_1, new_link_2 = self.generate_indices_for_n_edges(2)
