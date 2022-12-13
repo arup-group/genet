@@ -379,14 +379,14 @@ def test_adding_the_same_networks():
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
+    n_left.add_link('1', '1', '2', attribs={'modes': ['walk'], 'length': 145})
 
     n_right = Network('epsg:27700')
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                            'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                            'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
+    n_right.add_link('1', '1', '2', attribs={'modes': ['walk'], 'length': 145})
 
     n_left.add(n_right)
     assert_semantically_equal(dict(n_left.nodes()), {
@@ -394,7 +394,7 @@ def test_adding_the_same_networks():
               'lat': 51.52287873323954, 's2_id': 5221390329378179879},
         '2': {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392, 'lon': -0.14439428709377497,
               'lat': 51.52228713323965, 's2_id': 5221390328605860387}})
-    assert_semantically_equal(dict(n_left.links()), {'1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}})
+    assert_semantically_equal(dict(n_left.links()), {'1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1', 'length': 145}})
 
 
 def test_adding_the_same_networks_but_with_differing_projections():
@@ -403,14 +403,14 @@ def test_adding_the_same_networks_but_with_differing_projections():
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
+    n_left.add_link('1', '1', '2', attribs={'modes': ['walk'], 'length': 145})
 
     n_right = Network('epsg:27700')
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                            'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                            'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
+    n_right.add_link('1', '1', '2', attribs={'modes': ['walk'], 'length': 145})
     n_right.reproject('epsg:4326')
 
     n_left.add(n_right)
@@ -419,7 +419,7 @@ def test_adding_the_same_networks_but_with_differing_projections():
               'lat': 51.52287873323954, 's2_id': 5221390329378179879},
         '2': {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392, 'lon': -0.14439428709377497,
               'lat': 51.52228713323965, 's2_id': 5221390328605860387}})
-    assert_semantically_equal(dict(n_left.links()), {'1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}})
+    assert_semantically_equal(dict(n_left.links()), {'1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1', 'length': 145}})
 
 
 def test_adding_networks_with_clashing_node_ids_does_not_duplicate_data():
@@ -428,14 +428,14 @@ def test_adding_networks_with_clashing_node_ids_does_not_duplicate_data():
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
+    n_left.add_link('1', '1', '2', attribs={'modes': ['walk'], 'length': 145})
 
     n_right = Network('epsg:27700')
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                             'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                             'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
+    n_right.add_link('1', '1', '2', attribs={'modes': ['walk'], 'length': 145})
 
     n_left.add(n_right)
     assert_semantically_equal(dict(n_left.nodes()), {
@@ -443,7 +443,7 @@ def test_adding_networks_with_clashing_node_ids_does_not_duplicate_data():
               'lat': 51.52287873323954, 's2_id': 5221390329378179879},
         '2': {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392, 'lon': -0.14439428709377497,
               'lat': 51.52228713323965, 's2_id': 5221390328605860387}})
-    assert_semantically_equal(dict(n_left.links()), {'1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}})
+    assert_semantically_equal(dict(n_left.links()), {'1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1', 'length': 145}})
 
 
 def test_adding_networks_with_clashing_link_ids():
@@ -452,14 +452,14 @@ def test_adding_networks_with_clashing_link_ids():
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
+    n_left.add_link('1', '1', '2', attribs={'modes': ['walk'], 'length': 145})
 
     n_right = Network('epsg:27700')
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                            'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                            'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_right.add_link('10', '1', '2', attribs={'modes': ['walk']})
+    n_right.add_link('10', '1', '2', attribs={'modes': ['walk'], 'length': 145})
 
     n_left.add(n_right)
     assert_semantically_equal(dict(n_left.nodes()), {
@@ -467,7 +467,7 @@ def test_adding_networks_with_clashing_link_ids():
               'lat': 51.52287873323954, 's2_id': 5221390329378179879},
         '2': {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392, 'lon': -0.14439428709377497,
               'lat': 51.52228713323965, 's2_id': 5221390328605860387}})
-    assert_semantically_equal(dict(n_left.links()), {'1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}})
+    assert_semantically_equal(dict(n_left.links()), {'1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1', 'length': 145}})
 
 
 def test_adding_networks_with_clashing_multiindices():
@@ -476,14 +476,14 @@ def test_adding_networks_with_clashing_multiindices():
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_left.add_link('1', '1', '2', 0, attribs={'modes': ['walk']})
+    n_left.add_link('1', '1', '2', 0, attribs={'modes': ['walk'], 'length': 145})
 
     n_right = Network('epsg:27700')
     n_right.add_node('1', {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_right.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_right.add_link('1', '1', '2', 0, attribs={'modes': ['walk', 'bike']})
+    n_right.add_link('1', '1', '2', 0, attribs={'modes': ['walk', 'bike'], 'length': 145})
 
     assert len(list(n_left.nodes())) == 2
     assert n_left.node('1') == {'id': '1', 'x': 528704.1425925883, 'y': 182068.78193707118,
@@ -491,8 +491,8 @@ def test_adding_networks_with_clashing_multiindices():
     assert n_left.node('2') == {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                                 'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387}
     assert len(n_left.link_id_mapping) == 1
-    assert n_left.link('1') == {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}
-    assert n_left.graph['1']['2'][0] == {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}
+    assert n_left.link('1') == {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1', 'length': 145}
+    assert n_left.graph['1']['2'][0] == {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1', 'length': 145}
 
 
 def test_adding_disjoint_networks_with_unique_ids_results_in_distinct_data_together():
@@ -501,14 +501,14 @@ def test_adding_disjoint_networks_with_unique_ids_results_in_distinct_data_toget
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
+    n_left.add_link('1', '1', '2', attribs={'modes': ['walk'], 'length': 145})
 
     n_right = Network('epsg:27700')
     n_right.add_node('10', {'id': '10', 'x': 1, 'y': 1,
                             'lon': 1, 'lat': 1, 's2_id': 1})
     n_right.add_node('20', {'id': '20', 'x': 1, 'y': 1,
                             'lon': 1, 'lat': 1, 's2_id': 2})
-    n_right.add_link('100', '10', '20', attribs={'modes': ['walk']})
+    n_right.add_link('100', '10', '20', attribs={'modes': ['walk'], 'length': 145})
 
     n_left.add(n_right)
     assert_semantically_equal(dict(n_left.nodes()), {'10': {'id': '10', 'x': 1, 'y': 1, 'lon': 1, 'lat': 1, 's2_id': 1},
@@ -519,8 +519,8 @@ def test_adding_disjoint_networks_with_unique_ids_results_in_distinct_data_toget
                                                      '2': {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                                                            'lon': -0.14439428709377497, 'lat': 51.52228713323965,
                                                            's2_id': 5221390328605860387}})
-    assert_semantically_equal(dict(n_left.links()), {'100': {'modes': ['walk'], 'from': '10', 'to': '20', 'id': '100'},
-                                                     '1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}})
+    assert_semantically_equal(dict(n_left.links()), {'100': {'modes': ['walk'], 'from': '10', 'to': '20', 'id': '100', 'length': 145},
+                                                     '1': {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1', 'length': 145}})
 
 
 def test_adding_disjoint_networks_with_clashing_ids():
@@ -529,14 +529,14 @@ def test_adding_disjoint_networks_with_clashing_ids():
                           'lon': -0.14625948709424305, 'lat': 51.52287873323954, 's2_id': 5221390329378179879})
     n_left.add_node('2', {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                           'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387})
-    n_left.add_link('1', '1', '2', attribs={'modes': ['walk']})
+    n_left.add_link('1', '1', '2', attribs={'modes': ['walk'], 'length': 145})
 
     n_right = Network('epsg:27700')
     n_right.add_node('1', {'id': '1', 'x': 1, 'y': 1,
                            'lon': 1, 'lat': 1, 's2_id': 1})
     n_right.add_node('2', {'id': '2', 'x': 1, 'y': 1,
                            'lon': 1, 'lat': 1, 's2_id': 2})
-    n_right.add_link('1', '1', '2', attribs={'modes': ['walk']})
+    n_right.add_link('1', '1', '2', attribs={'modes': ['walk'], 'length': 145})
 
     n_left.add(n_right)
     assert len(list(n_left.nodes())) == 4
@@ -545,7 +545,7 @@ def test_adding_disjoint_networks_with_clashing_ids():
     assert n_left.node('2') == {'id': '2', 'x': 528835.203274008, 'y': 182006.27331298392,
                                 'lon': -0.14439428709377497, 'lat': 51.52228713323965, 's2_id': 5221390328605860387}
     assert len(n_left.link_id_mapping) == 2
-    assert n_left.link('1') == {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1'}
+    assert n_left.link('1') == {'modes': ['walk'], 'from': '1', 'to': '2', 'id': '1', 'length': 145}
 
 
 def test_adding_simplified_network_and_not_throws_error():
@@ -1118,9 +1118,8 @@ def test_add_link_calculates_new_link_length():
                  'lon': -0.14439428709377497,
                  'lat': 51.52228713323965,
                  's2_id': 5221390328605860387})
-    n.add_link('0', '101982', '101982', calculate_length=True)
-    l = 0
-    assert n.link('0')['length'] == l
+    n.add_link('0', '101982', '101986')
+    assert n.link('0')['length'] == 145
 
 
 def test_adding_multiple_links():
@@ -2643,9 +2642,9 @@ def test_calculate_route_distance_with_links_that_dont_have_length_attrib():
     n.add_node(1, attribs={'x': 1, 'y': 2, 's2_id': 12345})
     n.add_node(3, attribs={'x': 1, 'y': 2, 's2_id': 345435})
     n.add_node(4, attribs={'x': 1, 'y': 2, 's2_id': 568767})
-    n.add_link('1', 1, 3)
-    n.add_link('2', 3, 4)
-    assert round(n.route_distance(['1', '2']), 6) == 0.013918
+    n.add_link('1', 1, 3, attribs={'length': 1})
+    n.add_link('2', 3, 4, attribs={'length': 2})
+    assert n.route_distance(['1', '2']) == 3
 
 
 def test_calculate_route_distance_returns_0_when_route_is_invalid():
@@ -3338,10 +3337,12 @@ def test_transforming_uneven_network_to_json():
                        'geometry': [528704.1425925883, 182068.78193707118]},
             '101986': {'id': '101986', 'x': '528835.203274008', 'y': '182006.27331298392', 'lon': -0.14439428709377497,
                        'lat': 51.52228713323965, 's2_id': 5221390328605860387,
-                       'geometry': [528835.203274008, 182006.27331298392]}}, 'links': {
-            '0': {'id': '0', 'from': '101982', 'to': '101986', 'freespeed': 4.0,
+                       'geometry': [528835.203274008, 182006.27331298392]}
+        },
+        'links': {
+            '0': {'id': '0', 'from': '101982', 'to': '101986', 'freespeed': 4.0, 'length': 145,
                   'geometry': 'ez~hinaBc~sze|`@gx|~W|uo|J', 'u': '101982', 'v': '101986'},
-            '1': {'id': '1', 'from': '101982', 'to': '101986', 'capacity': 5.0,
+            '1': {'id': '1', 'from': '101982', 'to': '101986', 'capacity': 5.0, 'length': 145,
                   'geometry': 'ez~hinaBc~sze|`@gx|~W|uo|J', 'u': '101982', 'v': '101986'}}}
     )
 
