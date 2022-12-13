@@ -363,10 +363,6 @@ def test_network_with_additional_node_attributes_reads_data_correctly(
     n = read.read_matsim(path_to_network=network_with_additional_node_attrib_xml_file, epsg='epsg:27700')
     data_from_xml = dict(n.nodes())
     # remove lat, lon, s2id which are generated upon read from x and y values
-    for k, v in data_from_xml.items():
-        del v['lat']
-        del v['lon']
-        del v['s2_id']
     assert_semantically_equal(data_from_xml, dict(network_with_additional_node_attrib.nodes()))
 
 

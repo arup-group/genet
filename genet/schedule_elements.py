@@ -27,6 +27,7 @@ import genet.validate.schedule as schedule_validation
 import networkx as nx
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 import yaml
 from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisationError, ServiceInitialisationError, \
     UndefinedCoordinateSystemError, ServiceIndexError, RouteIndexError, StopIndexError, ConflictingStopData, \
@@ -258,6 +259,149 @@ class ScheduleElement:
                 else:
                     return epsg
         return None
+
+    @abstractmethod
+    def service_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        pass
+
+    @abstractmethod
+    def route_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        pass
+
+    @abstractmethod
+    def stop_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        pass
+
+    @abstractmethod
+    def trips_with_stops_to_dataframe(self, gtfs_day='19700101') -> pd.DataFrame:
+        pass
+
+    def speed_geodataframe(self, network_factor=1.3, gdf_network_links=None) -> gpd.GeoDataFrame:
+        """
+        DataFrame of speed for PT routes, in metres/second for each stop pair.
+        Note well:
+         - The unit of metres is not guaranteed - this assumes the object is in local metre-based projection.
+         - If you pass a GeoDataFrame of genet.Network links you will get routed speeds as well as teleported with a
+         factor
+         - Assumes genet.Network links geometry if passed. If not, gives the stop-to-stop line geometry
+
+        :param network_factor: Network factor (default 1.3) to be applied to the Euclidean distance between stops
+        :param gdf_network_links: GeoDataFrame of genet.Network links, can be obtained using:
+            genet.Network.to_geodataframe()['links']
+        :return:
+        """
+        df = self.trips_with_stops_to_dataframe()
+        df['time'] = (df['arrival_time'] - df['departure_time']).dt.total_seconds()
+        df = df[['service_id', 'service_name', 'route_id', 'route_name', 'mode', 'from_stop', 'to_stop',
+                 'from_stop_name', 'to_stop_name', 'time']].drop_duplicates()
+        df['distance'] = df.apply(
+            lambda row: spatial.distance_between_s2cellids(
+                self._graph.nodes[row['from_stop']]['s2_id'],
+                self._graph.nodes[row['to_stop']]['s2_id']
+            ), axis=1
+        ) * network_factor
+        df['speed'] = df['distance'] / df['time']
+        if gdf_network_links is not None:
+            network_distance_df = use_schedule.network_routed_distance_gdf(self, gdf_network_links)
+            df = gpd.GeoDataFrame(
+                df.merge(
+                    network_distance_df,
+                    left_on=['route_id', 'from_stop', 'to_stop'],
+                    right_on=['id', 'from_stop', 'to_stop']
+                )
+            )
+            df['routed_speed'] = df['network_distance'] / df['time']
+        else:
+            df['network_distance'] = float('nan')
+            df['routed_speed'] = float('nan')
+            schedule_links = self.to_geodataframe()['links']
+            df = gpd.GeoDataFrame(
+                pd.merge(
+                    df,
+                    schedule_links[['u', 'v', 'geometry']],
+                    left_on=['from_stop', 'to_stop'],
+                    right_on=['u', 'v']
+                ),
+                crs=schedule_links.crs)
+            df.drop(['u', 'v'], axis=1, inplace=True)
+        return df.drop(['time', 'distance', 'network_distance'], axis=1)
+
+    def average_route_speeds(self, network_factor=1.3) -> dict:
+        """
+        Average speed for each route in object
+        :param network_factor: Does not consider network routes, network factor (default 1.3) is applied to Euclidean
+            distance.
+        :return: Dictionary {route_ID: average_speed_in_m_per_s}
+        """
+        df = self.speed_geodataframe(network_factor=network_factor)
+        # computing with all trips is redundant as the speeds for each trip for the same route are the same we can
+        # select the first or random trip from each route, but depending on how it's done, it might not improve
+        # performance very much
+        return df.groupby('route_id')['speed'].mean().to_dict()
+
+    @abstractmethod
+    def trips_to_dataframe(self, gtfs_day='19700101'):
+        pass
+
+    def trips_headways(self, from_time=None, to_time=None, gtfs_day='19700101'):
+        """
+        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
+        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
+        Adds two columns: headway and headway_mins by calculating the time difference in ordered trip departures for
+        each unique route.
+        This can also be done for a specific time frame by specifying from_time and to_time (or just one of them).
+        :param from_time: "HH:MM:SS" format, used as lower time bound for subsetting
+        :param to_time: "HH:MM:SS" format, used as upper time bound for subsetting
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
+        df = self.trips_to_dataframe(gtfs_day=gtfs_day).sort_values(
+            ['route_id', 'trip_departure_time']).reset_index(drop=True)
+
+        year = int(gtfs_day[:4])
+        month = int(gtfs_day[4:6])
+        day = int(gtfs_day[6:8])
+
+        df = df.groupby('route_id').apply(get_headway)
+        df['headway_mins'] = (pd.to_timedelta(df['headway']).dt.total_seconds() / 60)
+
+        if from_time is not None:
+            hour, minute, second = list(map(int, from_time.split(':')))
+            df = df[df['trip_departure_time'] >= datetime(year, month, day, hour, minute, second)]
+        if to_time is not None:
+            hour, minute, second = list(map(int, to_time.split(':')))
+            df = df[df['trip_departure_time'] <= datetime(year, month, day, hour, minute, second)]
+
+        return df
+
+    def headway_stats(self, from_time=None, to_time=None, gtfs_day='19700101'):
+        """
+        Generates a DataFrame calculating mean headway in minutes for all routes, with their service ID.
+        This can also be done for a specific time frame by specifying from_time and to_time (or just one of them).
+        :param from_time: "HH:MM:SS" format, used as lower time bound for subsetting
+        :param to_time: "HH:MM:SS" format, used as upper time bound for subsetting
+        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
+        :return:
+        """
+        df = self.trips_headways(from_time=from_time, to_time=to_time, gtfs_day=gtfs_day)
+
+        groupby_cols = []
+        if 'service_id' in df.columns:
+            groupby_cols.append('service_id')
+        groupby_cols += ['route_id', 'mode']
+
+        # first trips don't have a headway, they are kept as NaT and NaN
+        if not df.empty:
+            route_groups = df.groupby(groupby_cols)
+            df = route_groups.describe()
+            df = df['headway_mins'][['mean', 'std', 'max', 'min']]
+            df['trip_count'] = route_groups.apply(len)
+            df.reset_index(inplace=True)
+            df = df.rename(
+                columns={'mean': 'mean_headway_mins', 'std': 'std_headway_mins', 'max': 'max_headway_mins',
+                         'min': 'min_headway_mins'}
+            )
+        return df
 
     def to_geodataframe(self):
         """
@@ -628,6 +772,38 @@ class Route(ScheduleElement):
         """
         yield self
 
+    def service_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Service IDs, with attribute data stored for Services under `key`
+        :param keys: list of either a string e.g. 'name', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        raise ServiceIndexError('A Route cannot generate a DataFrame with Services data')
+
+    def route_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Route IDs, with attribute data stored for Routes under `key`
+        :param keys: list of either a string e.g. 'mode', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=[(self.id, self.__dict__)], keys=keys, index_name=index_name)
+
+    def stop_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Stop IDs, with attribute data stored for Stops under `key`
+        :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=[(s.id, s.__dict__) for s in self.stops()], keys=keys, index_name=index_name)
+
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
         This method exists for backwards compatibility only
@@ -684,6 +860,7 @@ class Route(ScheduleElement):
         :return:
         """
         df = pd.DataFrame(self.trips)
+
         df['route_id'] = self.id
         df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
         df['mode'] = self.mode
@@ -707,7 +884,7 @@ class Route(ScheduleElement):
             'vehicle_id': [f'veh_{self.mode}_{self.id}_{t}' for t in new_trip_departures]
         }
         if 'trips' in self.__dict__:
-            self._graph.graph['routes']['trips'] = trips
+            self._graph.graph['routes'][self.id]['trips'] = trips
             self._graph.graph['change_log'] = self.change_log().modify(
                 object_type='route', old_id=self.id, old_attributes=self.trips, new_id=self.id, new_attributes=trips)
         self.trips = trips
@@ -757,20 +934,29 @@ class Route(ScheduleElement):
     def has_network_route(self):
         return self.route
 
+    def divide_network_route_between_stops(self):
+        if self.has_network_route():
+            stops_linkrefids = [self._graph.nodes[i]['linkRefId'] for i in self.ordered_stops]
+            if not stops_linkrefids:
+                raise RuntimeError('This Stops in this Route are not snapped to the network via `linkRefId` attribute')
+            return use_schedule.divide_network_route(self.route, stops_linkrefids)
+        else:
+            raise RuntimeError('This Route does not have a network route to divide')
+
     def has_correctly_ordered_route(self):
         if self.has_network_route():
-            # todo replace by accessing graph nodes
-            stops_linkrefids = [stop.linkRefId for stop in self.stops() if stop.has_linkRefId()]
+            stops_linkrefids = [self._graph.nodes[i]['linkRefId'] for i in self.ordered_stops if
+                                'linkRefId' in self._graph.nodes[i]]
             if len(stops_linkrefids) != len(self.ordered_stops):
                 logging.warning('Not all stops reference network link ids.')
                 return False
-            # consecutive stops can snap to the same link but it only needs to be mentioned once
-            stops_linkrefids = [stops_linkrefids[0]] + [stops_linkrefids[i] for i in range(1, len(stops_linkrefids)) if
-                                                        stops_linkrefids[i - 1] != stops_linkrefids[i]]
-            for link_id in self.route:
-                if link_id == stops_linkrefids[0]:
-                    stops_linkrefids = stops_linkrefids[1:]
-            if not stops_linkrefids:
+            divided_route = self.divide_network_route_between_stops()
+            if not divided_route:
+                return False
+            reassembled_route = sum(divided_route, [])
+            reassembled_route = [reassembled_route[0]] + [reassembled_route[i] for i in range(1, len(reassembled_route))
+                                                          if reassembled_route[i - 1] != reassembled_route[i]]
+            if (len(stops_linkrefids) - 1) == len(divided_route) and (reassembled_route == self.route):
                 return True
         return False
 
@@ -1081,6 +1267,41 @@ class Service(ScheduleElement):
         :return:
         """
         return self.kepler_map(output_dir, f'service_{self.id}_map', data=data)
+
+    def service_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Service IDs, with attribute data stored for Services under `key`
+        :param keys: list of either a string e.g. 'name', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=[(self.id, self.__dict__)], keys=keys, index_name=index_name)
+
+    def route_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Route IDs, with attribute data stored for Routes under `key`
+        :param keys: list of either a string e.g. 'mode', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=[(rid, self._graph.graph['routes'][rid]) for rid in self.route_ids()],
+            keys=keys,
+            index_name=index_name)
+
+    def stop_attribute_data(self, keys: Union[list, str], index_name: str = None):
+        """
+        Generates a pandas.DataFrame object indexed by Stop IDs, with attribute data stored for Stops under `key`
+        :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
+            e.g. {'attributes': {'osm:way:name': 'text'}}
+        :param index_name: optional, gives the index_name to dataframes index
+        :return: pandas.DataFrame
+        """
+        return graph_operations.build_attribute_dataframe(
+            iterator=[(s.id, s.__dict__) for s in self.stops()], keys=keys, index_name=index_name)
 
     def route_trips_with_stops_to_dataframe(self, gtfs_day='19700101'):
         """
@@ -1406,12 +1627,12 @@ class Schedule(ScheduleElement):
         # export scaled vehicles xml
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_vehicles(
-            output_dir, self.vehicles, self.vehicle_types, f"{int(capacity_scale*100)}_perc_vehicles.xml")
+            output_dir, self.vehicles, self.vehicle_types, f"{int(capacity_scale * 100)}_perc_vehicles.xml")
 
         self.vehicle_types = vehicle_types_dict
 
-        logging.info(f'Created scaled vehicle file for {int(capacity_scale*100)}% capacity & '
-                     f'{int(pce_scale*100)}% pce.')
+        logging.info(f'Created scaled vehicle file for {int(capacity_scale * 100)}% capacity & '
+                     f'{int(pce_scale * 100)}% pce.')
 
     def route_trips_to_dataframe(self, gtfs_day='19700101'):
         """
@@ -1447,35 +1668,6 @@ class Schedule(ScheduleElement):
                  trip_departure_time=np.concatenate(df['trip_departure_time'].values),
                  vehicle_id=np.concatenate(df['vehicle_id'].values))
         df['trip_departure_time'] = df['trip_departure_time'].apply(lambda x: use_schedule.sanitise_time(x, gtfs_day))
-        return df
-
-    def trips_headways(self, from_time=None, to_time=None, gtfs_day='19700101'):
-        """
-        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
-        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        Adds two columns: headway and headway_mins by calculating the time difference in ordered trip departures for
-        each unique route.
-        This can also be done for a specific time frame by specifying from_time and to_time (or just one of them).
-        :param from_time: "HH:MM:SS" format, used as lower time bound for subsetting
-        :param to_time: "HH:MM:SS" format, used as upper time bound for subsetting
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
-        :return:
-        """
-        df = self.trips_to_dataframe(gtfs_day=gtfs_day).sort_values(
-            ['route_id', 'trip_departure_time']).reset_index(drop=True)
-
-        year = int(gtfs_day[:4])
-        month = int(gtfs_day[4:6])
-        day = int(gtfs_day[6:8])
-        if from_time is not None:
-            hour, minute, second = list(map(int, from_time.split(':')))
-            df = df[df['trip_departure_time'] >= datetime(year, month, day, hour, minute, second)]
-        if to_time is not None:
-            hour, minute, second = list(map(int, to_time.split(':')))
-            df = df[df['trip_departure_time'] <= datetime(year, month, day, hour, minute, second)]
-
-        df = df.groupby('route_id').apply(get_headway)
-        df['headway_mins'] = (pd.to_timedelta(df['headway']).dt.total_seconds() / 60).fillna(0)
         return df
 
     def generate_trips_dataframe_from_headway(self, route_id, headway_spec: dict):
@@ -1522,25 +1714,6 @@ class Schedule(ScheduleElement):
         self.set_trips_dataframe(new_trips)
         self.vehicles = {**{veh_id: veh_type for veh_id in new_trips['vehicle_id']}, **self.vehicles}
         list(map(self.vehicles.pop, old_vehicles - set(new_trips['vehicle_id'])))
-
-    def headway_stats(self, from_time=None, to_time=None, gtfs_day='19700101'):
-        """
-        Generates a DataFrame calculating mean headway in minutes for all routes, with their service ID.
-        This can also be done for a specific time frame by specifying from_time and to_time (or just one of them).
-        :param from_time: "HH:MM:SS" format, used as lower time bound for subsetting
-        :param to_time: "HH:MM:SS" format, used as upper time bound for subsetting
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
-        :return:
-        """
-        df = self.trips_headways(from_time=from_time, to_time=to_time, gtfs_day=gtfs_day)
-
-        df = df.groupby(['service_id', 'route_id', 'mode']).describe()
-        df = df['headway_mins'][['mean', 'std', 'max', 'min', 'count']].reset_index()
-        df = df.rename(
-            columns={'mean': 'mean_headway_mins', 'std': 'std_headway_mins', 'max': 'max_headway_mins',
-                     'min': 'min_headway_mins', 'count': 'trip_count'}
-        )
-        return df
 
     def unused_vehicles(self):
         """
@@ -3073,7 +3246,7 @@ def read_vehicle_types(yml):
 
 
 def get_headway(group):
-    group['headway'] = group['trip_departure_time'].diff().fillna(pd.Timedelta(seconds=0))
+    group['headway'] = group['trip_departure_time'].diff()
     return group
 
 

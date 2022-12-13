@@ -4,6 +4,7 @@ from itertools import chain
 import json
 
 import geopandas as gpd
+import pandas as pd
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
 from shapely.geometry import Point, LineString
 
@@ -65,7 +66,8 @@ def save_geodataframe(gdf, filename, output_dir, include_shp_files=False):
             gdf.to_file(os.path.join(shp_files, f'{filename}.shp'))
 
 
-def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700101', include_shp_files=False):
+def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700101', include_shp_files=False,
+                                           schedule_network_factor=1.3, gdf_network_links=None):
     logging.info('Generating geojson standard outputs for schedule')
     schedule_links = schedule.to_geodataframe()['links'].to_crs("epsg:4326")
     df = schedule.trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
@@ -123,6 +125,30 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
             include_shp_files=include_shp_files
         )
 
+    logging.info(f'Generating stop-to-stop speed outputs with network_factor={schedule_network_factor}')
+    speed_dir = os.path.join(output_dir, 'speed')
+    speeds_gdf = schedule.speed_geodataframe(
+        network_factor=schedule_network_factor, gdf_network_links=gdf_network_links)
+    save_geodataframe(
+        speeds_gdf[['service_id', 'route_id', 'mode', 'from_stop', 'to_stop', 'routed_speed', 'geometry']],
+        filename='pt_network_speeds',
+        output_dir=speed_dir,
+        include_shp_files=include_shp_files
+    )
+    speeds_gdf = gpd.GeoDataFrame(
+        pd.merge(
+            speeds_gdf.drop('geometry', axis=1),
+            schedule_links[['u', 'v', 'geometry']],
+            left_on=['from_stop', 'to_stop'],
+            right_on=['u', 'v']),
+        crs=schedule_links.crs)
+    save_geodataframe(
+        speeds_gdf[['service_id', 'route_id', 'mode', 'from_stop', 'to_stop', 'speed', 'geometry']],
+        filename='pt_speeds',
+        output_dir=speed_dir,
+        include_shp_files=include_shp_files
+    )
+
     logging.info('Generating csv for vehicles per hour for each service')
     use_schedule.vehicles_per_hour(
         df,
@@ -151,7 +177,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
         os.path.join(output_dir, 'trips_per_day_per_route_aggregated_per_stop_name_pair.csv'))
 
 
-def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_files=False):
+def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_files=False, schedule_network_factor=1.3):
     logging.info(f'Generating geojson outputs for the entire network in {output_dir}')
     n.write_to_geojson(output_dir, epsg='epsg:4326')
 
@@ -200,12 +226,15 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
             n.schedule,
             output_dir=os.path.join(output_dir, 'schedule'),
             gtfs_day=gtfs_day,
-            include_shp_files=include_shp_files
+            include_shp_files=include_shp_files,
+            schedule_network_factor=schedule_network_factor,
+            gdf_network_links=graph_links
         )
 
         logging.info('Generating PT network routes')
+        gdf_routes = n.schedule_network_routes_geodataframe().to_crs('epsg:4326')
         save_geodataframe(
-            n.schedule_network_routes_geodataframe().to_crs('epsg:4326'),
+            gdf_routes,
             filename='schedule_network_routes_geodataframe',
             output_dir=os.path.join(output_dir, 'routing'),
             include_shp_files=include_shp_files

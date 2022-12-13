@@ -32,6 +32,7 @@ import numpy as np
 import pandas as pd
 from pyproj import Transformer
 from s2sphere import CellId
+from shapely.geometry import Point, LineString
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -657,24 +658,16 @@ class Network:
         else:
             raise NotImplementedError('Only `intersect` and `within` options for `how` param.')
 
-    def add_node(self, node: Union[str, int], attribs: dict = None, silent: bool = False):
+    def add_node(self, node: Union[str, int], attribs: dict, silent: bool = False):
         """
         Adds a node.
         :param node:
-        :param attribs: should include spatial information x,y in epsg cosistent with the network or lat lon in
-        epsg:4326
+        :param attribs: must include spatial information x,y in epsg consistent with the network,
+        or lat lon in epsg:4326
         :param silent: whether to mute stdout logging messages
         :return:
         """
-        if attribs is not None:
-            self.graph.add_node(node, **attribs)
-        else:
-            # TODO do not add nodes without spatial info
-            self.graph.add_node(node)
-        self.change_log.add(object_type='node', object_id=node, object_attributes=attribs)
-        if not silent:
-            logging.info(f'Added Node with index `{node}` and data={attribs}')
-        return node
+        return self.add_nodes({node: attribs}, silent=silent)[0]
 
     def add_nodes(self, nodes_and_attribs: dict, silent: bool = False, ignore_change_log: bool = False):
         """
@@ -686,25 +679,55 @@ class Network:
         reduce changelog bloat.
         :return:
         """
-        # check for clashing nodes
+        # check for spatial info
+        for node_id, attribs in nodes_and_attribs.items():
+            keys = set(attribs.keys())
+            if not ({'lat', 'lon'}.issubset(keys) or {'x', 'y'}.issubset(keys)):
+                raise RuntimeError(f'Cannot add Node `{node_id}` without spatial information. '
+                                   f'Given attributes: `{keys}` are not sufficient. This method requires lat, lon '
+                                   f'attributes in epsg:4326 or x, y in epsg of the network: {self.epsg}')
+
+        # check for clashing node IDs
         clashing_node_ids = set(dict(self.nodes()).keys()) & set(nodes_and_attribs.keys())
 
         df_nodes = pd.DataFrame(nodes_and_attribs).T
         reindexing_dict = {}
-        if df_nodes.empty:
-            df_nodes = pd.DataFrame({'id': list(nodes_and_attribs.keys())})
-        elif ('id' not in df_nodes.columns) or (df_nodes['id'].isnull().any()):
+        if ('id' not in df_nodes.columns) or (df_nodes['id'].isnull().any()):
             df_nodes['id'] = df_nodes.index
+        if not {'lat', 'lon'}.issubset(set(df_nodes.columns)):
+            df_nodes[['lon', 'lat']] = float('nan')
+        if not {'x', 'y'}.issubset(set(df_nodes.columns)):
+            df_nodes[['x', 'y']] = float('nan')
+        if df_nodes[['lon', 'lat']].isnull().any().any():
+            missing_lat_lon = df_nodes[['lon', 'lat']].isnull().T.any()
+            df_nodes.loc[missing_lat_lon, ['lon', 'lat']] = pd.DataFrame(list(df_nodes.loc[missing_lat_lon].apply(
+                lambda row: spatial.change_proj(row['x'], row['y'], self.transformer), axis=1)),
+                columns=['lon', 'lat'], index=df_nodes.loc[missing_lat_lon].index
+            )
+        if df_nodes[['x', 'y']].isnull().any().any():
+            missing_x_y = df_nodes[['x', 'y']].isnull().T.any()
+            transformer = Transformer.from_crs('epsg:4326', self.epsg, always_xy=True)
+            df_nodes.loc[missing_x_y, ['x', 'y']] = pd.DataFrame(list(df_nodes.loc[missing_x_y].apply(
+                lambda row: spatial.change_proj(row['lon'], row['lat'], transformer), axis=1)),
+                columns=['x', 'y'], index=df_nodes.loc[missing_x_y].index
+            )
 
+        nodes_and_attribs_to_add = dict_support.merge_complex_dictionaries(
+            df_nodes[['x', 'y', 'lon', 'lat', 'id']].T.to_dict(), nodes_and_attribs)
+
+        # pandas is terrible with large numbers so we update them/generate them here
+        for node, attribs in nodes_and_attribs_to_add.items():
+            if 's2_id' not in nodes_and_attribs[node]:
+                attribs['s2_id'] = spatial.generate_index_s2(attribs['lat'], attribs['lon'])
         if clashing_node_ids:
+            logging.warning("Some proposed IDs for nodes are already being used. New, unique IDs will be found.")
             reindexing_dict = dict(
                 zip(clashing_node_ids, self.generate_indices_for_n_nodes(
                     len(nodes_and_attribs), avoid_keys=set(nodes_and_attribs.keys()))))
-            clashing_mask = df_nodes['id'].isin(reindexing_dict.keys())
-            df_nodes.loc[clashing_mask, 'id'] = df_nodes.loc[clashing_mask, 'id'].map(reindexing_dict)
-        df_nodes = df_nodes.set_index('id', drop=False)
-
-        nodes_and_attribs_to_add = df_nodes.T.to_dict()
+            for old_id, new_id in reindexing_dict.items():
+                nodes_and_attribs_to_add[new_id] = nodes_and_attribs_to_add[old_id]
+                nodes_and_attribs_to_add[new_id]['id'] = new_id
+                del nodes_and_attribs_to_add[old_id]
 
         self.graph.add_nodes_from([(node_id, attribs) for node_id, attribs in nodes_and_attribs_to_add.items()])
         if not ignore_change_log:
@@ -787,18 +810,40 @@ class Network:
             raise RuntimeError('Multi index key needs to be an integer')
 
         self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
-        # TODO calculate length of link if not provided
+
         compulsory_attribs = {'from': u, 'to': v, 'id': link_id}
+
         if attribs is None:
             attribs = compulsory_attribs
         else:
             attribs = {**attribs, **compulsory_attribs}
+
+        if 'length' not in attribs.keys():
+            length = self.link_length(u, v, geometry=attribs.get('geometry'))
+            if length is not None:
+                attribs['length'] = length
+
         self.graph.add_edge(u, v, key=multi_edge_idx, **attribs)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
         if not silent:
             logging.info(f'Added Link with index {link_id}, from node:{u} to node:{v}, under '
                          f'multi-index:{multi_edge_idx}, and data={attribs}')
         return link_id
+
+    def link_length(self, from_node, to_node, geometry: LineString = None):
+        logging.warning('Length for the link was not provided. An attempt will be made to calculate it.')
+        if geometry is not None:
+            # TODO add length calculation based on complex geometry
+            logging.warning("Link has a geometry, but its length will be calculated using straight line distance "
+                            "between from and to nodes.")
+        if (self.has_node(from_node) and self.has_node(to_node)) and (
+                ('s2_id' in self.node(from_node)) and ('s2_id' in self.node(to_node))):
+            # default to straight line distance
+            u_s2_id = self.node(from_node)['s2_id']
+            v_s2_id = self.node(to_node)['s2_id']
+            return round(spatial.distance_between_s2cellids(u_s2_id, v_s2_id))
+        else:
+            logging.warning("Spatial information is not contained in the nodes. Length calculation failed.")
 
     def add_links(self, links_and_attributes: Dict[str, dict], silent: bool = False, ignore_change_log: bool = False):
         """
@@ -820,10 +865,29 @@ class Network:
 
         if ('id' not in df_links.columns) or (df_links['id'].isnull().any()):
             df_links['id'] = df_links.index
+        if 'length' not in df_links.columns:
+            df_links['length'] = float('nan')
+        if df_links['length'].isnull().any():
+            missing_length_mask = df_links['length'].isnull()
+            logging.warning(
+                f"The following links: {list(df_links[missing_length_mask].index)} are missing `length` attribute. "
+                "A straight line distance between from and to nodes will be computed.")
+            s2_map = self.node_attribute_data_under_key('s2_id').to_dict()
+            df_links['s2_from'] = df_links['from'].map(s2_map)
+            df_links['s2_to'] = df_links['to'].map(s2_map)
+            # TODO add length calculation based on complex geometry
+            missing_spatial_info_mask = df_links['s2_from'].isnull() | df_links['s2_to'].isnull()
+            df_links.loc[missing_length_mask & ~missing_spatial_info_mask, 'length'] = \
+                df_links.loc[missing_length_mask & ~missing_spatial_info_mask, :].apply(
+                    lambda row: round(spatial.distance_between_s2cellids(row['s2_from'], row['s2_to'])), axis=1)
+            cols_to_drop = ['s2_from', 's2_to']
+            if df_links['length'].isnull().all():
+                cols_to_drop.append('length')
+            df_links.drop(cols_to_drop, axis=1, inplace=True)
 
         # generate initial multi_edge_idxes for the links to be added
         if 'multi_edge_idx' not in df_links.columns:
-            df_links['multi_edge_idx'] = 0
+            df_links['multi_edge_idx'] = df_links.apply(lambda x: self.graph.new_edge_key(x['from'], x['to']), axis=1)
             while df_links[['from', 'to', 'multi_edge_idx']].duplicated().any():
                 df_links.loc[df_links[['from', 'to', 'multi_edge_idx']].duplicated(), 'multi_edge_idx'] += 1
 
@@ -1908,7 +1972,8 @@ class Network:
                 if 'length' in link_attribs:
                     distance += link_attribs['length']
                 else:
-                    length = spatial.distance_between_s2cellids(link_attribs['from'], link_attribs['to'])
+                    length = self.link_length(
+                        link_attribs['from'], link_attribs['to'], geometry=link_attribs.get('geometry'))
                     link_attribs['length'] = length
                     distance += length
             return distance
@@ -2324,6 +2389,114 @@ class Network:
 
         return slope_dict
 
+    def split_link_at_node(self, link_id, node_id, distance_threshold=1):
+        """
+        Takes a link and node, and splits the link at the point to create 2 new links;
+        the old link is then deleted.
+        Unlike `split_link_at_point` this allows multiple links being split using the same mode - meaning they are
+        connected and using the same junction, e.g. two links going in opposite directions. However, the node has to
+        be situated on the geometry of the links involved so it's recommended you use
+        `genet.spatial.snap_point_to_line` to align the node before adding it.
+        :param link_id: ID of the link to split
+        :param node_id: ID of the node in the graph to split at.
+        :param distance_threshold: how close the node needs to be to the link to be allowed to split it
+        :return: None
+        """
+        # check if point is on the link LineString
+        node_attribs = self.node(node_id)
+        point = Point(node_attribs['x'], node_attribs['y'])
+        link_attribs = self.link(link_id)
+        from_node = self.node(link_attribs['from'])
+        to_node = self.node(link_attribs['to'])
+        if 'geometry' in link_attribs:
+            line = link_attribs['geometry']
+        else:
+            line = LineString([(float(from_node['x']), float(from_node['y'])),
+                               (float(to_node['x']), float(to_node['y']))])
+
+        if point.distance(spatial.snap_point_to_line(point, line, distance_threshold=0)) > distance_threshold:
+            raise exceptions.MisalignedNodeError(
+                f"Node: {node_id} does not lie close enough to the geometry of the link: {link_id} consider using the "
+                f"`genet.spatial.snap_point_to_line` method to align the node before adding it, or using "
+                f"`split_link_at_point` which adds a node for you. You can also relax the `distance_threshold` of "
+                f"this method. The unit of distance will depend on the projection the network is in.")
+        if distance_threshold > 1:
+            logging.warning("This method does not move the given node closer to the link being split. Setting the "
+                            "distance threshold too high will result in a network that looks disconnected when "
+                            "plotted on a map. We advise moving the node closer, rather than increasing the threshold, "
+                            "or using the `split_link_at_point` method, which will move and add the node instead.")
+
+        # create 2 new links: from_node -> new_node ; new_node -> to_node
+        new_link_1, new_link_2 = self.generate_indices_for_n_edges(2)
+
+        # split geometry
+        new_link_1_geom, new_link_2_geom = spatial.split_line_at_point(point, line)
+
+        # apply attributes from the old link to the 2 new links
+        old_link_attributes = deepcopy(self.link(link_id))
+        links = {
+            new_link_1: {**old_link_attributes, **{
+                'id': new_link_1, 'from': from_node['id'], 'to': node_id,
+                'geometry': new_link_1_geom, 's2_from': from_node['s2_id'], 's2_to': node_attribs['s2_id'],
+                'length': (new_link_1_geom.length / line.length) * old_link_attributes['length']}},
+            new_link_2: {**old_link_attributes, **{
+                'id': new_link_2, 'from': node_id, 'to': to_node['id'],
+                'geometry': new_link_2_geom, 's2_from': node_attribs['s2_id'], 's2_to': to_node['s2_id'],
+                'length': (new_link_2_geom.length / line.length) * old_link_attributes['length']}},
+        }
+        self.add_links(links)
+        self.remove_link(link_id)
+
+        # update network routes in the schedule
+        if self.schedule:
+            logging.info("Updating network routes in the PT schedule.")
+            # update schedule routes
+            df_routes = self.schedule.route_attribute_data(keys=['route'])
+            df_routes = df_routes[df_routes['route'].apply(lambda x: link_id in x)]
+            if not df_routes.empty:
+                df_routes['route'] = df_routes['route'].apply(
+                    lambda x: replace_link_on_pt_route(x, {link_id: [new_link_1, new_link_2]}))
+                self.schedule.apply_attributes_to_routes(df_routes.T.to_dict())
+            else:
+                logging.info("No PT routes were affected by this change")
+
+        return {'node_attributes': node_attribs, 'links': links}
+
+    def split_link_at_point(self, link_id, x=None, y=None, node_id=None):
+        """
+        Takes a link and point coordinates, and splits the link at the point to create 2 new links;
+        the old link is then deleted. A new node is added too
+        :param link_id: ID of the link to split
+        :param x: x-coordinates of the point to split at
+        :param y: y-coordinates of the point to split at
+        :param node_id: Suggested ID for the resulting node in the graph
+        :return: updates the graph, returns data for node and links that were added
+        """
+        if node_id is None:
+            node_id = self.generate_index_for_node()
+        elif self.has_node(node_id):
+            logging.warning(f'Node with ID {node_id} already exists. Generating new index.')
+            node_id = self.generate_index_for_node()
+
+        # align the point if not on the link LineString
+        point = Point(x, y)
+        link_attribs = self.link(link_id)
+        from_node = self.node(link_attribs['from'])
+        to_node = self.node(link_attribs['to'])
+        if 'geometry' in link_attribs:
+            line = link_attribs['geometry']
+        else:
+            line = LineString([(float(from_node['x']), float(from_node['y'])),
+                               (float(to_node['x']), float(to_node['y']))])
+
+        # find nearest point on the link line - for geometry splitting, the point should be on the line
+        point = spatial.snap_point_to_line(point, line)
+
+        node_attributes = {'id': node_id, 'x': point.x, 'y': point.y}
+        self.add_node(node_id, node_attributes)
+
+        return self.split_link_at_node(link_id, node_id)
+
     def summary(self):
         report = {}
         network_stats = {'Number of network links': nx.number_of_nodes(self.graph),
@@ -2367,3 +2540,16 @@ class Network:
             report['schedule'] = self.schedule.summary()
 
         return report
+
+
+def replace_link_on_pt_route(route: List[str], map: Dict[str, Union[str, list]]):
+    new_route = []
+    for link in route:
+        if link in map:
+            if isinstance(map[link], list):
+                new_route += map[link]
+            else:
+                new_route.append(link)
+        else:
+            new_route.append(link)
+    return new_route

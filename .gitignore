@@ -133,3 +133,4 @@ scripts/secrets-mgr-exploration.py
 example_data/pt2matsim_network/genet_output/*
 genet_output/*
 example_data/output_*/*
+example_data/api_requests_send.json

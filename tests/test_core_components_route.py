@@ -2,9 +2,10 @@ import pytest
 import os
 from pandas import DataFrame, Timestamp
 from pandas.testing import assert_frame_equal
-from genet.schedule_elements import Route, Stop
+from genet.schedule_elements import Route, Stop, verify_graph_schema
 from genet.utils import plot
 from tests.fixtures import stop_epsg_27700, assert_semantically_equal, assert_logging_warning_caught_with_message_containing
+from genet.exceptions import ServiceIndexError
 
 
 @pytest.fixture()
@@ -113,6 +114,14 @@ def test_updating_route_trips_with_headway(route):
          'vehicle_id': ['veh_bus_1_01:00:00', 'veh_bus_1_01:20:00', 'veh_bus_1_01:40:00', 'veh_bus_1_02:00:00',
                         'veh_bus_1_02:30:00', 'veh_bus_1_03:00:00']}
     )
+
+
+def test_generating_trips_from_headway_preserves_graph_schema(route):
+    verify_graph_schema(route.graph())
+
+    route.generate_trips_from_headway({('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
+
+    verify_graph_schema(route.graph())
 
 
 def test__repr__shows_stops_and_trips_length(route):
@@ -283,6 +292,52 @@ def test_has_network_route_with_route_without_a_network_route(route):
     assert not route.has_network_route()
 
 
+def test_dividing_typical_network_route():
+    A = Stop(id='A', x=4, y=2, epsg='epsg:27700', linkRefId='a-a')
+    B = Stop(id='B', x=1, y=2, epsg='epsg:27700', linkRefId='b-b')
+    C = Stop(id='C', x=3, y=3, epsg='epsg:27700', linkRefId='c-c')
+    r = Route(
+        route_short_name='1',
+        mode='bus',
+        stops=[A, B, C],
+        headway_spec={('00:07:00', '08:00:00'): 30},
+        arrival_offsets=['00:00:00', '00:03:00', '00:07:00'],
+        departure_offsets=['00:00:00', '00:05:00', '00:09:00'],
+        route=['a-a', 'a-b', 'b-b', 'b-c', 'c-c'], id='1')
+    assert r.divide_network_route_between_stops() == [['a-a', 'a-b', 'b-b'], ['b-b', 'b-c', 'c-c']]
+
+
+def test_dividing_network_route_with_a_shared_linkrefid():
+    A = Stop(id='A', x=4, y=2, epsg='epsg:27700', linkRefId='a-a')
+    B1 = Stop(id='B1', x=1, y=2, epsg='epsg:27700', linkRefId='b-b')
+    B2 = Stop(id='B2', x=1, y=2, epsg='epsg:27700', linkRefId='b-b')
+    C = Stop(id='C', x=3, y=3, epsg='epsg:27700', linkRefId='c-c')
+    r = Route(
+        route_short_name='1',
+        mode='bus',
+        stops=[A, B1, B2, C],
+        headway_spec={('00:07:00', '08:00:00'): 30},
+        arrival_offsets=['00:00:00', '00:03:00', '00:07:00'],
+        departure_offsets=['00:00:00', '00:05:00', '00:09:00'],
+        route=['a-a', 'a-b', 'b-b', 'b-c', 'c-c'], id='1')
+    assert r.divide_network_route_between_stops() == [['a-a', 'a-b', 'b-b'], ['b-b'], ['b-b', 'b-c', 'c-c']]
+
+
+def test_dividing_network_route_with_a_longer_invalid_route_cuts_off_the_route():
+    A = Stop(id='A', x=4, y=2, epsg='epsg:27700', linkRefId='a-a')
+    B = Stop(id='B', x=1, y=2, epsg='epsg:27700', linkRefId='b-b')
+    C = Stop(id='C', x=3, y=3, epsg='epsg:27700', linkRefId='c-c')
+    r = Route(
+        route_short_name='1',
+        mode='bus',
+        stops=[A, B, C],
+        headway_spec={('00:07:00', '08:00:00'): 30},
+        arrival_offsets=['00:00:00', '00:03:00', '00:07:00'],
+        departure_offsets=['00:00:00', '00:05:00', '00:09:00'],
+        route=['a-a', 'a-b', 'b-b', 'b-c', 'c-c', 'c-d'], id='1')
+    assert r.divide_network_route_between_stops() == [['a-a', 'a-b', 'b-b'], ['b-b', 'b-c', 'c-c']]
+
+
 def test_has_correctly_ordered_route_with_a_correct_route():
     a = Stop(id='1', x=4, y=2, epsg='epsg:27700')
     a.add_additional_attributes({'linkRefId': '10'})
@@ -302,7 +357,7 @@ def test_has_correctly_ordered_route_with_a_correct_route():
     assert r.has_correctly_ordered_route()
 
 
-def test_has_correctly_ordered_route_with_disordered_route():
+def test_does_not_have_a_correctly_ordered_route_with_disordered_route():
     a = Stop(id='1', x=4, y=2, epsg='epsg:27700')
     a.add_additional_attributes({'linkRefId': '10'})
     b = Stop(id='2', x=4, y=2, epsg='epsg:27700')
@@ -321,7 +376,7 @@ def test_has_correctly_ordered_route_with_disordered_route():
     assert not r.has_correctly_ordered_route()
 
 
-def test_has_correctly_ordered_route_with_stop_missing_linkrefid():
+def test_does_not_have_a_correctly_ordered_route_with_stop_missing_linkrefid():
     a = Stop(id='1', x=4, y=2, epsg='epsg:27700')
     a.add_additional_attributes({'linkRefId': '10'})
     b = Stop(id='2', x=4, y=2, epsg='epsg:27700')
@@ -339,7 +394,7 @@ def test_has_correctly_ordered_route_with_stop_missing_linkrefid():
     assert not r.has_correctly_ordered_route()
 
 
-def test_has_correctly_ordered_route_with_no_route():
+def test_does_not_have_a_correctly_ordered_route_with_no_route():
     a = Stop(id='1', x=4, y=2, epsg='epsg:27700')
     a.add_additional_attributes({'linkRefId': '10'})
     b = Stop(id='2', x=4, y=2, epsg='epsg:27700')
@@ -453,3 +508,34 @@ def test_generating_trips_dataframe(route):
 
 def test_vehicles(route):
     assert route.vehicles() == {'veh_1_bus', 'veh_2_bus'}
+
+
+def test_service_attribute_data_under_keys_throws_error_from_route_object(route):
+    with pytest.raises(ServiceIndexError) as error_info:
+        df = route.service_attribute_data(keys=['name'])
+
+
+def test_route_attribute_data_under_key(route):
+    df = route.route_attribute_data(keys='route_short_name').sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'route_short_name': {'1': 'name'}}
+    ))
+
+
+def test_route_attribute_data_under_keys(route):
+    df = route.route_attribute_data(keys=['route_short_name', 'mode']).sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'route_short_name': {'1': 'name'}, 'mode': {'1': 'bus'}}
+    ))
+
+
+def test_stop_attribute_data_under_key(route):
+    df = route.stop_attribute_data(keys='x').sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'x': {'1': 4.0, '2': 1.0, '3': 3.0, '4': 7.0}}))
+
+
+def test_stop_attribute_data_under_keys(route):
+    df = route.stop_attribute_data(keys=['x', 'y']).sort_index()
+    assert_frame_equal(df, DataFrame(
+        {'x': {'1': 4.0, '2': 1.0, '3': 3.0, '4': 7.0}, 'y': {'1': 2.0, '2': 2.0, '3': 3.0, '4': 5.0}}))

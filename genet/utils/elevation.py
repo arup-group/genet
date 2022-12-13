@@ -1,11 +1,14 @@
 import rioxarray
 import numpy as np
+from lxml import etree
+import os
 
 
 def get_elevation_image(elevation_tif):
     xarr_file = rioxarray.open_rasterio(elevation_tif)
     if str(xarr_file.rio.crs) != 'EPSG:4326':
         xarr_file = xarr_file.rio.write_crs(4326, inplace=True)
+
     return xarr_file[0, :, :]
 
 
@@ -60,3 +63,27 @@ def validation_report_for_node_elevation(elev_dict, low_limit=-50, mont_blanc_he
                    'extremely_low_values_dict': too_low}}
 
     return report
+
+
+def write_slope_xml(link_slope_dictionary, output_dir):
+    """
+    Generates a link_slopes XML file.
+    :param link_slope_dictionary: dictionary of link slopes in format {link_id: {'slope': slope_value}}
+    :param output_dir: directory where the XML file will be written to
+    """
+    fname = os.path.join(output_dir, 'link_slopes.xml')
+    print('Writing {}'.format(fname))
+
+    with open(fname, "wb") as f, etree.xmlfile(f, encoding='UTF-8') as xf:
+        xf.write_declaration(
+            doctype='<!DOCTYPE objectAttributes SYSTEM "http://matsim.org/files/dtd/objectattributes_v1.dtd">')
+        with xf.element("objectAttributes"):
+            for link_id, slope_dict in link_slope_dictionary.items():
+                with xf.element("object", {'id': link_id}):
+                    attrib = {
+                        'name': 'slope',
+                        'class': 'java.lang.Double',
+                    }
+                    rec = etree.Element("attribute", attrib)
+                    rec.text = str(slope_dict['slope'])
+                    xf.write(rec)
