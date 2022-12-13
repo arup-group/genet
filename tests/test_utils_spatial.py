@@ -56,6 +56,130 @@ def test_merging_noncontiguous_linestrings_results_in_multilinestring():
     assert spatial.merge_linestrings(linestrings) == MultiLineString([[(1, 2), (3, 4), (5, 6)],[(7, 8), (9, 10)]])
 
 
+def test_snapping_point_on_line_returns_the_same_point():
+    line = LineString([(0, 0), (0, 1), (0, 2)])
+    point = Point(0, 0.5)
+    assert spatial.snap_point_to_line(point, line) == point
+
+
+def test_snapping_point_within_threshold_returns_the_same_point():
+    line = LineString([(0, 0), (0, 1), (0, 2)])
+    distance_threshold = 0.1
+    point = Point(0 - (distance_threshold / 2), 0.5)
+    assert spatial.snap_point_to_line(point, line, distance_threshold) == point
+
+
+def test_snapping_point_over_threshold_moves_the_point():
+    line = LineString([(0, 0), (0, 1), (0, 2)])
+    distance_threshold = 0.1
+    point = Point(0 - (distance_threshold * 2), 0.5)
+    assert spatial.snap_point_to_line(point, line, distance_threshold) == Point(0, 0.5)
+
+
+def test_continuing_vanilla_line():
+    p1 = Point(0, 0)
+    p2 = Point(1, 1)
+    assert spatial.continue_line_from_two_points(p1, p2) == LineString([p1, p2, Point(2, 2)])
+
+
+def test_continuing_line_going_backwards():
+    p1 = Point(2, 2)
+    p2 = Point(1, 1)
+    assert spatial.continue_line_from_two_points(p1, p2) == LineString([p1, p2, Point(0, 0)])
+
+
+def test_continuing_line_with_negative_numbers():
+    p1 = Point(2, -2)
+    p2 = Point(1, -1)
+    assert spatial.continue_line_from_two_points(p1, p2) == LineString([p1, p2, Point(0, 0)])
+
+
+def test_splitting_line_at_point_on_the_line():
+    line = LineString([(0, 0), (0, 1), (0, 2)])
+    point = Point(0, 0.5)
+    assert spatial.split_line_at_point(point, line) == \
+           (LineString([(0, 0), point]),  LineString([point, (0, 1), (0, 2)]))
+
+
+def test_splitting_line_at_point_away_from_the_line_splits_at_point_on_the_line():
+    line = LineString([(0, 0), (0, 1), (0, 2)])
+    point = Point(-0.5, 0.5)
+    assert spatial.split_line_at_point(point, line) == \
+           (LineString([(0, 0), (0, 0.5)]),  LineString([(0, 0.5), (0, 1), (0, 2)]))
+
+
+def test_splitting_curved_line():
+    line = LineString([
+        (528541.02122, 177266.68113),
+        (528550.59744, 177260.35921),
+        (528558.90144, 177254.29693),
+        (528567.93041, 177245.54257),
+        (528574.51427, 177236.01671),
+        (528582.94533, 177223.5529),
+        (528590.27441, 177207.14287),
+        (528593.0748, 177199.19972),
+        (528596.13021, 177188.65874),
+        (528597.9183, 177176.03142)])
+    point = Point(528568.90, 177243.42)
+    split_geoms = spatial.split_line_at_point(point, line)
+    assert len(split_geoms) == 2
+    assert split_geoms[0].coords[0] == line.coords[0]
+    assert split_geoms[1].coords[-1] == line.coords[-1]
+
+
+def test_splitting_curved_line_with_a_super_close_point_warns_of_closeness(caplog):
+    line = LineString([(528208.61078, 177514.31738),
+        (528216.89907, 177506.02421),
+        (528220.00403, 177502.9153),
+        (528222.71173, 177500.8393),
+        (528225.95029, 177498.93838),
+        (528234.89851, 177493.7053),
+        (528251.80814, 177481.14253),
+        (528268.73601, 177465.54717),
+        (528279.08839, 177454.14351),
+        (528295.84491, 177432.3435),
+        (528296.56349, 177431.18557),
+        (528313.83963, 177403.42285),
+        (528329.73594, 177381.84037),
+        (528335.96606, 177374.68653),
+        (528353.89673, 177354.94385),
+        (528364.77572, 177344.71445),
+        (528372.55533, 177339.14626),
+        (528377.14782, 177336.30107),
+        (528393.93838, 177325.89415),
+        (528408.19621, 177319.28968),
+        (528421.10874, 177313.31753),
+        (528453.33735, 177301.41433),
+        (528470.65791, 177295.10763),
+        (528492.21561, 177287.25741),
+        (528505.78341, 177282.32015),
+        (528513.10633, 177279.62984),
+        (528523.6504, 177275.41286),
+        (528541.02122, 177266.68113),
+        (528550.59744, 177260.35921),
+        (528558.90144, 177254.29693),
+        (528567.93041, 177245.54257),
+        (528574.51427, 177236.01671),
+        (528582.94533, 177223.5529),
+        (528590.27441, 177207.14287),
+        (528593.0748, 177199.19972),
+        (528596.13021, 177188.65874),
+        (528597.9183, 177176.03142),
+        (528599.07908, 177163.11938),
+        (528598.63073, 177150.92166),
+        (528596.68517, 177138.57603),
+        (528594.77161, 177129.68353),
+        (528591.99383, 177122.47125),
+        (528590.53845, 177118.68489)])
+    point = Point(528569.2382220798, 177243.65036166355)
+    split_geoms = spatial.split_line_at_point(point, line)
+    assert len(split_geoms) == 2
+    assert split_geoms[0].coords[0] == line.coords[0]
+    assert split_geoms[1].coords[-1] == line.coords[-1]
+    assert caplog.records[0].levelname == 'WARNING'
+    assert 'Given point is very close, but not cannot be placed on the line.' in caplog.records[0].message
+
+
 def test_compute_average_proximity_to_polyline():
     poly_1 = 'ahmyHzvYkCvCuCdDcBrB'
     poly_2 = 'ahmyHzvYGJyBbCGHq@r@EDIJGBu@~@SToAzAEFEDIJ'
