@@ -21,6 +21,7 @@ from genet.schedule_elements import Route, Service, Schedule, Stop
 from genet.utils import plot, spatial
 from genet.validate import network as network_validation
 from genet.input import read
+from genet import exceptions
 from tests.fixtures import assert_semantically_equal, route, stop_epsg_27700, network_object_from_test_data, \
     full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path
 
@@ -2860,6 +2861,7 @@ def invalid_pt2matsim_network_for_validation(network_object_from_test_data):
         'pt_routes_with_invalid_network_route': ['VJbd8660f05fe6f744e58a66ae12bd66acbca88b98'],
     }
 
+
 def test_connectivity_in_report_with_invalid_network(invalid_pt2matsim_network_for_validation):
     report = invalid_pt2matsim_network_for_validation['network'].generate_validation_report()
     for mode, expected_connected_subgraphs in invalid_pt2matsim_network_for_validation['subgraph_no_per_mode'].items():
@@ -3439,6 +3441,155 @@ def test_getting_link_slope_dictionary(network3):
     link_slope = (z_2 - z_1) / length
     slope_dict = network3.get_link_slope_dictionary(elevation_dictionary)
     assert slope_dict['0']['slope'] == link_slope
+
+
+def test_splitting_link_at_point_gets_data_right(mocker):
+    new_node_ID = 'new_node_ID'
+    new_link_1_ID = 'new_link_1_ID'
+    new_link_2_ID = 'new_link_2_ID'
+    mocker.patch.object(Network, 'generate_index_for_node', return_value=new_node_ID)
+    mocker.patch.object(Network, 'generate_indices_for_n_edges', return_value=(new_link_1_ID, new_link_2_ID))
+
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243}
+    })
+    n.add_links({'l1': {
+        'from': 'n1', 'to': 'n2', 'id': 'l1', 'freespeed': 4, 'capacity': 600.0,
+        'permlanes': 1.0, 'oneway': '1', 'modes': ['car'],
+        'length': 10,
+        'geometry': LineString([(528568, 177243), (528569, 177243), (528570, 177243)]),
+        'attributes': {'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}}}
+    })
+
+    data = n.split_link_at_point('l1', 528568.5, 177243.5)
+
+    assert {k: v for k, v in data['node_attributes'].items() if k in ['id', 'x', 'y']} == {'id': new_node_ID, 'x': 528568.5, 'y': 177243.0}
+    assert list(data['links'][new_link_1_ID].pop('geometry').coords) == [(528568, 177243), (528568.5, 177243)]
+    assert data['links'][new_link_1_ID] == {
+                'from': 'n1', 'to': new_node_ID, 'id': new_link_1_ID, 'freespeed': 4, 'capacity': 600.0,
+                'permlanes': 1.0, 'oneway': '1', 'modes': ['car'],
+                'length': 2.5,  's2_from': n.node('n1')['s2_id'], 's2_to': data['node_attributes']['s2_id'],
+                'attributes': {
+                    'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}}
+    }
+    assert list(data['links'][new_link_2_ID].pop('geometry').coords) == [(528568.5, 177243), (528569, 177243), (528570, 177243)]
+    assert data['links'][new_link_2_ID] == {
+                'from': new_node_ID, 'to': 'n2', 'id': new_link_2_ID, 'freespeed': 4, 'capacity': 600.0,
+                'permlanes': 1.0, 'oneway': '1', 'modes': ['car'],
+                'length': 7.5,  's2_from': data['node_attributes']['s2_id'], 's2_to': n.node('n2')['s2_id'],
+                'attributes': {
+                    'osm:way:access': {'name': 'osm:way:access', 'class': 'java.lang.String', 'text': 'permissive'}}
+    }
+
+
+def test_splitting_link_at_point_deletes_old_link():
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243}
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2', 'id': 'l1', 'length': 10}})
+    assert n.has_link('l1')
+
+    n.split_link_at_point('l1', 528568.5, 177243.5)
+
+    assert not n.has_link('l1')
+
+
+def test_splitting_link_without_geometry_at_point_creates_sensible_geometry_and_length(mocker):
+    new_link_1_ID = 'new_link_1_ID'
+    new_link_2_ID = 'new_link_2_ID'
+    mocker.patch.object(Network, 'generate_indices_for_n_edges', return_value=(new_link_1_ID, new_link_2_ID))
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243}
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2', 'id': 'l1', 'length': 10}})
+
+    n.split_link_at_point('l1', 528568.5, 177243)
+
+    assert list(n.link(new_link_1_ID)['geometry'].coords) == [(528568, 177243), (528568.5, 177243)]
+    assert list(n.link(new_link_2_ID)['geometry'].coords) == [(528568.5, 177243), (528570, 177243)]
+    assert n.link(new_link_1_ID)['length'] == 2.5
+    assert n.link(new_link_2_ID)['length'] == 7.5
+
+
+def test_splitting_link_with_suggested_node_id_uses_that_id():
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243}
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2', 'id': 'l1', 'length': 10}})
+    suggested_node_id = 'suggested_node_id'
+
+    data = n.split_link_at_point('l1', 528568.5, 177243, suggested_node_id)
+
+    assert data['node_attributes']['id'] == suggested_node_id
+
+
+def test_splitting_link_with_existing_node_id_generates_new_index(mocker):
+    mocker.patch.object(Network, 'generate_index_for_node')
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243}
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2', 'id': 'l1', 'length': 10}})
+    suggested_node_id = 'n1'
+
+    data = n.split_link_at_point('l1', 528568.5, 177243, suggested_node_id)
+
+    n.generate_index_for_node.assert_called_once()
+
+
+def test_splitting_link_at_node_far_away_throws_error():
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243},
+        'split_node': {'id': 'split_node', 'x': 628570, 'y': 277243},
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2', 'id': 'l1', 'length': 10}})
+
+    with pytest.raises(exceptions.MisalignedNodeError) as error_info:
+        n.split_link_at_node('l1', 'split_node')
+    assert "does not lie close enough to the geometry of the link" in str(error_info.value)
+
+
+def test_splitting_link_updates_route_in_schedule(mocker):
+    new_link_1_ID = 'new_link_1_ID'
+    new_link_2_ID = 'new_link_2_ID'
+    mocker.patch.object(Network, 'generate_indices_for_n_edges', return_value=(new_link_1_ID, new_link_2_ID))
+    n = Network('epsg:27700')
+    n.add_nodes({
+        'n1': {'id': 'n1', 'x': 528568, 'y': 177243},
+        'n2': {'id': 'n2', 'x': 528570, 'y': 177243},
+    })
+    n.add_links({'l1': {'from': 'n1', 'to': 'n2', 'id': 'l1', 'length': 10}})
+    n.schedule = Schedule(
+        epsg='epsg:27700',
+        services=[Service(id='bus_service',
+                          routes=[Route(id='1', route_short_name='', mode='bus',
+                          stops=[
+                              Stop(id='0', x=528568, y=177243, epsg='epsg:27700',
+                                   linkRefId='A'),
+                              Stop(id='1', x=528570, y=177243, epsg='epsg:27700',
+                                   linkRefId='B')],
+                          trips={'trip_id': ['trip_04:40:00'],
+                                 'trip_departure_time': ['04:40:00'],
+                                 'vehicle_id': ['veh_1_bus']},
+                          arrival_offsets=['00:00:00', '00:02:00'],
+                          departure_offsets=['00:00:00', '00:02:00'],
+                          route=['AAA', 'l1', 'BBB'])]
+        )]
+    )
+    n.split_link_at_point('l1', 528568.5, 177243)
+
+    assert n.schedule.route('1').route == ['AAA', new_link_1_ID, new_link_2_ID, 'BBB']
 
 
 def test_generating_summary_report(network_for_summary_stats):
