@@ -810,18 +810,40 @@ class Network:
             raise RuntimeError('Multi index key needs to be an integer')
 
         self.link_id_mapping[link_id] = {'from': u, 'to': v, 'multi_edge_idx': multi_edge_idx}
-        # TODO calculate length of link if not provided
+
         compulsory_attribs = {'from': u, 'to': v, 'id': link_id}
+
         if attribs is None:
             attribs = compulsory_attribs
         else:
             attribs = {**attribs, **compulsory_attribs}
+
+        if 'length' not in attribs.keys():
+            length = self.link_length(u, v, geometry=attribs.get('geometry'))
+            if length is not None:
+                attribs['length'] = length
+
         self.graph.add_edge(u, v, key=multi_edge_idx, **attribs)
         self.change_log.add(object_type='link', object_id=link_id, object_attributes=attribs)
         if not silent:
             logging.info(f'Added Link with index {link_id}, from node:{u} to node:{v}, under '
                          f'multi-index:{multi_edge_idx}, and data={attribs}')
         return link_id
+
+    def link_length(self, from_node, to_node, geometry: LineString = None):
+        logging.warning('Length for the link was not provided. An attempt will be made to calculate it.')
+        if geometry is not None:
+            # TODO add length calculation based on complex geometry
+            logging.warning("Link has a geometry, but its length will be calculated using straight line distance "
+                            "between from and to nodes.")
+        if (self.has_node(from_node) and self.has_node(to_node)) and (
+                ('s2_id' in self.node(from_node)) and ('s2_id' in self.node(to_node))):
+            # default to straight line distance
+            u_s2_id = self.node(from_node)['s2_id']
+            v_s2_id = self.node(to_node)['s2_id']
+            return round(spatial.distance_between_s2cellids(u_s2_id, v_s2_id))
+        else:
+            logging.warning("Spatial information is not contained in the nodes. Length calculation failed.")
 
     def add_links(self, links_and_attributes: Dict[str, dict], silent: bool = False, ignore_change_log: bool = False):
         """
@@ -843,6 +865,25 @@ class Network:
 
         if ('id' not in df_links.columns) or (df_links['id'].isnull().any()):
             df_links['id'] = df_links.index
+        if 'length' not in df_links.columns:
+            df_links['length'] = float('nan')
+        if df_links['length'].isnull().any():
+            missing_length_mask = df_links['length'].isnull()
+            logging.warning(
+                f"The following links: {list(df_links[missing_length_mask].index)} are missing `length` attribute. "
+                "A straight line distance between from and to nodes will be computed.")
+            s2_map = self.node_attribute_data_under_key('s2_id').to_dict()
+            df_links['s2_from'] = df_links['from'].map(s2_map)
+            df_links['s2_to'] = df_links['to'].map(s2_map)
+            # TODO add length calculation based on complex geometry
+            missing_spatial_info_mask = df_links['s2_from'].isnull() | df_links['s2_to'].isnull()
+            df_links.loc[missing_length_mask & ~missing_spatial_info_mask, 'length'] = \
+                df_links.loc[missing_length_mask & ~missing_spatial_info_mask, :].apply(
+                    lambda row: round(spatial.distance_between_s2cellids(row['s2_from'], row['s2_to'])), axis=1)
+            cols_to_drop = ['s2_from', 's2_to']
+            if df_links['length'].isnull().all():
+                cols_to_drop.append('length')
+            df_links.drop(cols_to_drop, axis=1, inplace=True)
 
         # generate initial multi_edge_idxes for the links to be added
         if 'multi_edge_idx' not in df_links.columns:
@@ -1931,7 +1972,8 @@ class Network:
                 if 'length' in link_attribs:
                     distance += link_attribs['length']
                 else:
-                    length = spatial.distance_between_s2cellids(link_attribs['from'], link_attribs['to'])
+                    length = self.link_length(
+                        link_attribs['from'], link_attribs['to'], geometry=link_attribs.get('geometry'))
                     link_attribs['length'] = length
                     distance += length
             return distance
