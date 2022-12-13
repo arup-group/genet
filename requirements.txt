@@ -5,7 +5,7 @@ attrs==19.3.0
 backcall==0.1.0
 boto3==1.14.16
 botocore==1.17.16
-certifi==2020.4.5.2
+certifi==2022.12.7
 chardet==3.0.4
 cligj==0.5.0
 colorama==0.4.4
