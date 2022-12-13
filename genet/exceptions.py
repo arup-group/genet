@@ -13,6 +13,14 @@ class NetworkSchemaError(Exception):
     pass
 
 
+class MisalignedNodeError(Exception):
+    """
+    Raised when the Network node is not aligned to geometry of a Network link. E.g. when spliting a link at a node or
+    the start/end point of link geometry is different to the location of the node
+    """
+    pass
+
+
 class RouteInitialisationError(Exception):
     """
     Raised when a genet.Route cannot be instantiated

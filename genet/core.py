@@ -32,6 +32,7 @@ import numpy as np
 import pandas as pd
 from pyproj import Transformer
 from s2sphere import CellId
+from shapely.geometry import Point, LineString
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -2346,6 +2347,114 @@ class Network:
 
         return slope_dict
 
+    def split_link_at_node(self, link_id, node_id, distance_threshold=1):
+        """
+        Takes a link and node, and splits the link at the point to create 2 new links;
+        the old link is then deleted.
+        Unlike `split_link_at_point` this allows multiple links being split using the same mode - meaning they are
+        connected and using the same junction, e.g. two links going in opposite directions. However, the node has to
+        be situated on the geometry of the links involved so it's recommended you use
+        `genet.spatial.snap_point_to_line` to align the node before adding it.
+        :param link_id: ID of the link to split
+        :param node_id: ID of the node in the graph to split at.
+        :param distance_threshold: how close the node needs to be to the link to be allowed to split it
+        :return: None
+        """
+        # check if point is on the link LineString
+        node_attribs = self.node(node_id)
+        point = Point(node_attribs['x'], node_attribs['y'])
+        link_attribs = self.link(link_id)
+        from_node = self.node(link_attribs['from'])
+        to_node = self.node(link_attribs['to'])
+        if 'geometry' in link_attribs:
+            line = link_attribs['geometry']
+        else:
+            line = LineString([(float(from_node['x']), float(from_node['y'])),
+                               (float(to_node['x']), float(to_node['y']))])
+
+        if point.distance(spatial.snap_point_to_line(point, line, distance_threshold=0)) > distance_threshold:
+            raise exceptions.MisalignedNodeError(
+                f"Node: {node_id} does not lie close enough to the geometry of the link: {link_id} consider using the "
+                f"`genet.spatial.snap_point_to_line` method to align the node before adding it, or using "
+                f"`split_link_at_point` which adds a node for you. You can also relax the `distance_threshold` of "
+                f"this method. The unit of distance will depend on the projection the network is in.")
+        if distance_threshold > 1:
+            logging.warning("This method does not move the given node closer to the link being split. Setting the "
+                            "distance threshold too high will result in a network that looks disconnected when "
+                            "plotted on a map. We advise moving the node closer, rather than increasing the threshold, "
+                            "or using the `split_link_at_point` method, which will move and add the node instead.")
+
+        # create 2 new links: from_node -> new_node ; new_node -> to_node
+        new_link_1, new_link_2 = self.generate_indices_for_n_edges(2)
+
+        # split geometry
+        new_link_1_geom, new_link_2_geom = spatial.split_line_at_point(point, line)
+
+        # apply attributes from the old link to the 2 new links
+        old_link_attributes = deepcopy(self.link(link_id))
+        links = {
+            new_link_1: {**old_link_attributes, **{
+                'id': new_link_1, 'from': from_node['id'], 'to': node_id,
+                'geometry': new_link_1_geom, 's2_from': from_node['s2_id'], 's2_to': node_attribs['s2_id'],
+                'length': (new_link_1_geom.length / line.length) * old_link_attributes['length']}},
+            new_link_2: {**old_link_attributes, **{
+                'id': new_link_2, 'from': node_id, 'to': to_node['id'],
+                'geometry': new_link_2_geom, 's2_from': node_attribs['s2_id'], 's2_to': to_node['s2_id'],
+                'length': (new_link_2_geom.length / line.length) * old_link_attributes['length']}},
+        }
+        self.add_links(links)
+        self.remove_link(link_id)
+
+        # update network routes in the schedule
+        if self.schedule:
+            logging.info("Updating network routes in the PT schedule.")
+            # update schedule routes
+            df_routes = self.schedule.route_attribute_data(keys=['route'])
+            df_routes = df_routes[df_routes['route'].apply(lambda x: link_id in x)]
+            if not df_routes.empty:
+                df_routes['route'] = df_routes['route'].apply(
+                    lambda x: replace_link_on_pt_route(x, {link_id: [new_link_1, new_link_2]}))
+                self.schedule.apply_attributes_to_routes(df_routes.T.to_dict())
+            else:
+                logging.info("No PT routes were affected by this change")
+
+        return {'node_attributes': node_attribs, 'links': links}
+
+    def split_link_at_point(self, link_id, x=None, y=None, node_id=None):
+        """
+        Takes a link and point coordinates, and splits the link at the point to create 2 new links;
+        the old link is then deleted. A new node is added too
+        :param link_id: ID of the link to split
+        :param x: x-coordinates of the point to split at
+        :param y: y-coordinates of the point to split at
+        :param node_id: Suggested ID for the resulting node in the graph
+        :return: updates the graph, returns data for node and links that were added
+        """
+        if node_id is None:
+            node_id = self.generate_index_for_node()
+        elif self.has_node(node_id):
+            logging.warning(f'Node with ID {node_id} already exists. Generating new index.')
+            node_id = self.generate_index_for_node()
+
+        # align the point if not on the link LineString
+        point = Point(x, y)
+        link_attribs = self.link(link_id)
+        from_node = self.node(link_attribs['from'])
+        to_node = self.node(link_attribs['to'])
+        if 'geometry' in link_attribs:
+            line = link_attribs['geometry']
+        else:
+            line = LineString([(float(from_node['x']), float(from_node['y'])),
+                               (float(to_node['x']), float(to_node['y']))])
+
+        # find nearest point on the link line - for geometry splitting, the point should be on the line
+        point = spatial.snap_point_to_line(point, line)
+
+        node_attributes = {'id': node_id, 'x': point.x, 'y': point.y}
+        self.add_node(node_id, node_attributes)
+
+        return self.split_link_at_node(link_id, node_id)
+
     def summary(self):
         report = {}
         network_stats = {'Number of network links': nx.number_of_nodes(self.graph),
@@ -2389,3 +2498,16 @@ class Network:
             report['schedule'] = self.schedule.summary()
 
         return report
+
+
+def replace_link_on_pt_route(route: List[str], map: Dict[str, Union[str, list]]):
+    new_route = []
+    for link in route:
+        if link in map:
+            if isinstance(map[link], list):
+                new_route += map[link]
+            else:
+                new_route.append(link)
+        else:
+            new_route.append(link)
+    return new_route

@@ -6,10 +6,11 @@ import numpy as np
 from sklearn.neighbors import BallTree
 import statistics
 import json
-from shapely.geometry import LineString, shape, GeometryCollection, MultiLineString
-from shapely.ops import linemerge
+from shapely.geometry import LineString, shape, GeometryCollection, MultiLineString, Point
+from shapely.ops import linemerge, split
 import pandas as pd
 import geopandas as gpd
+from typing import Tuple
 import genet.output.geojson as gngeojson
 from genet.exceptions import EmptySpatialTree
 
@@ -51,6 +52,58 @@ def merge_linestrings(linestring_list):
     """
     multi_line = MultiLineString(linestring_list)
     return linemerge(multi_line)
+
+
+def snap_point_to_line(point: Point, line: LineString, distance_threshold=1e-8) -> Point:
+    """
+    Snap a point to a line, if over a distance threshold.
+    Not using 'contains' method due to too high accuracy required to evaluate to True.
+    :param point: Point to be snapped to line, IF not close enough
+    :param line: Line to use for the Point to snap to
+    :param distance_threshold: default 1e-8, acceptable distance of point from line before snapping
+    :return:
+    """
+    if line.distance(point) > distance_threshold:
+        point = line.interpolate(line.project(point))
+    return point
+
+
+def continue_line_from_two_points(p1, p2) -> LineString:
+    """
+    Builds a line from p1, p2 and another point, ahead, the same distance and direction from p2 as p1
+    :param p1:
+    :param p2:
+    :return:
+    """
+    return LineString([p1, p2, (p2.x + (p2.x - p1.x), p2.y + (p2.y - p1.y))])
+
+
+def split_line_at_point(point: Point, line: LineString) -> Tuple[LineString, LineString]:
+    """
+    If the point is not close enough to the line, it will be snapped.
+    Returns a two-tuple of linestring slices of given line, split at the given point. The order in the tuple preserves
+    the given line.
+    :param point: point used for dividing the line
+    :param line: line to divide
+    :return: if given line from A - B, the output will be (A - point, point - B) - subject to point needing to
+    snap closer to the line
+    """
+    # the point has to be on the line for shapely split
+    # https://shapely.readthedocs.io/en/stable/manual.html#splitting
+    projected_point = snap_point_to_line(point, line, distance_threshold=0)
+    result = tuple(split(line, projected_point))
+    if len(result) == 1:
+        # our lines can have curves which makes them impossible to split with a point, instead we build a line to cut
+        # it, the end points of the linestring will likely not match with the point projected to the curved line, but
+        # are very close.
+        if point.distance(projected_point) < 1e-8:
+            # the points are too close
+            logging.warning("Given point is very close, but not cannot be placed on the line. We move it slightly "
+                            "and the resulting split may not be exact.")
+            point = Point(round(point.x, 2), round(point.y, 2))
+        split_line = continue_line_from_two_points(point, projected_point)
+        result = tuple(split(line, split_line))
+    return result
 
 
 def decode_polyline_to_shapely_linestring(_polyline):
