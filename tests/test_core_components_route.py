@@ -2,7 +2,7 @@ import pytest
 import os
 from pandas import DataFrame, Timestamp
 from pandas.testing import assert_frame_equal
-from genet.schedule_elements import Route, Stop
+from genet.schedule_elements import Route, Stop, verify_graph_schema
 from genet.utils import plot
 from tests.fixtures import stop_epsg_27700, assert_semantically_equal, assert_logging_warning_caught_with_message_containing
 from genet.exceptions import ServiceIndexError
@@ -114,6 +114,14 @@ def test_updating_route_trips_with_headway(route):
          'vehicle_id': ['veh_bus_1_01:00:00', 'veh_bus_1_01:20:00', 'veh_bus_1_01:40:00', 'veh_bus_1_02:00:00',
                         'veh_bus_1_02:30:00', 'veh_bus_1_03:00:00']}
     )
+
+
+def test_generating_trips_from_headway_preserves_graph_schema(route):
+    verify_graph_schema(route.graph())
+
+    route.generate_trips_from_headway({('01:00:00', '02:00:00'): 20, ('02:00:00', '03:00:00'): 30})
+
+    verify_graph_schema(route.graph())
 
 
 def test__repr__shows_stops_and_trips_length(route):
