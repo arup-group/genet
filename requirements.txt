@@ -81,6 +81,6 @@ tqdm==4.48.0
 traitlets==5.1.1
 urllib3>=1.25.1
 wcwidth==0.1.9
-wheel==0.36.2
+wheel==0.38.1
 xmltodict==0.12.0
 zipp==3.1.0
