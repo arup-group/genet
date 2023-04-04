@@ -9,7 +9,6 @@ from genet import read_matsim
 from genet.utils.persistence import ensure_dir
 import genet.output.sanitiser as sanitiser
 from genet.output.geojson import save_geodataframe
-import genet.utils.elevation as elevation
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(
@@ -98,7 +97,7 @@ if __name__ == '__main__':
             json.dump(sanitiser.sanitise_dictionary(elevation_dictionary), f, ensure_ascii=False, indent=4)
 
     logging.info('Validating the node elevation data')
-    report = genet.utils.elevation.validation_report_for_node_elevation(elevation_dictionary)
+    report = genet.elevation.validation_report_for_node_elevation(elevation_dictionary)
     logging.info(report['summary'])
 
     if save_dict_to_json:
@@ -143,7 +142,7 @@ if __name__ == '__main__':
         save_geodataframe(gdf_links.to_crs('epsg:4326'), 'link_slope', elevation_output_dir)
 
     if write_slope_to_object_attribute_file:
-        elevation.write_slope_xml(slope_dictionary, elevation_output_dir)
+        genet.elevation.write_slope_xml(slope_dictionary, elevation_output_dir)
 
     logging.info('Writing the updated network')
     n.write_to_matsim(elevation_output_dir)
