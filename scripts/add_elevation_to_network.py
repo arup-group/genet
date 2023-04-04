@@ -42,19 +42,22 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('-we',
                             '--write_elevation_to_network',
-                            help='Whether node elevation data should be written as attribute to the network; defaults to True',
+                            help='Whether node elevation data should be written as attribute to the network; '
+                                 'defaults to True',
                             default=True,
                             type=bool)
 
-    arg_parser.add_argument('-ws',
+    arg_parser.add_argument('-wsn',
                             '--write_slope_to_network',
-                            help='Whether link slope data should be written as attribute to the network; defaults to True',
+                            help='Whether link slope data should be written as attribute to the network; '
+                                 'defaults to True',
                             default=True,
                             type=bool)
 
-    arg_parser.add_argument('-ws',
+    arg_parser.add_argument('-wsoa',
                             '--write_slope_to_object_attribute_file',
-                            help='Whether link slope data should be written to object attribute file; defaults to True',
+                            help='Whether link slope data should be written to object attribute file; '
+                                 'defaults to True',
                             default=True,
                             type=bool)
 
