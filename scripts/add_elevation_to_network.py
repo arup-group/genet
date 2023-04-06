@@ -9,7 +9,6 @@ from genet import read_matsim
 from genet.utils.persistence import ensure_dir
 import genet.output.sanitiser as sanitiser
 from genet.output.geojson import save_geodataframe
-import genet.utils.elevation as elevation
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(
@@ -42,19 +41,22 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('-we',
                             '--write_elevation_to_network',
-                            help='Whether node elevation data should be written as attribute to the network; defaults to True',
+                            help='Whether node elevation data should be written as attribute to the network; '
+                                 'defaults to True',
                             default=True,
                             type=bool)
 
-    arg_parser.add_argument('-ws',
+    arg_parser.add_argument('-wsn',
                             '--write_slope_to_network',
-                            help='Whether link slope data should be written as attribute to the network; defaults to True',
+                            help='Whether link slope data should be written as attribute to the network; '
+                                 'defaults to True',
                             default=True,
                             type=bool)
 
-    arg_parser.add_argument('-ws',
+    arg_parser.add_argument('-wsoa',
                             '--write_slope_to_object_attribute_file',
-                            help='Whether link slope data should be written to object attribute file; defaults to True',
+                            help='Whether link slope data should be written to object attribute file; '
+                                 'defaults to True',
                             default=True,
                             type=bool)
 
@@ -74,8 +76,7 @@ if __name__ == '__main__':
     write_slope_to_network = args['write_slope_to_network']
     write_slope_to_object_attribute_file = args['write_slope_to_object_attribute_file']
     save_dict_to_json = args['save_jsons']
-    elevation_output_dir = os.path.join(output_dir, 'elevation')
-    ensure_dir(elevation_output_dir)
+    ensure_dir(output_dir)
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
@@ -90,16 +91,16 @@ if __name__ == '__main__':
     elevation_dictionary = n.get_node_elevation_dictionary(elevation_tif_file_path=elevation, null_value=tif_null_value)
 
     if save_dict_to_json:
-        with open(os.path.join(elevation_output_dir, 'node_elevation_dictionary.json'), 'w',
+        with open(os.path.join(output_dir, 'node_elevation_dictionary.json'), 'w',
                   encoding='utf-8') as f:
             json.dump(sanitiser.sanitise_dictionary(elevation_dictionary), f, ensure_ascii=False, indent=4)
 
     logging.info('Validating the node elevation data')
-    report = genet.utils.elevation.validation_report_for_node_elevation(elevation_dictionary)
+    report = genet.elevation.validation_report_for_node_elevation(elevation_dictionary)
     logging.info(report['summary'])
 
     if save_dict_to_json:
-        with open(os.path.join(elevation_output_dir, 'validation_report_for_elevation.json'), 'w',
+        with open(os.path.join(output_dir, 'validation_report_for_elevation.json'), 'w',
                   encoding='utf-8') as f:
             json.dump(sanitiser.sanitise_dictionary(report), f, ensure_ascii=False, indent=4)
 
@@ -113,13 +114,13 @@ if __name__ == '__main__':
 
         gdf_nodes = n.to_geodataframe()['nodes']
         gdf_nodes = gdf_nodes[['id', 'z', 'geometry']]
-        save_geodataframe(gdf_nodes.to_crs('epsg:4326'), 'node_elevation', elevation_output_dir)
+        save_geodataframe(gdf_nodes.to_crs('epsg:4326'), 'node_elevation', output_dir)
 
     logging.info('Creating slope dictionary for network links')
     slope_dictionary = n.get_link_slope_dictionary(elevation_dict=elevation_dictionary)
 
     if save_dict_to_json:
-        with open(os.path.join(elevation_output_dir, 'link_slope_dictionary.json'), 'w',
+        with open(os.path.join(output_dir, 'link_slope_dictionary.json'), 'w',
                   encoding='utf-8') as f:
             json.dump(sanitiser.sanitise_dictionary(slope_dictionary), f, ensure_ascii=False, indent=4)
 
@@ -137,10 +138,10 @@ if __name__ == '__main__':
         df['slope'] = [x['slope'] for x in df['slope_tuple']]
         df = df[['id', 'slope']]
         gdf_links = pd.merge(gdf, df, on='id')
-        save_geodataframe(gdf_links.to_crs('epsg:4326'), 'link_slope', elevation_output_dir)
+        save_geodataframe(gdf_links.to_crs('epsg:4326'), 'link_slope', output_dir)
 
     if write_slope_to_object_attribute_file:
-        elevation.write_slope_xml(slope_dictionary, elevation_output_dir)
+        genet.elevation.write_slope_xml(slope_dictionary, output_dir)
 
     logging.info('Writing the updated network')
-    n.write_to_matsim(elevation_output_dir)
+    n.write_to_matsim(output_dir)
