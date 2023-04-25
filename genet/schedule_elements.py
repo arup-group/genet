@@ -1927,9 +1927,9 @@ class Schedule(ScheduleElement):
         self._graph.graph['routes'] = dict_support.merge_complex_dictionaries(
             other._graph.graph['routes'], self._graph.graph['routes'])
         self._graph.graph['route_to_service_map'] = {**self._graph.graph['route_to_service_map'],
-                                **other._graph.graph['route_to_service_map']}
+                                                     **other._graph.graph['route_to_service_map']}
         self._graph.graph['service_to_route_map'] = {**self._graph.graph['service_to_route_map'],
-                                **other._graph.graph['service_to_route_map']}
+                                                     **other._graph.graph['service_to_route_map']}
         self.minimal_transfer_times = dict_support.merge_complex_dictionaries(
             other.minimal_transfer_times, self.minimal_transfer_times)
         # todo assuming separate schedules, with non conflicting ids, nodes and edges
