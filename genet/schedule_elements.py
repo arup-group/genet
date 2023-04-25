@@ -79,7 +79,7 @@ class ScheduleElement:
         return set(service_ids).issubset(set(self._graph.graph['services'].keys()))
 
     def change_log(self):
-        return self._graph.graph['change_log']
+        return change_log.ChangeLog(df=self._graph.graph['change_log'])
 
     @abstractmethod
     def _add_additional_attribute_to_graph(self, k, v):
@@ -1926,16 +1926,16 @@ class Schedule(ScheduleElement):
             other._graph.graph['services'], self._graph.graph['services'])
         self._graph.graph['routes'] = dict_support.merge_complex_dictionaries(
             other._graph.graph['routes'], self._graph.graph['routes'])
-        route_to_service_map = {**self._graph.graph['route_to_service_map'],
+        self._graph.graph['route_to_service_map'] = {**self._graph.graph['route_to_service_map'],
                                 **other._graph.graph['route_to_service_map']}
-        service_to_route_map = {**self._graph.graph['service_to_route_map'],
+        self._graph.graph['service_to_route_map'] = {**self._graph.graph['service_to_route_map'],
                                 **other._graph.graph['service_to_route_map']}
         self.minimal_transfer_times = dict_support.merge_complex_dictionaries(
             other.minimal_transfer_times, self.minimal_transfer_times)
         # todo assuming separate schedules, with non conflicting ids, nodes and edges
+        _ = deepcopy(self._graph.graph)
         self._graph.update(other._graph)
-        self._graph.graph['route_to_service_map'] = route_to_service_map
-        self._graph.graph['service_to_route_map'] = service_to_route_map
+        self._graph.graph = _
 
         # merge change_log DataFrames
         self._graph.graph['change_log'] = self.change_log().merge_logs(other.change_log())

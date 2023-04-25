@@ -89,6 +89,24 @@ def test_merging_dictionaries_with_lists():
     assert_semantically_equal(return_d, {'a': 1, 'b': [3, 6, 5], 'c': [1, 8, 90]})
 
 
+def test_merging_dictionaries_with_lists_with_non_unique_items():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'b': [6, 6]},
+        {'b': [5]}
+    )
+    assert_semantically_equal(return_d, {'b': [6, 6, 5]})
+
+
+def test_merging_dictionaries_with_lists_with_non_unique_items_does_not_change_input_dicts():
+    A = {'b': [6, 6]}
+    B = {'b': [5]}
+
+    return_d = dict_support.merge_complex_dictionaries(A, B)
+
+    assert_semantically_equal(A, {'b': [6, 6]})
+    assert_semantically_equal(B, {'b': [5]})
+
+
 def test_merging_nested_dictionaries():
     return_d = dict_support.merge_complex_dictionaries(
         {'a': 1, 'b': {3: 5}, 'c': {1: 4}},
@@ -117,12 +135,6 @@ def test_merging_dicts_with_lists():
     d = dict_support.merge_complex_dictionaries({'1': [''], '2': []}, {'3': ['1'], '1': ['2']})
 
     assert_semantically_equal(d, {'1': ['', '2'], '2': [], '3': ['1']})
-
-
-def test_merging_dicts_with_lists_with_overlapping_values_returns_list_with_unique_values():
-    d = dict_support.merge_complex_dictionaries({'1': ['2'], '2': []}, {'3': ['1'], '1': ['2']})
-
-    assert_semantically_equal(d, {'1': ['2'], '2': [], '3': ['1']})
 
 
 def test_merging_dicts_with_lists_when_one_dict_is_empty():

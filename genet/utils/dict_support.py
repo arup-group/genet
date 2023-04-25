@@ -1,7 +1,7 @@
 import pandas as pd
 from numpy import ndarray
 from typing import Union
-
+from copy import deepcopy
 import genet.utils.graph_operations as graph_operations
 
 
@@ -87,19 +87,20 @@ def merge_complex_dictionaries(d1, d2):
     :param d2:
     :return:
     """
+    d = deepcopy(d1)
     clashing_keys = set(d1) & set(d2)
     for key in clashing_keys:
         if isinstance(d1[key], dict) and isinstance(d2[key], dict):
-            d1[key] = merge_complex_dictionaries(d1[key], d2[key])
+            d[key] = merge_complex_dictionaries(d1[key], d2[key])
         elif isinstance(d1[key], list) and isinstance(d2[key], list):
-            d1[key] = list(set(d1[key]) | set(d2[key]))
+            d[key] = d1[key] + d2[key]
         elif isinstance(d1[key], set) and isinstance(d2[key], set):
-            d1[key] = d1[key] | d2[key]
+            d[key] = d1[key] | d2[key]
         else:
-            d1[key] = d2[key]
+            d[key] = d2[key]
     for key in set(d2) - clashing_keys:
-        d1[key] = d2[key]
-    return d1
+        d[key] = d2[key]
+    return d
 
 
 def combine_edge_data_lists(l1, l2):
