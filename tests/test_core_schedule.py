@@ -872,6 +872,22 @@ def test_multiple_services_are_present_in_schedule_after_adding(schedule, servic
     assert set(schedule.route_ids()) == expected_routes_after_adding
 
 
+def test_adding_services_from_schedule_does_not_change_route_data(
+        schedule, services_to_add):
+    routes_data_before_add = [r.__dict__ for r in services_to_add[0].routes()]
+    schedule_to_add = Schedule(services=services_to_add, epsg='epsg:27700')
+
+    schedule.add_services(list(schedule_to_add.services()))
+
+    for item in ['ordered_stops', 'arrival_offsets', 'departure_offsets']:
+        assert schedule._graph.graph['routes']['new_route_0_0'][item] == routes_data_before_add[0][item]
+        assert schedule._graph.graph['routes']['new_route_0_1'][item] == routes_data_before_add[0][item]
+
+    for trip_item in ['trip_id', 'trip_departure_time', 'vehicle_id']:
+        assert schedule._graph.graph['routes']['new_route_0_0']['trips'][trip_item] == routes_data_before_add[0]['trips'][trip_item]
+        assert schedule._graph.graph['routes']['new_route_0_1']['trips'][trip_item] == routes_data_before_add[0]['trips'][trip_item]
+
+
 def test_adding_multiple_services_updates_changelog(schedule, services_to_add):
     schedule.add_services(services_to_add)
     assert list(schedule.change_log().iloc[-len(services_to_add):][['change_event', 'new_id']].itertuples(
