@@ -1,8 +1,8 @@
-FROM python:3.7-slim-stretch
+FROM python:3.7.16-bullseye
 
 RUN apt-get update && \
 apt-get upgrade -y && \
-apt-get -y install gcc git libspatialindex-dev curl coinor-cbc &&  \
+apt-get -y install gcc git libgdal-dev libgeos-dev libspatialindex-dev curl coinor-cbc &&  \
 rm -rf /var/lib/apt/lists/*
 
 RUN curl -sL https://deb.nodesource.com/setup_17.x | bash -
