@@ -89,7 +89,7 @@ def test_merging_dictionaries_with_lists():
     assert_semantically_equal(return_d, {'a': 1, 'b': [3, 6, 5], 'c': [1, 8, 90]})
 
 
-def test_merging_dictionaries_with_lists_with_non_unique_items():
+def test_preserves_duplicates_in_input_list_when_merging_dictionaries():
     return_d = dict_support.merge_complex_dictionaries(
         {'b': [6, 6]},
         {'b': [5]}
@@ -97,14 +97,54 @@ def test_merging_dictionaries_with_lists_with_non_unique_items():
     assert_semantically_equal(return_d, {'b': [6, 6, 5]})
 
 
-def test_merging_dictionaries_with_lists_with_non_unique_items_does_not_change_input_dicts():
-    A = {'b': [6, 6]}
-    B = {'b': [5]}
+def test_preserves_resulting_duplicates_in_lists_when_merging_dictionaries():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'b': [6]},
+        {'b': [5, 6]}
+    )
+    assert_semantically_equal(return_d, {'b': [6, 5, 6]})
+
+
+def test_preserves_lists_order_when_merging_dictionaries():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'b': [1, 2]},
+        {'b': [3, 4]}
+    )
+    assert_semantically_equal(return_d, {'b': [1, 2, 3, 4]})
+
+
+def test_combines_sets_with_or_operator_when_merging_dictionaries():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'b': {1, 2}},
+        {'b': {2, 3}}
+    )
+    assert_semantically_equal(return_d, {'b': {1, 2, 3}})
+
+
+def test_does_not_mutate_parameters_when_merging_complex_dictionaries():
+    A = {
+        'a': {1, 2},
+        'b': [6, 6],
+        'c': {
+            'a': {1, 2},
+            'b': [6, 6]
+        },
+        'd': 'hey'
+    }
+    B = {
+        'a': {2, 3},
+        'b': [5],
+        'c': {
+            'a': {2, 3},
+            'b': [5]
+        },
+        'd': 'yo'
+    }
 
     return_d = dict_support.merge_complex_dictionaries(A, B)
 
-    assert_semantically_equal(A, {'b': [6, 6]})
-    assert_semantically_equal(B, {'b': [5]})
+    assert_semantically_equal(A, {'a': {1, 2}, 'b': [6, 6], 'c': {'a': {1, 2}, 'b': [6, 6]}, 'd': 'hey'})
+    assert_semantically_equal(B, {'a': {2, 3}, 'b': [5], 'c': {'a': {2, 3}, 'b': [5]}, 'd': 'yo'})
 
 
 def test_merging_nested_dictionaries():

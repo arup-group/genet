@@ -82,7 +82,11 @@ def nest_at_leaf(d: dict, value):
 def merge_complex_dictionaries(d1, d2):
     """
     Merges two dictionaries where the values can be lists, sets or other dictionaries with the same behaviour.
-    If values are not list, set or dict then d2 values prevail
+    If values are not list, set or dict then d2 values prevail.
+    If the values are lists, the two merge, retaining all elements of both lists and preserving their order
+        the result is: d1_list + d2_list.
+    If the values are sets, the two combine with the OR operator.
+    If the values are dicts, the two merge using this method.
     :param d1:
     :param d2:
     :return:
