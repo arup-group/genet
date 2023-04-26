@@ -233,9 +233,8 @@ def test_schedule_with_non_uniformly_projected_objects_can_be_projected_to_unifo
 
 
 def test__getitem__returns_a_service(test_service):
-    services = [test_service]
-    schedule = Schedule(services=services, epsg='epsg:4326')
-    assert schedule['service'] == services[0]
+    schedule = Schedule(services=[test_service], epsg='epsg:4326')
+    assert schedule['service'] == test_service
 
 
 def test_accessing_route(schedule):
@@ -246,7 +245,7 @@ def test_accessing_route(schedule):
                                                Stop(id='3', x=3, y=3, epsg='epsg:27700'),
                                                Stop(id='4', x=7, y=5, epsg='epsg:27700')],
                                         trips={'trip_id': ['1', '2'],
-                                               'trip_departure_time': ['1', '2'],
+                                               'trip_departure_time': ['13:00:00', '13:30:00'],
                                                'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                                         arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                                         departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
@@ -874,18 +873,13 @@ def test_multiple_services_are_present_in_schedule_after_adding(schedule, servic
 
 def test_adding_services_from_schedule_does_not_change_route_data(
         schedule, services_to_add):
-    routes_data_before_add = [r.__dict__ for r in services_to_add[0].routes()]
     schedule_to_add = Schedule(services=services_to_add, epsg='epsg:27700')
+    route_ids_to_add = list(schedule_to_add.route_ids())
+    routes_data_before_add = [schedule_to_add.route(r) for r in route_ids_to_add]
 
     schedule.add_services(list(schedule_to_add.services()))
 
-    for item in ['ordered_stops', 'arrival_offsets', 'departure_offsets']:
-        assert schedule._graph.graph['routes']['new_route_0_0'][item] == routes_data_before_add[0][item]
-        assert schedule._graph.graph['routes']['new_route_0_1'][item] == routes_data_before_add[0][item]
-
-    for trip_item in ['trip_id', 'trip_departure_time', 'vehicle_id']:
-        assert schedule._graph.graph['routes']['new_route_0_0']['trips'][trip_item] == routes_data_before_add[0]['trips'][trip_item]
-        assert schedule._graph.graph['routes']['new_route_0_1']['trips'][trip_item] == routes_data_before_add[0]['trips'][trip_item]
+    assert [schedule.route(r) for r in route_ids_to_add] == routes_data_before_add
 
 
 def test_adding_multiple_services_updates_changelog(schedule, services_to_add):

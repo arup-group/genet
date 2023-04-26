@@ -647,7 +647,10 @@ class Route(ScheduleElement):
         same_route_name = self.route_short_name == other.route_short_name
         same_mode = self.mode.lower() == other.mode.lower()
         same_stops = list(self.stops()) == list(other.stops())
-        return same_route_name and same_mode and same_stops
+        same_trips = self.trips == other.trips
+        same_arrival_offsets = self.arrival_offsets == other.arrival_offsets
+        same_departure_offsets = self.departure_offsets == other.departure_offsets
+        return all([same_route_name, same_mode, same_stops, same_trips, same_arrival_offsets, same_departure_offsets])
 
     def __repr__(self):
         return "<{} instance at {}: with {} stops and {} trips>".format(

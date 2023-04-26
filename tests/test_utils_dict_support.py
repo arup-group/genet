@@ -1,4 +1,5 @@
 import pytest
+from copy import deepcopy
 from pandas import DataFrame
 import genet.utils.dict_support as dict_support
 from tests.fixtures import assert_semantically_equal
@@ -140,11 +141,13 @@ def test_does_not_mutate_parameters_when_merging_complex_dictionaries():
         },
         'd': 'yo'
     }
+    A_before = deepcopy(A)
+    B_before = deepcopy(B)
 
-    return_d = dict_support.merge_complex_dictionaries(A, B)
+    dict_support.merge_complex_dictionaries(A, B)
 
-    assert_semantically_equal(A, {'a': {1, 2}, 'b': [6, 6], 'c': {'a': {1, 2}, 'b': [6, 6]}, 'd': 'hey'})
-    assert_semantically_equal(B, {'a': {2, 3}, 'b': [5], 'c': {'a': {2, 3}, 'b': [5]}, 'd': 'yo'})
+    assert_semantically_equal(A, A_before)
+    assert_semantically_equal(B, B_before)
 
 
 def test_merging_nested_dictionaries():
