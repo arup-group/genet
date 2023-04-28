@@ -79,7 +79,7 @@ class ScheduleElement:
         return set(service_ids).issubset(set(self._graph.graph['services'].keys()))
 
     def change_log(self):
-        return self._graph.graph['change_log']
+        return change_log.ChangeLog(df=self._graph.graph['change_log'])
 
     @abstractmethod
     def _add_additional_attribute_to_graph(self, k, v):
@@ -647,7 +647,10 @@ class Route(ScheduleElement):
         same_route_name = self.route_short_name == other.route_short_name
         same_mode = self.mode.lower() == other.mode.lower()
         same_stops = list(self.stops()) == list(other.stops())
-        return same_route_name and same_mode and same_stops
+        same_trips = self.trips == other.trips
+        same_arrival_offsets = self.arrival_offsets == other.arrival_offsets
+        same_departure_offsets = self.departure_offsets == other.departure_offsets
+        return all([same_route_name, same_mode, same_stops, same_trips, same_arrival_offsets, same_departure_offsets])
 
     def __repr__(self):
         return "<{} instance at {}: with {} stops and {} trips>".format(
@@ -1926,16 +1929,16 @@ class Schedule(ScheduleElement):
             other._graph.graph['services'], self._graph.graph['services'])
         self._graph.graph['routes'] = dict_support.merge_complex_dictionaries(
             other._graph.graph['routes'], self._graph.graph['routes'])
-        route_to_service_map = {**self._graph.graph['route_to_service_map'],
-                                **other._graph.graph['route_to_service_map']}
-        service_to_route_map = {**self._graph.graph['service_to_route_map'],
-                                **other._graph.graph['service_to_route_map']}
+        self._graph.graph['route_to_service_map'] = {**self._graph.graph['route_to_service_map'],
+                                                     **other._graph.graph['route_to_service_map']}
+        self._graph.graph['service_to_route_map'] = {**self._graph.graph['service_to_route_map'],
+                                                     **other._graph.graph['service_to_route_map']}
         self.minimal_transfer_times = dict_support.merge_complex_dictionaries(
             other.minimal_transfer_times, self.minimal_transfer_times)
         # todo assuming separate schedules, with non conflicting ids, nodes and edges
+        _ = deepcopy(self._graph.graph)
         self._graph.update(other._graph)
-        self._graph.graph['route_to_service_map'] = route_to_service_map
-        self._graph.graph['service_to_route_map'] = service_to_route_map
+        self._graph.graph = _
 
         # merge change_log DataFrames
         self._graph.graph['change_log'] = self.change_log().merge_logs(other.change_log())
@@ -2659,22 +2662,16 @@ class Schedule(ScheduleElement):
                 dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
             edges = dict_support.combine_edge_data_lists(
                 list(g.edges(data=True)), list(self._graph.edges(data=True)))
-            graph_routes = dict_support.merge_complex_dictionaries(
-                g.graph['routes'], self._graph.graph['routes'])
-            graph_services = dict_support.merge_complex_dictionaries(
-                g.graph['services'], self._graph.graph['services'])
-            route_to_service_map = {**self._graph.graph['route_to_service_map'],
-                                    **g.graph['route_to_service_map']}
-            service_to_route_map = {**self._graph.graph['service_to_route_map'],
-                                    **g.graph['service_to_route_map']}
 
+            route_ids_to_add = list(service.route_ids())
             self._graph.add_nodes_from(nodes)
             self._graph.add_edges_from(edges)
             nx.set_node_attributes(self._graph, nodes)
-            self._graph.graph['routes'] = graph_routes
-            self._graph.graph['services'] = graph_services
-            self._graph.graph['route_to_service_map'] = route_to_service_map
-            self._graph.graph['service_to_route_map'] = service_to_route_map
+            for route_id in route_ids_to_add:
+                self._graph.graph['routes'][route_id] = g.graph['routes'][route_id]
+                self._graph.graph['route_to_service_map'][route_id] = g.graph['route_to_service_map'][route_id]
+            self._graph.graph['services'][service.id] = g.graph['services'][service.id]
+            self._graph.graph['service_to_route_map'][service.id] = g.graph['service_to_route_map'][service.id]
 
         service_ids = [service.id for service in services]
         service_data = [self._graph.graph['services'][sid] for sid in service_ids]

@@ -205,9 +205,11 @@ def test_routes_equal(stop_epsg_27700):
     b = Route(
         route_short_name='route', mode='bus',
         stops=[stop_epsg_27700, stop_epsg_27700],
-        trips={},
-        arrival_offsets=[],
-        departure_offsets=[])
+        trips={'trip_id': ['VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00'],
+               'trip_departure_time': ['04:40:00'],
+               'vehicle_id': ['veh_1_bus']},
+        arrival_offsets=['00:00:00', '00:02:00'],
+        departure_offsets=['00:00:00', '00:02:00'])
 
     assert a == b
 
