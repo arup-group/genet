@@ -65,7 +65,7 @@ pytz==2020.1
 PyUtilib>=5.8.0
 PyYAML==5.4
 pyzmq==19.0.1
-requests==2.26.0
+requests==2.31.0
 requests-futures==1.0.0
 rich==12.5.1
 rioxarray==0.9.1
