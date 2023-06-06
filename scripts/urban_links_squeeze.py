@@ -1,3 +1,4 @@
+import os
 import argparse
 import logging
 
@@ -49,8 +50,11 @@ if __name__ == '__main__':
     projection = args['projection']
     freespeed = args['freespeed'] / 100
     capacity = args['capacity'] / 100
+
     output_dir = args['output_dir']
+    supporting_outputs = os.path.join(output_dir, 'supporting_outputs')
     ensure_dir(output_dir)
+    ensure_dir(supporting_outputs)
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
@@ -69,9 +73,9 @@ if __name__ == '__main__':
     gdf = n.to_geodataframe()['links']
     gdf = gdf.to_crs('epsg:4326')
     _gdf = gdf[gdf.apply(lambda x: gn.output.geojson.modal_subset(x, {'car', 'bus'}), axis=1)]
-    gn.output.geojson.save_geodataframe(_gdf[['id', 'freespeed', 'geometry']], output_dir=output_dir,
+    gn.output.geojson.save_geodataframe(_gdf[['id', 'freespeed', 'geometry']], output_dir=supporting_outputs,
                                         filename='freespeed_before')
-    gn.output.geojson.save_geodataframe(_gdf[['id', 'capacity', 'geometry']], output_dir=output_dir,
+    gn.output.geojson.save_geodataframe(_gdf[['id', 'capacity', 'geometry']], output_dir=supporting_outputs,
                                         filename='capacity_before')
 
     gdf = gdf[gdf['id'].isin(links_to_reduce)]
@@ -88,9 +92,9 @@ if __name__ == '__main__':
     gdf = n.to_geodataframe()['links']
     gdf = gdf.to_crs('epsg:4326')
     gdf = gdf[gdf.apply(lambda x: gn.output.geojson.modal_subset(x, {'car', 'bus'}), axis=1)]
-    gn.output.geojson.save_geodataframe(gdf[['id', 'freespeed', 'geometry']], output_dir=output_dir,
+    gn.output.geojson.save_geodataframe(gdf[['id', 'freespeed', 'geometry']], output_dir=supporting_outputs,
                                         filename='freespeed_after')
-    gn.output.geojson.save_geodataframe(gdf[['id', 'capacity', 'geometry']], output_dir=output_dir,
+    gn.output.geojson.save_geodataframe(gdf[['id', 'capacity', 'geometry']], output_dir=supporting_outputs,
                                         filename='capacity_after')
 
     logging.info(f'Saving network in {output_dir}')

@@ -1,3 +1,4 @@
+import os
 import argparse
 import logging
 import geopandas as gpd
@@ -40,8 +41,11 @@ if __name__ == '__main__':
     network = args['network']
     projection = args['projection']
     urban_geometries = args['urban_geometries']
+
     output_dir = args['output_dir']
+    supporting_outputs = os.path.join(output_dir, 'supporting_outputs')
     ensure_dir(output_dir)
+    ensure_dir(supporting_outputs)
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
@@ -90,7 +94,7 @@ if __name__ == '__main__':
     urban_tag_gdf = network_gdf[network_gdf['id'].isin(set(links_to_tag))]
     save_geodataframe(urban_tag_gdf[['id', 'geometry']].to_crs('epsg:4326'),
                       'urban_network_links',
-                      output_dir)
+                      supporting_outputs)
 
     logging.info('Applying "urban" tag to links')
     n.apply_attributes_to_links(

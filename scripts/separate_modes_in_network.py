@@ -68,8 +68,11 @@ if __name__ == '__main__':
     network = args['network']
     projection = args['projection']
     modes = set(args['modes'].split(','))
+
     output_dir = args['output_dir']
+    supporting_outputs = os.path.join(output_dir, 'supporting_outputs')
     ensure_dir(output_dir)
+    ensure_dir(supporting_outputs)
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
@@ -80,7 +83,7 @@ if __name__ == '__main__':
     )
     logging.info(f'Number of links before separating graph: {len(n.link_id_mapping)}')
 
-    generate_modal_network_geojsons(n, modes, output_dir, 'before')
+    generate_modal_network_geojsons(n, modes, supporting_outputs, 'before')
 
     for mode in modes:
         logging.info(f'Splitting links for mode: {mode}')
@@ -103,4 +106,4 @@ if __name__ == '__main__':
     with open(os.path.join(output_dir, 'validation_report.json'), 'w', encoding='utf-8') as f:
         json.dump(sanitise_dictionary(report), f, ensure_ascii=False, indent=4)
 
-    generate_modal_network_geojsons(n, modes, output_dir, 'after')
+    generate_modal_network_geojsons(n, modes, supporting_outputs, 'after')

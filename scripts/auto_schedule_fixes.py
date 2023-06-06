@@ -1,12 +1,7 @@
 import math
 
 import argparse
-import json
 import logging
-import os
-import time
-import datetime
-import pandas as pd
 import geopandas as gpd
 
 from genet import read_matsim
