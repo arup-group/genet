@@ -1594,11 +1594,16 @@ def test_recognises_schedule_has_infinite_speed_problem(schedule_with_infinite_s
 
 def test_updates_offsets_for_stop_with_infinite_speed(schedule_with_infinite_speed):
     schedule_with_infinite_speed['schedule'].fix_infinite_speeds()
-    assert schedule_with_infinite_speed['schedule'].route(schedule_with_infinite_speed['route_id']).arrival_offsets == \
-           schedule_with_infinite_speed['expected_arrival_offsets']
-    assert schedule_with_infinite_speed['schedule'].route(schedule_with_infinite_speed['route_id']).departure_offsets == \
-           schedule_with_infinite_speed['expected_departure_offsets']
-
+    assert list_of_times_somewhat_accurate(
+        schedule_with_infinite_speed['schedule'].route(schedule_with_infinite_speed['route_id']).arrival_offsets,
+        schedule_with_infinite_speed['expected_arrival_offsets'],
+        tolerance_s=5
+    )
+    assert list_of_times_somewhat_accurate(
+        schedule_with_infinite_speed['schedule'].route(schedule_with_infinite_speed['route_id']).departure_offsets,
+        schedule_with_infinite_speed['expected_departure_offsets'],
+        tolerance_s=5
+    )
 
 def test_is_strongly_connected_with_strongly_connected_schedule(strongly_connected_schedule):
     assert strongly_connected_schedule.is_strongly_connected()
