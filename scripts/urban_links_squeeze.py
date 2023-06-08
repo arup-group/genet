@@ -23,21 +23,21 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('-f',
                             '--freespeed',
-                            help='% value, e.g. 50, to reduce the "freespeed" attribute for the urban non-major roads'
+                            help='Factor, e.g. 0.5, to reduce the "freespeed" attribute for the urban non-major roads'
                                  'in the network. The current value will be multiplied by 0.5 (in that case).'
-                                 'You can also pass 150 to increase the value by 1.5.',
+                                 'You can also pass 1.5, for example, to increase the value.',
                             required=False,
                             type=float,
-                            default=0)
+                            default=1)
 
     arg_parser.add_argument('-c',
                             '--capacity',
-                            help='% value, e.g. 50, to reduce the "capacity" attribute for the urban non-major roads'
-                                 'in the network. The current value will be multiplied by 0.5 (in that case)'
-                                 'You can also pass 150 to increase the value by 1.5.',
+                            help='Factor, e.g. 0.5, to reduce the "capacity" attribute for the urban non-major roads'
+                                 'in the network. The current value will be multiplied by 0.5 (in that case).'
+                                 'You can also pass 1.5, for example, to increase the value.',
                             required=False,
                             type=float,
-                            default=0)
+                            default=1)
 
     arg_parser.add_argument('-od',
                             '--output_dir',
