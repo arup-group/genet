@@ -2968,9 +2968,9 @@ class Schedule(ScheduleElement):
 
         if not zero_headways.empty:
             logging.info(f"Found {len(zero_headways)} trips with zero headways. "
-                         f"{len(set(zero_headways['route_id']))} out of {len(set(trip_headways_df['route_id']))} routes "
-                         f"and {len(set(zero_headways['service_id']))} out of {len(set(trip_headways_df['service_id']))} "
-                         "services are affected. "
+                         f"{len(set(zero_headways['route_id']))} out of {len(set(trip_headways_df['route_id']))} "
+                         f"routes and {len(set(zero_headways['service_id']))} out of "
+                         f"{len(set(trip_headways_df['service_id']))} services are affected. "
                          "These will now be dropped as though they are duplicates of other trips, "
                          "thus resulting in zero headway between them")
             new_trips = trip_headways_df[trip_headways_df['headway_mins'] != 0].drop(['headway_mins', 'headway'],
