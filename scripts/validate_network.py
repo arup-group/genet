@@ -5,6 +5,8 @@ import os
 
 from genet import read_matsim
 from genet.utils.persistence import ensure_dir
+from genet.output.sanitiser import sanitise_dictionary
+
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Run MATSim specific validation methods on a MATSim network')
@@ -69,4 +71,4 @@ if __name__ == '__main__':
         logging.info(f'Routing validation: {report["routing"]["services_have_routes_in_the_graph"]}')
 
     with open(os.path.join(output_dir, 'validation_report.json'), 'w', encoding='utf-8') as f:
-        json.dump(report, f, ensure_ascii=False, indent=4)
+        json.dump(sanitise_dictionary(report), f, ensure_ascii=False, indent=4)
