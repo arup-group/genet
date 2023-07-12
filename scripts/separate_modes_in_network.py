@@ -89,7 +89,7 @@ if __name__ == '__main__':
         logging.info(f'Splitting links for mode: {mode}')
         df = n.link_attribute_data_under_key('modes')
         modal_links = n.links_on_modal_condition({mode})
-        # leave the links that have a sile mode as they are
+        # leave the links that have a single mode as they are
         modal_links = set(modal_links) & set(df[df != {mode}].index)
         update_mode_links = {k: {'modes': df.loc[k] - {mode}} for k in modal_links}
         new_links = {f'{mode}---{k}': {**n.link(k), **{'modes': {mode}, 'id': f'{mode}---{k}'}} for k in modal_links}
