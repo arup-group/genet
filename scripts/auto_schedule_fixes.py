@@ -16,19 +16,19 @@ def write_scaled_vehicles(network, list_of_scales, output_dir):
 
 
 def generate_headway_geojson(n, gdf, output_dir, filename_suffix):
-    _ = n.schedule.headway_stats()
-    _ = _.merge(gdf[['route_id', 'geometry']], how='left', on='route_id')
-    save_geodataframe(gpd.GeoDataFrame(_).to_crs('epsg:4326'), f'headway_stats_{filename_suffix}', output_dir)
+    headways = n.schedule.headway_stats()
+    headways = headways.merge(gdf[['route_id', 'geometry']], how='left', on='route_id')
+    save_geodataframe(gpd.GeoDataFrame(headways).to_crs('epsg:4326'), f'headway_stats_{filename_suffix}', output_dir)
 
 
 def generate_speed_geojson(n, gdf, output_dir, filename_suffix):
-    _ = n.schedule.speed_geodataframe()
+    speeds = n.schedule.speed_geodataframe()
     # fill infinity by large number to show up in visualisations
-    _.loc[_['speed'] == math.inf, 'speed'] = 9999
+    speeds.loc[speeds['speed'] == math.inf, 'speed'] = 9999
 
-    _ = _.groupby(['service_id', 'route_id', 'route_name', 'mode']).max()['speed'].reset_index()
-    _ = _.merge(gdf[['route_id', 'geometry']], how='left', on='route_id')
-    save_geodataframe(gpd.GeoDataFrame(_).to_crs('epsg:4326'), f'max_speeds_{filename_suffix}', output_dir)
+    speeds = speeds.groupby(['service_id', 'route_id', 'route_name', 'mode']).max()['speed'].reset_index()
+    speeds = speeds.merge(gdf[['route_id', 'geometry']], how='left', on='route_id')
+    save_geodataframe(gpd.GeoDataFrame(speeds).to_crs('epsg:4326'), f'max_speeds_{filename_suffix}', output_dir)
 
 
 if __name__ == '__main__':
