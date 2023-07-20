@@ -59,6 +59,13 @@ if __name__ == '__main__':
                             help='Comma separated modes to split from the network',
                             required=True)
 
+    arg_parser.add_argument('-ic',
+                            '--increase_capacity',
+                            help='Sets capacity on detached links to 9999',
+                            required=False,
+                            default=False,
+                            type=bool)
+
     arg_parser.add_argument('-od',
                             '--output_dir',
                             help='Output directory for the simplified network',
@@ -68,7 +75,7 @@ if __name__ == '__main__':
     network = args['network']
     projection = args['projection']
     modes = set(args['modes'].split(','))
-
+    increase_capacity = args['increase_capacity']
     output_dir = args['output_dir']
     supporting_outputs = os.path.join(output_dir, 'supporting_outputs')
     ensure_dir(output_dir)
@@ -95,6 +102,14 @@ if __name__ == '__main__':
         new_links = {f'{mode}---{k}': {**n.link(k), **{'modes': {mode}, 'id': f'{mode}---{k}'}} for k in modal_links}
         n.apply_attributes_to_links(update_mode_links)
         n.add_links(new_links)
+        if increase_capacity:
+            logging.info(f'Increasing capacity for link of mode {mode} to 9999')
+            mode_links = n.extract_links_on_edge_attributes(
+                {'modes': mode}
+            )
+            df_capacity = n.link_attribute_data_under_keys(['capacity']).loc[mode_links, :]
+            df_capacity['capacity'] = 9999
+            n.apply_attributes_to_links(df_capacity.T.to_dict())
 
     logging.info(f'Number of links after separating graph: {len(n.link_id_mapping)}')
 
