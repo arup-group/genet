@@ -253,7 +253,7 @@ def simplify_graph(n, no_processes=1):
         df_routes['route'] = df_routes['route'].apply(lambda x: update_link_ids(x, n.link_simplification_map))
         n.schedule.apply_attributes_to_routes(df_routes.T.to_dict())
         logging.info("Updated Network Routes")
-        logging.info("Finished simplifying network")
+    logging.info("Finished simplifying network")
 
 
 def update_link_ids(old_route, link_mapping):

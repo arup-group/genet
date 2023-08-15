@@ -71,12 +71,15 @@ if __name__ == '__main__':
     projection = args['projection']
     elevation = args['elevation']
     tif_null_value = args['null_value']
-    output_dir = args['output_dir']
     write_elevation_to_network = args['write_elevation_to_network']
     write_slope_to_network = args['write_slope_to_network']
     write_slope_to_object_attribute_file = args['write_slope_to_object_attribute_file']
     save_dict_to_json = args['save_jsons']
+
+    output_dir = args['output_dir']
+    supporting_outputs = os.path.join(output_dir, 'supporting_outputs')
     ensure_dir(output_dir)
+    ensure_dir(supporting_outputs)
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
 
@@ -114,7 +117,7 @@ if __name__ == '__main__':
 
         gdf_nodes = n.to_geodataframe()['nodes']
         gdf_nodes = gdf_nodes[['id', 'z', 'geometry']]
-        save_geodataframe(gdf_nodes.to_crs('epsg:4326'), 'node_elevation', output_dir)
+        save_geodataframe(gdf_nodes.to_crs('epsg:4326'), 'node_elevation', supporting_outputs)
 
     logging.info('Creating slope dictionary for network links')
     slope_dictionary = n.get_link_slope_dictionary(elevation_dict=elevation_dictionary)
@@ -138,7 +141,7 @@ if __name__ == '__main__':
         df['slope'] = [x['slope'] for x in df['slope_tuple']]
         df = df[['id', 'slope']]
         gdf_links = pd.merge(gdf, df, on='id')
-        save_geodataframe(gdf_links.to_crs('epsg:4326'), 'link_slope', output_dir)
+        save_geodataframe(gdf_links.to_crs('epsg:4326'), 'link_slope', supporting_outputs)
 
     if write_slope_to_object_attribute_file:
         genet.elevation.write_slope_xml(slope_dictionary, output_dir)
