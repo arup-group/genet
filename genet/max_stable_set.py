@@ -412,7 +412,7 @@ class ChangeSet:
         link_ids = {link_id for route_list in self.df_route_data['route'].values for link_id in route_list}
         links = max_stable_set.network_spatial_tree.links.copy()
         links = links.loc[links['link_id'].isin(link_ids), ['link_id', 'modes']]
-        links['modes'] = links['modes'].apply(lambda x: x.__class__(set(x) | max_stable_set.service_modes))
+        links['modes'] = links['modes'].apply(lambda x: set(x) | max_stable_set.service_modes)
         return links.set_index('link_id').T.to_dict()
 
     def schedule_stops(self, max_stable_set):

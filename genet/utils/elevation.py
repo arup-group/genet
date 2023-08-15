@@ -2,6 +2,7 @@ import rioxarray
 import numpy as np
 from lxml import etree
 import os
+import logging
 
 
 def get_elevation_image(elevation_tif):
@@ -72,7 +73,7 @@ def write_slope_xml(link_slope_dictionary, output_dir):
     :param output_dir: directory where the XML file will be written to
     """
     fname = os.path.join(output_dir, 'link_slopes.xml')
-    print('Writing {}'.format(fname))
+    logging.info(f'Writing {fname}')
 
     with open(fname, "wb") as f, etree.xmlfile(f, encoding='UTF-8') as xf:
         xf.write_declaration(

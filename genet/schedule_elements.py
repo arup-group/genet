@@ -3,11 +3,12 @@ import itertools
 import json
 import logging
 import os
+import math
 import pkgutil
 from abc import abstractmethod
 from collections import defaultdict
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Union, Dict, List, Set, Tuple
 
 import dictdiffer
@@ -79,7 +80,7 @@ class ScheduleElement:
         return set(service_ids).issubset(set(self._graph.graph['services'].keys()))
 
     def change_log(self):
-        return self._graph.graph['change_log']
+        return change_log.ChangeLog(df=self._graph.graph['change_log'])
 
     @abstractmethod
     def _add_additional_attribute_to_graph(self, k, v):
@@ -647,7 +648,10 @@ class Route(ScheduleElement):
         same_route_name = self.route_short_name == other.route_short_name
         same_mode = self.mode.lower() == other.mode.lower()
         same_stops = list(self.stops()) == list(other.stops())
-        return same_route_name and same_mode and same_stops
+        same_trips = self.trips == other.trips
+        same_arrival_offsets = self.arrival_offsets == other.arrival_offsets
+        same_departure_offsets = self.departure_offsets == other.departure_offsets
+        return all([same_route_name, same_mode, same_stops, same_trips, same_arrival_offsets, same_departure_offsets])
 
     def __repr__(self):
         return "<{} instance at {}: with {} stops and {} trips>".format(
@@ -1926,16 +1930,16 @@ class Schedule(ScheduleElement):
             other._graph.graph['services'], self._graph.graph['services'])
         self._graph.graph['routes'] = dict_support.merge_complex_dictionaries(
             other._graph.graph['routes'], self._graph.graph['routes'])
-        route_to_service_map = {**self._graph.graph['route_to_service_map'],
-                                **other._graph.graph['route_to_service_map']}
-        service_to_route_map = {**self._graph.graph['service_to_route_map'],
-                                **other._graph.graph['service_to_route_map']}
+        self._graph.graph['route_to_service_map'] = {**self._graph.graph['route_to_service_map'],
+                                                     **other._graph.graph['route_to_service_map']}
+        self._graph.graph['service_to_route_map'] = {**self._graph.graph['service_to_route_map'],
+                                                     **other._graph.graph['service_to_route_map']}
         self.minimal_transfer_times = dict_support.merge_complex_dictionaries(
             other.minimal_transfer_times, self.minimal_transfer_times)
         # todo assuming separate schedules, with non conflicting ids, nodes and edges
+        _ = deepcopy(self._graph.graph)
         self._graph.update(other._graph)
-        self._graph.graph['route_to_service_map'] = route_to_service_map
-        self._graph.graph['service_to_route_map'] = service_to_route_map
+        self._graph.graph = _
 
         # merge change_log DataFrames
         self._graph.graph['change_log'] = self.change_log().merge_logs(other.change_log())
@@ -2659,22 +2663,16 @@ class Schedule(ScheduleElement):
                 dict(g.nodes(data=True)), dict(self._graph.nodes(data=True)))
             edges = dict_support.combine_edge_data_lists(
                 list(g.edges(data=True)), list(self._graph.edges(data=True)))
-            graph_routes = dict_support.merge_complex_dictionaries(
-                g.graph['routes'], self._graph.graph['routes'])
-            graph_services = dict_support.merge_complex_dictionaries(
-                g.graph['services'], self._graph.graph['services'])
-            route_to_service_map = {**self._graph.graph['route_to_service_map'],
-                                    **g.graph['route_to_service_map']}
-            service_to_route_map = {**self._graph.graph['service_to_route_map'],
-                                    **g.graph['service_to_route_map']}
 
+            route_ids_to_add = list(service.route_ids())
             self._graph.add_nodes_from(nodes)
             self._graph.add_edges_from(edges)
             nx.set_node_attributes(self._graph, nodes)
-            self._graph.graph['routes'] = graph_routes
-            self._graph.graph['services'] = graph_services
-            self._graph.graph['route_to_service_map'] = route_to_service_map
-            self._graph.graph['service_to_route_map'] = service_to_route_map
+            for route_id in route_ids_to_add:
+                self._graph.graph['routes'][route_id] = g.graph['routes'][route_id]
+                self._graph.graph['route_to_service_map'][route_id] = g.graph['route_to_service_map'][route_id]
+            self._graph.graph['services'][service.id] = g.graph['services'][service.id]
+            self._graph.graph['service_to_route_map'][service.id] = g.graph['service_to_route_map'][service.id]
 
         service_ids = [service.id for service in services]
         service_data = [self._graph.graph['services'][sid] for sid in service_ids]
@@ -2950,6 +2948,90 @@ class Schedule(ScheduleElement):
             *[{from_s} | set(val.keys()) for from_s, val in self.minimal_transfer_times.items()])
         if stops_to_remove:
             self.remove_stops(stops_to_remove)
+
+    def has_trips_with_zero_headways(self):
+        """
+        Deletes trips that have zero headways and thus deemed duplicates
+        :return:
+        """
+        trip_headways_df = self.trips_headways()
+        zero_headways = trip_headways_df[(trip_headways_df['headway_mins'] == 0)]
+        return not bool(zero_headways.empty)
+
+    def fix_trips_with_zero_headways(self):
+        """
+        Deletes trips that have zero headways and thus deemed duplicates
+        :return:
+        """
+        trip_headways_df = self.trips_headways()
+        zero_headways = trip_headways_df[(trip_headways_df['headway_mins'] == 0)]
+
+        if not zero_headways.empty:
+            logging.info(f"Found {len(zero_headways)} trips with zero headways. "
+                         f"{len(set(zero_headways['route_id']))} out of {len(set(trip_headways_df['route_id']))} "
+                         f"routes and {len(set(zero_headways['service_id']))} out of "
+                         f"{len(set(trip_headways_df['service_id']))} services are affected. "
+                         "These will now be dropped as though they are duplicates of other trips, "
+                         "thus resulting in zero headway between them")
+            new_trips = trip_headways_df[trip_headways_df['headway_mins'] != 0].drop(['headway_mins', 'headway'],
+                                                                                     axis=1)
+            new_trips_for_affected_routes = new_trips.loc[new_trips['route_id'].isin(set(zero_headways['route_id'])), :]
+            self.set_trips_dataframe(new_trips_for_affected_routes.copy())
+            self.generate_vehicles(overwrite=True)
+            # check
+            _trip_headways_df = self.trips_headways()
+            _zero_headways = _trip_headways_df[(_trip_headways_df['headway_mins'] == 0)]
+            logging.info(f"Checks after alterations result in {len(_zero_headways)} trips with zero headway")
+        else:
+            logging.info("No trips with zero headway found. Nothing to do.")
+
+    def has_infinite_speeds(self):
+        pt_speeds = self.speed_geodataframe()
+        pt_speeds_inf = pt_speeds[(pt_speeds['speed'] == math.inf)]
+        return not bool(pt_speeds_inf.empty)
+
+    def fix_infinite_speeds(self):
+        df_speeds = self.speed_geodataframe()
+        df_speeds_inf = df_speeds[(df_speeds['speed'] == math.inf)]
+        if not df_speeds_inf.empty:
+            affected_routes = set(df_speeds_inf['route_id'])
+            logging.info(f"Found {len(affected_routes)} routes with infinite speeds. "
+                         f"{len(set(df_speeds_inf['service_id']))} out of {len(set(df_speeds['service_id']))} "
+                         "services are affected. "
+                         "These will now be dropped as though they are duplicates of other trips, "
+                         "thus resulting in zero headway between them")
+            new_route_attributes_dict = {}
+            for route_id in affected_routes:
+                df_route_speeds = df_speeds[df_speeds['route_id'] == route_id]
+                df_route_speeds['length'] = [1.3 * x.length for x in df_route_speeds['geometry']]
+
+                old_arrival_offsets = self.route(route_id).__dict__['arrival_offsets']
+                old_departure_offsets = self.route(route_id).__dict__['departure_offsets']
+                updated_arrival_offsets = ['00:00:00']
+                updated_departure_offsets = ['00:00:00']
+
+                avg_speed = df_route_speeds[df_route_speeds['speed'] != math.inf]['speed'].mean()
+                distances = df_route_speeds['length'].to_list()
+
+                for i in range(1, len(old_arrival_offsets)):
+                    # if the offset is the same as previous (i.e. GTFS error),
+                    # OR if the previous offset got infilled with a value bigger than the current offset
+                    if datetime.strptime(updated_departure_offsets[i - 1], '%H:%M:%S') >= datetime.strptime(
+                            old_arrival_offsets[i], '%H:%M:%S'):
+                        time = round(distances[i - 1] / avg_speed, 0)
+                        previous_offset = datetime.strptime(updated_departure_offsets[i - 1], '%H:%M:%S')
+                        current_offset = previous_offset + timedelta(seconds=time)
+                        str_current_offset = datetime.strftime(current_offset, '%H:%M:%S')
+                        updated_arrival_offsets.append(str_current_offset)
+                        updated_departure_offsets.append(str_current_offset)
+                    else:
+                        updated_arrival_offsets.append(old_arrival_offsets[i])
+                        updated_departure_offsets.append(old_departure_offsets[i])
+                new_route_attributes_dict[route_id] = {
+                    'arrival_offsets': updated_arrival_offsets, 'departure_offsets': updated_departure_offsets}
+            self.apply_attributes_to_routes(new_attributes=new_route_attributes_dict)
+        else:
+            logging.info("No routes with infinite speeds were found. Nothing to do.")
 
     def is_strongly_connected(self):
         if nx.number_strongly_connected_components(self.graph()) == 1:
