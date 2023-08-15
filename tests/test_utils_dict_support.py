@@ -1,4 +1,5 @@
 import pytest
+from copy import deepcopy
 from pandas import DataFrame
 import genet.utils.dict_support as dict_support
 from tests.fixtures import assert_semantically_equal
@@ -89,6 +90,66 @@ def test_merging_dictionaries_with_lists():
     assert_semantically_equal(return_d, {'a': 1, 'b': [3, 6, 5], 'c': [1, 8, 90]})
 
 
+def test_preserves_duplicates_in_input_list_when_merging_dictionaries():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'b': [6, 6]},
+        {'b': [5]}
+    )
+    assert_semantically_equal(return_d, {'b': [6, 6, 5]})
+
+
+def test_preserves_resulting_duplicates_in_lists_when_merging_dictionaries():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'b': [6]},
+        {'b': [5, 6]}
+    )
+    assert_semantically_equal(return_d, {'b': [6, 5, 6]})
+
+
+def test_preserves_lists_order_when_merging_dictionaries():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'b': [1, 2]},
+        {'b': [3, 4]}
+    )
+    assert_semantically_equal(return_d, {'b': [1, 2, 3, 4]})
+
+
+def test_combines_sets_with_or_operator_when_merging_dictionaries():
+    return_d = dict_support.merge_complex_dictionaries(
+        {'b': {1, 2}},
+        {'b': {2, 3}}
+    )
+    assert_semantically_equal(return_d, {'b': {1, 2, 3}})
+
+
+def test_does_not_mutate_parameters_when_merging_complex_dictionaries():
+    A = {
+        'a': {1, 2},
+        'b': [6, 6],
+        'c': {
+            'a': {1, 2},
+            'b': [6, 6]
+        },
+        'd': 'hey'
+    }
+    B = {
+        'a': {2, 3},
+        'b': [5],
+        'c': {
+            'a': {2, 3},
+            'b': [5]
+        },
+        'd': 'yo'
+    }
+    A_before = deepcopy(A)
+    B_before = deepcopy(B)
+
+    dict_support.merge_complex_dictionaries(A, B)
+
+    assert_semantically_equal(A, A_before)
+    assert_semantically_equal(B, B_before)
+
+
 def test_merging_nested_dictionaries():
     return_d = dict_support.merge_complex_dictionaries(
         {'a': 1, 'b': {3: 5}, 'c': {1: 4}},
@@ -117,12 +178,6 @@ def test_merging_dicts_with_lists():
     d = dict_support.merge_complex_dictionaries({'1': [''], '2': []}, {'3': ['1'], '1': ['2']})
 
     assert_semantically_equal(d, {'1': ['', '2'], '2': [], '3': ['1']})
-
-
-def test_merging_dicts_with_lists_with_overlapping_values_returns_list_with_unique_values():
-    d = dict_support.merge_complex_dictionaries({'1': ['2'], '2': []}, {'3': ['1'], '1': ['2']})
-
-    assert_semantically_equal(d, {'1': ['2'], '2': [], '3': ['1']})
 
 
 def test_merging_dicts_with_lists_when_one_dict_is_empty():

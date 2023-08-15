@@ -442,9 +442,9 @@ def test_partial_mss_problem_generates_updated_modes_for_links(partial_mss):
     )
     assert_semantically_equal(
         changeset.additional_links_modes,
-        {'link_5_6_car': {'modes': ['bus', 'car']}, 'link_6_5_car': {'modes': ['bus', 'car']},
-         'link_6_7_car': {'modes': ['bus', 'car']}, 'link_7_6_car': {'modes': ['bus', 'car']},
-         'link_7_8_car': {'modes': ['bus', 'car']}, 'link_8_7_car': {'modes': ['bus', 'car']}}
+        {'link_5_6_car': {'modes': {'bus', 'car'}}, 'link_6_5_car': {'modes': {'bus', 'car'}},
+         'link_6_7_car': {'modes': {'bus', 'car'}}, 'link_7_6_car': {'modes': {'bus', 'car'}},
+         'link_7_8_car': {'modes': {'bus', 'car'}}, 'link_8_7_car': {'modes': {'bus', 'car'}}}
     )
 
 
@@ -563,9 +563,9 @@ def test_combining_two_changesets_with_overlap(partial_mss):
                                   'link_7_8_car']}})
     assert_semantically_equal(
         changeset.additional_links_modes,
-        {'link_5_6_car': {'modes': ['bus', 'car']}, 'link_6_5_car': {'modes': ['bus', 'car']},
-         'link_6_7_car': {'modes': ['bus', 'car']}, 'link_7_6_car': {'modes': ['bus', 'car']},
-         'link_7_8_car': {'modes': ['bus', 'car']}, 'link_8_7_car': {'modes': ['bus', 'car']}}
+        {'link_5_6_car': {'modes': {'bus', 'car'}}, 'link_6_5_car': {'modes': {'bus', 'car'}},
+         'link_6_7_car': {'modes': {'bus', 'car'}}, 'link_7_6_car': {'modes': {'bus', 'car'}},
+         'link_7_8_car': {'modes': {'bus', 'car'}}, 'link_8_7_car': {'modes': {'bus', 'car'}}}
     )
     assert_semantically_equal(
         changeset.new_links,
