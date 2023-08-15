@@ -26,7 +26,7 @@
 
 ## Overview
 
-This package provides tools to represent and work with a multi-modal transport network with public transport (PT)
+GeNet provides tools to represent and work with a multi-modal transport network with public transport (PT)
 services. It is based on [MATSim's](https://www.matsim.org/) representation of such networks. The underlying 
 network available to PT services (roads, railways, but also ferry/flight connections) uses a `networkx.MultiDiGraph`
 with additional methods for `'links'` which are unique in `genet.Network` (`networkx.MultiDiGraph` accepts multiple 

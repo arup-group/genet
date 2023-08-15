@@ -233,9 +233,8 @@ def test_schedule_with_non_uniformly_projected_objects_can_be_projected_to_unifo
 
 
 def test__getitem__returns_a_service(test_service):
-    services = [test_service]
-    schedule = Schedule(services=services, epsg='epsg:4326')
-    assert schedule['service'] == services[0]
+    schedule = Schedule(services=[test_service], epsg='epsg:4326')
+    assert schedule['service'] == test_service
 
 
 def test_accessing_route(schedule):
@@ -246,7 +245,7 @@ def test_accessing_route(schedule):
                                                Stop(id='3', x=3, y=3, epsg='epsg:27700'),
                                                Stop(id='4', x=7, y=5, epsg='epsg:27700')],
                                         trips={'trip_id': ['1', '2'],
-                                               'trip_departure_time': ['1', '2'],
+                                               'trip_departure_time': ['13:00:00', '13:30:00'],
                                                'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
                                         arrival_offsets=['00:00:00', '00:03:00', '00:07:00', '00:13:00'],
                                         departure_offsets=['00:00:00', '00:05:00', '00:09:00', '00:15:00'])
@@ -870,6 +869,17 @@ def test_multiple_services_are_present_in_schedule_after_adding(schedule, servic
 
     assert set(schedule.service_ids()) == expected_services_after_adding
     assert set(schedule.route_ids()) == expected_routes_after_adding
+
+
+def test_adding_services_from_schedule_does_not_change_route_data(
+        schedule, services_to_add):
+    schedule_to_add = Schedule(services=services_to_add, epsg='epsg:27700')
+    route_ids_to_add = list(schedule_to_add.route_ids())
+    routes_data_before_add = [schedule_to_add.route(r) for r in route_ids_to_add]
+
+    schedule.add_services(list(schedule_to_add.services()))
+
+    assert [schedule.route(r) for r in route_ids_to_add] == routes_data_before_add
 
 
 def test_adding_multiple_services_updates_changelog(schedule, services_to_add):
@@ -1513,6 +1523,87 @@ def test_reading_vehicles_after_reading_schedule():
         'doorOperation': {'mode': 'serial'},
         'passengerCarEquivalents': {'pce': '2.8'}})
 
+
+@pytest.fixture()
+def schedule_with_zero_headway():
+    # zero headway happens when two trips of the same route depart at the same time. We deal with it as if the trip
+    # is duplicated and remove it
+    route_1 = Route(route_short_name='name',
+                    mode='bus', id='1',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['13:00:00', '13:00:00'],
+                           'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:06:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:04:00', '00:07:00', '00:15:00'])
+    return {
+        'schedule': Schedule(epsg='epsg:27700', services=[Service(id='service', routes=[route_1])]),
+        'route_id': '1',
+        'expected_trips': {'trip_id': ['1'],
+                           'trip_departure_time': ['13:00:00'],
+                           'vehicle_id': ['veh_1_bus']},
+        'expected_vehicles': {'veh_1_bus': {'type': 'bus'}}
+    }
+
+
+def test_recognises_schedule_has_zero_headway_problem(schedule_with_zero_headway):
+    assert schedule_with_zero_headway['schedule'].has_trips_with_zero_headways()
+
+
+def test_updates_trips_for_route_with_zero_headways(schedule_with_zero_headway):
+    schedule_with_zero_headway['schedule'].fix_trips_with_zero_headways()
+    assert schedule_with_zero_headway['schedule'].route(schedule_with_zero_headway['route_id']).trips == \
+           schedule_with_zero_headway['expected_trips']
+
+
+def test_updates_vehicles_for_route_with_zero_headways(schedule_with_zero_headway):
+    assert schedule_with_zero_headway['schedule'].vehicles != \
+           schedule_with_zero_headway['expected_vehicles']
+
+    schedule_with_zero_headway['schedule'].fix_trips_with_zero_headways()
+
+    assert schedule_with_zero_headway['schedule'].vehicles == \
+           schedule_with_zero_headway['expected_vehicles']
+
+
+@pytest.fixture()
+def schedule_with_infinite_speed():
+    # infinite speed happens when the departure offset of stop before is the same as the arrival offset at the next stop
+    # this means a non zero distance has to be covered in zero time.
+    route_1 = Route(route_short_name='name',
+                    mode='bus', id='1',
+                    stops=[Stop(id='1', x=4, y=2, epsg='epsg:27700'), Stop(id='2', x=1, y=2, epsg='epsg:27700'),
+                           Stop(id='3', x=3, y=3, epsg='epsg:27700'), Stop(id='4', x=7, y=5, epsg='epsg:27700')],
+                    trips={'trip_id': ['1', '2'],
+                           'trip_departure_time': ['13:00:00', '13:30:00'],
+                           'vehicle_id': ['veh_1_bus', 'veh_2_bus']},
+                    arrival_offsets=['00:00:00', '00:03:00', '00:04:00', '00:13:00'],
+                    departure_offsets=['00:00:00', '00:04:00', '00:09:00', '00:15:00'])
+    return {
+        'schedule': Schedule(epsg='epsg:27700', services=[Service(id='service', routes=[route_1])]),
+        'route_id': '1',
+        'expected_arrival_offsets': ['00:00:00', '00:03:00', '00:06:08', '00:13:00'],
+        'expected_departure_offsets': ['00:00:00', '00:04:00', '00:06:08', '00:15:00']
+    }
+
+
+def test_recognises_schedule_has_infinite_speed_problem(schedule_with_infinite_speed):
+    assert schedule_with_infinite_speed['schedule'].has_infinite_speeds()
+
+
+def test_updates_offsets_for_stop_with_infinite_speed(schedule_with_infinite_speed):
+    schedule_with_infinite_speed['schedule'].fix_infinite_speeds()
+    assert list_of_times_somewhat_accurate(
+        schedule_with_infinite_speed['schedule'].route(schedule_with_infinite_speed['route_id']).arrival_offsets,
+        schedule_with_infinite_speed['expected_arrival_offsets'],
+        tolerance_s=5
+    )
+    assert list_of_times_somewhat_accurate(
+        schedule_with_infinite_speed['schedule'].route(schedule_with_infinite_speed['route_id']).departure_offsets,
+        schedule_with_infinite_speed['expected_departure_offsets'],
+        tolerance_s=5
+    )
 
 def test_is_strongly_connected_with_strongly_connected_schedule(strongly_connected_schedule):
     assert strongly_connected_schedule.is_strongly_connected()

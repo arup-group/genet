@@ -3,7 +3,7 @@ import os
 import sys
 from collections import OrderedDict
 from dataclasses import dataclass
-
+from datetime import datetime
 import dictdiffer
 import pandas as pd
 import pytest
@@ -55,6 +55,30 @@ def assert_logging_warning_caught_with_message_containing(clog, message):
         if message in record.message:
             return True
     return False
+
+
+def time_somewhat_accurate(t1: str, t2: str, tolerance_s=5):
+    """
+    t1: "HH:MM:SS"
+    t2: "HH:MM:SS"
+    tolerance_s: seconds of tolerable difference
+
+    returns: bool
+    """
+    t1 = datetime.strptime(t1, '%H:%M:%S')
+    t2 = datetime.strptime(t2, '%H:%M:%S')
+    return abs((t1 - t2).total_seconds()) <= tolerance_s
+
+
+def list_of_times_somewhat_accurate(lt1: list, lt2: list, tolerance_s=5):
+    """
+    lt1: list of times in str "HH:MM:SS"
+    lt2: list of times in str "HH:MM:SS"
+    tolerance_s: seconds of tolerable difference
+
+    returns: bool
+    """
+    return all([time_somewhat_accurate(t1, t2, tolerance_s) for t1, t2 in zip(lt1, lt2)])
 
 
 ###########################################################
