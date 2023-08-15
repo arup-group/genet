@@ -8,10 +8,12 @@ from genet import read_matsim
 from genet.utils.persistence import ensure_dir
 from genet.output.sanitiser import sanitise_dictionary
 
-def write_scaled_vehicles(network, list_of_scales,output_dir):
+
+def write_scaled_vehicles(network, list_of_scales, output_dir):
     for i in list_of_scales:
-        scale = float(i)/100
+        scale = float(i) / 100
         network.schedule.scale_vehicle_capacity(scale, scale, output_dir)
+
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Simplify a MATSim network by removing '
@@ -45,7 +47,16 @@ if __name__ == '__main__':
                             required=False,
                             default=1,
                             type=int)
-    
+
+    arg_parser.add_argument('-fc',
+                            '--force_strongly_connected_graph',
+                            help='If True, checks for disconnected subgraphs for modes walk, bike and car. If there are'
+                                 'more than one strongly connected subgraph, genet connects them with links at closest'
+                                 'points in the graph. The links used to connect are weighted at 20% of surrounding'
+                                 'freespeed and capacity values',
+                            default=False,
+                            type=bool)
+
     arg_parser.add_argument('-vsc',
                             '--vehicle_scalings',
                             help='Comma seperated string of scales for vehicles, e.g. 1,10,25',
@@ -66,6 +77,7 @@ if __name__ == '__main__':
     processes = args['processes']
     output_dir = args['output_dir']
     scale_list = args['vehicle_scalings']
+    force_strongly_connected_graph = args['force_strongly_connected_graph']
     ensure_dir(output_dir)
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
@@ -83,11 +95,23 @@ if __name__ == '__main__':
     start = time.time()
     n.simplify(no_processes=processes)
     end = time.time()
+    logging.info(f'This took {round((end - start) / 60, 3)} min.')
 
     logging.info(
         f'Simplification resulted in {len(n.link_simplification_map)} links being simplified.')
     with open(os.path.join(output_dir, 'link_simp_map.json'), 'w', encoding='utf-8') as f:
         json.dump(n.link_simplification_map, f, ensure_ascii=False, indent=4)
+
+    logging.info('Checking for disconnected subgraphs')
+    start = time.time()
+    for mode in {'car', 'bike', 'walk'}:
+        if not n.is_strongly_connected(modes={mode}):
+            logging.info(f'The graph for {mode} mode is not strongly connected.')
+            if force_strongly_connected_graph:
+                logging.info("GeNet will now attempt to add links to connect the graph.")
+                n.connect_components(modes={mode}, weight=1 / 5)
+    end = time.time()
+    logging.info(f'This took {round((end - start) / 60, 3)} min.')
 
     n.write_to_matsim(output_dir)
 
@@ -103,11 +127,9 @@ if __name__ == '__main__':
         logging.info(f'Schedule level validation: {report["schedule"]["schedule_level"]["is_valid_schedule"]}')
         logging.info(
             f'Schedule vehicle level validation: {report["schedule"]["vehicle_level"]["vehicle_definitions_valid"]}'
-            )
+        )
         logging.info(f'Routing validation: {report["routing"]["services_have_routes_in_the_graph"]}')
     with open(os.path.join(output_dir, 'validation_report.json'), 'w', encoding='utf-8') as f:
         json.dump(sanitise_dictionary(report), f, ensure_ascii=False, indent=4)
 
     n.generate_standard_outputs(os.path.join(output_dir, 'standard_outputs'))
-
-    logging.info(f'It took {round((end - start)/60, 3)} min to simplify the network.')

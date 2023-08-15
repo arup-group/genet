@@ -168,7 +168,8 @@ if __name__ == '__main__':
                 distance_threshold=distance_threshold
             )
 
-            # TODO There are multiple links to choose from, for the time being we are not precious about which link is selected.
+            # TODO There are multiple links to choose from, for the time being we are not precious about which link is
+            #  selected.
             selected_links = closest_links.reset_index().groupby('index').first()
             if len(selected_links) != len(df_stops):
                 logging.warning(f'Only {len(selected_links)} out of {len(df_stops)} stops found a link to snap to. '
@@ -193,12 +194,9 @@ if __name__ == '__main__':
             accessible_tag = f'{snap_mode}Accessible'
             distance_catchment_tag = f'{snap_mode}_distance_catchment_tag'
 
-            selected_links[access_link_id_tag] = selected_links['link_id'].apply(
-                lambda x: {'name': access_link_id_tag, 'class': 'java.lang.String', 'text': x})
-            selected_links[accessible_tag] = selected_links.apply(
-                lambda x: {'name': accessible_tag, 'class': 'java.lang.String', 'text': 'true'}, axis=1)
-            selected_links[distance_catchment_tag] = selected_links['catchment'].apply(
-                lambda x: {'name': distance_catchment_tag, 'class': 'java.lang.String', 'text': str(x)})
+            selected_links[access_link_id_tag] = selected_links['link_id']
+            selected_links[accessible_tag] = 'true'
+            selected_links[distance_catchment_tag] = selected_links['catchment'].astype(str)
             new_stops_data = selected_links[[access_link_id_tag, accessible_tag, distance_catchment_tag]].T.to_dict()
             new_stops_data = {k: {'attributes': v} for k, v in new_stops_data.items()}
 
@@ -210,8 +208,7 @@ if __name__ == '__main__':
 
             # generate the data dictionaries for updating stops data
             accessible_tag = f'{tele_mode}Accessible'
-            df_stops[accessible_tag] = df_stops.apply(
-                lambda x: {'name': accessible_tag, 'class': 'java.lang.String', 'text': 'true'}, axis=1)
+            df_stops[accessible_tag] = 'true'
             new_stops_data = df_stops[[accessible_tag]].T.to_dict()
             new_stops_data = {k: {'attributes': v} for k, v in new_stops_data.items()}
 
