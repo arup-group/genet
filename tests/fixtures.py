@@ -288,6 +288,7 @@ class NetworkForIntermodalAccessEgressTesting:
         ])
         self.intermodal_access_egress_attribute_keys = []
         self.intermodal_access_egress_connections_dataframe = None
+        self.invalid_intermodal_access_egress_connections = {}
 
     @property
     def expected_intermodal_access_egress_attribute_keys(self):
@@ -296,6 +297,10 @@ class NetworkForIntermodalAccessEgressTesting:
     @property
     def expected_intermodal_access_egress_connections_dataframe(self):
         return self.intermodal_access_egress_connections_dataframe
+
+    @property
+    def expected_invalid_intermodal_access_egress_connections(self):
+        return self.invalid_intermodal_access_egress_connections
 
     @property
     def schedule(self):
@@ -328,6 +333,44 @@ class NetworkForIntermodalAccessEgressTesting:
         self.intermodal_access_egress_attribute_keys = [access_link_id_tag]
         self.intermodal_access_egress_connections_dataframe = pd.DataFrame(
             {'attributes::accessLinkId_car': {'Stop_A': 'link_0', 'Stop_B': 'link_0'}})
+        self.invalid_intermodal_access_egress_connections = {
+            'car': {
+                'stops_with_links_not_in_network': set(),
+                'stops_with_links_with_wrong_modes': set()
+            }
+        }
+        return self
+
+    def with_invalid_intermodal_access_egress(self):
+        access_link_id_tag = 'accessLinkId_piggyback'
+        accessible_tag = 'piggybackAccessible'
+        distance_catchment_tag = 'piggyback_distance_catchment_tag'
+        new_stops_data = {
+            'Stop_A': {
+                'attributes': {
+                    access_link_id_tag: 'non_existent_link',  # stop with link that doesn't exist
+                    accessible_tag: 'true',
+                    distance_catchment_tag: 10
+                }
+            },
+            'Stop_B': {
+                'attributes': {
+                    access_link_id_tag: 'link_0',  # stop with link that doesn't have the right mode on it
+                    accessible_tag: 'true',
+                    distance_catchment_tag: 10
+                }
+            }
+        }
+        self.schedule.apply_attributes_to_stops(new_stops_data)
+        self.intermodal_access_egress_attribute_keys = [access_link_id_tag]
+        self.intermodal_access_egress_connections_dataframe = pd.DataFrame(
+            {'attributes::accessLinkId_piggyback': {'Stop_A': 'non_existent_link', 'Stop_B': 'link_0'}})
+        self.invalid_intermodal_access_egress_connections = {
+            'piggyback': {
+                'stops_with_links_not_in_network': {'Stop_A'},
+                'stops_with_links_with_wrong_modes': {'Stop_B'}
+            }
+        }
         return self
 
 

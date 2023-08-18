@@ -2074,6 +2074,41 @@ class Network:
         logging.info(f'Not all link ids in Route: {route.id} are in the graph.')
         return False
 
+    def has_intermodal_access_egress_connections(self):
+        if self.schedule:
+            return self.schedule.has_intermodal_access_egress_connections()
+
+    def intermodal_access_egress_connections(self):
+        if self.has_intermodal_access_egress_connections():
+            return self.schedule.intermodal_access_egress_connections()
+
+    def invalid_intermodal_access_egress_connections(self):
+        report = {}
+        if self.has_intermodal_access_egress_connections():
+            df = self.intermodal_access_egress_connections()
+            attribute_keys = self.schedule.intermodal_access_egress_attribute_keys()
+            cols_to_mode_map = {f'attributes::{key}': key.replace('accessLinkId_', '') for key in attribute_keys}
+            for col, mode in cols_to_mode_map.items():
+                df.loc[:, 'link_in_network'] = df[col].apply(lambda x: self.has_link(x))
+                df.loc[~df['link_in_network'], 'mode_allowed_on_link'] = False
+                df.loc[df['link_in_network'], 'mode__allowed_on_link'] = df.loc[df['link_in_network'], col].apply(
+                    lambda x: mode in self.link(x)['modes'])
+                report[mode] = {
+                    'stops_with_links_not_in_network': set(df[~df['link_in_network']].index),
+                    'stops_with_links_with_wrong_modes': set(
+                        df[~df['mode__allowed_on_link'].astype(bool)].index) - set(df[~df['link_in_network']].index)
+                }
+        return report
+
+    def has_valid_intermodal_access_egress_connections(self):
+        if self.has_intermodal_access_egress_connections():
+            return any([not (bool(content['stops_with_links_not_in_network']) or bool(
+                content['stops_with_links_with_wrong_modes'])) for mode, content in
+                        self.invalid_intermodal_access_egress_connections().items()])
+        else:
+            logging.warning('Network does not have intermodal access/egress connections')
+            return True
+
     def invalid_network_routes(self):
         return [route.id for route in self.schedule.routes() if
                 not route.has_network_route() or not self.is_valid_network_route(route)]
