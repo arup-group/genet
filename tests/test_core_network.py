@@ -3132,6 +3132,18 @@ def test_nested_values_show_up_in_validation_report():
         }
     )
 
+@pytest.mark.parametrize(
+    "fixture,is_valid_network",
+    [
+        (NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(), True),
+        (NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(), True),
+        (NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(), False),
+    ]
+)
+def test_intermodal_access_egress_reporting(fixture, is_valid_network):
+    report = fixture.network.generate_validation_report()
+    assert report['is_valid_network'] == is_valid_network
+
 
 def test_check_connectivity_for_mode_warns_of_graphs_with_more_than_single_component(mocker, caplog):
     mocker.patch.object(network_validation, 'describe_graph_connectivity',

@@ -2126,6 +2126,7 @@ class Network:
         logging.info('Checking validity of the Network')
         logging.info('Checking validity of the Network graph')
         report = {}
+        is_valid_network = True
 
         # describe network connectivity
         if modes_for_strong_connectivity is None:
@@ -2135,6 +2136,8 @@ class Network:
         graph_connectivity = {}
         for mode in modes_for_strong_connectivity:
             graph_connectivity[mode] = self.check_connectivity_for_mode(mode)
+            if graph_connectivity[mode]['number_of_connected_subgraphs'] not in {0, 1}:
+                is_valid_network = False
         report['graph'] = {'graph_connectivity': graph_connectivity}
 
         isolated_nodes = self.isolated_nodes()
@@ -2144,6 +2147,7 @@ class Network:
         }
         if self.has_isolated_nodes():
             logging.warning('This Network has isolated nodes! Consider cleaning it up with `remove_isolated_nodes`')
+            is_valid_network = False
 
         # attribute checks
         conditions_toolbox = network_validation.ConditionsToolbox()
@@ -2191,6 +2195,17 @@ class Network:
                 'service_routes_with_invalid_network_route': self.invalid_network_routes(),
                 'route_to_crow_fly_ratio': route_to_crow_fly_ratio
             }
+            if not (report['routing']['services_have_routes_in_the_graph']):
+                is_valid_network = False
+
+            report['intermodal_access_egress'] = {
+                'has_valid_intermodal_connections': self.has_valid_intermodal_access_egress_connections(),
+                'invalid_intermodal_connections': self.invalid_intermodal_access_egress_connections()
+            }
+            if not (report['schedule']['schedule_level']['is_valid_schedule'] and report['intermodal_access_egress'][
+                    'has_valid_intermodal_connections']):
+                is_valid_network = False
+        report['is_valid_network'] = is_valid_network
         return report
 
     def report_on_link_attribute_condition(self, attribute, condition):

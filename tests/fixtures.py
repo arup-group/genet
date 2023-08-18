@@ -258,30 +258,44 @@ class NetworkForIntermodalAccessEgressTesting:
                  'lat': 51.52228713323965,
                  's2_id': 5221390328605860387}
         })
-        self.network.add_link('link_0', 'A', 'B',
-                              attribs={
-                                  'id': 'link_0',
-                                  'from': 'A',
-                                  'to': 'B',
-                                  'freespeed': 10,
-                                  'capacity': 600,
-                                  'permlanes': 1,
-                                  'oneway': '1',
-                                  'modes': ['car'],
-                                  's2_from': 5221390329378179879,
-                                  's2_to': 5221390328605860387,
-                                  'length': 53
-                              })
+        self.network.add_links({
+            'link_AB': {
+                'id': 'link_AB',
+                'from': 'A',
+                'to': 'B',
+                'freespeed': 10,
+                'capacity': 600,
+                'permlanes': 1,
+                'oneway': '1',
+                'modes': ['car', 'bus'],
+                's2_from': 5221390329378179879,
+                's2_to': 5221390328605860387,
+                'length': 53
+            },
+            'link_BA': {
+                'id': 'link_BA',
+                'from': 'B',
+                'to': 'A',
+                'freespeed': 10,
+                'capacity': 600,
+                'permlanes': 1,
+                'oneway': '1',
+                'modes': ['car', 'bus'],
+                's2_from': 5221390329378179879,
+                's2_to': 5221390328605860387,
+                'length': 53
+            }
+        })
         self.network.schedule = Schedule(epsg='epsg:27700', services=[
             Service(id='service',
                     routes=[
                         Route(id='route', route_short_name='route', mode='bus',
-                              stops=[Stop(id='Stop_A', x=528705, y=182069, epsg='epsg:27700', linkRefId='link_0'),
-                                     Stop(id='Stop_B', x=528836, y=182007, epsg='epsg:27700', linkRefId='link_0')],
+                              stops=[Stop(id='Stop_A', x=528705, y=182069, epsg='epsg:27700', linkRefId='link_AB'),
+                                     Stop(id='Stop_B', x=528836, y=182007, epsg='epsg:27700', linkRefId='link_BA')],
                               trips={'trip_id': ['trip_id_04:40:00'],
                                      'trip_departure_time': ['04:40:00'],
                                      'vehicle_id': ['veh_1_bus']},
-                              route=['link_0'],
+                              route=['link_AB', 'link_BA'],
                               arrival_offsets=['00:00:00', '00:02:00'],
                               departure_offsets=['00:00:00', '00:02:00'])
                     ])
@@ -316,14 +330,14 @@ class NetworkForIntermodalAccessEgressTesting:
         new_stops_data = {
             'Stop_A': {
                 'attributes': {
-                    access_link_id_tag: 'link_0',
+                    access_link_id_tag: 'link_AB',
                     accessible_tag: 'true',
                     distance_catchment_tag: 10
                 }
             },
             'Stop_B': {
                 'attributes': {
-                    access_link_id_tag: 'link_0',
+                    access_link_id_tag: 'link_BA',
                     accessible_tag: 'true',
                     distance_catchment_tag: 10
                 }
@@ -332,7 +346,7 @@ class NetworkForIntermodalAccessEgressTesting:
         self.schedule.apply_attributes_to_stops(new_stops_data)
         self.intermodal_access_egress_attribute_keys = [access_link_id_tag]
         self.intermodal_access_egress_connections_dataframe = pd.DataFrame(
-            {'attributes::accessLinkId_car': {'Stop_A': 'link_0', 'Stop_B': 'link_0'}})
+            {'attributes::accessLinkId_car': {'Stop_A': 'link_AB', 'Stop_B': 'link_BA'}})
         self.invalid_intermodal_access_egress_connections = {
             'car': {
                 'stops_with_links_not_in_network': set(),
@@ -355,7 +369,7 @@ class NetworkForIntermodalAccessEgressTesting:
             },
             'Stop_B': {
                 'attributes': {
-                    access_link_id_tag: 'link_0',  # stop with link that doesn't have the right mode on it
+                    access_link_id_tag: 'link_BA',  # stop with link that doesn't have the right mode on it
                     accessible_tag: 'true',
                     distance_catchment_tag: 10
                 }
@@ -364,7 +378,7 @@ class NetworkForIntermodalAccessEgressTesting:
         self.schedule.apply_attributes_to_stops(new_stops_data)
         self.intermodal_access_egress_attribute_keys = [access_link_id_tag]
         self.intermodal_access_egress_connections_dataframe = pd.DataFrame(
-            {'attributes::accessLinkId_piggyback': {'Stop_A': 'non_existent_link', 'Stop_B': 'link_0'}})
+            {'attributes::accessLinkId_piggyback': {'Stop_A': 'non_existent_link', 'Stop_B': 'link_BA'}})
         self.invalid_intermodal_access_egress_connections = {
             'piggyback': {
                 'stops_with_links_not_in_network': {'Stop_A'},
