@@ -1628,6 +1628,22 @@ def test_has_self_loops_with_non_looping_routes(schedule):
     assert not schedule.has_self_loops()
 
 
+def test_schedule_without_intermodal_links_declares_it():
+    schedule = NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress().schedule
+    assert not schedule.has_intermodal_access_egress_connections()
+
+
+def test_schedule_with_intermodal_links_declares_it():
+    schedule = NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress().schedule
+    assert schedule.has_intermodal_access_egress_connections()
+
+
+def test_intermodal_access_egress_dataframe_contents_with_well_defined_car_access():
+    fixture = NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress()
+    df = fixture.schedule.intermodal_access_egress_connections()
+    assert_frame_equal(df, fixture.expected_intermodal_access_egress_connections_dataframe)
+
+
 def test_validity_of_services(self_looping_route, route):
     s = Schedule('epsg:27700', [Service(id='1', routes=[self_looping_route]),
                                 Service(id='2', routes=[route])])

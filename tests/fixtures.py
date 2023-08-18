@@ -12,6 +12,7 @@ import genet.modify.change_log as change_log
 from genet.input import osm_reader
 from genet.input import read
 from genet.schedule_elements import Stop, Route, Service, Schedule
+from genet.core import Network
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -236,6 +237,101 @@ def test_schedule():
 
 
 ###########################################################
+# Builders
+###########################################################
+class NetworkForIntermodalAccessEgressTesting:
+    def __init__(self):
+        self.network = Network(epsg='epsg:27700')
+        self.network.add_nodes({
+            'A':
+                {'id': 'A',
+                 'x': '528704',
+                 'y': '182068',
+                 'lon': -0.14625948709424305,
+                 'lat': 51.52287873323954,
+                 's2_id': 5221390329378179879},
+            'B':
+                {'id': 'B',
+                 'x': '528835',
+                 'y': '182006',
+                 'lon': -0.14439428709377497,
+                 'lat': 51.52228713323965,
+                 's2_id': 5221390328605860387}
+        })
+        self.network.add_link('link_0', 'A', 'B',
+                              attribs={
+                                  'id': 'link_0',
+                                  'from': 'A',
+                                  'to': 'B',
+                                  'freespeed': 10,
+                                  'capacity': 600,
+                                  'permlanes': 1,
+                                  'oneway': '1',
+                                  'modes': ['car'],
+                                  's2_from': 5221390329378179879,
+                                  's2_to': 5221390328605860387,
+                                  'length': 53
+                              })
+        self.network.schedule = Schedule(epsg='epsg:27700', services=[
+            Service(id='service',
+                    routes=[
+                        Route(id='route', route_short_name='route', mode='bus',
+                              stops=[Stop(id='Stop_A', x=528705, y=182069, epsg='epsg:27700', linkRefId='link_0'),
+                                     Stop(id='Stop_B', x=528836, y=182007, epsg='epsg:27700', linkRefId='link_0')],
+                              trips={'trip_id': ['trip_id_04:40:00'],
+                                     'trip_departure_time': ['04:40:00'],
+                                     'vehicle_id': ['veh_1_bus']},
+                              route=['link_0'],
+                              arrival_offsets=['00:00:00', '00:02:00'],
+                              departure_offsets=['00:00:00', '00:02:00'])
+                    ])
+        ])
+        self.intermodal_access_egress_attribute_keys = []
+        self.intermodal_access_egress_connections_dataframe = None
+
+    @property
+    def expected_intermodal_access_egress_attribute_keys(self):
+        return self.intermodal_access_egress_attribute_keys
+
+    @property
+    def expected_intermodal_access_egress_connections_dataframe(self):
+        return self.intermodal_access_egress_connections_dataframe
+
+    @property
+    def schedule(self):
+        return self.network.schedule
+
+    def without_intermodal_access_egress(self):
+        return self
+
+    def with_valid_car_intermodal_access_egress(self):
+        access_link_id_tag = 'accessLinkId_car'
+        accessible_tag = 'carAccessible'
+        distance_catchment_tag = 'car_distance_catchment_tag'
+        new_stops_data = {
+            'Stop_A': {
+                'attributes': {
+                    access_link_id_tag: 'link_0',
+                    accessible_tag: 'true',
+                    distance_catchment_tag: 10
+                }
+            },
+            'Stop_B': {
+                'attributes': {
+                    access_link_id_tag: 'link_0',
+                    accessible_tag: 'true',
+                    distance_catchment_tag: 10
+                }
+            }
+        }
+        self.schedule.apply_attributes_to_stops(new_stops_data)
+        self.intermodal_access_egress_attribute_keys = [access_link_id_tag]
+        self.intermodal_access_egress_connections_dataframe = pd.DataFrame(
+            {'attributes::accessLinkId_car': {'Stop_A': 'link_0', 'Stop_B': 'link_0'}})
+        return self
+
+
+###########################################################
 # correct gtfs vars
 ###########################################################
 @pytest.fixture()
@@ -434,6 +530,7 @@ def slim_default_config():
 def vehicle_definitions_config_path():
     return os.path.abspath(os.path.join(os.path.dirname(__file__),
                                         "..", "genet", "configs", "vehicles", "vehicle_definitions.yml"))
+
 
 ###########################################################
 # XML mocks
