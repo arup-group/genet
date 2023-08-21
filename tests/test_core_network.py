@@ -3143,6 +3143,9 @@ def test_nested_values_show_up_in_validation_report():
 def test_intermodal_access_egress_reporting(fixture, is_valid_network):
     report = fixture.network.generate_validation_report()
     assert report['is_valid_network'] == is_valid_network
+    assert report['intermodal_access_egress']['has_valid_intermodal_connections'] == is_valid_network
+    assert report['intermodal_access_egress']['invalid_intermodal_connections'] == \
+           fixture.invalid_intermodal_access_egress_connections
 
 
 def test_check_connectivity_for_mode_warns_of_graphs_with_more_than_single_component(mocker, caplog):
