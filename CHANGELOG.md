@@ -1,6 +1,6 @@
 # Changelog
 
-## [v4.0.0] - 2023-08-
+## [v4.0.0] - 2023-08-22
 
 ### Added
 * Validation for [intermodal access/egress for MATSim](https://github.com/matsim-org/matsim-libs/tree/master/contribs/sbb-extensions#intermodal-access-and-egress)
