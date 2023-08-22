@@ -3041,6 +3041,19 @@ class Schedule(ScheduleElement):
     def has_self_loops(self):
         return list(nx.nodes_with_selfloops(self.graph()))
 
+    def intermodal_access_egress_attribute_keys(self):
+        return [node.name for node in
+                graph_operations.get_attribute_schema(self._graph.nodes(data=True), data=False).leaves if
+                'accessLinkId' in node.name]
+
+    def has_intermodal_access_egress_connections(self):
+        return bool(self.intermodal_access_egress_attribute_keys())
+
+    def intermodal_access_egress_connections(self):
+        attribute_keys = self.intermodal_access_egress_attribute_keys()
+        df = self.stop_attribute_data(keys=[{'attributes': key} for key in attribute_keys])
+        return df
+
     def validity_of_services(self):
         return [service.is_valid_service() for service in self.services()]
 

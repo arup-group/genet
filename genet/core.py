@@ -2074,6 +2074,41 @@ class Network:
         logging.info(f'Not all link ids in Route: {route.id} are in the graph.')
         return False
 
+    def has_intermodal_access_egress_connections(self):
+        if self.schedule:
+            return self.schedule.has_intermodal_access_egress_connections()
+
+    def intermodal_access_egress_connections(self):
+        if self.has_intermodal_access_egress_connections():
+            return self.schedule.intermodal_access_egress_connections()
+
+    def invalid_intermodal_access_egress_connections(self):
+        report = {}
+        if self.has_intermodal_access_egress_connections():
+            df = self.intermodal_access_egress_connections()
+            attribute_keys = self.schedule.intermodal_access_egress_attribute_keys()
+            cols_to_mode_map = {f'attributes::{key}': key.replace('accessLinkId_', '') for key in attribute_keys}
+            for col, mode in cols_to_mode_map.items():
+                df.loc[:, 'link_in_network'] = df[col].apply(lambda x: self.has_link(x))
+                df.loc[~df['link_in_network'], 'mode_allowed_on_link'] = False
+                df.loc[df['link_in_network'], 'mode__allowed_on_link'] = df.loc[df['link_in_network'], col].apply(
+                    lambda x: mode in self.link(x)['modes'])
+                report[mode] = {
+                    'stops_with_links_not_in_network': set(df[~df['link_in_network']].index),
+                    'stops_with_links_with_wrong_modes': set(
+                        df[~df['mode__allowed_on_link'].astype(bool)].index) - set(df[~df['link_in_network']].index)
+                }
+        return report
+
+    def has_valid_intermodal_access_egress_connections(self):
+        if self.has_intermodal_access_egress_connections():
+            return any([not (bool(content['stops_with_links_not_in_network']) or bool(
+                content['stops_with_links_with_wrong_modes'])) for mode, content in
+                        self.invalid_intermodal_access_egress_connections().items()])
+        else:
+            logging.warning('Network does not have intermodal access/egress connections')
+            return True
+
     def invalid_network_routes(self):
         return [route.id for route in self.schedule.routes() if
                 not route.has_network_route() or not self.is_valid_network_route(route)]
@@ -2091,6 +2126,7 @@ class Network:
         logging.info('Checking validity of the Network')
         logging.info('Checking validity of the Network graph')
         report = {}
+        is_valid_network = True
 
         # describe network connectivity
         if modes_for_strong_connectivity is None:
@@ -2100,6 +2136,8 @@ class Network:
         graph_connectivity = {}
         for mode in modes_for_strong_connectivity:
             graph_connectivity[mode] = self.check_connectivity_for_mode(mode)
+            if graph_connectivity[mode]['number_of_connected_subgraphs'] not in {0, 1}:
+                is_valid_network = False
         report['graph'] = {'graph_connectivity': graph_connectivity}
 
         isolated_nodes = self.isolated_nodes()
@@ -2109,6 +2147,7 @@ class Network:
         }
         if self.has_isolated_nodes():
             logging.warning('This Network has isolated nodes! Consider cleaning it up with `remove_isolated_nodes`')
+            is_valid_network = False
 
         # attribute checks
         conditions_toolbox = network_validation.ConditionsToolbox()
@@ -2156,6 +2195,17 @@ class Network:
                 'service_routes_with_invalid_network_route': self.invalid_network_routes(),
                 'route_to_crow_fly_ratio': route_to_crow_fly_ratio
             }
+            if not (report['routing']['services_have_routes_in_the_graph']):
+                is_valid_network = False
+
+            report['intermodal_access_egress'] = {
+                'has_valid_intermodal_connections': self.has_valid_intermodal_access_egress_connections(),
+                'invalid_intermodal_connections': self.invalid_intermodal_access_egress_connections()
+            }
+            if not (report['schedule']['schedule_level']['is_valid_schedule'] and report['intermodal_access_egress'][
+                    'has_valid_intermodal_connections']):
+                is_valid_network = False
+        report['is_valid_network'] = is_valid_network
         return report
 
     def report_on_link_attribute_condition(self, attribute, condition):

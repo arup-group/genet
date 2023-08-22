@@ -23,7 +23,8 @@ from genet.validate import network as network_validation
 from genet.input import read
 from genet import exceptions
 from tests.fixtures import assert_semantically_equal, route, stop_epsg_27700, network_object_from_test_data, \
-    full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path
+    full_fat_default_config_path, correct_schedule, vehicle_definitions_config_path, \
+    NetworkForIntermodalAccessEgressTesting
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -2815,6 +2816,59 @@ def test_has_schedule_with_valid_network_routes_with_empty_routes(route):
     assert not n.has_schedule_with_valid_network_routes()
 
 
+@pytest.mark.parametrize(
+    "fixture,has_intermodal_connections",
+    [
+        (NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(), False),
+        (NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(), True),
+        (NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(), True),
+    ]
+)
+def test_recognising_intermodal_connections(fixture, has_intermodal_connections):
+    assert fixture.network.has_intermodal_access_egress_connections() == has_intermodal_connections
+
+
+@pytest.mark.parametrize(
+    "fixture",
+    [
+        NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(),
+        NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(),
+        NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(),
+    ]
+)
+def test_assembling_intermodal_access_egress_connections(fixture):
+    result = fixture.network.intermodal_access_egress_connections()
+    if isinstance(result, pd.DataFrame):
+        assert_frame_equal(result, fixture.intermodal_access_egress_connections_dataframe)
+    else:
+        assert result == fixture.intermodal_access_egress_connections_dataframe
+
+
+@pytest.mark.parametrize(
+    "fixture",
+    [
+        NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(),
+        NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(),
+        NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(),
+    ]
+)
+def test_reporting_on_invalid_intermodal_connections(fixture):
+    invalid_intermodal_connections = fixture.network.invalid_intermodal_access_egress_connections()
+    assert invalid_intermodal_connections == fixture.expected_invalid_intermodal_access_egress_connections
+
+
+@pytest.mark.parametrize(
+    "fixture,has_valid_intermodal_connections",
+    [
+        (NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(), True),
+        (NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(), True),
+        (NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(), False),
+    ]
+)
+def test_declaration_on_valid_intermodal_connections(fixture, has_valid_intermodal_connections):
+    assert fixture.network.has_valid_intermodal_access_egress_connections() == has_valid_intermodal_connections
+
+
 def test_invalid_network_routes_with_valid_route(route):
     n = Network('epsg:27700')
     n.add_link('1', 1, 2, attribs={"modes": ['car', 'bus']})
@@ -3077,6 +3131,21 @@ def test_nested_values_show_up_in_validation_report():
             'attributes::osm:way:lanes': {'number_of': 1, 'percentage': 1, 'link_ids': ['1']},
         }
     )
+
+@pytest.mark.parametrize(
+    "fixture,is_valid_network",
+    [
+        (NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(), True),
+        (NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(), True),
+        (NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(), False),
+    ]
+)
+def test_intermodal_access_egress_reporting(fixture, is_valid_network):
+    report = fixture.network.generate_validation_report()
+    assert report['is_valid_network'] == is_valid_network
+    assert report['intermodal_access_egress']['has_valid_intermodal_connections'] == is_valid_network
+    assert report['intermodal_access_egress']['invalid_intermodal_connections'] == \
+           fixture.invalid_intermodal_access_egress_connections
 
 
 def test_check_connectivity_for_mode_warns_of_graphs_with_more_than_single_component(mocker, caplog):
