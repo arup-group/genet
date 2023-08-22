@@ -1,13 +1,13 @@
 # Changelog
 
-## [v3.1.0] - 2023-08-
+## [v4.0.0] - 2023-08-
 
 ### Added
 * Validation for [intermodal access/egress for MATSim](https://github.com/matsim-org/matsim-libs/tree/master/contribs/sbb-extensions#intermodal-access-and-egress)
 * GeNet Scripts for: [#179](https://github.com/arup-group/genet/pull/179)
   * automated PT Schedule fixing (zero headways and infinite speeds)
   * 'squeezing' (or reducing attribute values) speed and capacity on links defined by spatial boundaries 
-  * scaling vehicles (separately from any other operation so it can be performed independently)
+  * scaling vehicles (separately from any other operation, so it can be performed independently)
 * Script to split modal subgraphs (so they have dedicated links) [#153](https://github.com/arup-group/genet/pull/153)
 * Validation checks for zero and infinite speeds PT speeds + many convenience methods [#147](https://github.com/arup-group/genet/pull/147)
 * Validation checks for zero headways and reporting on PT headway stats + many convenience methods [#146](https://github.com/arup-group/genet/pull/146)
@@ -30,7 +30,7 @@
 * GeNet Scripts got a re-vamp, making them more consistent in behaviour (output folder naming and minimal outputs (usually geojsons) tracking changes made by the scripts) [#179](https://github.com/arup-group/genet/pull/179)
 * Length attribute is calculated automatically, using nodes' spatial information, if not provided [#161](https://github.com/arup-group/genet/pull/161)
 * Elevation Script writes the MATSim slope file [#158](https://github.com/arup-group/genet/pull/158)
-* Spatial information is now compulsory when adding new nodes [#142](https://github.com/arup-group/genet/pull/142)
+* **[Breaking change]** Spatial information is now compulsory when adding new nodes [#142](https://github.com/arup-group/genet/pull/142)
 
 ## [v3.0.0] - 2022-07-14
 
