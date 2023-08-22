@@ -1,9 +1,36 @@
 # Changelog
 
-## [Unreleased]
+## [v3.1.0] - 2023-08-
 
 ### Added
 * Validation for [intermodal access/egress for MATSim](https://github.com/matsim-org/matsim-libs/tree/master/contribs/sbb-extensions#intermodal-access-and-egress)
+* GeNet Scripts for: [#179](https://github.com/arup-group/genet/pull/179)
+  * automated PT Schedule fixing (zero headways and infinite speeds)
+  * 'squeezing' (or reducing attribute values) speed and capacity on links defined by spatial boundaries 
+  * scaling vehicles (separately from any other operation so it can be performed independently)
+* Script to split modal subgraphs (so they have dedicated links) [#153](https://github.com/arup-group/genet/pull/153)
+* Validation checks for zero and infinite speeds PT speeds + many convenience methods [#147](https://github.com/arup-group/genet/pull/147)
+* Validation checks for zero headways and reporting on PT headway stats + many convenience methods [#146](https://github.com/arup-group/genet/pull/146)
+* Validation checks for isolated nodes and method to remove all isolated nodes [#143](https://github.com/arup-group/genet/pull/143)
+* Validation checks for infinite and negative values of attributes for a network [#141](https://github.com/arup-group/genet/pull/141)
+* Functionality to split a link at a point, creating two links which preserve original geometry [#140](https://github.com/arup-group/genet/pull/140)
+* Ability to use .tif files for elevation with any projection [#139](https://github.com/arup-group/genet/pull/139)
+* Summary statistics to summarise data stored for a network and schedule [#136](https://github.com/arup-group/genet/pull/136)
+* Script that adds elevation can also save node attributes [#134](https://github.com/arup-group/genet/pull/134)
+* Script to parse example jupyter notebook to genet wiki pages (useful if you contribute to the project) [#129](https://github.com/arup-group/genet/pull/129)
+
+### Fixed
+
+* Schema breaking for nested lists (representing trips information, for example) when merging objects wholesale [#173](https://github.com/arup-group/genet/pull/173)
+* Schema breaking when generating trips from headways [#159](https://github.com/arup-group/genet/pull/159)
+* Small bugs in script that adds elevation [#134](https://github.com/arup-group/genet/pull/134) & [#170](https://github.com/arup-group/genet/pull/170)
+
+### Changed
+
+* GeNet Scripts got a re-vamp, making them more consistent in behaviour (output folder naming and minimal outputs (usually geojsons) tracking changes made by the scripts) [#179](https://github.com/arup-group/genet/pull/179)
+* Length attribute is calculated automatically, using nodes' spatial information, if not provided [#161](https://github.com/arup-group/genet/pull/161)
+* Elevation Script writes the MATSim slope file [#158](https://github.com/arup-group/genet/pull/158)
+* Spatial information is now compulsory when adding new nodes [#142](https://github.com/arup-group/genet/pull/142)
 
 ## [v3.0.0] - 2022-07-14
 
