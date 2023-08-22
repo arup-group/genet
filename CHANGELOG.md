@@ -1,8 +1,13 @@
-# [v3.0.0]
+# Changelog
 
-## What's Changed
+## [Unreleased]
 
-### New Features
+### Added
+* Validation for [intermodal access/egress for MATSim](https://github.com/matsim-org/matsim-libs/tree/master/contribs/sbb-extensions#intermodal-access-and-egress)
+
+## [v3.0.0] - 2022-07-14
+
+### Added
 * Addition of elevation and slope data to networks using [STRM](https://srtm.csi.cgiar.org/srtmdata/) files
 * Vehicle capacity and pce scaling
   * Conveniently save multiple `vehicle.xml` files for use with simulations at different scales: 1%, 5%, 10%, etc.
@@ -13,7 +18,7 @@
   * Script to add attributes to PT stops of various PT modes that allow agents to 
   access via network or teleported modes
 
-### Improvements
+### Changed
 * **[Breaking change]** New, **default**, representation of additional attributes
   ```python
   'attributes': {
@@ -34,19 +39,18 @@
     * `inputs_handler` -> `input`
     * `outputs_handler` -> `output` 
 
-# [v2.0.1-snapshot]
+## [v2.0.1-snapshot] - 2022-04-08
 
-## What's Changed
+### Changed
 * Loosen version constraints for various pytest-related dependencies by @mfitz in https://github.com/arup-group/genet/pull/114
-
 
 **Full Changelog**: https://github.com/arup-group/genet/compare/v2.0.0-snapshot...v2.0.1-snapshot
 
-# [v2.0.0-snapshot]
+## [v2.0.0-snapshot] - 2022-04-07
 
 Not production ready. No release notes other than the automated ones generated from commits.
 
-## What's Changed
+### Changed
 * update readme by @KasiaKoz in https://github.com/arup-group/genet/pull/53
 * Fix simplifications script's help message (LAB-990) by @mfitz in https://github.com/arup-group/genet/pull/54
 * Make link 'oneway' attribute optional when writing networks to disk by @mfitz in https://github.com/arup-group/genet/pull/56
@@ -99,14 +103,13 @@ Not production ready. No release notes other than the automated ones generated f
 * Reduce Docker image size by @mfitz in https://github.com/arup-group/genet/pull/113
 * Add/Remove Services and Routes in groups by @KasiaKoz in https://github.com/arup-group/genet/pull/112
 
-## New Contributors
+### New Contributors
 * @syhwawa made their first contribution in https://github.com/arup-group/genet/pull/88
 * @ana-kop made their first contribution in https://github.com/arup-group/genet/pull/96
 
 **Full Changelog**: https://github.com/arup-group/genet/compare/v1.0.0...v2.0.0-snapshot
 
-# [v1.0.0]
+## [v1.0.0] - 2021-02-01
 
-# Initial release
-
+### Initial release
 This is the first release, please check documentation/wiki for the usage guide
