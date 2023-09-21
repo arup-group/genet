@@ -1,28 +1,32 @@
-import networkx as nx
 import math
 from dataclasses import dataclass, fields
+
+import networkx as nx
 
 
 def validate_attribute_data(attributes, necessary_attributes):
     missing_attribs = set(necessary_attributes) - set(attributes)
     if missing_attribs:
-        raise AttributeError(f'Attributes: {missing_attribs} missing from data: {attributes}')
+        raise AttributeError(f"Attributes: {missing_attribs} missing from data: {attributes}")
 
 
 def find_problem_nodes(G):
     problem_nodes = {}
-    problem_nodes['dead_ends'] = []
-    problem_nodes['unreachable_node'] = []
+    problem_nodes["dead_ends"] = []
+    problem_nodes["unreachable_node"] = []
     for node in G.nodes:
-        if (G.in_degree(node) == 0):
-            problem_nodes['unreachable_node'].append(node)
-        if (G.out_degree(node) == 0):
-            problem_nodes['dead_ends'].append(node)
+        if G.in_degree(node) == 0:
+            problem_nodes["unreachable_node"].append(node)
+        if G.out_degree(node) == 0:
+            problem_nodes["dead_ends"].append(node)
     return problem_nodes
 
 
 def find_connected_subgraphs(G):
-    return [(list(c), len(c)) for c in sorted(nx.strongly_connected_components(G), key=len, reverse=True)]
+    return [
+        (list(c), len(c))
+        for c in sorted(nx.strongly_connected_components(G), key=len, reverse=True)
+    ]
 
 
 def describe_graph_connectivity(G):
@@ -33,9 +37,9 @@ def describe_graph_connectivity(G):
     """
     dict_to_return = {}
     # find dead ends or unreachable nodes
-    dict_to_return['problem_nodes'] = find_problem_nodes(G)
+    dict_to_return["problem_nodes"] = find_problem_nodes(G)
     # find number of connected subgraphs
-    dict_to_return['number_of_connected_subgraphs'] = len(find_connected_subgraphs(G))
+    dict_to_return["number_of_connected_subgraphs"] = len(find_connected_subgraphs(G))
     return dict_to_return
 
 
@@ -64,10 +68,10 @@ def fractional_value(value):
 
 
 def none_condition(value):
-    return value in [None, 'None']
+    return value in [None, "None"]
 
 
-@dataclass()
+@dataclass(frozen=True)
 class Condition:
     condition: callable
 
@@ -75,7 +79,7 @@ class Condition:
         return self.condition(value)
 
 
-@dataclass()
+@dataclass(frozen=True)
 class FloatCondition(Condition):
     condition: callable
 
@@ -83,7 +87,7 @@ class FloatCondition(Condition):
         return evaluate_condition_for_floatable(value, self.condition)
 
 
-@dataclass()
+@dataclass(frozen=True)
 class ConditionsToolbox:
     zero: Condition = FloatCondition(zero_value)
     negative: Condition = FloatCondition(negative_value)
@@ -98,4 +102,4 @@ class ConditionsToolbox:
         if condition in self.__dict__:
             return self.__dict__[condition].evaluate
         else:
-            raise NotImplementedError(f'Condition {condition} is not defined.')
+            raise NotImplementedError(f"Condition {condition} is not defined.")

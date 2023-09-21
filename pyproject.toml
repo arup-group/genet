@@ -1,0 +1,118 @@
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+# opts:
+# `--strict-markers` - Raise error on unexpected pytest markers being used (add new markers to `markers` config)
+# `-n2` - parallelise over two threads (uses pytest-xdist)
+# `--nbmake --nbmake-kernel=genet` - test example notebooks using the "genet" notebook kernel (uses nbmake)
+# `--cov --cov-report=xml --cov-config=pyproject.toml` - generate coverage report for tests (uses pytest-cov; call `--no-cov` in CLI to switch off; `--cov-config` include to avoid bug)
+# `-m 'not high_mem'` - Do not run tests marked as consuming large amounts of memory (call `-m "high_mem"` in CLI to invert this; only `high_mem` marked tests will be run)
+# `-p no:memray` - Do not use the memray memory profiling plugin (call `-p memray` in CLI to switch on memory profiling)
+addopts = "-rav --strict-markers -n2 --nbmake --nbmake-kernel=genet --cov --cov-report=xml --cov-config=pyproject.toml -m 'not high_mem' -p no:memray"
+testpaths = ["tests", "examples"]
+# to mark a test, decorate it with `@pytest.mark.[marker-name]`
+markers = ["high_mem", "limit_memory"]
+filterwarnings = [
+    # https://github.com/pytest-dev/pytest-xdist/issues/825
+    "ignore:The --rsyncdir command line argument and rsyncdirs config variable are deprecated.:DeprecationWarning",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["genet/"]
+
+[tool.coverage.report]
+fail_under = 89
+
+[tool.coverage.html]
+directory = "reports/coverage"
+
+[tool.coverage.xml]
+output = "reports/coverage/coverage.xml"
+
+[tool.black]
+line-length = 100
+skip_magic_trailing_comma = true
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "Q"]
+
+ignore = [
+    "E501", # line too long: Black will handle this.
+    "D1",   # Ignore missing docstrings in public functions/modules. There are just too many of them missing...
+]
+
+# Exclude a variety of commonly ignored directories.
+exclude = [".*", "__pypackages__", "build", "dist", "venv", "reports/"]
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.ruff.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+# Ignore `E402` (import violations) and `F401` (unused imports) in all `__init__.py` files
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["E402", "F401"]
+"*.ipynb" = ["E402"]
+
+# Ignore `E402` for all notebooks
+[tool.nbqa.addopts]
+ruff = ["--extend-ignore=E402"]
+[tool.ruff.flake8-quotes]
+docstring-quotes = "double"
+
+[tool.setuptools.packages.find]
+include = ["genet*"]
+
+[tool.setuptools.package-data]
+
+# Add file globs from the source code directory if they include non-py files that should be packaged
+# E.g. "fixtures/**/*"
+genet = ["configs/**/*"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+classifiers = [
+    "Development Status :: 3 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+]
+
+name = "cml-genet"
+authors = [
+    { name = "Kasia Kozlowska", email = "36536946+KasiaKoz@users.noreply.github.com" },
+]
+maintainers = []
+description = "GeNet provides tools to represent and work with a multi-modal transport network with public transport (PT) services"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["genet"]
+license = { text = "MIT" }
+dynamic = ["dependencies", "optional-dependencies"]
+version = "4.0.0"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements/base.txt"] }
+
+[project.scripts]
+genet = "genet.cli:cli"
+
+[tool.setuptools.dynamic.optional-dependencies]
+dev = { file = ["requirements/dev.txt"] }
+
+[project.urls]
+repository = "https://github.com/arup-group/genet"
+documentation = "https://arup-group.github.io/genet"
+changelog = "https://github.com/arup-group/genet/blob/main/CHANGELOG.md"

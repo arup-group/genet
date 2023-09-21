@@ -1,0 +1,5 @@
+,trip_id,stop_id,stop_sequence,departure_time,arrival_time,stop_headsign,pickup_type,drop_off_type,continuous_pickup,continuous_drop_off,shape_dist_traveled,timepoint
+0,BT1,BSE,0,03:21:00,03:21:00,,,,,,,
+1,BT1,BSN,1,03:23:00,03:23:00,,,,,,,
+2,RT1,RSN,0,03:21:00,03:21:00,,,,,,,
+3,RT1,RSE,1,03:23:00,03:23:00,,,,,,,
