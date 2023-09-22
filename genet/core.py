@@ -1722,7 +1722,7 @@ class Network:
     def route_schedule(
         self,
         services: Union[list, set] = None,
-        solver="cbc",
+        solver="glpk",
         allow_partial=True,
         distance_threshold=30,
         step_size=10,
@@ -1742,9 +1742,9 @@ class Network:
         by setting allow_partial=False. It will raise PartialMaxStableSetProblem error instead.
 
         :param services: you can specify a list of services within the schedule to be snapped, defaults to all services
-        :param solver: you can specify different mathematical solvers. Defaults to CBC, open source solver which can
-        be found here: https://projects.coin-or.org/Cbc . Another good open source choice is GLPK:
-        https://www.gnu.org/software/glpk/. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'.
+        :param solver: you can specify different mathematical solvers. Defaults to GLPK, open source solver which can
+        be found here: https://www.gnu.org/software/glpk/. Another good open source choice is [CBC](https://projects.coin-or.org/Cbc):
+        . You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'.
         The solver needs to support MILP - mixed integer linear programming.
         :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and,
         under modal conditions, an artificial self-loop link will be created as well as any connecting links to that
@@ -1857,7 +1857,7 @@ class Network:
         self,
         service_id,
         spatial_tree=None,
-        solver="cbc",
+        solver="glpk",
         allow_partial=True,
         distance_threshold=30,
         step_size=10,
@@ -1880,9 +1880,9 @@ class Network:
         :param spatial_tree: optional, if snapping more than one Service, it may be beneficcial to build the spatial
         tree which is used for snapping separately and pass it here. This is done simply by importing genet and passing
         the network object in the following way: genet.utils.spatial.SpatialTree(network_object)
-        :param solver: you can specify different mathematical solvers. Defaults to CBC, open source solver which can
-        be found here: https://projects.coin-or.org/Cbc . Another good open source choice is GLPK:
-        https://www.gnu.org/software/glpk/. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'.
+        :param solver: you can specify different mathematical solvers. Defaults to GLPK, open source solver which can
+        be found here: https://www.gnu.org/software/glpk/. Another good open source choice is [CBC](https://projects.coin-or.org/Cbc):
+        . You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'.
         The solver needs to support MILP - mixed integer linear programming.
         :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and
         under modal conditions, an artificial self-loop link will be created as well as any connecting links to that

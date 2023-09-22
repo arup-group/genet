@@ -32,7 +32,7 @@ def route_pt_graph(
     pt_graph,
     network_spatial_tree,
     modes,
-    solver="cbc",
+    solver="glpk",
     allow_partial=False,
     distance_threshold=30,
     step_size=10,

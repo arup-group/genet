@@ -1,6 +1,6 @@
 anytree < 2.9
 boto3 < 1.30
-coincbc < 2.11
+glpk >= 5, < 6
 dictdiffer < 1
 gdal < 3.6
 geopandas >= 0.13, < 0.15
