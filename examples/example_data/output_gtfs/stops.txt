@@ -1,5 +1,0 @@
-,stop_id,stop_name,stop_lat,stop_lon,stop_code,stop_desc,zone_id,stop_url,location_type,parent_station,stop_timezone,wheelchair_boarding,level_id,platform_code
-RSE,RSE,Rail Stop snap to edge,51.5192615,-0.1421595,,,,,0.0,210G431,,,,
-BSE,BSE,Bus Stop snap to edge,51.5226864,-0.1413621,,,,,0.0,210G433,,,,
-BSN,BSN,Bus Stop snap to node,51.5216199,-0.140053,,,,,0.0,210G432,,,,
-RSN,RSN,Rail Stop snap to node,51.5231335,-0.1410946,,,,,0.0,210G430,,,,

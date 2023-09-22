@@ -43,9 +43,4 @@ mike-*.yml
 *.rej
 
 # Project specific
-tests/test_outputs/
-test_chunks.csv
-genet_output/*
-outputs/
-example_data/output_*/*
-example_data/api_requests_send.json
+examples/example_data/outputs
