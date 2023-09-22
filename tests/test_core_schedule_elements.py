@@ -1,11 +1,8 @@
 import pytest
-from networkx import DiGraph, set_node_attributes
-from pyproj import CRS
+from networkx import DiGraph
 
-import genet.modify.change_log as change_log
 from genet.exceptions import RouteIndexError, ScheduleElementGraphSchemaError, ServiceIndexError
 from genet.schedule_elements import Route, Schedule, Service, Stop, verify_graph_schema
-from tests.fixtures import assert_semantically_equal
 
 
 def assert_all_elements_share_graph(elem):
@@ -156,188 +153,11 @@ def schedule():
     )
 
 
-@pytest.fixture()
-def schedule_graph():
-    graph = DiGraph(
-        name="Schedule Graph",
-        routes={
-            "4": {
-                "ordered_stops": ["4", "5"],
-                "route_short_name": "route4",
-                "mode": "rail",
-                "trips": {
-                    "trip_id": ["route4_05:40:00"],
-                    "trip_departure_time": ["05:40:00"],
-                    "vehicle_id": ["veh_0_bus"],
-                },
-                "arrival_offsets": ["00:00:00", "00:03:00"],
-                "departure_offsets": ["00:00:00", "00:05:00"],
-                "route_long_name": "",
-                "id": "4",
-                "route": ["4", "5"],
-                "await_departure": [],
-            },
-            "3": {
-                "ordered_stops": ["3", "4"],
-                "route_short_name": "route3",
-                "mode": "rail",
-                "trips": {
-                    "trip_id": ["route3_04:40:00"],
-                    "trip_departure_time": ["04:40:00"],
-                    "vehicle_id": ["veh_1_bus"],
-                },
-                "arrival_offsets": ["00:00:00", "00:02:00"],
-                "departure_offsets": ["00:00:00", "00:02:00"],
-                "route_long_name": "",
-                "id": "3",
-                "route": ["3", "4"],
-                "await_departure": [],
-            },
-            "1": {
-                "ordered_stops": ["0", "1"],
-                "route_short_name": "route1",
-                "mode": "bus",
-                "trips": {
-                    "trip_id": ["route1_04:40:00"],
-                    "trip_departure_time": ["04:40:00"],
-                    "vehicle_id": ["veh_2_bus"],
-                },
-                "arrival_offsets": ["00:00:00", "00:02:00"],
-                "departure_offsets": ["00:00:00", "00:02:00"],
-                "route_long_name": "",
-                "id": "1",
-                "route": ["0", "1"],
-                "await_departure": [],
-            },
-            "2": {
-                "ordered_stops": ["1", "2"],
-                "route_short_name": "route2",
-                "mode": "bus",
-                "trips": {
-                    "trip_id": ["route2_05:40:00"],
-                    "trip_departure_time": ["05:40:00"],
-                    "vehicle_id": ["veh_3_bus"],
-                },
-                "arrival_offsets": ["00:00:00", "00:03:00"],
-                "departure_offsets": ["00:00:00", "00:05:00"],
-                "route_long_name": "",
-                "id": "2",
-                "route": ["1", "2"],
-                "await_departure": [],
-            },
-        },
-        services={
-            "service2": {"id": "service2", "name": "route3"},
-            "service1": {"id": "service1", "name": "route1"},
-        },
-        route_to_service_map={"1": "service1", "2": "service1", "3": "service2", "4": "service2"},
-        service_to_route_map={"service1": ["1", "2"], "service2": ["3", "4"]},
-        crs=CRS("epsg:27700"),
-    )
-    nodes = {
-        "4": {
-            "services": {"service2"},
-            "routes": {"3", "4"},
-            "id": "4",
-            "x": 529350.7866124967,
-            "y": 182388.0201078112,
-            "epsg": "epsg:27700",
-            "name": "",
-            "lat": 51.52560003323918,
-            "lon": -0.13682698708848137,
-            "s2_id": 5221390668558830581,
-            "additional_attributes": {"linkRefId"},
-            "linkRefId": "4",
-        },
-        "5": {
-            "services": {"service2"},
-            "routes": {"4"},
-            "id": "5",
-            "x": 529350.7866124967,
-            "y": 182388.0201078112,
-            "epsg": "epsg:27700",
-            "name": "",
-            "lat": 51.52560003323918,
-            "lon": -0.13682698708848137,
-            "s2_id": 5221390668558830581,
-            "additional_attributes": {"linkRefId"},
-            "linkRefId": "5",
-        },
-        "3": {
-            "services": {"service2"},
-            "routes": {"3"},
-            "id": "3",
-            "x": 529455.7452394223,
-            "y": 182401.37630677427,
-            "epsg": "epsg:27700",
-            "name": "",
-            "lat": 51.525696033239186,
-            "lon": -0.13530998708775874,
-            "s2_id": 5221390668020036699,
-            "additional_attributes": {"linkRefId"},
-            "linkRefId": "3",
-        },
-        "1": {
-            "services": {"service1"},
-            "routes": {"2", "1"},
-            "id": "1",
-            "x": 529350.7866124967,
-            "y": 182388.0201078112,
-            "epsg": "epsg:27700",
-            "name": "",
-            "lat": 51.52560003323918,
-            "lon": -0.13682698708848137,
-            "s2_id": 5221390668558830581,
-            "additional_attributes": {"linkRefId"},
-            "linkRefId": "1",
-        },
-        "2": {
-            "services": {"service1"},
-            "routes": {"2"},
-            "id": "2",
-            "x": 529350.7866124967,
-            "y": 182388.0201078112,
-            "epsg": "epsg:27700",
-            "name": "",
-            "lat": 51.52560003323918,
-            "lon": -0.13682698708848137,
-            "s2_id": 5221390668558830581,
-            "additional_attributes": {"linkRefId"},
-            "linkRefId": "2",
-        },
-        "0": {
-            "services": {"service1"},
-            "routes": {"1"},
-            "id": "0",
-            "x": 529455.7452394223,
-            "y": 182401.37630677427,
-            "epsg": "epsg:27700",
-            "name": "",
-            "lat": 51.525696033239186,
-            "lon": -0.13530998708775874,
-            "s2_id": 5221390668020036699,
-            "additional_attributes": {"linkRefId"},
-            "linkRefId": "0",
-        },
-    }
-    edges = [
-        ("4", "5", {"services": {"service2"}, "routes": {"4"}, "modes": {"rail"}}),
-        ("3", "4", {"services": {"service2"}, "routes": {"3"}, "modes": {"rail"}}),
-        ("1", "2", {"services": {"service1"}, "routes": {"2"}, "modes": {"bus"}}),
-        ("0", "1", {"services": {"service1"}, "routes": {"1"}, "modes": {"bus"}}),
-    ]
-    graph.add_nodes_from(nodes)
-    graph.add_edges_from(edges)
-    set_node_attributes(graph, nodes)
-    graph.graph["change_log"] = change_log.ChangeLog()
-    return graph
-
-
 def test_all_elements_in_schedule_share_the_same_graph(schedule):
     assert_all_elements_share_graph(schedule)
 
 
-def test_removing_routes_from_nodes(schedule):
+def test_removing_routes_from_nodes(assert_semantically_equal, schedule):
     schedule._remove_routes_from_nodes(nodes={"1"}, route_ids={"2"})
     assert_semantically_equal(
         dict(schedule._graph.nodes(data="routes")),
@@ -345,7 +165,7 @@ def test_removing_routes_from_nodes(schedule):
     )
 
 
-def test_removing_routes_from_edges(schedule):
+def test_removing_routes_from_edges(assert_semantically_equal, schedule):
     schedule._remove_routes_from_edges(edges={("1", "2")}, route_ids={"2"})
     assert_semantically_equal(
         schedule._graph.edges._adjdict,
@@ -360,7 +180,7 @@ def test_removing_routes_from_edges(schedule):
     )
 
 
-def test_adding_routes_to_nodes(schedule):
+def test_adding_routes_to_nodes(assert_semantically_equal, schedule):
     schedule._add_routes_to_nodes(nodes={"1"}, route_ids={"new_route"})
     assert_semantically_equal(
         dict(schedule._graph.nodes(data="routes")),
@@ -375,7 +195,7 @@ def test_adding_routes_to_nodes(schedule):
     )
 
 
-def test_adding_routes_to_edges(schedule):
+def test_adding_routes_to_edges(assert_semantically_equal, schedule):
     schedule._add_routes_to_edges(edges={("1", "2")}, route_ids={"new_route"})
     assert_semantically_equal(
         schedule._graph.edges._adjdict,
@@ -390,7 +210,7 @@ def test_adding_routes_to_edges(schedule):
     )
 
 
-def test_removing_services_from_nodes(schedule):
+def test_removing_services_from_nodes(assert_semantically_equal, schedule):
     schedule._remove_services_from_nodes(nodes={"2"}, service_ids={"service1"})
     assert_semantically_equal(
         dict(schedule._graph.nodes(data="services")),
@@ -405,7 +225,7 @@ def test_removing_services_from_nodes(schedule):
     )
 
 
-def test_removing_services_from_edges(schedule):
+def test_removing_services_from_edges(assert_semantically_equal, schedule):
     schedule._remove_services_from_edges(edges={("1", "2")}, service_ids={"service1"})
     assert_semantically_equal(
         schedule._graph.edges._adjdict,
@@ -420,7 +240,7 @@ def test_removing_services_from_edges(schedule):
     )
 
 
-def test_adding_services_to_nodes(schedule):
+def test_adding_services_to_nodes(assert_semantically_equal, schedule):
     schedule._add_services_to_nodes(nodes={"2"}, service_ids={"new_service"})
     assert_semantically_equal(
         dict(schedule._graph.nodes(data="services")),
@@ -435,7 +255,7 @@ def test_adding_services_to_nodes(schedule):
     )
 
 
-def test_adding_services_to_edges(schedule):
+def test_adding_services_to_edges(assert_semantically_equal, schedule):
     schedule._add_services_to_edges(edges={("1", "2")}, service_ids={"new_service"})
     assert_semantically_equal(
         schedule._graph.edges._adjdict,
@@ -557,7 +377,9 @@ def basic_service():
     )
 
 
-def test_splitting_service_on_direction_finds_two_distinct_directions(basic_service):
+def test_splitting_service_on_direction_finds_two_distinct_directions(
+    assert_semantically_equal, basic_service
+):
     service_split = basic_service.split_by_direction()
     assert_semantically_equal(
         service_split, {"North-East Bound": ["1", "2", "3"], "South-West Bound": ["4"]}
@@ -632,7 +454,9 @@ def service_with_separated_routes():
     )
 
 
-def test_splitting_service_on_direction_combines_separated_routes(service_with_separated_routes):
+def test_splitting_service_on_direction_combines_separated_routes(
+    assert_semantically_equal, service_with_separated_routes
+):
     service_split = service_with_separated_routes.split_by_direction()
     assert_semantically_equal(service_split, {"North Bound": ["1", "2", "3"]})
 
@@ -726,7 +550,9 @@ def service_with_loopy_routes():
     )
 
 
-def test_splitting_service_on_direction_with_loopy_routes(service_with_loopy_routes):
+def test_splitting_service_on_direction_with_loopy_routes(
+    assert_semantically_equal, service_with_loopy_routes
+):
     service_split = service_with_loopy_routes.split_by_direction()
     # loopy services are a bit disappointing right now, can't win them all I guess :(
     assert_semantically_equal(
@@ -825,7 +651,7 @@ def service_with_routes_that_have_non_overlapping_graph_edges():
 
 
 def test_splitting_service_on_direction_with_non_overlapping_graph_edges_produces_two_directions(
-    service_with_routes_that_have_non_overlapping_graph_edges,
+    assert_semantically_equal, service_with_routes_that_have_non_overlapping_graph_edges
 ):
     service_split = service_with_routes_that_have_non_overlapping_graph_edges.split_by_direction()
     assert_semantically_equal(
@@ -923,7 +749,7 @@ def service_edge_case_loopy_and_non_overlapping_graph():
 
 
 def test_splitting_service_edge_case_on_direction_results_in_two_directions(
-    service_edge_case_loopy_and_non_overlapping_graph,
+    assert_semantically_equal, service_edge_case_loopy_and_non_overlapping_graph
 ):
     service_split = service_edge_case_loopy_and_non_overlapping_graph.split_by_direction()
     assert_semantically_equal(
@@ -931,9 +757,9 @@ def test_splitting_service_edge_case_on_direction_results_in_two_directions(
     )
 
 
-# this one is a right mess, result varies based on order in with routes are specified.
+# this one is a right mess, result varies based on order in which routes are specified.
 @pytest.mark.xfail()
-def test_splitting_service_edge_case_on_direction_results_in_two_directions(
+def test_splitting_service_edge_case_on_direction_results_in_two_directions_2(
     service_edge_case_loopy_and_non_overlapping_graph,
 ):
     routes, graph_groups = service_edge_case_loopy_and_non_overlapping_graph.split_graph()
@@ -1074,24 +900,24 @@ def test_modes(schedule):
     assert set(schedule.modes()) == {"bus", "rail"}
 
 
-def test_mode_map_for_schedule(schedule):
+def test_mode_map_for_schedule(assert_semantically_equal, schedule):
     assert_semantically_equal(
         schedule.mode_graph_map(),
         {"bus": {("1", "2"), ("0", "1")}, "rail": {("3", "4"), ("4", "5")}},
     )
 
 
-def test_mode_map_for_service(schedule):
+def test_mode_map_for_service(assert_semantically_equal, schedule):
     assert_semantically_equal(
         schedule["service1"].mode_graph_map(), {"bus": {("1", "2"), ("0", "1")}}
     )
 
 
-def test_mode_map_for_route(schedule):
+def test_mode_map_for_route(assert_semantically_equal, schedule):
     assert_semantically_equal(schedule.route("1").mode_graph_map(), {"bus": {("0", "1")}})
 
 
-def test_schedule_subgraph(schedule):
+def test_schedule_subgraph(assert_semantically_equal, schedule):
     sub_g = schedule.subgraph({("1", "2"), ("0", "1")})
 
     assert_semantically_equal(
@@ -1149,7 +975,7 @@ def test_schedule_subgraph(schedule):
     )
 
 
-def test_service_subgraph(schedule):
+def test_service_subgraph(assert_semantically_equal, schedule):
     sub_g = schedule["service1"].subgraph({("0", "1")})
 
     assert_semantically_equal(
@@ -1190,7 +1016,7 @@ def test_service_subgraph(schedule):
     )
 
 
-def test_route_subgraph(schedule):
+def test_route_subgraph(assert_semantically_equal, schedule):
     sub_g = schedule.route("1").subgraph({("0", "1")})
 
     assert_semantically_equal(

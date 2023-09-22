@@ -20,7 +20,6 @@ from genet.input import matsim_reader, read
 from genet.schedule_elements import Route, Schedule, Service, Stop
 from genet.utils import plot, spatial
 from genet.validate import network as network_validation
-from tests.fixtures import NetworkForIntermodalAccessEgressTesting, assert_semantically_equal
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(
@@ -476,7 +475,7 @@ def test__str__shows_info():
     assert "Schedule info" in n.__str__()
 
 
-def test_reproject_changes_x_y_values_for_all_nodes(network1):
+def test_reproject_changes_x_y_values_for_all_nodes(assert_semantically_equal, network1):
     network1.reproject("epsg:4326")
     nodes = dict(network1.nodes())
     correct_nodes = {
@@ -594,7 +593,7 @@ def test_reprojecting_links_with_geometries():
     assert round(geometry_coords[-1][1], 7) == 547633.5224837
 
 
-def test_adding_the_same_networks():
+def test_adding_the_same_networks(assert_semantically_equal):
     n_left = Network("epsg:27700")
     n_left.add_node(
         "1",
@@ -673,7 +672,7 @@ def test_adding_the_same_networks():
     )
 
 
-def test_adding_the_same_networks_but_with_differing_projections():
+def test_adding_the_same_networks_but_with_differing_projections(assert_semantically_equal):
     n_left = Network("epsg:27700")
     n_left.add_node(
         "1",
@@ -753,7 +752,7 @@ def test_adding_the_same_networks_but_with_differing_projections():
     )
 
 
-def test_adding_networks_with_clashing_node_ids_does_not_duplicate_data():
+def test_adding_networks_with_clashing_node_ids_does_not_duplicate_data(assert_semantically_equal):
     n_left = Network("epsg:27700")
     n_left.add_node(
         "1",
@@ -832,7 +831,7 @@ def test_adding_networks_with_clashing_node_ids_does_not_duplicate_data():
     )
 
 
-def test_adding_networks_with_clashing_link_ids():
+def test_adding_networks_with_clashing_link_ids(assert_semantically_equal):
     n_left = Network("epsg:27700")
     n_left.add_node(
         "1",
@@ -990,7 +989,9 @@ def test_adding_networks_with_clashing_multiindices():
     }
 
 
-def test_adding_disjoint_networks_with_unique_ids_results_in_distinct_data_together():
+def test_adding_disjoint_networks_with_unique_ids_results_in_distinct_data_together(
+    assert_semantically_equal,
+):
     n_left = Network("epsg:27700")
     n_left.add_node(
         "1",
@@ -1833,7 +1834,7 @@ def test_adding_multiple_links():
     assert n.link_id_mapping["1"] == {"from": 2, "to": 3, "multi_edge_idx": 0}
 
 
-def test_adding_multiple_links_with_id_clashes():
+def test_adding_multiple_links_with_id_clashes(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link("0", 10, 20)
     assert "0" in n.link_id_mapping
@@ -1852,7 +1853,7 @@ def test_adding_multiple_links_with_id_clashes():
     assert_semantically_equal(links_and_attribs["1"], {"from": 2, "to": 3, "id": "1"})
 
 
-def test_adding_multiple_links_with_multiple_id_clashes():
+def test_adding_multiple_links_with_multiple_id_clashes(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link("0", 10, 20)
     n.add_link("1", 10, 20)
@@ -1875,7 +1876,7 @@ def test_adding_multiple_links_with_multiple_id_clashes():
     )
 
 
-def test_adding_loads_of_multiple_links_between_same_nodes():
+def test_adding_loads_of_multiple_links_between_same_nodes(assert_semantically_equal):
     n = Network("epsg:27700")
     reindexing_dict, links_and_attribs = n.add_links({i: {"from": 1, "to": 2} for i in range(10)})
 
@@ -1901,7 +1902,7 @@ def test_adding_multiple_links_with_multi_idx_clashes():
     assert n.link_id_mapping["4"] == {"from": 2, "to": 3, "multi_edge_idx": 0}
 
 
-def test_adding_multiple_links_with_id_and_multi_idx_clashes():
+def test_adding_multiple_links_with_id_and_multi_idx_clashes(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link("0", 1, 2)
     n.add_link("1", 1, 2)
@@ -1960,7 +1961,7 @@ def test_adding_multiple_links_missing_to_nodes_completely():
     )
 
 
-def test_adding_links_with_different_non_overlapping_attributes():
+def test_adding_links_with_different_non_overlapping_attributes(assert_semantically_equal):
     # generates a nan attribute for link attributes
     n = Network("epsg:27700")
     reindexing_dict, links_and_attributes = n.add_links(
@@ -1982,7 +1983,7 @@ def test_adding_links_with_different_non_overlapping_attributes():
     )
 
 
-def test_adding_multiple_links_to_same_edge_clashing_with_existing_edge():
+def test_adding_multiple_links_to_same_edge_clashing_with_existing_edge(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(link_id="0", u="2", v="2", attribs={"speed": 20})
 
@@ -2578,7 +2579,7 @@ def test_reindex_link(network1):
     )
 
 
-def test_reindex_link_when_link_id_already_exists(network1):
+def test_reindex_link_when_link_id_already_exists(assert_semantically_equal, network1):
     assert [id for id, attribs in network1.nodes()] == ["101982", "101986"]
     assert [id for id, attribs in network1.links()] == ["0"]
     assert network1.link("0")["from"] == "101982"
@@ -2594,7 +2595,9 @@ def test_reindex_link_when_link_id_already_exists(network1):
     assert network1.link(link_ids[0]) != network1.link(link_ids[1])
 
 
-def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
+def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log(
+    assert_semantically_equal,
+):
     n = Network("epsg:27700")
     n.add_node(1, {"id": 1, "x": 1, "y": 2, "a": 1})
     n.apply_attributes_to_node(1, {"b": 1})
@@ -2656,7 +2659,9 @@ def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_chan
     )
 
 
-def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log():
+def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log(
+    assert_semantically_equal,
+):
     n = Network("epsg:27700")
     n.add_node(1, {"x": 1, "y": 2, "a": 1})
     n.apply_attributes_to_node(1, {"a": 4})
@@ -2713,7 +2718,9 @@ def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_r
     )
 
 
-def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_recorded_by_change_log():
+def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_recorded_by_change_log(
+    assert_semantically_equal,
+):
     n = Network("epsg:27700")
     n.add_node(1, {"x": 1, "y": 2, "a": 1})
     n.add_node(2, {"x": 1, "y": 2, "b": 1})
@@ -3086,7 +3093,7 @@ def multiply_link_attribs(link_attribs):
     return link_attribs["a"] * link_attribs["c"]
 
 
-def test_apply_function_to_links():
+def test_apply_function_to_links(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link("0", 1, 2, attribs={"a": 2, "c": 3})
     n.add_link("1", 1, 2, attribs={"c": 100})
@@ -3473,7 +3480,9 @@ def test_schedule_routes_with_disconnected_routes(network_object_from_test_data)
     assert correct_routes == routes
 
 
-def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
+def test_reads_osm_network_into_the_right_schema(
+    assert_semantically_equal, full_fat_default_config_path
+):
     osm_test_file = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml")
     )
@@ -3973,7 +3982,9 @@ def test_warns_of_no_isolated_nodes_when_trying_to_remove(network_without_isolat
     assert "no isolated nodes" in caplog.records[0].message
 
 
-def test_isolated_nodes_show_up_in_validation_report(network_with_isolated_nodes):
+def test_isolated_nodes_show_up_in_validation_report(
+    assert_semantically_equal, network_with_isolated_nodes
+):
     n = network_with_isolated_nodes["network"]
     report = n.generate_validation_report()
 
@@ -4301,58 +4312,65 @@ def test_has_schedule_with_valid_network_routes_with_empty_routes(route):
 @pytest.mark.parametrize(
     "fixture,has_intermodal_connections",
     [
-        (NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(), False),
-        (NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(), True),
-        (NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(), True),
+        ("without_intermodal_access_egress", False),
+        ("with_valid_car_intermodal_access_egress", True),
+        ("with_invalid_intermodal_access_egress", True),
     ],
 )
-def test_recognising_intermodal_connections(fixture, has_intermodal_connections):
-    assert fixture.network.has_intermodal_access_egress_connections() == has_intermodal_connections
+def test_recognising_intermodal_connections(request, fixture, has_intermodal_connections):
+    assert (
+        request.getfixturevalue(fixture).network.has_intermodal_access_egress_connections()
+        == has_intermodal_connections
+    )
 
 
 @pytest.mark.parametrize(
     "fixture",
     [
-        NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(),
-        NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(),
-        NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(),
+        "without_intermodal_access_egress",
+        "with_valid_car_intermodal_access_egress",
+        "with_invalid_intermodal_access_egress",
     ],
 )
-def test_assembling_intermodal_access_egress_connections(fixture):
-    result = fixture.network.intermodal_access_egress_connections()
+def test_assembling_intermodal_access_egress_connections(request, fixture):
+    module = request.getfixturevalue(fixture)
+    result = module.network.intermodal_access_egress_connections()
     if isinstance(result, pd.DataFrame):
-        assert_frame_equal(result, fixture.intermodal_access_egress_connections_dataframe)
+        assert_frame_equal(result, module.intermodal_access_egress_connections_dataframe)
     else:
-        assert result == fixture.intermodal_access_egress_connections_dataframe
+        assert result == module.intermodal_access_egress_connections_dataframe
 
 
 @pytest.mark.parametrize(
     "fixture",
     [
-        NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(),
-        NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(),
-        NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(),
+        "without_intermodal_access_egress",
+        "with_valid_car_intermodal_access_egress",
+        "with_invalid_intermodal_access_egress",
     ],
 )
-def test_reporting_on_invalid_intermodal_connections(fixture):
-    invalid_intermodal_connections = fixture.network.invalid_intermodal_access_egress_connections()
+def test_reporting_on_invalid_intermodal_connections(request, fixture):
+    module = request.getfixturevalue(fixture)
+    invalid_intermodal_connections = module.network.invalid_intermodal_access_egress_connections()
     assert (
         invalid_intermodal_connections
-        == fixture.expected_invalid_intermodal_access_egress_connections
+        == module.expected_invalid_intermodal_access_egress_connections
     )
 
 
 @pytest.mark.parametrize(
     "fixture,has_valid_intermodal_connections",
     [
-        (NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(), True),
-        (NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(), True),
-        (NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(), False),
+        ("without_intermodal_access_egress", True),
+        ("with_valid_car_intermodal_access_egress", True),
+        ("with_invalid_intermodal_access_egress", False),
     ],
 )
-def test_declaration_on_valid_intermodal_connections(fixture, has_valid_intermodal_connections):
+def test_declaration_on_valid_intermodal_connections(
+    request, fixture, has_valid_intermodal_connections
+):
     assert (
-        fixture.network.has_valid_intermodal_access_egress_connections()
+        request.getfixturevalue(fixture).network.has_valid_intermodal_access_egress_connections()
         == has_valid_intermodal_connections
     )
 
@@ -4489,7 +4507,7 @@ def test_network_routing_in_report_with_valid_network(valid_network_for_validati
     )
 
 
-def test_long_links_show_up_in_validation_report():
+def test_long_links_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1", 1, 2, attribs={"length": 10000, "capacity": 1, "freespeed": 1, "modes": ["car", "bus"]}
@@ -4516,7 +4534,9 @@ offending_link_attribute_values_and_names = [
 
 
 @pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
-def test_values_of_ids_are_not_flagged_in_validation_report(value, offending_value):
+def test_values_of_ids_are_not_flagged_in_validation_report(
+    assert_semantically_equal, value, offending_value
+):
     n = Network("epsg:27700")
     n.add_link(
         offending_value,
@@ -4534,7 +4554,9 @@ def test_values_of_ids_are_not_flagged_in_validation_report(value, offending_val
 
 
 @pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
-def test_values_of_from_node_are_not_flagged_in_validation_report(value, offending_value):
+def test_values_of_from_node_are_not_flagged_in_validation_report(
+    assert_semantically_equal, value, offending_value
+):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4552,7 +4574,9 @@ def test_values_of_from_node_are_not_flagged_in_validation_report(value, offendi
 
 
 @pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
-def test_values_of_to_node_are_not_flagged_in_validation_report(value, offending_value):
+def test_values_of_to_node_are_not_flagged_in_validation_report(
+    assert_semantically_equal, value, offending_value
+):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4569,7 +4593,7 @@ def test_values_of_to_node_are_not_flagged_in_validation_report(value, offending
     assert_semantically_equal(report["graph"]["link_attributes"][f"{value}_attributes"], {})
 
 
-def test_zero_value_attributes_show_up_in_validation_report():
+def test_zero_value_attributes_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4593,7 +4617,7 @@ def test_zero_value_attributes_show_up_in_validation_report():
     )
 
 
-def test_negative_value_attributes_show_up_in_validation_report():
+def test_negative_value_attributes_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1", 1, 2, attribs={"length": -1, "capacity": 1, "freespeed": "-5", "modes": ["car", "bus"]}
@@ -4613,7 +4637,7 @@ def test_negative_value_attributes_show_up_in_validation_report():
     )
 
 
-def test_infinite_value_attributes_show_up_in_validation_report():
+def test_infinite_value_attributes_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4641,7 +4665,7 @@ def test_infinite_value_attributes_show_up_in_validation_report():
     )
 
 
-def test_fractional_value_attributes_show_up_in_validation_report():
+def test_fractional_value_attributes_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4664,7 +4688,7 @@ def test_fractional_value_attributes_show_up_in_validation_report():
     )
 
 
-def test_none_value_attributes_show_up_in_validation_report():
+def test_none_value_attributes_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4687,7 +4711,7 @@ def test_none_value_attributes_show_up_in_validation_report():
     )
 
 
-def test_nested_values_show_up_in_validation_report():
+def test_nested_values_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4713,20 +4737,21 @@ def test_nested_values_show_up_in_validation_report():
 @pytest.mark.parametrize(
     "fixture,is_valid_network",
     [
-        (NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(), True),
-        (NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(), True),
-        (NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(), False),
+        ("without_intermodal_access_egress", True),
+        ("with_valid_car_intermodal_access_egress", True),
+        ("with_invalid_intermodal_access_egress", False),
     ],
 )
-def test_intermodal_access_egress_reporting(fixture, is_valid_network):
-    report = fixture.network.generate_validation_report()
+def test_intermodal_access_egress_reporting(request, fixture, is_valid_network):
+    module = request.getfixturevalue(fixture)
+    report = module.network.generate_validation_report()
     assert report["is_valid_network"] == is_valid_network
     assert (
         report["intermodal_access_egress"]["has_valid_intermodal_connections"] == is_valid_network
     )
     assert (
         report["intermodal_access_egress"]["invalid_intermodal_connections"]
-        == fixture.invalid_intermodal_access_egress_connections
+        == module.invalid_intermodal_access_egress_connections
     )
 
 
@@ -5198,13 +5223,13 @@ def network_1_geo_and_json(network1):
     }
 
 
-def test_transforming_network_to_json(network_1_geo_and_json):
+def test_transforming_network_to_json(assert_semantically_equal, network_1_geo_and_json):
     assert_semantically_equal(
         network_1_geo_and_json["network"].to_json(), network_1_geo_and_json["expected_json"]
     )
 
 
-def test_transforming_uneven_network_to_json():
+def test_transforming_uneven_network_to_json(assert_semantically_equal):
     # some nodes and links have different params, we expect only those with values in the json
     n = Network(epsg="epsg:4326")
     n.add_node(
@@ -5293,7 +5318,7 @@ def test_transforming_uneven_network_to_json():
     )
 
 
-def test_saving_network_to_json(network_1_geo_and_json, tmpdir):
+def test_saving_network_to_json(assert_semantically_equal, network_1_geo_and_json, tmpdir):
     network_1_geo_and_json["network"].write_to_json(tmpdir)
     expected_network_json = os.path.join(tmpdir, "network.json")
     assert os.path.exists(expected_network_json)
@@ -5353,7 +5378,7 @@ def test_saving_network_to_geojson(network1, correct_schedule, tmpdir):
     }
 
 
-def test_saving_network_to_csv(network1, correct_schedule, tmpdir):
+def test_saving_network_to_csv(assert_semantically_equal, network1, correct_schedule, tmpdir):
     network1.schedule = correct_schedule
     network1.write_to_csv(tmpdir)
     assert set(os.listdir(tmpdir)) == {"network", "schedule"}
@@ -5662,7 +5687,7 @@ def test_splitting_link_updates_route_in_schedule(mocker):
     assert n.schedule.route("1").route == ["AAA", new_link_1_ID, new_link_2_ID, "BBB"]
 
 
-def test_generating_summary_report(network_for_summary_stats):
+def test_generating_summary_report(assert_semantically_equal, network_for_summary_stats):
     report = network_for_summary_stats.summary_report()
     correct_report = {
         "network": {

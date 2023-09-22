@@ -83,7 +83,7 @@ def test_offsets_going_over_24_hrs_why_not():
 
 def test_generating_edge_vph_geodataframe(schedule):
     gdfs = gngeojson.generate_geodataframes(schedule.graph())
-    nodes, links = gdfs["nodes"], gdfs["links"]
+    links = gdfs["links"]
     df = schedule.trips_with_stops_to_dataframe()
     gdf = use_schedule.generate_edge_vph_geodataframe(df, links)
 
@@ -185,7 +185,7 @@ def test_generating_edge_vph_geodataframe(schedule):
 
 def test_generating_edge_vph_geodataframe_for_service(schedule):
     gdfs = gngeojson.generate_geodataframes(schedule["service"].graph())
-    nodes, links = gdfs["nodes"], gdfs["links"]
+    links = gdfs["links"]
     df = schedule["service"].trips_with_stops_to_dataframe()
     gdf = use_schedule.generate_edge_vph_geodataframe(df, links)
 
@@ -287,7 +287,7 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
 
 def test_generating_edge_vph_geodataframe_for_route(schedule):
     gdfs = gngeojson.generate_geodataframes(schedule.route("2").graph())
-    nodes, links = gdfs["nodes"], gdfs["links"]
+    links = gdfs["links"]
     df = schedule.route("2").trips_with_stops_to_dataframe()
     gdf = use_schedule.generate_edge_vph_geodataframe(df, links)
 

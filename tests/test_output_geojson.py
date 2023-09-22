@@ -4,7 +4,6 @@ import pytest
 
 from genet import Network, Route, Schedule, Service, Stop
 from genet.output import geojson as gngeojson
-from tests.fixtures import assert_semantically_equal
 
 
 @pytest.fixture()
@@ -55,7 +54,7 @@ def test_saving_values_which_result_in_overflow(tmpdir):
     n.write_to_geojson(tmpdir)
 
 
-def test_generating_network_graph_geodataframe(network):
+def test_generating_network_graph_geodataframe(assert_semantically_equal, network):
     gdfs = gngeojson.generate_geodataframes(network.graph)
     nodes, links = gdfs["nodes"], gdfs["links"]
     correct_nodes = {
@@ -111,7 +110,7 @@ def test_generating_network_graph_geodataframe(network):
     assert links.crs == "EPSG:27700"
 
 
-def test_generating_schedule_graph_geodataframe(network):
+def test_generating_schedule_graph_geodataframe(assert_semantically_equal, network):
     gdfs = gngeojson.generate_geodataframes(network.schedule.graph())
     nodes, links = gdfs["nodes"], gdfs["links"]
     correct_nodes = {
@@ -154,7 +153,7 @@ def test_generating_schedule_graph_geodataframe(network):
 
 def test_modal_subset(network):
     gdfs = gngeojson.generate_geodataframes(network.graph)
-    nodes, links = gdfs["nodes"], gdfs["links"]
+    links = gdfs["links"]
     car = links[links.apply(lambda x: gngeojson.modal_subset(x, {"car"}), axis=1)]
 
     assert len(car) == 1

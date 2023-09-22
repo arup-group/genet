@@ -12,7 +12,6 @@ from shapely.geometry import LineString, MultiLineString, Point, Polygon
 from genet import Network
 from genet.exceptions import EmptySpatialTree
 from genet.utils import spatial
-from tests.fixtures import *
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 test_geojson = os.path.abspath(
@@ -423,7 +422,7 @@ def network():
     return n
 
 
-def test_SpatialTree_adds_links(network):
+def test_SpatialTree_adds_links(assert_semantically_equal, network):
     spatial_tree = spatial.SpatialTree(network)
 
     assert_semantically_equal(
@@ -458,7 +457,9 @@ def test_subsetting_links_df_by_mode_that_isnt_present_throws_error(network):
     assert "No links found" in str(e.value)
 
 
-def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(network):
+def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(
+    assert_semantically_equal, network
+):
     spatial_tree = spatial.SpatialTree(network).modal_subtree(modes="car")
     stops = GeoDataFrame(
         {
@@ -483,7 +484,9 @@ def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(networ
     )
 
 
-def test_SpatialTree_closest_links_in_london_finds_a_link_within_13_metres(network):
+def test_SpatialTree_closest_links_in_london_finds_a_link_within_13_metres(
+    assert_semantically_equal, network
+):
     spatial_tree = spatial.SpatialTree(network).modal_subtree(modes="car")
     stops = GeoDataFrame(
         {
@@ -505,7 +508,9 @@ def test_SpatialTree_closest_links_in_london_finds_a_link_within_13_metres(netwo
     )
 
 
-def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
+def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres(
+    assert_semantically_equal,
+):
     # (close to equator)
     n = Network("epsg:4326")
     n.add_nodes(
@@ -548,7 +553,9 @@ def test_SpatialTree_closest_links_in_indonesia_doesnt_find_link_within_10_metre
     assert closest_links.empty
 
 
-def test_SpatialTree_closest_links_in_north_canada_finds_link_within_30_metres():
+def test_SpatialTree_closest_links_in_north_canada_finds_link_within_30_metres(
+    assert_semantically_equal,
+):
     # (out in the boonies)
     n = Network("epsg:4326")
     n.add_nodes(
@@ -590,7 +597,7 @@ def test_SpatialTree_closest_links_in_north_canada_doesnt_find_link_within_10_me
     assert closest_links.empty
 
 
-def test_SpatialTree_shortest_paths(network):
+def test_SpatialTree_shortest_paths(assert_semantically_equal, network):
     spatial_tree = spatial.SpatialTree(network).modal_subtree(modes="car")
     df = DataFrame(
         {
@@ -611,7 +618,7 @@ def test_SpatialTree_shortest_paths(network):
     )
 
 
-def test_SpatialTree_shortest_path_lengths(network):
+def test_SpatialTree_shortest_path_lengths(assert_semantically_equal, network):
     spatial_tree = spatial.SpatialTree(network).modal_subtree(modes="car")
     df = DataFrame(
         {
