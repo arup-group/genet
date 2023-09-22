@@ -60,11 +60,15 @@ def generate_geodataframes(graph):
     return {"nodes": nodes, "links": links}
 
 
-def save_geodataframe(gdf, filename, output_dir, include_shp_files=False):
+def save_geodataframe(gdf: gpd.GeoDataFrame, filename, output_dir, include_shp_files=False):
     if not gdf.empty:
         gdf = sanitiser.sanitise_geodataframe(gdf)
+
         persistence.ensure_dir(output_dir)
-        gdf.to_file(os.path.join(output_dir, f"{filename}.geojson"), driver="GeoJSON")
+
+        gdf.to_crs("epsg:4326").to_file(
+            os.path.join(output_dir, f"{filename}.geojson"), driver="GeoJSON"
+        )
         for col in [col for col in gdf.columns if is_datetime(gdf[col])]:
             gdf[col] = gdf[col].astype(str)
         if include_shp_files:
@@ -213,9 +217,7 @@ def generate_standard_outputs(
 
     logging.info("Generating geojson outputs for car/driving modal subgraph")
     graph_output_dir = os.path.join(output_dir, "graph")
-    gdf_car = graph_links.loc[
-        graph_links.apply(lambda x: modal_subset(x, {"car"}), axis=1), :
-    ]  # noqa: E231
+    gdf_car = graph_links.loc[graph_links.apply(lambda x: modal_subset(x, {"car"}), axis=1), :]
     for attribute in ["freespeed", "capacity", "permlanes"]:
         try:
             save_geodataframe(

@@ -16,11 +16,11 @@ def split_list(_list, processes=1):
         return [_list]
     else:
         n = int(len(_list) // k)
-        l_partitioned = [_list[(k * i):(k * (i + 1))] for i in range(n)]
-        leftovers = _list[(k * n):]
+        l_partitioned = [_list[(k * i) : (k * (i + 1))] for i in range(n)]
+        leftovers = _list[(k * n) :]
         if leftovers:
             l_partitioned.append(leftovers)
-        logging.info('{} or {} batches of size {} ish'.format(n, n + 1, k))
+        logging.info("{} or {} batches of size {} ish".format(n, n + 1, k))
         return l_partitioned
 
 

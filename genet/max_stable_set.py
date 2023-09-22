@@ -5,7 +5,7 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 import networkx as nx
 import pandas as pd
-from pyomo.environ import *  # noqa: F403
+import pyomo.environ as pe
 
 import genet.output.geojson as gngeojson
 import genet.utils.dict_support as dict_support
@@ -240,7 +240,7 @@ class MaxStableSet:
             # Model
             # --------------------------------------------------------
 
-            model = ConcreteModel()  # noqa: F405
+            model = pe.ConcreteModel()
 
             # --------------------------------------------------------
             # Sets/Params
@@ -253,28 +253,26 @@ class MaxStableSet:
             vertices = set(self.problem_graph.nodes)
             edges = set(self.problem_graph.edges)
 
-            model.vertices = Set(initialize=vertices)  # noqa: F405
+            model.vertices = pe.Set(initialize=vertices)
 
             def spatial_proximity_coefficient_init(model, i):
                 attribs = self.problem_graph.nodes[i]
                 # todo normalise
                 return attribs["coeff"]
 
-            model.c = Param(
-                model.vertices, initialize=spatial_proximity_coefficient_init
-            )  # noqa: F405
+            model.c = pe.Param(model.vertices, initialize=spatial_proximity_coefficient_init)
 
             # --------------------------------------------------------
             # Variables
             # --------------------------------------------------------
 
-            model.x = Var(vertices, within=Binary)  # noqa: F405
+            model.x = pe.Var(vertices, within=pe.Binary)
 
             # --------------------------------------------------------
             # Constraints
             # --------------------------------------------------------
 
-            model.edge_adjacency = ConstraintList()  # noqa: F405
+            model.edge_adjacency = pe.ConstraintList()
             for u, v in edges:
                 model.edge_adjacency.add(model.x[u] + model.x[v] <= 1)
 
@@ -285,14 +283,14 @@ class MaxStableSet:
             def total_nodes_rule(model):
                 return sum(model.c[i] * model.x[i] for i in model.vertices)
 
-            model.total_nodes = Objective(rule=total_nodes_rule, sense=maximize)  # noqa: F405
+            model.total_nodes = pe.Objective(rule=total_nodes_rule, sense=pe.maximize)
 
             # --------------------------------------------------------
             # Solver
             # --------------------------------------------------------
 
             logging.info("Passing problem to solver")
-            _solver = SolverFactory(solver)  # noqa: F405
+            _solver = pe.SolverFactory(solver)
             _solver.solve(model)
 
             # --------------------------------------------------------
@@ -301,8 +299,8 @@ class MaxStableSet:
 
             selected = [
                 str(v).strip("x[\\']")
-                for v in model.component_data_objects(Var)
-                if float(v.value) == 1.0  # noqa: F405
+                for v in model.component_data_objects(pe.Var)
+                if float(v.value) == 1.0
             ]
             # solution maps Stop IDs to Link IDs
             self.solution = {

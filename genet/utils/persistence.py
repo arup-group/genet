@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 import shutil
 from typing import Union
 
@@ -20,7 +20,7 @@ def setify(value: Union[str, list, set]):
     elif value is None:
         return set()
     else:
-        raise NotImplementedError(f'Value: {value} cannot be setified')
+        raise NotImplementedError(f"Value: {value} cannot be setified")
 
 
 def listify(value: Union[str, list, set]):
@@ -55,4 +55,4 @@ def is_zip(path):
 
 
 def zip_folder(folder_path):
-    shutil.make_archive(folder_path, 'zip', folder_path)
+    shutil.make_archive(folder_path, "zip", folder_path)

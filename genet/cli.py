@@ -10,8 +10,10 @@ import geopandas as gpd
 import pandas as pd
 from pyproj import CRS
 
+import genet
 import genet.output.sanitiser as sanitiser
-from genet import google_directions, read_gtfs, read_matsim, read_matsim_schedule, read_osm, spatial
+import genet.utils.spatial as spatial
+from genet import google_directions, read_gtfs, read_matsim, read_matsim_schedule, read_osm
 from genet.core import Network
 from genet.output.geojson import (
     generate_headway_geojson,

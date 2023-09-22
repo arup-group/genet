@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from pandas import DataFrame, Series
-from pyproj import CRS, Geod, Transformer
+from pyproj import Geod, Transformer
 from s2sphere import CellId
 
 import genet.modify.change_log as change_log
@@ -271,10 +271,10 @@ class ScheduleElement:
                 apply=mod_schedule.reproj_stops,
                 combine=parallel.combine_dict,
                 processes=processes,
-                new_epsg=CRS(new_epsg),
+                new_epsg=new_epsg,
             )
             nx.set_node_attributes(self._graph, reprojected_node_attribs)
-            self.epsg = CRS(new_epsg)
+            self.epsg = new_epsg
 
     def unique_stop_projections(self):
         return {x[1] for x in self.graph().nodes(data="epsg")}
@@ -529,7 +529,7 @@ class Stop:
         self.id = id
         self.x = float(x)
         self.y = float(y)
-        self.epsg = CRS(epsg)
+        self.epsg = epsg
         self.name = name
 
         if ("lat" in kwargs) and ("lon" in kwargs):
@@ -1049,7 +1049,7 @@ class Route(ScheduleElement):
             and same_trips
             and same_arrival_offsets
             and same_departure_offsets
-        )  # noqa: E127
+        )
         return statement
 
     def isin_exact(self, routes: list):
@@ -3598,8 +3598,8 @@ class Schedule(ScheduleElement):
         persistence.ensure_dir(output_dir)
         _gdfs = self.to_geodataframe()
         if epsg is not None:
-            _gdfs["nodes"] = _gdfs["nodes"].to_crs(CRS(epsg))
-            _gdfs["links"] = _gdfs["links"].to_crs(CRS(epsg))
+            _gdfs["nodes"] = _gdfs["nodes"].to_crs(epsg)
+            _gdfs["links"] = _gdfs["links"].to_crs(epsg)
         logging.info(f"Saving Schedule to GeoJSON in {output_dir}")
         gngeojson.save_geodataframe(_gdfs["nodes"], "schedule_nodes", output_dir)
         gngeojson.save_geodataframe(_gdfs["links"], "schedule_links", output_dir)
