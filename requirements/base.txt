@@ -2,6 +2,7 @@ anytree < 2.9
 boto3 < 1.30
 coincbc < 2.11
 dictdiffer < 1
+gdal < 3.6
 geopandas >= 0.13, < 0.15
 ipykernel < 7
 keplergl < 0.4
@@ -9,8 +10,8 @@ lxml < 5
 matplotlib < 4
 networkx < 4
 numpy >= 1, < 2
-osmnx < 2
 osmium < 3.7
+osmnx < 2
 pandas >= 1.5, < 3
 polyline >= 2, < 3
 pyomo >= 6, < 7
