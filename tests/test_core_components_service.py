@@ -260,18 +260,18 @@ def test_plot_saves_to_the_specified_directory(tmpdir, service):
     assert os.path.exists(expected_plot_path)
 
 
-def test_services_equal(route, similar_non_exact_test_route):
-    a = Service(id="service", routes=[route, similar_non_exact_test_route])
+def test_services_equal(simple_route, similar_non_exact_test_route):
+    a = Service(id="service", routes=[simple_route, similar_non_exact_test_route])
 
-    b = Service(id="service", routes=[route, similar_non_exact_test_route])
+    b = Service(id="service", routes=[simple_route, similar_non_exact_test_route])
 
     assert a == b
 
 
-def test_services_exact(route, similar_non_exact_test_route):
-    a = Service(id="service", routes=[route, similar_non_exact_test_route])
+def test_services_exact(simple_route, similar_non_exact_test_route):
+    a = Service(id="service", routes=[simple_route, similar_non_exact_test_route])
 
-    b = Service(id="service", routes=[route, similar_non_exact_test_route])
+    b = Service(id="service", routes=[simple_route, similar_non_exact_test_route])
 
     assert a.is_exact(b)
 
@@ -592,17 +592,17 @@ def test_has_self_loops_with_non_looping_route(service):
     assert not service.has_self_loops()
 
 
-def test_validity_of_routes(self_looping_route, route):
-    s = Service(id="1", routes=[self_looping_route, route])
+def test_validity_of_routes(self_looping_route, simple_route):
+    s = Service(id="1", routes=[self_looping_route, simple_route])
     assert s.validity_of_routes() == [False, True]
 
 
-def test_has_valid_routes(self_looping_route, route):
-    s = Service(id="1", routes=[self_looping_route, route])
+def test_has_valid_routes(self_looping_route, simple_route):
+    s = Service(id="1", routes=[self_looping_route, simple_route])
     assert not s.has_valid_routes()
 
 
-def test_has_valid_routes_with_only_valid_routes(route):
+def test_has_valid_routes_with_only_valid_routes(simple_route):
     a = Stop(id="1", x=4, y=2, epsg="epsg:27700", linkRefId="1")
     b = Stop(id="2", x=1, y=2, epsg="epsg:27700", linkRefId="2")
     c = Stop(id="3", x=3, y=3, epsg="epsg:27700", linkRefId="3")
@@ -621,12 +621,12 @@ def test_has_valid_routes_with_only_valid_routes(route):
         route=["1", "2", "3", "4"],
         id="2",
     )
-    s = Service(id="1", routes=[route, r])
+    s = Service(id="1", routes=[simple_route, r])
     assert s.has_valid_routes()
 
 
-def test_invalid_routes_shows_invalid_routes(self_looping_route, route):
-    s = Service(id="1", routes=[self_looping_route, route])
+def test_invalid_routes_shows_invalid_routes(self_looping_route, simple_route):
+    s = Service(id="1", routes=[self_looping_route, simple_route])
     assert s.invalid_routes() == [self_looping_route]
 
 
@@ -638,8 +638,8 @@ def test_is_valid_with_valid_service(service):
     assert service.is_valid_service()
 
 
-def test_is_valid_with_looping_route(self_looping_route, route):
-    s = Service(id="1", routes=[self_looping_route, route])
+def test_is_valid_with_looping_route(self_looping_route, simple_route):
+    s = Service(id="1", routes=[self_looping_route, simple_route])
     assert not s.is_valid_service()
 
 

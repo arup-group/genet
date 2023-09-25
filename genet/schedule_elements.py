@@ -357,30 +357,23 @@ class ScheduleElement:
         )
         df["speed"] = df["distance"] / df["time"]
         if gdf_network_links is not None:
-            network_distance_df = use_schedule.network_routed_distance_gdf(self, gdf_network_links)
-            df = gpd.GeoDataFrame(
-                df.merge(
-                    network_distance_df,
-                    left_on=["route_id", "from_stop", "to_stop"],
-                    right_on=["id", "from_stop", "to_stop"],
-                )
+            network_distance_gdf = use_schedule.network_routed_distance_gdf(self, gdf_network_links)
+            gdf = network_distance_gdf.merge(
+                df,
+                left_on=["id", "from_stop", "to_stop"],
+                right_on=["route_id", "from_stop", "to_stop"],
             )
-            df["routed_speed"] = df["network_distance"] / df["time"]
+            gdf["routed_speed"] = gdf["network_distance"] / gdf["time"]
         else:
             df["network_distance"] = float("nan")
             df["routed_speed"] = float("nan")
             schedule_links = self.to_geodataframe()["links"]
-            df = gpd.GeoDataFrame(
-                pd.merge(
-                    df,
-                    schedule_links[["u", "v", "geometry"]],
-                    left_on=["from_stop", "to_stop"],
-                    right_on=["u", "v"],
-                ),
-                crs=schedule_links.crs,
+            gdf = schedule_links[["u", "v", "geometry"]].merge(
+                df, left_on=["u", "v"], right_on=["from_stop", "to_stop"]
             )
-            df.drop(["u", "v"], axis=1, inplace=True)
-        return df.drop(["time", "distance", "network_distance"], axis=1)
+            gdf.drop(["u", "v"], axis=1, inplace=True)
+
+        return gdf.drop(["time", "distance", "network_distance"], axis=1)
 
     def average_route_speeds(self, network_factor=1.3) -> dict:
         """

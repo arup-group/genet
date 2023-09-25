@@ -392,7 +392,7 @@ class SpatialTree(nx.DiGraph):
         )
         try:
             closest_links = gpd.sjoin(
-                self.links[["link_id", "geometry"]], gdf_points, how="right", op="intersects"
+                self.links[["link_id", "geometry"]], gdf_points, how="right", predicate="intersects"
             )
             return closest_links
         except EmptySpatialTree:

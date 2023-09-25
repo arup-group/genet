@@ -133,8 +133,8 @@ def test_generating_schedule_graph_geodataframe(assert_semantically_equal, netwo
         "v": {0: "1"},
     }
 
-    assert_semantically_equal(nodes[set(nodes.columns) - {"geometry"}].to_dict(), correct_nodes)
-    assert_semantically_equal(links[set(links.columns) - {"geometry"}].to_dict(), correct_links)
+    assert_semantically_equal(nodes.drop("geometry", axis=1).to_dict(), correct_nodes)
+    assert_semantically_equal(links.drop("geometry", axis=1).to_dict(), correct_links)
 
     assert round(nodes.loc["0", "geometry"].coords[:][0][0], 7) == round(529455.7452394223, 7)
     assert round(nodes.loc["0", "geometry"].coords[:][0][1], 7) == round(182401.37630677427, 7)

@@ -3,9 +3,9 @@ import logging
 import os
 from datetime import datetime, timedelta
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
-from geopandas import GeoDataFrame
 
 import genet.utils.spatial as spatial
 
@@ -48,9 +48,7 @@ def generate_edge_vph_geodataframe(df, gdf_links):
     df = df.groupby(groupby_cols).sum().reset_index()
 
     cols_to_delete = df.columns.difference(groupby_cols + ["vph"])
-    gdf = GeoDataFrame(
-        pd.merge(df, gdf_links, left_on=["from_stop", "to_stop"], right_on=["u", "v"])
-    )
+    gdf = gdf_links.merge(df, left_on=["u", "v"], right_on=["from_stop", "to_stop"])
     gdf = gdf.drop(cols_to_delete.union(["u", "v", "routes", "services"]), axis=1)
     return gdf
 
@@ -189,13 +187,13 @@ def divide_network_route(route: list[str], stops_linkrefids: list[str]) -> list[
 
 def network_routed_distance_gdf(schedule, gdf_network_links):
     def combine_route(group):
-        group = group.sort_values(by="sequence")
+        _group = group.sort_values(by="sequence")
         geom = spatial.merge_linestrings(list(group["geometry"]))
         length = group["length"].sum()
-        group = group.iloc[0, :][["id", "from_stop", "to_stop"]]
-        group["geometry"] = geom
-        group["network_distance"] = length
-        return group
+        _group = _group.iloc[[0]][["id", "from_stop", "to_stop"]]
+        _group["geometry"] = geom
+        _group["network_distance"] = length
+        return _group
 
     # TODO speeds account for snapping to long links
     logging.warning(
@@ -239,11 +237,12 @@ def network_routed_distance_gdf(schedule, gdf_network_links):
         route=np.concatenate(routes_df["route"].values),
         sequence=np.concatenate(routes_df["sequence"].values),
     )
-    routes_df = routes_df.merge(
-        gdf_network_links[["length", "geometry"]], left_on="route", right_index=True
+    routes_gdf = gdf_network_links[["length", "geometry"]].merge(
+        routes_df, right_on="route", left_index=True
     )
-    return (
-        routes_df.groupby(["id", "from_stop", "to_stop"])
-        .apply(combine_route)
-        .reset_index(drop=True)
+
+    new_route = routes_gdf.groupby(["id", "from_stop", "to_stop"], as_index=False).apply(
+        combine_route
     )
+
+    return gpd.GeoDataFrame(new_route).set_crs(routes_gdf.crs)

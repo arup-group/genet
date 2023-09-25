@@ -555,8 +555,8 @@ def test_reproject_changes_projection_for_all_stops_in_route(assert_semantically
     )
 
 
-def test_adding_merges_separable_schedules(route):
-    schedule = Schedule(epsg="epsg:4326", services=[Service(id="1", routes=[route])])
+def test_adding_merges_separable_schedules(simple_route):
+    schedule = Schedule(epsg="epsg:4326", services=[Service(id="1", routes=[simple_route])])
     before_graph_nodes = schedule.reference_nodes()
     before_graph_edges = schedule.reference_edges()
 

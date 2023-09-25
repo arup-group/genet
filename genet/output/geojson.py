@@ -108,7 +108,7 @@ def generate_standard_outputs_for_schedule(
             df_all_modes_vph = df_vph
         else:
             df_vph["mode"] = mode
-            df_all_modes_vph = df_all_modes_vph.append(df_vph)
+            df_all_modes_vph = pd.concat([df_all_modes_vph, df_vph])
 
         logging.info(f"Generating schedule graph for {mode}")
         schedule_subgraph = generate_geodataframes(schedule.subgraph(graph_mode_map[mode]))
@@ -156,14 +156,8 @@ def generate_standard_outputs_for_schedule(
         output_dir=speed_dir,
         include_shp_files=include_shp_files,
     )
-    speeds_gdf = gpd.GeoDataFrame(
-        pd.merge(
-            speeds_gdf.drop("geometry", axis=1),
-            schedule_links[["u", "v", "geometry"]],
-            left_on=["from_stop", "to_stop"],
-            right_on=["u", "v"],
-        ),
-        crs=schedule_links.crs,
+    speeds_gdf = schedule_links[["u", "v", "geometry"]].merge(
+        speeds_gdf.drop("geometry", axis=1), left_on=["u", "v"], right_on=["from_stop", "to_stop"]
     )
     save_geodataframe(
         speeds_gdf[["service_id", "route_id", "mode", "from_stop", "to_stop", "speed", "geometry"]],
@@ -280,10 +274,8 @@ def generate_standard_outputs(
 
 def generate_headway_geojson(n, gdf, output_dir, filename_suffix):
     headways = n.schedule.headway_stats()
-    headways = headways.merge(gdf[["route_id", "geometry"]], how="left", on="route_id")
-    save_geodataframe(
-        gpd.GeoDataFrame(headways).to_crs(EPSG4326), f"headway_stats_{filename_suffix}", output_dir
-    )
+    headways_gdf = gdf[["route_id", "geometry"]].merge(headways, how="right", on="route_id")
+    save_geodataframe(headways_gdf.to_crs(EPSG4326), f"headway_stats_{filename_suffix}", output_dir)
 
 
 def generate_speed_geojson(n, gdf, output_dir, filename_suffix):
@@ -296,7 +288,5 @@ def generate_speed_geojson(n, gdf, output_dir, filename_suffix):
         .max()["speed"]
         .reset_index()
     )
-    speeds = speeds.merge(gdf[["route_id", "geometry"]], how="left", on="route_id")
-    save_geodataframe(
-        gpd.GeoDataFrame(speeds).to_crs(EPSG4326), f"max_speeds_{filename_suffix}", output_dir
-    )
+    speeds_gdf = gdf[["route_id", "geometry"]].merge(speeds, how="right", on="route_id")
+    save_geodataframe(speeds_gdf.to_crs(EPSG4326), f"max_speeds_{filename_suffix}", output_dir)

@@ -471,7 +471,7 @@ def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(
             },
         }
     )
-    stops.crs = {"init": "epsg:4326"}
+    stops.crs = "epsg:4326"
 
     closest_links = spatial_tree.closest_links(stops, 30)
     assert_semantically_equal(
