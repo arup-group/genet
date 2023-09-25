@@ -11,6 +11,7 @@ jobs:
       ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
     with:
       package_name: cml-genet
+      build_workflow: pre-release.yml
 
   docs-stable:
     permissions:

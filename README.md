@@ -1,5 +1,5 @@
 <!--- --8<-- [start:docs] -->
-# Network Scenario Generator (GeNet)
+# Network Scenario Generator (GeNet) (genet)
 
 [![DOI](https://zenodo.org/badge/265256468.svg)](https://zenodo.org/badge/latestdoi/265256468)
 [![Daily CI Build](https://github.com/arup-group/genet/actions/workflows/daily-scheduled-ci.yml/badge.svg)](https://github.com/arup-group/genet/actions/workflows/daily-scheduled-ci.yml)
@@ -26,7 +26,8 @@ For more detailed instructions, see our [documentation](https://arup-group.githu
 
 ## Installation
 
-To install genet, we recommend using the [mamba](https://mamba.readthedocs.io/en/latest/index.html) package manager:
+To install genet
+ (indexed online as cml-genet), we recommend using the [mamba](https://mamba.readthedocs.io/en/latest/index.html) package manager:
 
 ### As a user
 <!--- --8<-- [start:docs-install-user] -->

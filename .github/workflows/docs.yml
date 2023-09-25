@@ -23,14 +23,3 @@ jobs:
     with:
       deploy_type: update_latest
       notebook_kernel: genet
-
-  slack-notify-ci-failure:
-    needs: [docs-test, docs-update-latest]
-    if: always() && contains(needs.*.result, 'failure')
-    uses: arup-group/actions-city-modelling-lab/.github/workflows/slack-notify.yml@main
-    secrets:
-      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-    with:
-      result: 'failure'
-      channel: genet-feed
-      message: Docs Build
