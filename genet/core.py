@@ -3023,14 +3023,12 @@ class Network:
         return report
 
 
-def replace_link_on_pt_route(route: List[str], map: Dict[str, Union[str, list]]):
+def replace_link_on_pt_route(route: List[str], mapping: Dict[str, Union[str, list]]):
     new_route = []
     for link in route:
-        if link in map:
-            if isinstance(map[link], list):
-                new_route += map[link]
-            else:
-                new_route.append(link)
+        mapped_link = mapping.get(link, link)
+        if isinstance(mapped_link, list):
+            new_route += mapped_link
         else:
-            new_route.append(link)
+            new_route.append(mapped_link)
     return new_route

@@ -1,13 +1,13 @@
 {
   "template": "https://github.com/arup-group/cookiecutter-pypackage",
-  "commit": "30186dc4a8e5ca4c43ef7831048df0f4f5392230",
+  "commit": "1b2c291b677db007e6a40588a977aab94144adfa",
   "checkout": null,
   "context": {
     "cookiecutter": {
       "full_name": "Kasia Kozlowska",
       "email": "36536946+KasiaKoz@users.noreply.github.com",
       "github_username": "KasiaKoz",
-      "repository_org": "arup-group",
+      "repository_owner": "arup-group",
       "project_title": "Network Scenario Generator (GeNet)",
       "repository_name": "genet",
       "package_name": "cml-genet",
