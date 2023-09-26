@@ -1,5 +1,4 @@
 import os
-import sys
 import xml.etree.cElementTree as ET
 from collections import OrderedDict
 from copy import deepcopy
@@ -14,16 +13,9 @@ from genet.exceptions import MalformedAdditionalAttributeError
 from genet.input import read
 from genet.output import matsim_xml_writer
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_network_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network.xml")
-)
-pt2matsim_schedule_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml")
-)
-pt2matsim_vehicles_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml")
-)
+pt2matsim_network_test_file = pytest.test_data_dir / "matsim" / "network.xml"
+pt2matsim_schedule_file = pytest.test_data_dir / "matsim" / "schedule.xml"
+pt2matsim_vehicles_file = pytest.test_data_dir / "matsim" / "vehicles.xml"
 
 
 def test_generates_valid_matsim_network_xml_file(
@@ -41,11 +33,8 @@ def test_generates_valid_matsim_network_xml_file(
 
 
 def test_network_from_test_osm_data_produces_valid_matsim_network_xml_file(
-    full_fat_default_config_path, network_dtd, tmpdir
+    full_fat_default_config_path, network_dtd, tmpdir, osm_test_file
 ):
-    osm_test_file = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml")
-    )
     network = read.read_osm(osm_test_file, full_fat_default_config_path, 1, "epsg:27700")
     network.write_to_matsim(tmpdir)
 
@@ -748,7 +737,7 @@ def test_simple_form_additional_attributes_are_indistinguishable_in_xml(
 ):
     network_with_additional_simple_form_node_attrib.write_to_matsim(tmpdir)
 
-    generated_network_file_path = os.path.join(tmpdir, "network.xml")
+    generated_network_file_path = tmpdir.join("network.xml")
     assert_xml_semantically_equal(
         generated_network_file_path, network_with_additional_node_attrib_xml_file
     )
@@ -760,7 +749,7 @@ def test_non_string_simple_form_additional_attribute_saves_to_xml_correctly(tmpd
 
     network.write_to_matsim(tmpdir)
 
-    xml_data = xmltodict.parse(open(os.path.join(tmpdir, "network.xml")).read())
+    xml_data = xmltodict.parse(tmpdir.join("network.xml").read())
     assert (
         xml_data["network"]["nodes"]["node"]["attributes"]["attribute"]["@name"] == "osm:node:data"
     )

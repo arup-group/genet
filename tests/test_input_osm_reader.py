@@ -1,12 +1,4 @@
-import os
-import sys
-
 from genet.input import osm_reader
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-osm_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml")
-)
 
 
 def test_assume_travel_modes_works_with_nested_highway_tags(
@@ -158,7 +150,9 @@ def test_find_matsim_link_values_defaults_to_highway_secondary_values_when_every
     )
 
 
-def test_generate_osm_graph_edges_from_file(assert_semantically_equal, full_fat_default_config):
+def test_generate_osm_graph_edges_from_file(
+    assert_semantically_equal, full_fat_default_config, osm_test_file
+):
     nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
         osm_test_file, full_fat_default_config, 1
     )
@@ -292,7 +286,7 @@ def test_generate_graph_nodes(assert_semantically_equal):
     )
 
 
-def test_generate_graph_edges(assert_semantically_equal):
+def test_generate_graph_edges(assert_semantically_equal, full_fat_default_config_path):
     edges = [
         (
             (0, 1),
@@ -371,11 +365,7 @@ def test_generate_graph_edges(assert_semantically_equal):
     generated_edges = osm_reader.generate_graph_edges(
         edges,
         reindexing_dict={},
-        config_path=os.path.abspath(
-            os.path.join(
-                os.path.dirname(__file__), "..", "genet", "configs", "OSM", "default_config.yml"
-            )
-        ),
+        config_path=full_fat_default_config_path,
         nodes_and_attributes={
             "0": {
                 "id": "0",
@@ -514,7 +504,9 @@ def test_generate_graph_edges(assert_semantically_equal):
     )
 
 
-def test_generate_graph_edges_with_node_reindexing(assert_semantically_equal):
+def test_generate_graph_edges_with_node_reindexing(
+    assert_semantically_equal, full_fat_default_config_path
+):
     edges = [
         (
             (0, 1),
@@ -539,11 +531,7 @@ def test_generate_graph_edges_with_node_reindexing(assert_semantically_equal):
     generated_edges = osm_reader.generate_graph_edges(
         edges,
         reindexing_dict={"0": "10", "1": "11"},
-        config_path=os.path.abspath(
-            os.path.join(
-                os.path.dirname(__file__), "..", "genet", "configs", "OSM", "default_config.yml"
-            )
-        ),
+        config_path=full_fat_default_config_path,
         nodes_and_attributes={
             "10": {
                 "id": "0",

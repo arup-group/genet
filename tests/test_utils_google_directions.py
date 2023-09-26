@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import sys
 import time
 from concurrent.futures._base import Future
 
@@ -14,12 +13,7 @@ from shapely.geometry import LineString
 from genet.core import Network
 from genet.utils import google_directions, secrets_vault
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-example_google_speed_data = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__), "test_data", "example_google_speed_data", "api_requests.json"
-    )
-)
+example_google_speed_data = pytest.test_data_dir / "example_google_speed_data" / "api_requests.json"
 
 
 @pytest.fixture()

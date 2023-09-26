@@ -1,5 +1,4 @@
 import os
-import sys
 
 import pytest
 from pandas import DataFrame
@@ -7,18 +6,9 @@ from pandas.testing import assert_frame_equal
 
 from genet import AuxiliaryFile, Network, Route, Service, Stop
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-links_benchmark_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "links_benchmark.json")
-)
-links_benchmark_csv_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "links_benchmark.csv")
-)
-pt_stop_benchmark_path = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__), "test_data", "auxiliary_files", "pt_stop_benchmark.json"
-    )
-)
+links_benchmark_path = pytest.test_data_dir / "auxiliary_files" / "links_benchmark.json"
+links_benchmark_csv_path = pytest.test_data_dir / "auxiliary_files" / "links_benchmark.csv"
+pt_stop_benchmark_path = pytest.test_data_dir / "auxiliary_files" / "pt_stop_benchmark.json"
 
 
 @pytest.fixture()

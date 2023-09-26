@@ -2,7 +2,6 @@ import ast
 import json
 import logging
 import os
-import sys
 import uuid
 
 import geopandas as gpd
@@ -21,33 +20,22 @@ from genet.schedule_elements import Route, Schedule, Service, Stop
 from genet.utils import plot, spatial
 from genet.validate import network as network_validation
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_network_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network.xml")
-)
-pt2matsim_schedule_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml")
-)
+pt2matsim_network_test_file = pytest.test_data_dir / "matsim" / "network.xml"
+pt2matsim_schedule_file = pytest.test_data_dir / "matsim" / "schedule.xml"
 
-puma_network_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "puma", "network.xml")
-)
-puma_schedule_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "puma", "schedule.xml")
-)
+puma_network_test_file = pytest.test_data_dir / "puma" / "network.xml"
+puma_schedule_test_file = pytest.test_data_dir / "puma" / "schedule.xml"
 
-simplified_network = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "simplified_network", "network.xml")
-)
-simplified_schedule = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "simplified_network", "schedule.xml")
-)
+simplified_network = pytest.test_data_dir / "simplified_network" / "network.xml"
+simplified_schedule = pytest.test_data_dir / "simplified_network" / "schedule.xml"
 
-network_link_attrib_text_missing = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__), "test_data", "matsim", "network_link_attrib_text_missing.xml"
-    )
+network_link_attrib_text_missing = (
+    pytest.test_data_dir / "matsim" / "network_link_attrib_text_missing.xml"
 )
+test_geojson = pytest.test_data_dir / "test_geojson.geojson"
+
+benchmark_path_json = pytest.test_data_dir / "auxiliary_files" / "links_benchmark.json"
+benchmark_path_csv = pytest.test_data_dir / "auxiliary_files" / "links_benchmark.csv"
 
 
 @pytest.fixture()
@@ -2075,11 +2063,6 @@ def test_nodes_on_modal_condition():
     assert set(car_nodes) == {1, 2, 3}
 
 
-test_geojson = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "test_geojson.geojson")
-)
-
-
 def test_nodes_on_spatial_condition_with_geojson(network_object_from_test_data):
     network_object_from_test_data.add_node("1", {"id": "1", "x": 508400, "y": 162050})
     nodes = network_object_from_test_data.nodes_on_spatial_condition(test_geojson)
@@ -3481,11 +3464,8 @@ def test_schedule_routes_with_disconnected_routes(network_object_from_test_data)
 
 
 def test_reads_osm_network_into_the_right_schema(
-    assert_semantically_equal, full_fat_default_config_path
+    assert_semantically_equal, full_fat_default_config_path, osm_test_file
 ):
-    osm_test_file = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml")
-    )
     network = read.read_osm(osm_test_file, full_fat_default_config_path, 1, "epsg:27700")
     assert_semantically_equal(
         dict(network.nodes()),
@@ -4821,14 +4801,6 @@ def test_write_to_matsim_generates_change_log_csv(network_object_from_test_data,
     assert os.path.exists(expected_schedule_change_log_path)
 
 
-benchmark_path_json = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "links_benchmark.json")
-)
-benchmark_path_csv = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "links_benchmark.csv")
-)
-
-
 @pytest.fixture()
 def aux_network():
     n = Network("epsg:27700")
@@ -5439,9 +5411,8 @@ def test_saving_network_to_csv(assert_semantically_equal, network1, correct_sche
 
 
 def test_reads_node_elevations_from_tif_file(network3):
-    elevation_test_folder = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data", "elevation")
-    )
+    elevation_test_folder = pytest.test_data_dir / "elevation"
+
     elevation_tif_file = os.path.join(elevation_test_folder, "hk_elevation_example.tif")
 
     elev_dict = network3.get_node_elevation_dictionary(elevation_tif_file, null_value=-32768)
@@ -5452,9 +5423,8 @@ def test_reads_node_elevations_from_tif_file(network3):
 
 
 def test_replaces_missing_node_elevations_with_zero(network3):
-    elevation_test_folder = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data", "elevation")
-    )
+    elevation_test_folder = pytest.test_data_dir / "elevation"
+
     elevation_tif_file = os.path.join(elevation_test_folder, "hk_elevation_example.tif")
 
     elev_dict = network3.get_node_elevation_dictionary(elevation_tif_file, null_value=-32768)

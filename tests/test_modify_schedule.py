@@ -1,6 +1,3 @@
-import os
-import sys
-
 import networkx as nx
 import pytest
 from pandas import DataFrame
@@ -9,6 +6,9 @@ import genet.utils.spatial as spatial
 from genet import MaxStableSet, Route, Schedule, Service, Stop
 from genet.input import read
 from genet.modify import schedule as mod_schedule
+
+network_test_file = pytest.test_data_dir / "simplified_network" / "network.xml"
+schedule_test_file = pytest.test_data_dir / "simplified_network" / "schedule.xml"
 
 
 def test_reproj_stops(assert_semantically_equal):
@@ -50,15 +50,6 @@ def test_reproj_stops(assert_semantically_equal):
             },
         },
     )
-
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-network_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "simplified_network", "network.xml")
-)
-schedule_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "simplified_network", "schedule.xml")
-)
 
 
 @pytest.fixture()

@@ -1,5 +1,4 @@
 import os
-import sys
 
 import pytest
 from pyproj import Proj, Transformer
@@ -8,39 +7,24 @@ from shapely.geometry import LineString
 from genet.input import matsim_reader, read
 from genet.utils import java_dtypes
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_network_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network.xml")
+pt2matsim_network_test_file = pytest.test_data_dir / "matsim" / "network.xml"
+pt2matsim_network_multiple_edges_test_file = (
+    pytest.test_data_dir / "matsim" / "network_multiple_edges.xml"
 )
-pt2matsim_network_multiple_edges_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_multiple_edges.xml")
+pt2matsim_network_clashing_link_ids_test_file = (
+    pytest.test_data_dir / "matsim" / "network_clashing_link_ids.xml"
 )
-pt2matsim_network_clashing_link_ids_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_clashing_link_ids.xml")
+pt2matsim_network_clashing_node_ids_test_file = (
+    pytest.test_data_dir / "matsim" / "network_clashing_node_ids.xml"
 )
-pt2matsim_network_clashing_node_ids_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_clashing_node_ids.xml")
+matsim_output_network_path = pytest.test_data_dir / "matsim" / "matsim_output_network.xml"
+pt2matsim_network_with_geometry_file = pytest.test_data_dir / "matsim" / "network_with_geometry.xml"
+pt2matsim_network_with_singular_geometry_file = (
+    pytest.test_data_dir / "matsim" / "network_with_singular_geometry.xml"
 )
-matsim_output_network_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "matsim_output_network.xml")
-)
-pt2matsim_network_with_geometry_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_with_geometry.xml")
-)
-pt2matsim_network_with_singular_geometry_file = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__), "test_data", "matsim", "network_with_singular_geometry.xml"
-    )
-)
-pt2matsim_NZ_network = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "NZ_network.xml")
-)
-pt2matsim_schedule_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml")
-)
-pt2matsim_vehicles_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml")
-)
+pt2matsim_NZ_network = pytest.test_data_dir / "matsim" / "NZ_network.xml"
+pt2matsim_schedule_file = pytest.test_data_dir / "matsim" / "schedule.xml"
+pt2matsim_vehicles_file = pytest.test_data_dir / "matsim" / "vehicles.xml"
 
 
 def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges(assert_semantically_equal):

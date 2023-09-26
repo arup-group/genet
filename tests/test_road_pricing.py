@@ -16,27 +16,20 @@ os.chdir(root_dir)
 
 @pytest.fixture
 def road_pricing_dtd():
-    dtd_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data/road_pricing/roadpricing_v1.dtd")
-    )
+    dtd_path = pytest.test_data_dir / "road_pricing" / "roadpricing_v1.dtd"
+
     yield lxml.etree.DTD(dtd_path)
 
 
 @pytest.fixture
 def road_pricing_sample_xml():
-    sample_xml_path = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__), "test_data/road_pricing/sample_cordon_road_pricing.xml"
-        )
-    )
+    sample_xml_path = pytest.test_data_dir / "road_pricing" / "sample_cordon_road_pricing.xml"
     yield lxml.etree.parse(sample_xml_path)
 
 
 @pytest.fixture
 def network_object():
-    network_xml_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data/road_pricing/network.xml")
-    )
+    network_xml_path = pytest.test_data_dir / "road_pricing" / "network.xml"
     yield read.read_matsim(path_to_network=network_xml_path, epsg="epsg:27700")
 
 
@@ -45,7 +38,7 @@ def osm_network_snapping(network_object, tmpdir):
     return road_pricing.extract_network_id_from_osm_csv(
         network_object,
         "osm:way:id",
-        "tests/test_data/road_pricing/osm_toll_id_ref.csv",
+        pytest.test_data_dir / "road_pricing" / "osm_toll_id_ref.csv",
         tmpdir,
         osm_dtype=str,
     )
@@ -712,14 +705,8 @@ def toll(osm_tolls_df):
 
 @pytest.fixture
 def road_pricing_xml_tree():
-    path_csv = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__), "test_data/road_pricing/osm_tolls_with_network_ids.csv"
-        )
-    )
-    path_json = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data/road_pricing/osm_to_network_ids.json")
-    )
+    path_csv = pytest.test_data_dir / "road_pricing" / "osm_tolls_with_network_ids.csv"
+    path_json = pytest.test_data_dir / "road_pricing" / "osm_to_network_ids.json"
     xml_tree_root = road_pricing.build_tree_from_csv_json(path_csv, path_json)
     yield xml_tree_root
 
@@ -733,7 +720,10 @@ def test_merging_osm_and_network_snapping(osm_network_snapping, osm_tolls_df):
 
 def test_instantiating_toll_class_from_osm_inputs(network_object, osm_tolls_df, tmpdir):
     osm_toll = road_pricing.road_pricing_from_osm(
-        network_object, "osm:way:id", "tests/test_data/road_pricing/osm_toll_id_ref.csv", tmpdir
+        network_object,
+        "osm:way:id",
+        pytest.test_data_dir / "road_pricing" / "osm_toll_id_ref.csv",
+        tmpdir,
     )
     assert_frame_equal(osm_toll.df_tolls.sort_index(axis=1), osm_tolls_df, check_dtype=False)
     assert isinstance(osm_toll, road_pricing.Toll)
@@ -767,17 +757,9 @@ def test_saving_toll_to_xml_with_missing_toll_ids_produces_xml_file(toll, tmpdir
 
 
 def test_building_tree_where_no_links_repeat(tmpdir):
-    path_json = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "test_data/road_pricing/osm_to_network_ids_no_link_repeat.json",
-        )
-    )
-    path_csv = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "test_data/road_pricing/osm_tolls_with_network_ids_no_link_overlap.csv",
-        )
+    path_json = pytest.test_data_dir / "road_pricing" / "osm_to_network_ids_no_link_repeat.json"
+    path_csv = (
+        pytest.test_data_dir / "road_pricing" / "osm_tolls_with_network_ids_no_link_overlap.csv"
     )
     xml_tree_root = road_pricing.build_tree_from_csv_json(
         path_csv,
@@ -788,22 +770,15 @@ def test_building_tree_where_no_links_repeat(tmpdir):
     )
     road_pricing.write_xml(xml_tree_root, tmpdir)
 
-    expected_xml = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__), "test_data/road_pricing/roadpricing-file_no_link_repeat.xml"
-        )
-    )
+    expected_xml = pytest.test_data_dir / "road_pricing" / "roadpricing-file_no_link_repeat.xml"
     expected_xml_obj = lxml.etree.parse(expected_xml)
     generated_xml_obj = lxml.etree.parse(os.path.join(tmpdir, "roadpricing-file.xml"))
     assert_xml_trees_equal(generated_xml_obj, expected_xml_obj)
 
 
-def test_extract_network_id_from_osm_csv(
-    tmpdir,
-    network_object,
-    attribute_name="osm:way:id",
-    path_osm_csv="tests/test_data/road_pricing/osm_toll_id_ref.csv",
-):
+def test_extract_network_id_from_osm_csv(tmpdir, network_object):
+    attribute_name = "osm:way:id"
+    path_osm_csv = (pytest.test_data_dir / "road_pricing" / "osm_toll_id_ref.csv").absolute()
     road_pricing.extract_network_id_from_osm_csv(
         network_object, attribute_name, path_osm_csv, tmpdir
     )
@@ -821,7 +796,7 @@ def test_extract_network_id_from_osm_csv(
     # check that the relevant column of the .csv contains the expected values
     assert set(expected_csv["network_id"].unique()) == set([False, True])
     # check that the contents of the .json as expected
-    test_json_path = "tests/test_data/road_pricing/osm_to_network_ids.json"
+    test_json_path = (pytest.test_data_dir / "road_pricing" / "osm_to_network_ids.json").absolute()
     with open(test_json_path, "r") as f:
         test_json = json.load(f)
     assert expected_json == test_json
@@ -837,7 +812,7 @@ def test_builds_valid_xml_tree_from_csv_json(road_pricing_dtd, road_pricing_xml_
 
 
 def test_builds_xml_tree_with_correct_content_from_csv_json(road_pricing_xml_tree):
-    path_json = "tests/test_data/road_pricing/osm_to_network_ids.json"
+    path_json = (pytest.test_data_dir / "road_pricing" / "osm_to_network_ids.json").absolute()
 
     assert road_pricing_xml_tree.tag == "roadpricing"
     assert road_pricing_xml_tree.attrib == {"type": "link", "name": "simple-toll"}

@@ -1,6 +1,3 @@
-import os
-import sys
-
 import pytest
 import s2sphere
 from geopandas import GeoDataFrame
@@ -13,10 +10,7 @@ from genet import Network
 from genet.exceptions import EmptySpatialTree
 from genet.utils import spatial
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-test_geojson = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "test_geojson.geojson")
-)
+test_geojson = pytest.test_data_dir / "test_geojson.geojson"
 
 
 def test_azimuth_to_name_with_east():

@@ -1,7 +1,6 @@
 import json
 import math
 import os
-import sys
 
 import pandas as pd
 import pytest
@@ -25,13 +24,11 @@ from genet.schedule_elements import (
 from genet.utils import plot, spatial
 from genet.validate import schedule as schedule_validation
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_schedule_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml")
-)
-pt2matsim_vehicles_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml")
-)
+pt2matsim_schedule_file = pytest.test_data_dir / "matsim" / "schedule.xml"
+pt2matsim_vehicles_file = pytest.test_data_dir / "matsim" / "vehicles.xml"
+
+pt2matsim_schedule_extra_stop_file = pytest.test_data_dir / "matsim" / "schedule_extra_stop.xml"
+test_geojson = pytest.test_data_dir / "test_geojson.geojson"
 
 
 @pytest.fixture()
@@ -749,11 +746,6 @@ def test_getting_routes_on_modal_condition(schedule):
 def test_getting_stops_on_modal_condition(schedule):
     stop_ids = schedule.stops_on_modal_condition(modes="bus")
     assert set(stop_ids) == {"5", "6", "7", "8", "3", "1", "4", "2"}
-
-
-test_geojson = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "test_geojson.geojson")
-)
 
 
 def test_getting_stops_on_spatial_condition_with_geojson(schedule, mocker):
@@ -2322,11 +2314,6 @@ def test_read_matsim_schedule_returns_expected_schedule(assert_semantically_equa
         schedule.minimal_transfer_times,
         {"26997928P": {"26997928P.link:1": 0.0}, "26997928P.link:1": {"26997928P": 0.0}},
     )
-
-
-pt2matsim_schedule_extra_stop_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule_extra_stop.xml")
-)
 
 
 def test_reading_schedule_with_stops_unused_by_services(assert_semantically_equal):

@@ -5,6 +5,7 @@ import os
 import traceback
 import uuid
 from copy import deepcopy
+from pathlib import Path
 from typing import Dict, List, Union
 
 import geopandas as gpd
@@ -506,7 +507,7 @@ class Network:
             - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
         :return: node IDs
         """
-        if not isinstance(region_input, str):
+        if not isinstance(region_input, (str, Path)):
             # assumed to be a shapely.geometry input
             gdf = self.to_geodataframe()["nodes"].to_crs(EPSG4326)
             return self._find_ids_on_shapely_geometry(
@@ -535,7 +536,7 @@ class Network:
         :return: link IDs
         """
         gdf = self.to_geodataframe()["links"].to_crs(EPSG4326)
-        if not isinstance(region_input, str):
+        if not isinstance(region_input, (str, Path)):
             # assumed to be a shapely.geometry input
             return self._find_ids_on_shapely_geometry(gdf, how, region_input)
         elif persistence.is_geojson(region_input):

@@ -67,19 +67,19 @@ def test_listifying_none_returns_empty_list():
 
 
 def test_is_yml_identifies_yml():
-    assert persistence.is_yml(os.path.join("path", "to", "dir", "file.yml"))
+    assert persistence.is_yml("path/to/dir/file.yml")
 
 
 def test_is_yml_identifies_yaml():
-    assert persistence.is_yml(os.path.join("path", "to", "dir", "file.yaml"))
+    assert persistence.is_yml("path/to/dir/file.yaml")
+
+
+def test_is_yml_identifies_non_yaml():
+    assert not persistence.is_yml("path/to/dir/file.txt")
 
 
 def test_is_yml_identifies_regular_string_isnt_yml():
     assert not persistence.is_yml("hello,darkness,my,old,friend")
-
-
-def test_is_yml_identifies_a_dictionary_isnt_yml():
-    assert not persistence.is_yml({"hello": "i'm not a yml file"})
 
 
 def test_is_geojson_identifies_geojson():

@@ -1,3 +1,5 @@
+__version__ = "4.0.0"
+
 from genet.auxiliary_files import AuxiliaryFile
 from genet.core import Network
 from genet.exceptions import (

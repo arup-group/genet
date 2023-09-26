@@ -1,16 +1,11 @@
-import os
-import sys
-
+import pytest
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 
 from genet.input import gtfs_reader
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-gtfs_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs"))
-gtfs_test_zip_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "gtfs.zip")
-)
+gtfs_test_file = pytest.test_data_dir / "gtfs"
+gtfs_test_zip_file = pytest.test_data_dir / "gtfs.zip"
 
 
 def test_read_services_from_calendar_correct():
@@ -33,15 +28,14 @@ def test_read_gtfs_to_db_like_tables_correct(
 
 def test_read_gtfs_calendar_with_spaces_fills_in_with_character():
     services = gtfs_reader.read_services_from_calendar(
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs_with_spaces")),
-        "20190604",
+        pytest.test_data_dir / "gtfs_with_spaces", "20190604"
     )
     assert services == ["663_0", "663_1"]
 
 
 def test_read_gtfs_with_spaces_fills_in_with_character():
     stop_times_db, stops_db, trips_db, routes_db = gtfs_reader.read_gtfs_to_db_like_tables(
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs_with_spaces"))
+        pytest.test_data_dir / "gtfs_with_spaces"
     )
 
     assert_frame_equal(
@@ -196,7 +190,6 @@ def test_zip_read_to_schedule_correct(
 
 def test_reading_loopy_gtfs_removes_duplicated_stops():
     schedule_graph = gtfs_reader.read_gtfs_to_schedule_graph(
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "loopy_gtfs")),
-        "20190604",
+        pytest.test_data_dir / "loopy_gtfs", "20190604"
     )
     assert schedule_graph.graph["routes"]["1001_0"]["ordered_stops"] == ["BSE", "BSN", "BSE", "BSN"]

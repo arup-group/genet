@@ -4,15 +4,16 @@ import json
 import logging
 import math
 import os
-import pkgutil
 from abc import abstractmethod
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, List, Set, Tuple, Union
 
 import dictdiffer
 import geopandas as gpd
+import importlib_resources
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -1628,9 +1629,10 @@ class Schedule(ScheduleElement):
         _graph: nx.DiGraph = None,
         minimal_transfer_times: Dict[str, Dict[str, float]] = None,
         vehicles=None,
-        vehicle_types: Union[str, dict] = pkgutil.get_data(
-            __name__, os.path.join("configs", "vehicles", "vehicle_definitions.yml")
-        ),
+        vehicle_types: Union[str, Path, dict] = importlib_resources.files("genet")
+        / "configs"
+        / "vehicles"
+        / "vehicle_definitions.yml",
         **kwargs,
     ):
         if isinstance(vehicle_types, dict):
@@ -2757,7 +2759,7 @@ class Schedule(ScheduleElement):
             - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
         :return: Stop IDs
         """
-        if isinstance(region_input, str):
+        if isinstance(region_input, (str, Path)):
             if persistence.is_geojson(region_input):
                 return self._find_stops_on_geojson(region_input)
             else:
@@ -3871,14 +3873,15 @@ def verify_graph_schema(graph):
                 )
 
 
-def read_vehicle_types(yml):
+def read_vehicle_types(yml: Path | io.TextIOWrapper):
     """
     :param yml: path to .yml file based on example vehicles config in `genet/configs/vehicles/vehicle_definitions.yml`
         or a bytes stream of that file
     :return:
     """
-    if persistence.is_yml(yml):
-        yml = io.open(yml, mode="r")
+
+    if isinstance(yml, Path) and persistence.is_yml(yml):
+        yml = yml.read_bytes()
     return yaml.load(yml, Loader=yaml.FullLoader)["VEHICLE_TYPES"]
 
 

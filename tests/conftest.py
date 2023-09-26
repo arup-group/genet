@@ -1,11 +1,11 @@
 import json
-import os
-import sys
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 
 import dictdiffer
+import importlib_resources
 import lxml
 import pandas as pd
 import pytest
@@ -18,16 +18,17 @@ from genet.core import Network
 from genet.input import osm_reader, read
 from genet.schedule_elements import Route, Schedule, Service, Stop, read_vehicle_types
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_network_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network.xml")
-)
-pt2matsim_schedule_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml")
-)
-pt2matsim_vehicles_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml")
-)
+GENET_CONFIG_DIR = importlib_resources.files("genet") / "configs"
+TEST_DATA_DIR = Path(__file__).parent / "test_data"
+
+
+def pytest_configure(config):
+    pytest.test_data_dir = TEST_DATA_DIR
+
+
+pt2matsim_network_test_file = (TEST_DATA_DIR / "matsim" / "network.xml").absolute()
+pt2matsim_schedule_file = (TEST_DATA_DIR / "matsim" / "schedule.xml").absolute()
+pt2matsim_vehicles_file = (TEST_DATA_DIR / "matsim" / "vehicles.xml").absolute()
 
 
 ###########################################################
@@ -112,8 +113,8 @@ def list_of_times_somewhat_accurate():
 @pytest.fixture
 def assert_xml_semantically_equal(deep_sort):
     def _xml_diffs(xml_file_1, xml_file_2):
-        dict_1 = deep_sort(xmltodict.parse(open(xml_file_1).read()))
-        dict_2 = deep_sort(xmltodict.parse(open(xml_file_2).read()))
+        dict_1 = deep_sort(xmltodict.parse(xml_file_1.read_text()))
+        dict_2 = deep_sort(xmltodict.parse(xml_file_2.read_text()))
 
         return list(dictdiffer.diff(dict_1, dict_2, tolerance=0.001))
 
@@ -162,7 +163,7 @@ def assert_xml_semantically_equal(deep_sort):
         return False
 
     def _assert_semantically_equal(file_1_path, file_2_path):
-        diffs = _xml_diffs(file_1_path, file_2_path)
+        diffs = _xml_diffs(Path(file_1_path), Path(file_2_path))
         if len(diffs) != 0:
             diffs = _filter_diffs(diffs, _is_list_ordering_difference)
         if len(diffs) != 0:
@@ -225,21 +226,12 @@ def network_with_additional_node_attrib():
 
 @pytest.fixture()
 def network_with_additional_node_attrib_xml_file():
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "test_data",
-            "matsim",
-            "network_with_additional_node_attrib.xml",
-        )
-    )
+    return (TEST_DATA_DIR / "matsim" / "network_with_additional_node_attrib.xml").absolute()
 
 
 @pytest.fixture
 def network_dtd():
-    dtd_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data", "dtd", "matsim", "network_v2.dtd")
-    )
+    dtd_path = (TEST_DATA_DIR / "dtd" / "matsim" / "network_v2.dtd").absolute()
     yield lxml.etree.DTD(dtd_path)
 
 
@@ -808,14 +800,7 @@ def schedule_with_additional_attrib_stop():
 
 @pytest.fixture()
 def schedule_with_additional_attrib_stop_xml_file():
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "test_data",
-            "matsim",
-            "schedule_stops_with_additional_attrib.xml",
-        )
-    )
+    return (TEST_DATA_DIR / "matsim" / "schedule_stops_with_additional_attrib.xml").absolute()
 
 
 @pytest.fixture()
@@ -846,11 +831,7 @@ def schedule_with_additional_attrib():
 
 @pytest.fixture()
 def schedule_with_additional_attribs_xml_file():
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__), "test_data", "matsim", "schedule_with_additional_attrib.xml"
-        )
-    )
+    return (TEST_DATA_DIR / "matsim" / "schedule_with_additional_attrib.xml").absolute()
 
 
 @pytest.fixture()
@@ -881,14 +862,7 @@ def schedule_with_additional_route_attrib():
 
 @pytest.fixture()
 def schedule_with_additional_route_attribs_xml_file():
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "test_data",
-            "matsim",
-            "schedule_route_with_additional_attrib.xml",
-        )
-    )
+    return (TEST_DATA_DIR / "matsim" / "schedule_route_with_additional_attrib.xml").absolute()
 
 
 @pytest.fixture()
@@ -919,23 +893,12 @@ def schedule_with_additional_service_attrib():
 
 @pytest.fixture()
 def schedule_with_additional_service_attribs_xml_file():
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "test_data",
-            "matsim",
-            "schedule_service_with_additional_attrib.xml",
-        )
-    )
+    return (TEST_DATA_DIR / "matsim" / "schedule_service_with_additional_attrib.xml").absolute()
 
 
 @pytest.fixture
 def schedule_dtd():
-    dtd_path = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__), "test_data", "dtd", "matsim", "transitSchedule_v2.dtd"
-        )
-    )
+    dtd_path = (TEST_DATA_DIR / "dtd" / "matsim" / "transitSchedule_v2.dtd").absolute()
     yield lxml.etree.DTD(dtd_path)
 
 
@@ -1475,36 +1438,27 @@ def correct_services_from_test_pt2matsim_schedule():
 
 @pytest.fixture()
 def full_fat_default_config_path():
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__), "..", "genet", "configs", "OSM", "default_config.yml"
-        )
-    )
+    return (GENET_CONFIG_DIR / "OSM" / "default_config.yml").absolute()
 
 
 @pytest.fixture()
-def full_fat_default_config():
-    return osm_reader.Config(
-        os.path.abspath(
-            os.path.join(
-                os.path.dirname(__file__), "..", "genet", "configs", "OSM", "default_config.yml"
-            )
-        )
-    )
+def full_fat_default_config(full_fat_default_config_path):
+    return osm_reader.Config(full_fat_default_config_path)
 
 
 @pytest.fixture()
 def slim_default_config_path():
-    return os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "genet", "configs", "OSM", "slim_config.yml")
-    )
+    return (GENET_CONFIG_DIR / "OSM" / "slim_config.yml").absolute()
 
 
 @pytest.fixture()
-def slim_default_config():
-    return osm_reader.Config(
-        os.path.join(os.path.dirname(__file__), "..", "genet", "configs", "OSM", "slim_config.yml")
-    )
+def slim_default_config(slim_default_config_path):
+    return osm_reader.Config(slim_default_config_path)
+
+
+@pytest.fixture()
+def osm_test_file():
+    return (TEST_DATA_DIR / "osm" / "osm.xml").absolute()
 
 
 ###########################################################
@@ -1514,43 +1468,20 @@ def slim_default_config():
 
 @pytest.fixture()
 def vehicle_definitions_config_path():
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "genet",
-            "configs",
-            "vehicles",
-            "vehicle_definitions.yml",
-        )
-    )
+    return (GENET_CONFIG_DIR / "vehicles" / "vehicle_definitions.yml").absolute()
 
 
 @pytest.fixture
 def vehicles_xsd():
-    xsd_path = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__), "test_data", "dtd", "matsim", "vehicleDefinitions_v1.0.xsd"
-        )
-    )
+    xsd_path = (TEST_DATA_DIR / "dtd" / "matsim" / "vehicleDefinitions_v1.0.xsd").absolute()
 
     xml_schema_doc = lxml.etree.parse(xsd_path)
     yield lxml.etree.XMLSchema(xml_schema_doc)
 
 
 @pytest.fixture
-def vehicle_types():
-    vehicle_types_config = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "genet",
-            "configs",
-            "vehicles",
-            "vehicle_definitions.yml",
-        )
-    )
-    return read_vehicle_types(vehicle_types_config)
+def vehicle_types(vehicle_definitions_config_path):
+    return read_vehicle_types(vehicle_definitions_config_path)
 
 
 ###########################################################

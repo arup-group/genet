@@ -1,11 +1,15 @@
 import os
 
+import pytest
 from shapely.geometry import LineString
 
 from genet.input import read
 from genet.schedule_elements import Route, Service, Stop
 
-json_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "json"))
+json_test_folder = pytest.test_data_dir / "json"
+geojson_test_folder = pytest.test_data_dir / "geojson"
+csv_test_folder = pytest.test_data_dir / "csv"
+gtfs_test_folder = pytest.test_data_dir / "gtfs"
 
 
 def test_reading_json(assert_semantically_equal):
@@ -193,11 +197,6 @@ def test_reading_json(assert_semantically_equal):
     )
 
 
-geojson_test_folder = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "geojson")
-)
-
-
 def test_reading_geojson(assert_semantically_equal):
     n = read.read_geojson_network(
         nodes_path=os.path.join(geojson_test_folder, "network_nodes.geojson"),
@@ -329,9 +328,6 @@ def test_reading_geojson(assert_semantically_equal):
     )
 
 
-csv_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "csv"))
-
-
 def test_reading_network_csv(assert_semantically_equal):
     n = read.read_csv(
         os.path.join(csv_test_folder, "nodes.csv"),
@@ -452,9 +448,6 @@ def test_reading_network_csv(assert_semantically_equal):
             },
         },
     )
-
-
-gtfs_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs"))
 
 
 def test_read_gtfs_returns_expected_schedule(
