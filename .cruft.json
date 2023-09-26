@@ -1,0 +1,28 @@
+{
+  "template": "https://github.com/arup-group/cookiecutter-pypackage",
+  "commit": "7f692039512f79d8fe485bf96a56f6cc2fc2e660",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "full_name": "Kasia Kozlowska",
+      "email": "36536946+KasiaKoz@users.noreply.github.com",
+      "github_username": "KasiaKoz",
+      "repository_owner": "arup-group",
+      "project_title": "Network Scenario Generator (GeNet)",
+      "repository_name": "genet",
+      "package_name": "cml-genet",
+      "module_name": "genet",
+      "project_short_description": "GeNet provides tools to represent and work with a multi-modal transport network with public transport (PT) services",
+      "index_package": "conda",
+      "conda_channel": "city-modelling-lab",
+      "version": "4.0.0",
+      "command_line_interface": "y",
+      "create_docker_file": "y",
+      "create_author_file": "n",
+      "create_jupyter_notebook_directory": "y",
+      "open_source_license": "MIT license",
+      "_template": "https://github.com/arup-group/cookiecutter-pypackage"
+    }
+  },
+  "directory": null
+}

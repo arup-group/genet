@@ -1,7 +1,9 @@
+from copy import deepcopy
+from typing import Union
+
 import pandas as pd
 from numpy import ndarray
-from typing import Union
-from copy import deepcopy
+
 import genet.utils.graph_operations as graph_operations
 
 
@@ -38,14 +40,14 @@ def get_nested_value(d: dict, path: dict):
             if k in d:
                 return get_nested_value(d[k], v)
             else:
-                raise KeyError(f'Dictionary {d} does not have key {k}')
+                raise KeyError(f"Dictionary {d} does not have key {k}")
     else:
         return d[path]
 
 
 def find_nested_paths_to_value(d: dict, value: Union[str, int, float, set, list]):
     def parse_node_path(node_path):
-        n_path_names_reversed = list(reversed([n.name for n in node_path if n.name != 'attribute']))
+        n_path_names_reversed = list(reversed([n.name for n in node_path if n.name != "attribute"]))
         if len(n_path_names_reversed) == 1:
             return n_path_names_reversed[0]
         else:
@@ -59,7 +61,7 @@ def find_nested_paths_to_value(d: dict, value: Union[str, int, float, set, list]
     elif not isinstance(value, set):
         value = set(value)
     paths = []
-    schema = graph_operations.get_attribute_schema([('', d)], data=True)
+    schema = graph_operations.get_attribute_schema([("", d)], data=True)
     for node in schema.descendants:
         try:
             if node.values & value:
@@ -114,12 +116,14 @@ def combine_edge_data_lists(l1, l2):
     :param l2:
     :return:
     """
-    edges = merge_complex_dictionaries({(u, v): dat for u, v, dat in l1}, {(u, v): dat for u, v, dat in l2})
+    edges = merge_complex_dictionaries(
+        {(u, v): dat for u, v, dat in l1}, {(u, v): dat for u, v, dat in l2}
+    )
     return [(u, v, dat) for (u, v), dat in edges.items()]
 
 
 def dict_to_string(d):
-    return str(d).replace('{', '').replace('}', '').replace("'", '').replace(' ', ':')
+    return str(d).replace("{", "").replace("}", "").replace("'", "").replace(" ", ":")
 
 
 def dataframe_to_dict(df):

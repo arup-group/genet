@@ -1,6 +1,7 @@
-import os
 import logging
+import os
 import shutil
+from pathlib import Path
 from typing import Union
 
 
@@ -20,7 +21,7 @@ def setify(value: Union[str, list, set]):
     elif value is None:
         return set()
     else:
-        raise NotImplementedError(f'Value: {value} cannot be setified')
+        raise NotImplementedError(f"Value: {value} cannot be setified")
 
 
 def listify(value: Union[str, list, set]):
@@ -32,27 +33,25 @@ def listify(value: Union[str, list, set]):
         return []
 
 
-def is_yml(path):
-    if isinstance(path, str):
-        return path.lower().endswith(".yml") or path.lower().endswith(".yaml")
-    return False
+def is_yml(path: Path | str):
+    return Path(path).suffix.lower() in [".yml", ".yaml"]
 
 
-def is_geojson(path):
-    return path.lower().endswith(".geojson")
+def is_geojson(path: Path | str):
+    return Path(path).suffix.lower() == ".geojson"
 
 
-def is_csv(path):
-    return path.lower().endswith(".csv")
+def is_csv(path: Path | str):
+    return Path(path).suffix.lower() == ".csv"
 
 
-def is_json(path):
-    return path.lower().endswith(".json")
+def is_json(path: Path | str):
+    return Path(path).suffix.lower() == ".json"
 
 
-def is_zip(path):
-    return path.lower().endswith(".zip")
+def is_zip(path: Path | str):
+    return Path(path).suffix.lower() == ".zip"
 
 
 def zip_folder(folder_path):
-    shutil.make_archive(folder_path, 'zip', folder_path)
+    shutil.make_archive(folder_path, "zip", folder_path)

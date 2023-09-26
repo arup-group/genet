@@ -1,23 +1,31 @@
 import ast
-import pandas as pd
-import geopandas as gpd
-import networkx as nx
 import json
 import logging
+
+import geopandas as gpd
+import networkx as nx
+import pandas as pd
+import pyproj
+
 import genet.core as core
 import genet.input.gtfs_reader as gtfs_reader
-import genet.input.osm_reader as osm_reader
-import genet.utils.parallel as parallel
 import genet.input.matsim_reader as matsim_reader
-import genet.schedule_elements as schedule_elements
-import genet.utils.spatial as spatial
+import genet.input.osm_reader as osm_reader
 import genet.modify.change_log as change_log
+import genet.schedule_elements as schedule_elements
 import genet.utils.dict_support as dict_support
+import genet.utils.parallel as parallel
+import genet.utils.spatial as spatial
 from genet.exceptions import NetworkSchemaError
 
 
-def read_matsim(path_to_network: str, epsg: str, path_to_schedule: str = None, path_to_vehicles: str = None,
-                force_long_form_attributes=False):
+def read_matsim(
+    path_to_network: str,
+    epsg: str,
+    path_to_schedule: str = None,
+    path_to_vehicles: str = None,
+    force_long_form_attributes=False,
+):
     """
     Reads MATSim's network.xml to genet.Network object and if give, also the schedule.xml and vehicles.xml into
     genet.Schedule object, part of the genet.Network object.
@@ -38,12 +46,18 @@ def read_matsim(path_to_network: str, epsg: str, path_to_schedule: str = None, p
         NOTE! Network and Schedule level attributes cannot be forced to be read into long form.
     :return: genet.Network object
     """
-    n = read_matsim_network(path_to_network=path_to_network, epsg=epsg,
-                            force_long_form_attributes=force_long_form_attributes)
+    n = read_matsim_network(
+        path_to_network=path_to_network,
+        epsg=epsg,
+        force_long_form_attributes=force_long_form_attributes,
+    )
     if path_to_schedule:
         n.schedule = read_matsim_schedule(
-            path_to_schedule=path_to_schedule, path_to_vehicles=path_to_vehicles, epsg=epsg,
-            force_long_form_attributes=force_long_form_attributes)
+            path_to_schedule=path_to_schedule,
+            path_to_vehicles=path_to_vehicles,
+            epsg=epsg,
+            force_long_form_attributes=force_long_form_attributes,
+        )
     return n
 
 
@@ -66,33 +80,38 @@ def read_matsim_network(path_to_network: str, epsg: str, force_long_form_attribu
     :return: genet.Network object
     """
     n = core.Network(epsg=epsg)
-    n.graph, n.link_id_mapping, duplicated_nodes, duplicated_links, network_attributes = \
-        matsim_reader.read_network(path_to_network, n.transformer,
-                                   force_long_form_attributes=force_long_form_attributes)
+    (
+        n.graph,
+        n.link_id_mapping,
+        duplicated_nodes,
+        duplicated_links,
+        network_attributes,
+    ) = matsim_reader.read_network(
+        path_to_network, n.transformer, force_long_form_attributes=force_long_form_attributes
+    )
     n.attributes = dict_support.merge_complex_dictionaries(n.attributes, network_attributes)
-    n.graph.graph['crs'] = n.epsg
+    n.graph.graph["crs"] = n.epsg
 
     for node_id, duplicated_node_attribs in duplicated_nodes.items():
         for duplicated_node_attrib in duplicated_node_attribs:
             n.change_log.remove(
-                object_type='node',
-                object_id=node_id,
-                object_attributes=duplicated_node_attrib
+                object_type="node", object_id=node_id, object_attributes=duplicated_node_attrib
             )
     for link_id, reindexed_duplicated_links in duplicated_links.items():
         for duplicated_link in reindexed_duplicated_links:
             n.change_log.modify(
-                object_type='link',
+                object_type="link",
                 old_id=link_id,
                 old_attributes=n.link(duplicated_link),
                 new_id=duplicated_link,
-                new_attributes=n.link(duplicated_link)
+                new_attributes=n.link(duplicated_link),
             )
     return n
 
 
-def read_matsim_schedule(path_to_schedule: str, epsg: str, path_to_vehicles: str = None,
-                         force_long_form_attributes=False):
+def read_matsim_schedule(
+    path_to_schedule: str, epsg: str, path_to_vehicles: str = None, force_long_form_attributes=False
+):
     """
     Reads MATSim's schedule.xml (and possibly vehicles.xml) to genet.Schedule object
     :param path_to_schedule: path to MATSim's schedule.xml file,
@@ -111,30 +130,40 @@ def read_matsim_schedule(path_to_schedule: str, epsg: str, path_to_vehicles: str
         NOTE! Schedule level attributes cannot be forced to be read into long form.
     :return: genet.Schedule object
     """
-    services, minimal_transfer_times, transit_stop_id_mapping, schedule_attributes = matsim_reader.read_schedule(
-        path_to_schedule, epsg, force_long_form_attributes=force_long_form_attributes)
+    (
+        services,
+        minimal_transfer_times,
+        transit_stop_id_mapping,
+        schedule_attributes,
+    ) = matsim_reader.read_schedule(
+        path_to_schedule, epsg, force_long_form_attributes=force_long_form_attributes
+    )
     if path_to_vehicles:
         vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)
         matsim_schedule = schedule_elements.Schedule(
-            services=services, epsg=epsg, vehicles=vehicles, vehicle_types=vehicle_types)
+            services=services, epsg=epsg, vehicles=vehicles, vehicle_types=vehicle_types
+        )
     else:
         matsim_schedule = schedule_elements.Schedule(services=services, epsg=epsg)
     matsim_schedule.minimal_transfer_times = minimal_transfer_times
 
-    extra_stops = {stop: transit_stop_id_mapping[stop] for stop in
-                   set(transit_stop_id_mapping) - set(matsim_schedule.graph().nodes())}
+    extra_stops = {
+        stop: transit_stop_id_mapping[stop]
+        for stop in set(transit_stop_id_mapping) - set(matsim_schedule.graph().nodes())
+    }
     for k in extra_stops.keys():
         extra_stops[k] = schedule_elements.Stop(**extra_stops[k]).__dict__
-        extra_stops[k]['routes'] = set()
-        extra_stops[k]['services'] = set()
+        extra_stops[k]["routes"] = set()
+        extra_stops[k]["services"] = set()
     matsim_schedule._graph.add_nodes_from(extra_stops)
     nx.set_node_attributes(matsim_schedule._graph, extra_stops)
-    matsim_schedule.attributes = dict_support.merge_complex_dictionaries(matsim_schedule.attributes,
-                                                                         schedule_attributes)
+    matsim_schedule.attributes = dict_support.merge_complex_dictionaries(
+        matsim_schedule.attributes, schedule_attributes
+    )
     return matsim_schedule
 
 
-def read_json(network_path: str, epsg: str, schedule_path: str = ''):
+def read_json(network_path: str, epsg: str, schedule_path: str = ""):
     """
     Reads Network and, if passed, Schedule JSON files in to a genet.Network
     :param network_path: path to json network file
@@ -156,21 +185,21 @@ def read_geojson_network(nodes_path: str, links_path: str, epsg: str):
     :param epsg: projection for the network, e.g. 'epsg:27700'
     :return: genet.Network object
     """
-    logging.info(f'Reading Network nodes from {nodes_path}')
+    logging.info(f"Reading Network nodes from {nodes_path}")
     nodes = gpd.read_file(nodes_path)
-    nodes = nodes.drop('geometry', axis=1)
-    nodes['id'] = nodes['id'].astype(int).astype(str)
-    nodes = nodes.set_index('id', drop=False)
-    if 'index' in nodes.columns:
-        nodes = nodes.drop('index', axis=1)
+    nodes = nodes.drop("geometry", axis=1)
+    nodes["id"] = nodes["id"].astype(int).astype(str)
+    nodes = nodes.set_index("id", drop=False)
+    if "index" in nodes.columns:
+        nodes = nodes.drop("index", axis=1)
 
-    logging.info(f'Reading Network links from {links_path}')
-    links = gpd.read_file(links_path).to_crs(epsg)
-    links['modes'] = links['modes'].apply(lambda x: set(x.split(',')))
-    links['id'] = links['id'].astype(int).astype(str)
-    links = links.set_index('id', drop=False)
-    if 'index' in links.columns:
-        links = links.drop('index', axis=1)
+    logging.info(f"Reading Network links from {links_path}")
+    links = gpd.read_file(links_path).to_crs(pyproj.CRS(epsg))
+    links["modes"] = links["modes"].apply(lambda x: set(x.split(",")))
+    links["id"] = links["id"].astype(int).astype(str)
+    links = links.set_index("id", drop=False)
+    if "index" in links.columns:
+        links = links.drop("index", axis=1)
 
     n = core.Network(epsg=epsg)
     n.add_nodes(nodes.T.to_dict())
@@ -186,28 +215,28 @@ def read_json_network(network_path: str, epsg: str):
     :param epsg: projection for the network, e.g. 'epsg:27700'
     :return: genet.Network object
     """
-    logging.info(f'Reading Network from {network_path}')
+    logging.info(f"Reading Network from {network_path}")
     with open(network_path) as json_file:
         json_data = json.load(json_file)
-    for node, data in json_data['nodes'].items():
+    for node, data in json_data["nodes"].items():
         try:
-            del data['geometry']
+            del data["geometry"]
         except KeyError:
             pass
 
-    for link, data in json_data['links'].items():
+    for link, data in json_data["links"].items():
         try:
-            data['geometry'] = spatial.decode_polyline_to_shapely_linestring(data['geometry'])
+            data["geometry"] = spatial.decode_polyline_to_shapely_linestring(data["geometry"])
         except KeyError:
             pass
         try:
-            data['modes'] = set(data['modes'].split(','))
+            data["modes"] = set(data["modes"].split(","))
         except KeyError:
             pass
 
     n = core.Network(epsg=epsg)
-    n.add_nodes(json_data['nodes'])
-    n.add_links(json_data['links'])
+    n.add_nodes(json_data["nodes"])
+    n.add_links(json_data["links"])
     n.change_log = change_log.ChangeLog()
     return n
 
@@ -219,29 +248,34 @@ def read_json_schedule(schedule_path: str, epsg: str):
     :param epsg: projection for the network, e.g. 'epsg:27700'
     :return: genet.Schedule object
     """
-    logging.info(f'Reading Schedule from {schedule_path}')
+    logging.info(f"Reading Schedule from {schedule_path}")
     with open(schedule_path) as json_file:
         json_data = json.load(json_file)
 
-    for service_id, service_data in json_data['schedule']['services'].items():
+    for service_id, service_data in json_data["schedule"]["services"].items():
         routes = []
-        for route_id, route_data in service_data['routes'].items():
-            stops = route_data.pop('ordered_stops')
-            route_data['stops'] = [schedule_elements.Stop(**json_data['schedule']['stops'][stop], epsg=epsg) for stop in
-                                   stops]
+        for route_id, route_data in service_data["routes"].items():
+            stops = route_data.pop("ordered_stops")
+            route_data["stops"] = [
+                schedule_elements.Stop(**json_data["schedule"]["stops"][stop], epsg=epsg)
+                for stop in stops
+            ]
             routes.append(schedule_elements.Route(**route_data))
-        service_data['routes'] = routes
+        service_data["routes"] = routes
 
-    services = [schedule_elements.Service(**service_data) for service_id, service_data in
-                json_data['schedule']['services'].items()]
+    services = [
+        schedule_elements.Service(**service_data)
+        for service_id, service_data in json_data["schedule"]["services"].items()
+    ]
 
     s = schedule_elements.Schedule(
         epsg=epsg,
         services=services,
-        vehicles=json_data['vehicles']['vehicles'],
-        vehicle_types=json_data['vehicles']['vehicle_types'])
-    if 'minimal_transfer_times' in json_data['schedule']:
-        s.minimal_transfer_times = json_data['schedule']['minimal_transfer_times']
+        vehicles=json_data["vehicles"]["vehicles"],
+        vehicle_types=json_data["vehicles"]["vehicle_types"],
+    )
+    if "minimal_transfer_times" in json_data["schedule"]:
+        s.minimal_transfer_times = json_data["schedule"]["minimal_transfer_times"]
     return s
 
 
@@ -274,44 +308,48 @@ def read_csv(path_to_network_nodes: str, path_to_network_links: str, epsg: str):
     :param epsg: projection for the network, e.g. 'epsg:27700'
     :return: genet.Network object
     """
-    logging.info(f'Reading nodes from {path_to_network_nodes}')
+    logging.info(f"Reading nodes from {path_to_network_nodes}")
     df_nodes = pd.read_csv(path_to_network_nodes)
-    if {'index', 'id'}.issubset(set(df_nodes.columns)):
-        df_nodes = df_nodes.drop('index', axis=1)
-    elif 'id' not in df_nodes.columns:
-        raise NetworkSchemaError('Expected `id` column in the nodes.csv is missing. This need to be the IDs to which '
-                                 'links.csv refers to in `from` and `to` columns.')
-    df_nodes['id'] = df_nodes['id'].astype(int).astype(str)
-    df_nodes = df_nodes.set_index('id', drop=False)
+    if {"index", "id"}.issubset(set(df_nodes.columns)):
+        df_nodes = df_nodes.drop("index", axis=1)
+    elif "id" not in df_nodes.columns:
+        raise NetworkSchemaError(
+            "Expected `id` column in the nodes.csv is missing. This need to be the IDs to which "
+            "links.csv refers to in `from` and `to` columns."
+        )
+    df_nodes["id"] = df_nodes["id"].astype(int).astype(str)
+    df_nodes = df_nodes.set_index("id", drop=False)
     try:
-        df_nodes = df_nodes.drop('geometry', axis=1)
+        df_nodes = df_nodes.drop("geometry", axis=1)
     except KeyError:
         pass
 
-    logging.info(f'Reading links from {path_to_network_nodes}')
+    logging.info(f"Reading links from {path_to_network_nodes}")
     df_links = pd.read_csv(path_to_network_links)
-    if {'index', 'id'}.issubset(set(df_links.columns)):
-        df_links = df_links.drop('index', axis=1)
-    elif 'id' not in df_links.columns:
-        if 'index' in df_links.columns:
-            if not df_links['index'].duplicated().any():
-                df_links['id'] = df_links['index']
+    if {"index", "id"}.issubset(set(df_links.columns)):
+        df_links = df_links.drop("index", axis=1)
+    elif "id" not in df_links.columns:
+        if "index" in df_links.columns:
+            if not df_links["index"].duplicated().any():
+                df_links["id"] = df_links["index"]
             else:
-                df_links = df_links.drop('index', axis=1)
+                df_links = df_links.drop("index", axis=1)
         else:
-            df_links['id'] = range(len(df_links))
+            df_links["id"] = range(len(df_links))
 
-    df_links['id'] = df_links['id'].astype(int).astype(str)
-    df_links['from'] = df_links['from'].astype(int).astype(str)
-    df_links['to'] = df_links['to'].astype(int).astype(str)
-    df_links = df_links.set_index('id', drop=False)
+    df_links["id"] = df_links["id"].astype(int).astype(str)
+    df_links["from"] = df_links["from"].astype(int).astype(str)
+    df_links["to"] = df_links["to"].astype(int).astype(str)
+    df_links = df_links.set_index("id", drop=False)
     # recover encoded geometry
     try:
-        df_links['geometry'] = df_links['geometry'].apply(lambda x: spatial.decode_polyline_to_shapely_linestring(x))
+        df_links["geometry"] = df_links["geometry"].apply(
+            lambda x: spatial.decode_polyline_to_shapely_linestring(x)
+        )
     except KeyError:
         pass
-    df_links['attributes'] = _literal_eval_col(df_links['attributes'])
-    df_links['modes'] = _literal_eval_col(df_links['modes'])
+    df_links["attributes"] = _literal_eval_col(df_links["attributes"])
+    df_links["modes"] = _literal_eval_col(df_links["modes"])
 
     n = core.Network(epsg=epsg)
     n.add_nodes(df_nodes.T.to_dict())
@@ -329,9 +367,9 @@ def read_gtfs(path, day, epsg=None):
         epsg:4326
     :return:
     """
-    logging.info(f'Reading GTFS from {path}')
+    logging.info(f"Reading GTFS from {path}")
     schedule_graph = gtfs_reader.read_gtfs_to_schedule_graph(path, day)
-    s = schedule_elements.Schedule(epsg='epsg:4326', _graph=schedule_graph)
+    s = schedule_elements.Schedule(epsg="epsg:4326", _graph=schedule_graph)
     if epsg is not None:
         s.reproject(new_epsg=epsg)
     return s
@@ -348,11 +386,12 @@ def read_osm(osm_file_path, osm_read_config, num_processes: int = 1, epsg=None):
     :return: genet.Network object
     """
     if epsg is None:
-        epsg = 'epsg:4326'
+        epsg = "epsg:4326"
     config = osm_reader.Config(osm_read_config)
     n = core.Network(epsg)
     nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
-        osm_file_path, config, num_processes)
+        osm_file_path, config, num_processes
+    )
 
     nodes_and_attributes = parallel.multiprocess_wrap(
         data=nodes,
@@ -360,9 +399,11 @@ def read_osm(osm_file_path, osm_read_config, num_processes: int = 1, epsg=None):
         apply=osm_reader.generate_graph_nodes,
         combine=parallel.combine_dict,
         epsg=epsg,
-        processes=num_processes
+        processes=num_processes,
     )
-    reindexing_dict, nodes_and_attributes = n.add_nodes(nodes_and_attributes, ignore_change_log=True)
+    reindexing_dict, nodes_and_attributes = n.add_nodes(
+        nodes_and_attributes, ignore_change_log=True
+    )
 
     edges_attributes = parallel.multiprocess_wrap(
         data=edges,
@@ -372,11 +413,11 @@ def read_osm(osm_file_path, osm_read_config, num_processes: int = 1, epsg=None):
         reindexing_dict=reindexing_dict,
         nodes_and_attributes=nodes_and_attributes,
         config_path=osm_read_config,
-        processes=num_processes
+        processes=num_processes,
     )
     n.add_edges(edges_attributes, ignore_change_log=True)
 
-    logging.info('Deleting isolated nodes which have no edges.')
+    logging.info("Deleting isolated nodes which have no edges.")
     n.remove_nodes(list(nx.isolates(n.graph)))
     return n
 

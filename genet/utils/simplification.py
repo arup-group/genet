@@ -7,20 +7,19 @@ from shapely.geometry import LineString, Point
 import genet.utils.parallel as parallel
 from genet.utils.persistence import setify
 
-
 # rip and monkey patch of a few functions from osmnx.simplification to customise graph simplification
 
 
 def _process_path(indexed_edge_groups_to_simplify):
     links_to_add = {}
     for new_id, edge_group_data in indexed_edge_groups_to_simplify.items():
-        path = edge_group_data['path']
-        nodes_data = edge_group_data['node_data']
-        edge_attributes = edge_group_data['link_data'].copy()
+        path = edge_group_data["path"]
+        nodes_data = edge_group_data["node_data"]
+        edge_attributes = edge_group_data["link_data"].copy()
 
-        if 'attributes' in edge_attributes:
+        if "attributes" in edge_attributes:
             new_attributes = {}
-            for attribs_dict in edge_attributes['attributes']:
+            for attribs_dict in edge_attributes["attributes"]:
                 for key, val in attribs_dict.items():
                     if key in new_attributes:
                         new_attributes[key] |= setify(val)
@@ -29,33 +28,46 @@ def _process_path(indexed_edge_groups_to_simplify):
             for key, val in new_attributes.items():
                 if len(val) == 1:
                     new_attributes[key] = list(val)[0]
-            edge_attributes['attributes'] = new_attributes.copy()
+            edge_attributes["attributes"] = new_attributes.copy()
 
         # construct the geometry
         edge_attributes["geometry"] = LineString(
             [Point((nodes_data[node]["x"], nodes_data[node]["y"])) for node in path]
         )
 
-        edge_attributes['ids'] = edge_attributes['id']
-        edge_attributes['id'] = new_id
+        edge_attributes["ids"] = edge_attributes["id"]
+        edge_attributes["id"] = new_id
 
-        edge_attributes['from'] = path[0]
-        edge_attributes['to'] = path[-1]
-        edge_attributes['s2_from'] = nodes_data[path[0]]['s2_id']
-        edge_attributes['s2_to'] = nodes_data[path[-1]]['s2_id']
+        edge_attributes["from"] = path[0]
+        edge_attributes["to"] = path[-1]
+        edge_attributes["s2_from"] = nodes_data[path[0]]["s2_id"]
+        edge_attributes["s2_to"] = nodes_data[path[-1]]["s2_id"]
 
-        edge_attributes['freespeed'] = max(edge_attributes['freespeed'])
-        edge_attributes['capacity'] = ceil(median(edge_attributes['capacity']))
-        edge_attributes['permlanes'] = ceil(median(edge_attributes['permlanes']))
-        edge_attributes['length'] = sum(edge_attributes['length'])
+        edge_attributes["freespeed"] = max(edge_attributes["freespeed"])
+        edge_attributes["capacity"] = ceil(median(edge_attributes["capacity"]))
+        edge_attributes["permlanes"] = ceil(median(edge_attributes["permlanes"]))
+        edge_attributes["length"] = sum(edge_attributes["length"])
 
         modes = set()
-        for mode_list in edge_attributes['modes']:
+        for mode_list in edge_attributes["modes"]:
             modes |= set(mode_list)
-        edge_attributes['modes'] = modes
+        edge_attributes["modes"] = modes
 
-        for key in set(edge_attributes) - {'s2_to', 'freespeed', 'attributes', 'to', 'permlanes', 'from', 'id', 'ids',
-                                           'capacity', 'length', 'modes', 's2_from', 'geometry'}:
+        for key in set(edge_attributes) - {
+            "s2_to",
+            "freespeed",
+            "attributes",
+            "to",
+            "permlanes",
+            "from",
+            "id",
+            "ids",
+            "capacity",
+            "length",
+            "modes",
+            "s2_from",
+            "geometry",
+        }:
             if len(set(edge_attributes[key])) == 1:
                 # if there's only 1 unique value in this attribute list,
                 # consolidate it to the single value (the zero-th)
@@ -83,7 +95,7 @@ def _extract_edge_data(n, path):
                     # if this key doesn't already exist, set the value to a list
                     # containing the one value
                     edge_attributes[key] = [edge[key]]
-    n.remove_links(edge_attributes['id'], ignore_change_log=True, silent=True)
+    n.remove_links(edge_attributes["id"], ignore_change_log=True, silent=True)
     return edge_attributes
 
 
@@ -95,12 +107,12 @@ def _assemble_path_data(n, indexed_paths_to_simplify):
     return_d = {}
     for k, path in indexed_paths_to_simplify.items():
         return_d[k] = {
-            'path': path,
-            'link_data': _extract_edge_data(n, path),
-            'node_data': _extract_node_data(n, path),
-            'nodes_to_remove': path[1:-1]
+            "path": path,
+            "link_data": _extract_edge_data(n, path),
+            "node_data": _extract_node_data(n, path),
+            "nodes_to_remove": path[1:-1],
         }
-        return_d[k]['ids'] = return_d[k]['link_data']['id']
+        return_d[k]["ids"] = return_d[k]["link_data"]["id"]
     return return_d
 
 
@@ -112,12 +124,20 @@ def _is_endpoint(node_neighbours):
     }}
     :return:
     """
-    return [node for node, data in node_neighbours.items() if
-            ((len(data['successors'] | data['predecessors']) > 2) or
-             (not data['successors'] or not data['predecessors']) or
-             (node in data['successors']) or
-             (len(data['successors']) != len(data['predecessors'])) or
-             ((len(data['successors'] | data['predecessors']) == 1) and (data['successors'] == data['predecessors'])))]
+    return [
+        node
+        for node, data in node_neighbours.items()
+        if (
+            (len(data["successors"] | data["predecessors"]) > 2)
+            or (not data["successors"] or not data["predecessors"])
+            or (node in data["successors"])
+            or (len(data["successors"]) != len(data["predecessors"]))
+            or (
+                (len(data["successors"] | data["predecessors"]) == 1)
+                and (data["successors"] == data["predecessors"])
+            )
+        )
+    ]
 
 
 def _build_paths(path_start_points, endpoints, neighbours):
@@ -133,8 +153,10 @@ def _build_paths(path_start_points, endpoints, neighbours):
                 elif len(neighbours[end_node]) > 1:
                     next_nodes = neighbours[end_node] - {path[-2]}
                     if len(next_nodes) > 1:
-                        raise RuntimeError('Path building found additional branching. Simplification failed to find'
-                                           'all of the correct end points.')
+                        raise RuntimeError(
+                            "Path building found additional branching. Simplification failed to find"
+                            "all of the correct end points."
+                        )
                     end_node = list(next_nodes)[0]
                 else:
                     end_node = list(neighbours[end_node])[0]
@@ -147,12 +169,18 @@ def _get_edge_groups_to_simplify(G, no_processes=1):
     # first identify all the nodes that are endpoints
     endpoints = set(
         parallel.multiprocess_wrap(
-            data={node: {'successors': set(G.successors(node)), 'predecessors': set(G.predecessors(node))}
-                  for node in G.nodes},
+            data={
+                node: {
+                    "successors": set(G.successors(node)),
+                    "predecessors": set(G.predecessors(node)),
+                }
+                for node in G.nodes
+            },
             split=parallel.split_dict,
             apply=_is_endpoint,
             combine=parallel.combine_list,
-            processes=no_processes)
+            processes=no_processes,
+        )
     )
 
     logging.info(f"Identified {len(endpoints)} edge endpoints")
@@ -166,7 +194,7 @@ def _get_edge_groups_to_simplify(G, no_processes=1):
         combine=parallel.combine_list,
         processes=no_processes,
         endpoints=endpoints,
-        neighbours={node: set(G.neighbors(node)) for node in G.nodes}
+        neighbours={node: set(G.neighbors(node)) for node in G.nodes},
     )
 
 
@@ -195,30 +223,36 @@ def simplify_graph(n, no_processes=1):
     initial_node_count = len(list(n.graph.nodes()))
     initial_edge_count = len(list(n.graph.edges()))
 
-    logging.info('Generating paths to be simplified')
+    logging.info("Generating paths to be simplified")
     # generate each path that needs to be simplified
-    edges_to_simplify = [list(x) for x in
-                         set(tuple(x) for x in _get_edge_groups_to_simplify(n.graph, no_processes=no_processes))]
-    logging.info(f'Found {len(edges_to_simplify)} paths to simplify.')
+    edges_to_simplify = [
+        list(x)
+        for x in set(
+            tuple(x) for x in _get_edge_groups_to_simplify(n.graph, no_processes=no_processes)
+        )
+    ]
+    logging.info(f"Found {len(edges_to_simplify)} paths to simplify.")
 
-    indexed_paths_to_simplify = dict(zip(n.generate_indices_for_n_edges(len(edges_to_simplify)), edges_to_simplify))
+    indexed_paths_to_simplify = dict(
+        zip(n.generate_indices_for_n_edges(len(edges_to_simplify)), edges_to_simplify)
+    )
     indexed_paths_to_simplify = _assemble_path_data(n, indexed_paths_to_simplify)
 
     nodes_to_remove = set()
     for k, data in indexed_paths_to_simplify.items():
-        nodes_to_remove |= set(data['nodes_to_remove'])
+        nodes_to_remove |= set(data["nodes_to_remove"])
     n.remove_nodes(nodes_to_remove, ignore_change_log=True, silent=True)
 
-    logging.info('Processing links for all paths to be simplified')
+    logging.info("Processing links for all paths to be simplified")
     links_to_add = parallel.multiprocess_wrap(
         data=indexed_paths_to_simplify,
         split=parallel.split_dict,
         apply=_process_path,
         combine=parallel.combine_dict,
-        processes=no_processes
+        processes=no_processes,
     )
 
-    logging.info('Adding new simplified links')
+    logging.info("Adding new simplified links")
     # add links
     reindexing_dict = n.add_links(links_to_add, ignore_change_log=True)[0]
 
@@ -227,8 +261,10 @@ def simplify_graph(n, no_processes=1):
         indexed_paths_to_simplify[new_id] = indexed_paths_to_simplify[old_id]
         del indexed_paths_to_simplify[old_id]
     new_ids = list(indexed_paths_to_simplify.keys())
-    old_ids = [set(indexed_paths_to_simplify[_id]['ids']) for _id in new_ids]
-    n.change_log = n.change_log.simplify_bunch(old_ids, new_ids, indexed_paths_to_simplify, links_to_add)
+    old_ids = [set(indexed_paths_to_simplify[_id]["ids"]) for _id in new_ids]
+    n.change_log = n.change_log.simplify_bunch(
+        old_ids, new_ids, indexed_paths_to_simplify, links_to_add
+    )
     del links_to_add
 
     # generate map between old and new ids
@@ -240,17 +276,20 @@ def simplify_graph(n, no_processes=1):
 
     logging.info(
         f"Simplified graph: {initial_node_count} to {len(n.graph)} nodes, {initial_edge_count} to "
-        f"{len(n.graph.edges())} edges")
+        f"{len(n.graph.edges())} edges"
+    )
 
     if n.schedule:
         logging.info("Updating the Schedule")
         # update stop's link reference ids
-        n.schedule.apply_function_to_stops(n.link_simplification_map, 'linkRefId')
+        n.schedule.apply_function_to_stops(n.link_simplification_map, "linkRefId")
         logging.info("Updated Stop Link Reference Ids")
 
         # update schedule routes
-        df_routes = n.schedule.route_attribute_data(keys=['route'])
-        df_routes['route'] = df_routes['route'].apply(lambda x: update_link_ids(x, n.link_simplification_map))
+        df_routes = n.schedule.route_attribute_data(keys=["route"])
+        df_routes["route"] = df_routes["route"].apply(
+            lambda x: update_link_ids(x, n.link_simplification_map)
+        )
         n.schedule.apply_attributes_to_routes(df_routes.T.to_dict())
         logging.info("Updated Network Routes")
     logging.info("Finished simplifying network")
