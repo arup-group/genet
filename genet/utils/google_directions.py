@@ -18,7 +18,7 @@ session = FuturesSession(max_workers=2)
 
 def send_requests_for_network(n, request_number_threshold: int, output_dir,
                               departure_time, traffic_model: str = None,
-                              max_workers: int = 4, key: str = None, secret_name: str = None, region_name: str = None):
+                              key: str = None, secret_name: str = None, region_name: str = None):
     """
     Generates, sends and parses results from Google Directions API for the car modal subgraph for network n.
     You can pass your API key to this function under `key` variable. Alternatively, you can use AWS Secrets manager
@@ -29,7 +29,8 @@ def send_requests_for_network(n, request_number_threshold: int, output_dir,
     :param output_dir: output directory where to save the google directions api parsed data
     :param departure_time: specifies the desired time of departure, in seconds since midnight, January 1, 1970 UTC,
     i.e. unix time; if set to None, API will return results for average time-independent traffic conditions
-    :param traffic_model: str, specifies the assumptions to use when calculating time in traffic
+    :param traffic_model: str, specifies the assumptions to use when calculating time in traffic for choices see
+    https://developers.google.com/maps/documentation/directions/get-directions#traffic_model
     :param key: API key
     :param secret_name: if using aws secrets manager, the name where your directions api key is stored
     :param region_name: the aws region you operate in

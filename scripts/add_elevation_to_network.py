@@ -32,7 +32,8 @@ if __name__ == '__main__':
     arg_parser.add_argument('-nv',
                             '--null_value',
                             help='Value that represents null in the elevation tif file',
-                            required=True)
+                            default=0,
+                            type=float)
 
     arg_parser.add_argument('-od',
                             '--output_dir',

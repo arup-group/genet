@@ -19,7 +19,9 @@ if __name__ == '__main__':
     arg_parser.add_argument('-cc',
                             '--connected_components',
                             help='Number of connected components within graph for modes `walk`,`bike`,`car`',
-                            default=1)
+                            default=1,
+                            type=int
+                            )
 
     arg_parser.add_argument('-p',
                             '--projection',
