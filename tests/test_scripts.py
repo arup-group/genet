@@ -304,7 +304,7 @@ def test_google_api_script_throws_error_without_api_key(tmpdir):
 
     exit_code, console_output = run_process(command)
 
-    assert exit_code != 0, f'Script {script} is expected ot fail.'
+    assert exit_code != 0, f'Script {script} is expected to fail.'
     assert 'RuntimeError: Number of requests exceeded the threshold.' in console_output
     check_output_files_exist(output_folder, script_info['expected_files'])
 
