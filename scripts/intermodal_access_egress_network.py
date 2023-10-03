@@ -112,7 +112,7 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('-od',
                             '--output_dir',
-                            help='Output directory for the updated network',
+                            help='Output directory for the updated schedule',
                             required=True)
 
     args = vars(arg_parser.parse_args())

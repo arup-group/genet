@@ -22,7 +22,7 @@ if __name__ == '__main__':
                             '--subset_conditions',
                             help="Value or list of values to subset the network by using attributes-osm:way:highway "
                                  "network attributes. List given comma-separated e.g. `primary,motorway`"
-                                 "{'attributes': {'osm:way:highway': {'text': VALUE(S)'}}}",
+                                 "{'attributes': {'osm:way:highway': VALUE(S)'}}",
                             required=False,
                             default=None)
 
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     if subset_conditions is not None:
         logging.info(f"Considering subset of the network satisfying attributes-osm:way:highway-{subset_conditions}")
         links_to_keep = n.extract_links_on_edge_attributes(
-            conditions={'attributes': {'osm:way:highway': {'text': subset_conditions}}})
+            conditions={'attributes': {'osm:way:highway': subset_conditions}})
         remove_links = set(n.link_id_mapping.keys()) - set(links_to_keep)
         n.remove_links(remove_links, silent=True)
         api_requests = gn.google_directions.generate_requests(n=n)

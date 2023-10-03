@@ -2,7 +2,6 @@ import argparse
 import genet as gn
 import logging
 
-
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Generate and send Google Directions API requests')
 
@@ -20,7 +19,7 @@ if __name__ == '__main__':
                             '--subset_conditions',
                             help="Value or list of values to subset the network by using attributes-osm:way:highway "
                                  "network attributes. List given comma-separated e.g. `primary,motorway`"
-                                 "{'attributes': {'osm:way:highway': {'text': VALUE(S)'}}}",
+                                 "{'attributes': {'osm:way:highway': VALUE(S)'}}",
                             required=False,
                             default=None)
 
@@ -49,6 +48,19 @@ if __name__ == '__main__':
                             required=False,
                             default=None)
 
+    arg_parser.add_argument('-tm',
+                            '--traffic_model',
+                            help='Google Directions API traffic model to consider when '
+                                 'https://developers.google.com/maps/documentation/directions/get-directions#traffic_model', # noqa
+                            required=False,
+                            default='best_guess')
+
+    arg_parser.add_argument('-dp',
+                            '--departure_time',
+                            help='desired time of departure, in unix time, or `now` for current traffic conditions',
+                            required=False,
+                            default='now')
+
     arg_parser.add_argument('-od',
                             '--output_dir',
                             help='Output directory for the parsed API requests',
@@ -64,6 +76,8 @@ if __name__ == '__main__':
     key = args['api_key']
     secret_name = args['secret_name']
     region_name = args['region_name']
+    traffic_model = args['traffic_model']
+    departure_time = args['departure_time']
     output_dir = args['output_dir']
 
     logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.WARNING)
@@ -77,7 +91,7 @@ if __name__ == '__main__':
     if subset_conditions is not None:
         logging.info(f"Considering subset of the network satisfying attributes-osm:way:highway-{subset_conditions}")
         links_to_keep = n.extract_links_on_edge_attributes(
-            conditions={'attributes': {'osm:way:highway': {'text': subset_conditions}}})
+            conditions={'attributes': {'osm:way:highway': subset_conditions}})
         remove_links = set(n.link_id_mapping.keys()) - set(links_to_keep)
         n.remove_links(remove_links, silent=True)
         logging.info(f'Proceeding with the subsetted network')
@@ -86,8 +100,9 @@ if __name__ == '__main__':
         n=n,
         request_number_threshold=requests_threshold,
         output_dir=output_dir,
-        traffic=True,
+        traffic_model=traffic_model,
         key=key,
         secret_name=secret_name,
-        region_name=region_name
+        region_name=region_name,
+        departure_time=departure_time
     )

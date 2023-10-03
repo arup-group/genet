@@ -6,7 +6,7 @@ from genet import read_matsim
 from genet.utils.persistence import ensure_dir
 
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Generate Standard outputs for a MATSim network')
+    arg_parser = argparse.ArgumentParser(description='Generate Standard outputs for a network and/or schedule')
 
     arg_parser.add_argument('-n',
                             '--network',
@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('-od',
                             '--output_dir',
-                            help='Output directory for the reprojected network',
+                            help='Output directory for the outputs',
                             required=True)
 
     args = vars(arg_parser.parse_args())

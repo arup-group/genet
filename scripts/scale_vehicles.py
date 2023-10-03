@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('-od',
                             '--output_dir',
-                            help='Output directory for the simplified network',
+                            help='Output directory for the output vehicle files',
                             required=True)
 
     args = vars(arg_parser.parse_args())

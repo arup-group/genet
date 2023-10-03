@@ -33,7 +33,18 @@ def generate_speed_geojson(n, gdf, output_dir, filename_suffix):
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(
-        description=''
+        description='Script to check and correct, if needed, the speed and headway of services in the schedule.'
+                    'Checks and corrects for:'
+                    '   - zero headways - we check that there are no 0 minute headways - that would mean two of '
+                    'the same trips start at the same time. To correct this we delete one of the trips, '
+                    'treating it as a duplicate.'
+                    '   - infinite speeds - We calculate speed between each stop pair for services. We use the '
+                    'declared times at stops and crow-fly distance * 1.3 network '
+                    'factor (this is done also for routed modes like bus to simplify things, as we are only after '
+                    'infinite speeds which will show up whether we use the true route or not). Infinite speeds exist '
+                    'as a consequence of division by zero (time). This is corrected by recalculating the arrival and '
+                    'departure times at the problem stops - the times at other stops are kept the same as much as '
+                    'possible.'
     )
 
     arg_parser.add_argument('-n',
@@ -67,7 +78,7 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('-od',
                             '--output_dir',
-                            help='Output directory for the simplified network',
+                            help='Output directory for the fixed schedule',
                             required=True)
 
     args = vars(arg_parser.parse_args())
