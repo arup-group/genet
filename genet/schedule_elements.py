@@ -3873,7 +3873,7 @@ def verify_graph_schema(graph):
                 )
 
 
-def read_vehicle_types(yml: Path | io.TextIOWrapper):
+def read_vehicle_types(yml: Union[Path, io.TextIOWrapper]):
     """
     :param yml: path to .yml file based on example vehicles config in `genet/configs/vehicles/vehicle_definitions.yml`
         or a bytes stream of that file

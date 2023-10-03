@@ -33,23 +33,23 @@ def listify(value: Union[str, list, set]):
         return []
 
 
-def is_yml(path: Path | str):
+def is_yml(path: Union[Path, str]):
     return Path(path).suffix.lower() in [".yml", ".yaml"]
 
 
-def is_geojson(path: Path | str):
+def is_geojson(path: Union[Path, str]):
     return Path(path).suffix.lower() == ".geojson"
 
 
-def is_csv(path: Path | str):
+def is_csv(path: Union[Path, str]):
     return Path(path).suffix.lower() == ".csv"
 
 
-def is_json(path: Path | str):
+def is_json(path: Union[Path, str]):
     return Path(path).suffix.lower() == ".json"
 
 
-def is_zip(path: Path | str):
+def is_zip(path: Union[Path, str]):
     return Path(path).suffix.lower() == ".zip"
 
 
