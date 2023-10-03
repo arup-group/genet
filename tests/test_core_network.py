@@ -1622,7 +1622,7 @@ def test_adding_node_with_only_x_y_attribs_fills_in_lat_lon():
     n.add_node(1, {"x": 529295.7525339661, "y": 181954.76039674896})
 
     assert n.node(1)["lat"] == pytest.approx(51.521719)
-    assert n.node(1)["lon"] == pytest.approx(-0.137779)
+    assert n.node(1)["lon"] == pytest.approx(-0.1377786)
 
 
 def test_adding_nodes_with_mismatched_spatial_attribs_gets_filled_in():
@@ -1638,7 +1638,7 @@ def test_adding_nodes_with_mismatched_spatial_attribs_gets_filled_in():
     assert n.node(1)["y"] == pytest.approx(181954.76)
 
     assert n.node(2)["lat"] == pytest.approx(51.521719)
-    assert n.node(2)["lon"] == pytest.approx(-0.137779)
+    assert n.node(2)["lon"] == pytest.approx(-0.1377786)
 
 
 def test_adding_nodes_with_mismatched_spatial_attribs_generates_s2ids():
@@ -3472,29 +3472,29 @@ def test_reads_osm_network_into_the_right_schema(
         {
             "0": {
                 "id": "0",
-                "x": 622502.8306679451,
-                "y": -5526117.781903352,
-                "lat": 0.008554364250688652,
-                "lon": -0.0006545205888310243,
-                "s2_id": 1152921492875543713,
+                "x": 622502.8329601474,
+                "y": -5526117.7779498,
+                "lon": -0.0006545,
+                "lat": 0.0085544,
+                "s2_id": 1152921492875543713
             },
             "1": {
                 "id": "1",
-                "x": 622502.8132744529,
-                "y": -5524378.838447345,
-                "lat": 0.024278505899735615,
-                "lon": -0.0006545205888310243,
-                "s2_id": 1152921335974974453,
+                "x": 622502.8155666854,
+                "y": -5524378.839099768,
+                "lon": -0.0006545,
+                "lat": 0.0242785,
+                "s2_id": 1152921335974974347
             },
             "2": {
                 "id": "2",
-                "x": 622502.8314014417,
-                "y": -5527856.725358106,
-                "lat": -0.00716977739835831,
-                "lon": -0.0006545205888310243,
-                "s2_id": 384307157539499829,
-            },
-        },
+                "x": 622502.8336936538,
+                "y": -5527856.727857647,
+                "lon": -0.0006545,
+                "lat": -0.0071698,
+                "s2_id": 384307157539499829
+            }
+        }
     )
     assert len(list(network.links())) == 11
 
@@ -3522,9 +3522,9 @@ def test_reads_osm_network_into_the_right_schema(
             "from": "0",
             "to": "1",
             "s2_from": 1152921492875543713,
-            "s2_to": 1152921335974974453,
-            "length": 1748.4487354464366,
-            "attributes": {"osm:way:osmid": 0, "osm:way:highway": "unclassified"},
+            "s2_to": 1152921335974974347,
+            "length": 1748.4408191353841,
+            "attributes": {"osm:way:osmid": "0", "osm:way:highway": "unclassified"},
         },
         {
             "permlanes": 1.0,
@@ -3534,10 +3534,10 @@ def test_reads_osm_network_into_the_right_schema(
             "modes": ["walk", "car", "bike"],
             "from": "1",
             "to": "0",
-            "s2_from": 1152921335974974453,
+            "s2_from": 1152921335974974347,
             "s2_to": 1152921492875543713,
-            "length": 1748.4487354464366,
-            "attributes": {"osm:way:osmid": 0, "osm:way:highway": "unclassified"},
+            "length": 1748.4408191353841,
+            "attributes": {"osm:way:osmid": "0", "osm:way:highway": "unclassified"},
         },
         {
             "permlanes": 1.0,
@@ -3550,7 +3550,7 @@ def test_reads_osm_network_into_the_right_schema(
             "s2_from": 1152921492875543713,
             "s2_to": 384307157539499829,
             "length": 1748.4488584600201,
-            "attributes": {"osm:way:osmid": 100, "osm:way:highway": "unclassified"},
+            "attributes": {"osm:way:osmid": "100", "osm:way:highway": "unclassified"},
         },
         {
             "permlanes": 1.0,
@@ -3563,7 +3563,7 @@ def test_reads_osm_network_into_the_right_schema(
             "s2_from": 384307157539499829,
             "s2_to": 1152921492875543713,
             "length": 1748.4488584600201,
-            "attributes": {"osm:way:osmid": 100, "osm:way:highway": "unclassified"},
+            "attributes": {"osm:way:osmid": "100", "osm:way:highway": "unclassified"},
         },
         {
             "permlanes": 1.0,
@@ -3573,10 +3573,10 @@ def test_reads_osm_network_into_the_right_schema(
             "modes": ["walk", "car", "bike"],
             "from": "1",
             "to": "0",
-            "s2_from": 1152921335974974453,
+            "s2_from": 1152921335974974347,
             "s2_to": 1152921492875543713,
-            "length": 1748.4487354464366,
-            "attributes": {"osm:way:osmid": 400, "osm:way:highway": "unclassified"},
+            "length": 1748.4408191353841,
+            "attributes": {"osm:way:osmid": "400", "osm:way:highway": "unclassified"},
         },
         {
             "permlanes": 1.0,
@@ -3587,9 +3587,9 @@ def test_reads_osm_network_into_the_right_schema(
             "from": "0",
             "to": "1",
             "s2_from": 1152921492875543713,
-            "s2_to": 1152921335974974453,
-            "length": 1748.4487354464366,
-            "attributes": {"osm:way:osmid": 400, "osm:way:highway": "unclassified"},
+            "s2_to": 1152921335974974347,
+            "length": 1748.4408191353841,
+            "attributes": {"osm:way:osmid": "400", "osm:way:highway": "unclassified"},
         },
         {
             "permlanes": 1.0,
@@ -3602,7 +3602,7 @@ def test_reads_osm_network_into_the_right_schema(
             "s2_from": 384307157539499829,
             "s2_to": 1152921492875543713,
             "length": 1748.4488584600201,
-            "attributes": {"osm:way:osmid": 700, "osm:way:highway": "unclassified"},
+            "attributes": {"osm:way:osmid": "700", "osm:way:highway": "unclassified"},
         },
         {
             "permlanes": 1.0,
@@ -3615,7 +3615,7 @@ def test_reads_osm_network_into_the_right_schema(
             "s2_from": 1152921492875543713,
             "s2_to": 384307157539499829,
             "length": 1748.4488584600201,
-            "attributes": {"osm:way:osmid": 700, "osm:way:highway": "unclassified"},
+            "attributes": {"osm:way:osmid": "700", "osm:way:highway": "unclassified"},
         },
         {
             "permlanes": 3.0,
@@ -3626,11 +3626,11 @@ def test_reads_osm_network_into_the_right_schema(
             "from": "2",
             "to": "1",
             "s2_from": 384307157539499829,
-            "s2_to": 1152921335974974453,
-            "length": 3496.897593906457,
+            "s2_to": 1152921335974974347,
+            "length": 3496.8896775954045,
             "attributes": {
                 "osm:way:lanes": "3",
-                "osm:way:osmid": 47007861,
+                "osm:way:osmid": "47007861",
                 "osm:way:highway": "tertiary",
             },
         },
@@ -3642,12 +3642,12 @@ def test_reads_osm_network_into_the_right_schema(
             "modes": ["walk", "car", "bike"],
             "from": "1",
             "to": "0",
-            "s2_from": 1152921335974974453,
+            "s2_from": 1152921335974974347,
             "s2_to": 1152921492875543713,
-            "length": 1748.4487354464366,
+            "length": 1748.4408191353841,
             "attributes": {
                 "osm:way:lanes": "3",
-                "osm:way:osmid": 47007861,
+                "osm:way:osmid": "47007861",
                 "osm:way:highway": "tertiary",
             },
         },
@@ -3659,11 +3659,11 @@ def test_reads_osm_network_into_the_right_schema(
             "modes": ["car", "walk", "bike"],
             "from": "1",
             "to": "0",
-            "s2_from": 1152921335974974453,
+            "s2_from": 1152921335974974347,
             "s2_to": 1152921492875543713,
-            "length": 1748.4487354464366,
+            "length": 1748.4408191353841,
             "attributes": {
-                "osm:way:osmid": 47007862,
+                "osm:way:osmid": "47007862",
                 "osm:way:lanes": "3;2",
                 "osm:way:highway": "tertiary",
             },
