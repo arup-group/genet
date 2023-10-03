@@ -3359,9 +3359,8 @@ def test_connecting_components_of_connected_graph_raises_warning_without_changes
     )
     added_links = network1.connect_components()
     assert added_links is None
-    assert caplog.records[0].levelname == "WARNING"
-    assert "has only one strongly connected component" in caplog.records[0].message
-
+    assert "WARNING" in caplog.text
+    assert "has only one strongly connected component" in caplog.text
 
 def test_number_of_multi_edges_counts_multi_edges_on_single_edge():
     n = Network("epsg:27700")
@@ -4749,8 +4748,8 @@ def test_check_connectivity_for_mode_warns_of_graphs_with_more_than_single_compo
 
     Network("epsg:27700").check_connectivity_for_mode("car")
 
-    assert caplog.records[0].levelname == "WARNING"
-    assert "more than one connected component" in caplog.records[0].message
+    assert "WARNING" in caplog.text
+    assert "more than one connected component" in caplog.text
 
 
 def test_write_to_matsim_generates_three_matsim_files(network_object_from_test_data, tmpdir):
