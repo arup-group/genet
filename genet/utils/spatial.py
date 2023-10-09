@@ -91,7 +91,7 @@ def split_line_at_point(point: Point, line: LineString) -> Tuple[LineString, Lin
     # the point has to be on the line for shapely split
     # https://shapely.readthedocs.io/en/stable/manual.html#splitting
     projected_point = snap_point_to_line(point, line, distance_threshold=0)
-    result = tuple(split(line, projected_point))
+    result = tuple(split(line, projected_point).geoms)
     if len(result) == 1:
         # our lines can have curves which makes them impossible to split with a point, instead we build a line to cut
         # it, the end points of the linestring will likely not match with the point projected to the curved line, but
@@ -102,7 +102,7 @@ def split_line_at_point(point: Point, line: LineString) -> Tuple[LineString, Lin
                             "and the resulting split may not be exact.")
             point = Point(round(point.x, 2), round(point.y, 2))
         split_line = continue_line_from_two_points(point, projected_point)
-        result = tuple(split(line, split_line))
+        result = tuple(split(line, split_line).geoms)
     return result
 
 
@@ -294,7 +294,7 @@ def approximate_metres_distance_in_4326_degrees(distance, lat):
 class SpatialTree(nx.DiGraph):
     def __init__(self, n=None):
         super().__init__()
-        self.links = gpd.GeoDataFrame(columns={'link_id', 'modes', 'geometry'})
+        self.links = gpd.GeoDataFrame(columns=['link_id', 'modes', 'geometry'])
         if n is not None:
             self.add_links(n)
 
@@ -363,7 +363,7 @@ class SpatialTree(nx.DiGraph):
                 self.links[['link_id', 'geometry']],
                 gdf_points,
                 how='right',
-                op='intersects'
+                predicate='intersects'
             )
             return closest_links
         except EmptySpatialTree:

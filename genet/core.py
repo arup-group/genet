@@ -53,7 +53,7 @@ class Network:
             self.add_additional_attributes(kwargs)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} instance at {id(self)}: with \ngraph: {nx.info(self.graph)} and " \
+        return f"<{self.__class__.__name__} instance at {id(self)}: with \ngraph: {str(self.graph)} and " \
                f"\nschedule {self.schedule.info()}"
 
     def __str__(self):
@@ -113,7 +113,7 @@ class Network:
         print(self.info())
 
     def info(self):
-        return f"Graph info: {nx.info(self.graph)} \nSchedule info: {self.schedule.info()}"
+        return f"Graph info: {str(self.graph)} \nSchedule info: {self.schedule.info()}"
 
     def plot(self, output_dir='', data=False):
         """
@@ -593,7 +593,7 @@ class Network:
 
         df['modes'] = df['modes'].apply(lambda x: persistence.setify(x))
 
-        df = df.loc[links & set(df.index)][df['modes'].apply(lambda x: bool(mode & x))]
+        df = df.loc[df.index.intersection(links)][df['modes'].apply(lambda x: bool(mode & x))]
         df['modes'] = df['modes'].apply(lambda x: x - mode)
         self.apply_attributes_to_links(df.T.to_dict())
 
@@ -1378,9 +1378,9 @@ class Network:
             for u, v, dist in closest_nodes:
                 links_df = gdf_links.loc[
                     (gdf_links['from'].isin({u, v}) | gdf_links['to'].isin({u, v})),
-                    set(gdf_links.columns) & {'freespeed', 'capacity', 'modes'}
+                    gdf_links.columns.intersection({"freespeed", "capacity", "modes"})
                 ]
-                links_data = links_df.mean()
+                links_data = links_df.drop("modes", axis=1).mean()
                 links_data = links_data * weight
                 if modes is None:
                     links_data['modes'] = set().union(*links_df['modes'].tolist())
@@ -1647,9 +1647,9 @@ class Network:
                     distance_threshold=distance_threshold,
                     step_size=step_size)
                 if changeset is None:
-                    changeset = mss.to_changeset(route_data.loc[route_group, :])
+                    changeset = mss.to_changeset(route_data.loc[list(route_group), :])
                 else:
-                    changeset += mss.to_changeset(route_data.loc[route_group, :])
+                    changeset += mss.to_changeset(route_data.loc[list(route_group), :])
             self._apply_max_stable_changes(changeset)
         except exceptions.EmptySpatialTree:
             logging.warning(f'Service {service.id} cannot be snapped to the Network with modes = {modes}. The '
@@ -1868,7 +1868,7 @@ class Network:
         def combine_geometry(group):
             group = group.sort_values(by='route_sequence')
             geom = spatial.merge_linestrings(list(group['geometry']))
-            group = group.iloc[0, :][{'route_id', 'route_short_name', 'mode', 'service_id'}]
+            group = group.iloc[0, :][['route_id', 'route_short_name', 'mode', 'service_id']]
             group['geometry'] = geom
             return group
 

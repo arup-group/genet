@@ -363,7 +363,7 @@ class ScheduleElement:
         month = int(gtfs_day[4:6])
         day = int(gtfs_day[6:8])
 
-        df = df.groupby('route_id').apply(get_headway)
+        df = df.groupby('route_id', group_keys=False).apply(get_headway)
         df['headway_mins'] = (pd.to_timedelta(df['headway']).dt.total_seconds() / 60)
 
         if from_time is not None:
@@ -393,7 +393,7 @@ class ScheduleElement:
 
         # first trips don't have a headway, they are kept as NaT and NaN
         if not df.empty:
-            route_groups = df.groupby(groupby_cols)
+            route_groups = df.groupby(by=groupby_cols)
             df = route_groups.describe()
             df = df['headway_mins'][['mean', 'std', 'max', 'min']]
             df['trip_count'] = route_groups.apply(len)
@@ -845,7 +845,7 @@ class Route(ScheduleElement):
             if df is None:
                 df = trip_df
             else:
-                df = df.append(trip_df)
+                df = pd.concat([df, trip_df])
         df['route_id'] = self.id
         df['route_name'] = self.route_short_name.replace("\\", "_").replace("/", "_")
         df['mode'] = self.mode
@@ -1330,7 +1330,7 @@ class Service(ScheduleElement):
             if df is None:
                 df = _df
             else:
-                df = df.append(_df)
+                df = pd.concat([df, _df])
         df['service_id'] = self.id
         df['service_name'] = self.name.replace("\\", "_").replace("/", "_")
         df = df.reset_index(drop=True)
@@ -1351,7 +1351,7 @@ class Service(ScheduleElement):
             if df is None:
                 df = _df
             else:
-                df = df.append(_df)
+                df = pd.concat([df, _df])
         df['service_id'] = self.id
         df = df.reset_index(drop=True)
         return df

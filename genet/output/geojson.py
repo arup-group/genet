@@ -91,7 +91,7 @@ def generate_standard_outputs_for_schedule(schedule, output_dir, gtfs_day='19700
             df_all_modes_vph = df_vph
         else:
             df_vph['mode'] = mode
-            df_all_modes_vph = df_all_modes_vph.append(df_vph)
+            df_all_modes_vph = pd.concat([df_all_modes_vph, df_vph])
 
         logging.info(f'Generating schedule graph for {mode}')
         schedule_subgraph = generate_geodataframes(

@@ -108,15 +108,15 @@ if __name__ == '__main__':
                 'projection')
             gdf_study_area = gdf_study_area.to_crs(projection)
         logging.info(f'Subsetting urban geometries on study area')
-        gdf_urban = gpd.sjoin(gdf_urban, gdf_study_area, how='inner', op='intersects').drop(columns=['index_right'])
+        gdf_urban = gpd.sjoin(gdf_urban, gdf_study_area, how='inner', predicate='intersects').drop(columns=['index_right'])
 
     logging.info('Finding urban links')
     network_gdf = n.to_geodataframe()['links']
-    network_urban = gpd.sjoin(network_gdf, gdf_urban, how='inner', op='intersects').drop(columns=['index_right'])
+    network_urban = gpd.sjoin(network_gdf, gdf_urban, how='inner', predicate='intersects').drop(columns=['index_right'])
     if study_area:
         # subsetting gdf_urban on study area is not enough if it consists of polygons that extend beyond
         # but it does make it faster to work with gdf_urban if it was large to begin with
-        network_urban = gpd.sjoin(network_gdf, gdf_study_area, how='inner', op='intersects')
+        network_urban = gpd.sjoin(network_gdf, gdf_study_area, how='inner', predicate='intersects')
     urban_links = set(network_urban["id"].astype('str'))
 
     logging.info('Finding major road links')

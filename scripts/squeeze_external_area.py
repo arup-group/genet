@@ -88,7 +88,7 @@ if __name__ == '__main__':
 
     logging.info('Finding links external to the study area')
     network_gdf = n.to_geodataframe()['links']
-    network_internal = gpd.sjoin(network_gdf, gdf_study_area, how='inner', op='intersects')
+    network_internal = gpd.sjoin(network_gdf, gdf_study_area, how='inner', predicate='intersects')
     external_links = set(network_gdf["id"].astype('str')) - set(network_internal["id"].astype('str'))
 
     logging.info('Finding car mode links')
