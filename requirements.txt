@@ -1,6 +1,7 @@
 anytree < 2.9
 boto3 < 1.30
 dictdiffer < 1
+flake8 >= 6, < 7
 gdal < 3.6
 geopandas >= 0.13, < 0.15
 ipykernel < 7

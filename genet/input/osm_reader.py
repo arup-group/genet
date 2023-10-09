@@ -207,6 +207,7 @@ def read_relation(entity):
                  }
     return json_data
 
+
 class OSMHandler(osmium.SimpleHandler):
     def __init__(self, config):
         super(OSMHandler, self).__init__()

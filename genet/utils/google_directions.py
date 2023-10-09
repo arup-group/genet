@@ -84,7 +84,7 @@ def make_request(origin_attributes, destination_attributes, key, departure_time,
     end_of_unix_time = 2147483646
     if departure_time == 'now':
         params['departure_time'] = 'now'
-    elif (type(departure_time) == int) & (departure_time > current_unix_time) & (departure_time < end_of_unix_time):
+    elif isinstance(departure_time, int) & (departure_time > current_unix_time) & (departure_time < end_of_unix_time):
         params['departure_time'] = departure_time
     else:
         raise RuntimeError('The departure_time parameter value not recognised. The departure_time can be set '
