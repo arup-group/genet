@@ -304,13 +304,16 @@ def test_solving_problem_with_isolated_catchments(mocker, network, network_spati
                        network_spatial_tree=network_spatial_tree,
                        modes={'car', 'bus'})
     mss.solve()
-    assert mss.solution == {'stop_1': 'link_1_2_bus', 'stop_2': 'link_4_5_car', 'stop_3': 'link_7_8_car'}
+    non_deterministic_link_choices = ['link_1_2_bus', 'link_1_2_car', 'link_2_3_car']
+    assert mss.solution['stop_1'] in non_deterministic_link_choices
+    chosen_link = mss.solution['stop_1']
+    assert mss.solution == {'stop_1': chosen_link, 'stop_2': 'link_4_5_car', 'stop_3': 'link_7_8_car'}
     assert_semantically_equal(mss.artificial_stops, {
-        'stop_1.link:link_1_2_bus': {'services': {'bus_service'}, 'routes': {'service_1_route_2', 'service_1_route_1'},
-                                     'id': 'stop_1.link:link_1_2_bus', 'x': 1.0, 'y': 2.5, 'epsg': 'epsg:27700',
-                                     'name': '',
-                                     'lon': -7.557148552832129, 'lat': 49.76683027967191, 's2_id': 5205973754090340691,
-                                     'linkRefId': 'link_1_2_bus', 'stop_id': 'stop_1'},
+        f'stop_1.link:{chosen_link}': {'services': {'bus_service'}, 'routes': {'service_1_route_2', 'service_1_route_1'},
+                                       'id': f'stop_1.link:{chosen_link}', 'x': 1.0, 'y': 2.5, 'epsg': 'epsg:27700',
+                                       'name': '',
+                                       'lon': -7.557148552832129, 'lat': 49.76683027967191, 's2_id': 5205973754090340691,
+                                       'linkRefId': chosen_link, 'stop_id': 'stop_1'},
         'stop_2.link:link_4_5_car': {'services': {'bus_service'}, 'routes': {'service_1_route_2', 'service_1_route_1'},
                                      'id': 'stop_2.link:link_4_5_car', 'x': 2.0, 'y': 2.5, 'epsg': 'epsg:27700',
                                      'name': '',
