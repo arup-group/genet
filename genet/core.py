@@ -1554,6 +1554,7 @@ class Network:
                         service_g = service.graph()
 
                         for route_group, graph_group in zip(routes, graph_groups):
+                            route_group = list(route_group)
                             try:
                                 mss = modify_schedule.route_pt_graph(
                                     pt_graph=nx.edge_subgraph(service_g, graph_group),
