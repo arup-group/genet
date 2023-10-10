@@ -373,7 +373,7 @@ class SpatialTree(nx.DiGraph):
     def path(self, G, source, target, weight=None):
         try:
             return nx.shortest_path(G, source, target, weight=weight)
-        except nx.NetworkXNoPath:
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
             pass
 
     def shortest_paths(self, df_pt_edges, from_col='u', to_col='v', weight='length'):
