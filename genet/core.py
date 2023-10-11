@@ -1554,6 +1554,7 @@ class Network:
                         service_g = service.graph()
 
                         for route_group, graph_group in zip(routes, graph_groups):
+                            route_group = list(route_group)
                             try:
                                 mss = modify_schedule.route_pt_graph(
                                     pt_graph=nx.edge_subgraph(service_g, graph_group),
@@ -1638,6 +1639,7 @@ class Network:
         try:
             sub_tree = spatial_tree.modal_subtree(modes | additional_modes)
             for route_group, graph_group in zip(routes, graph_groups):
+                route_group = list(route_group)
                 mss = modify_schedule.route_pt_graph(
                     pt_graph=nx.edge_subgraph(service_g, graph_group),
                     network_spatial_tree=sub_tree,
@@ -1647,9 +1649,9 @@ class Network:
                     distance_threshold=distance_threshold,
                     step_size=step_size)
                 if changeset is None:
-                    changeset = mss.to_changeset(route_data.loc[list(route_group), :])
+                    changeset = mss.to_changeset(route_data.loc[route_group, :])
                 else:
-                    changeset += mss.to_changeset(route_data.loc[list(route_group), :])
+                    changeset += mss.to_changeset(route_data.loc[route_group, :])
             self._apply_max_stable_changes(changeset)
         except exceptions.EmptySpatialTree:
             logging.warning(f'Service {service.id} cannot be snapped to the Network with modes = {modes}. The '

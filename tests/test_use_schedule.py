@@ -101,7 +101,9 @@ def test_generating_edge_vph_geodataframe(schedule):
                                    10: LineString([(7,5), (3,3)]),
                                    11: LineString([(7,5), (3,3)])}}, crs='epsg:27700')
 
-    assert_geodataframe_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1), check_less_precise=True)
+    assert_geodataframe_equal(df.sort_values(by=['from_stop', 'to_stop', 'hour']).reset_index(drop=True),
+                              correct_df.sort_values(by=['from_stop', 'to_stop', 'hour']).reset_index(drop=True),
+                              check_less_precise=True, check_like=True)
 
 
 def test_generating_edge_vph_geodataframe_for_service(schedule):
@@ -141,8 +143,9 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
                                    10: LineString([(7, 5), (3, 3)]),
                                    11: LineString([(7, 5), (3, 3)])}}, crs='epsg:27700')
 
-    assert_geodataframe_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1), check_less_precise=True)
-
+    assert_geodataframe_equal(df.sort_values(by=['from_stop', 'to_stop', 'hour']).reset_index(drop=True),
+                              correct_df.sort_values(by=['from_stop', 'to_stop', 'hour']).reset_index(drop=True),
+                              check_less_precise=True, check_like=True)
 
 def test_generating_edge_vph_geodataframe_for_route(schedule):
     gdfs = gngeojson.generate_geodataframes(schedule.route('2').graph())
@@ -166,8 +169,9 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
                                             4: LineString([(7, 5), (3, 3)]),
                                             5: LineString([(7, 5), (3, 3)])}}, crs='epsg:27700')
 
-    assert_geodataframe_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1), check_less_precise=True)
-
+    assert_geodataframe_equal(df.sort_values(by=['from_stop', 'to_stop', 'hour']).reset_index(drop=True),
+                              correct_df.sort_values(by=['from_stop', 'to_stop', 'hour']).reset_index(drop=True),
+                              check_less_precise=True, check_like=True)
 
 def test_generating_trips_per_day_per_service(schedule):
     df_trips = use_schedule.trips_per_day_per_service(schedule.trips_with_stops_to_dataframe())
