@@ -399,7 +399,7 @@ class SpatialTree(nx.DiGraph):
 
     def path_length(self, G, source, target, weight=None):
         try:
-            return nx.dijkstra_path_length(G, source, target, weight=weight)
+            return nx.dijkstra_path_length(G, source=source, target=target, weight=weight)
         except nx.NetworkXNoPath:
             pass
 
