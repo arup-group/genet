@@ -1,13 +1,16 @@
 import yaml
 import logging
-import osmread
 from pyproj import Transformer
 from math import ceil
+
+import osmium
 
 import genet.input.osmnx_customised as osmnx_customised
 import genet.utils.parallel as parallel
 import genet.utils.spatial as spatial
 from genet.output.matsim_xml_values import MATSIM_JOSM_DEFAULTS
+
+MANDATORY_PATH_TAGS = {"oneway", "highway", "junction", "route"}
 
 
 class Config(object):
@@ -79,7 +82,7 @@ def find_matsim_link_values(edge_data, config):
 
 def generate_osm_graph_edges_from_file(osm_file, config, num_processes):
     logging.info("Building OSM graph from file {}".format(osm_file))
-    response_jsons = file_converter(osm_file)
+    response_jsons = file_converter(osm_file, config)
     nodes, edges = create_s2_indexed_osm_graph(response_jsons, config, num_processes, bidirectional=False)
     logging.info('Created OSM edges')
     return nodes, edges
@@ -205,23 +208,55 @@ def read_relation(entity):
     return json_data
 
 
-def file_converter(osm_file):
-    elements = []
+class OSMHandler(osmium.SimpleHandler):
+    def __init__(self, config):
+        super(OSMHandler, self).__init__()
+        self.elements = []
+        self.config = config
 
-    # Extract the nodes and the ways
-    for entity in osmread.parse_file(osm_file):
-        json_data = {}
+    def node(self, entity):
+        """Parses OSM data for an OSM 'node' into dict format.
 
-        if isinstance(entity, osmread.Node):
-            json_data = read_node(entity)
+        Uses USEFUL_TAGS_PATH specified via genet config to ignore irrelevant tags
+        """
+        json_data = {
+            "type": "node",
+            "id": str(entity.id),
+            "version": entity.version,
+            "timestamp": entity.timestamp,
+            "uid": entity.uid,
+            "tags": {},
+            "lon": entity.location.lon,
+            "lat": entity.location.lat,
+        }
+        for useful_tag in self.config.USEFUL_TAGS_NODE:
+            value = entity.tags.get(useful_tag)
+            if value:
+                json_data["tags"][useful_tag] = value
+        self.elements.append(json_data)
 
-        elif isinstance(entity, osmread.Way):
-            json_data = read_way(entity)
+    def way(self, entity):
+        """Parses OSM data for an OSM 'way' into dict format.
 
-        elif isinstance(entity, osmread.Relation):
-            json_data = read_relation(entity)
+        Uses USEFUL_TAGS_PATH specified via genet config to ignore irrelevant tags
+        """
+        json_data = {
+            "type": "way",
+            "id": str(entity.id),
+            "version": entity.version,
+            "timestamp": entity.timestamp,
+            "uid": entity.uid,
+            "tags": {},
+            "nodes": tuple(str(n) for n in entity.nodes),
+        }
+        for useful_tag in set(self.config.USEFUL_TAGS_PATH) | MANDATORY_PATH_TAGS:
+            value = entity.tags.get(useful_tag)
+            if value:
+                json_data["tags"][useful_tag] = value
+        self.elements.append(json_data)
 
-        elements.append(json_data)
 
-    # response_jsons
-    return [{'elements': elements}]
+def file_converter(osm_file, config):
+    osmium_read_handler = OSMHandler(config)
+    osmium_read_handler.apply_file(osm_file)
+    return [{"elements": osmium_read_handler.elements}]

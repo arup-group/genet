@@ -1,4 +1,4 @@
-FROM python:3.7.16-bullseye
+FROM python:3.11.4-bullseye
 
 RUN apt-get update && \
 apt-get upgrade -y && \

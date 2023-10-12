@@ -5,6 +5,7 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 import networkx as nx
 from pyomo.environ import *  # noqa: F403
+import pandas as pd
 
 import genet.output.geojson as gngeojson
 import genet.utils.dict_support as dict_support
@@ -62,7 +63,7 @@ class MaxStableSet:
                 df_stops=self.stops.loc[self.stops['id'].isin(stops - set(nodes.index)), ['id', 'geometry']].copy(),
                 distance=distance)
             _df['catchment'] = distance
-            nodes = nodes.append(_df)
+            nodes = pd.concat([nodes, _df])
         return nodes[~nodes['link_id'].str.match("artificial")]
 
     def cast_catchment(self, df_stops, distance):
@@ -99,16 +100,18 @@ class MaxStableSet:
         problem_graph = nx.DiGraph()
         problem_nodes = self.nodes.set_index('problem_nodes').T.to_dict()
         problem_graph.add_nodes_from(problem_nodes)
-        path_length_coeff = self.edges.loc[self.edges['path_lengths'].notna(), :].groupby('problem_nodes_u').mean()
-        path_length_coeff = path_length_coeff.rename(columns={'path_lengths': 'path_lengths_u'}).merge(
-            self.edges.loc[self.edges['path_lengths'].notna(), :].rename(
-                columns={'path_lengths': 'path_lengths_v'}).groupby('problem_nodes_v').mean(),
-            how='outer',
-            left_index=True,
-            right_index=True
+        path_length_components = pd.concat(
+            [
+                self.edges["path_lengths"]
+                .dropna()
+                .groupby(self.edges[f"problem_nodes_{component}"])
+                .mean()
+                .to_frame(f"path_lengths_{component}")
+                for component in ["u", "v"]
+            ],
+            axis=1,
         )
-        path_length_coeff = (
-                1 / path_length_coeff[['path_lengths_u', 'path_lengths_v']].mean(axis=1, skipna=True)).to_dict()
+        path_length_coeff = (1 / path_length_components.mean(axis=1, skipna=True)).to_dict()
         nx.set_node_attributes(problem_graph, problem_nodes)
         nx.set_node_attributes(problem_graph, path_length_coeff, 'coeff')
 
@@ -262,7 +265,7 @@ class MaxStableSet:
             # --------------------------------------------------------
 
             selected = [str(v).strip("x[\\']") for v in model.component_data_objects(Var) if  # noqa: F405
-                        float(v.value) == 1.0]
+                        v.value is not None and float(v.value) == 1.0]
             # solution maps Stop IDs to Link IDs
             self.solution = {self.problem_graph.nodes[node]['id']: self.problem_graph.nodes[node]['link_id'] for
                              node in selected}
@@ -434,7 +437,7 @@ class ChangeSet:
         # combine two changesets
         self.new_links = {**self.new_links, **other.new_links}
         self.new_nodes = {**self.new_nodes, **other.new_nodes}
-        self.df_route_data = self.df_route_data.append(other.df_route_data)
+        self.df_route_data = pd.concat([self.df_route_data, other.df_route_data])
         self.additional_links_modes = dict_support.merge_complex_dictionaries(
             self.additional_links_modes, other.additional_links_modes)
         self.new_stops = dict_support.merge_complex_dictionaries(self.new_stops, other.new_stops)

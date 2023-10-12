@@ -50,4 +50,4 @@ def _subset_plot_gdf(data, df, base_keys={'id', 'route_id', 'geometry'}):
     data_keys = base_keys
     if isinstance(data, set):
         data_keys |= data
-    return df[data_keys & set(df.columns)]
+    return df[df.columns.intersection(data_keys)]

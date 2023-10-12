@@ -53,8 +53,8 @@ def test_generating_network_graph_geodataframe(network):
                      'capacity': {'link_0': 5.0, 'link_1': float('nan'), 'link_2': float('nan')},
                      'modes': {'link_0': ['car', 'walk'], 'link_1': ['bike'], 'link_2': ['rail']}}
 
-    assert_semantically_equal(nodes[set(nodes.columns) - {'geometry'}].to_dict(), correct_nodes)
-    assert_semantically_equal(links[set(links.columns) - {'geometry'}].to_dict(), correct_links)
+    assert_semantically_equal(nodes.drop('geometry', axis=1).to_dict(), correct_nodes)
+    assert_semantically_equal(links.drop('geometry', axis=1).to_dict(), correct_links)
 
     assert round(nodes.loc['0', 'geometry'].coords[:][0][0], 7) == round(528704.1425925883, 7)
     assert round(nodes.loc['0', 'geometry'].coords[:][0][1], 7) == round(182068.78193707118, 7)
@@ -90,8 +90,8 @@ def test_generating_schedule_graph_geodataframe(network):
                      'u': {0: '0'},
                      'v': {0: '1'}}
 
-    assert_semantically_equal(nodes[set(nodes.columns) - {'geometry'}].to_dict(), correct_nodes)
-    assert_semantically_equal(links[set(links.columns) - {'geometry'}].to_dict(), correct_links)
+    assert_semantically_equal(nodes.drop('geometry', axis=1).to_dict(), correct_nodes)
+    assert_semantically_equal(links.drop('geometry', axis=1).to_dict(), correct_links)
 
     assert round(nodes.loc['0', 'geometry'].coords[:][0][0], 7) == round(529455.7452394223, 7)
     assert round(nodes.loc['0', 'geometry'].coords[:][0][1], 7) == round(182401.37630677427, 7)

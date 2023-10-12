@@ -196,9 +196,9 @@ def test_compute_average_proximity_to_polyline_when_they_are_the_same_line():
 
 def test_reading_geojson_to_shapely():
     p = spatial.read_geojson_to_shapely(test_geojson)
-    assert len(p) == 1
-    assert isinstance(p[0], Polygon)
-    assert list(p[0].exterior.coords) == [(-0.1487016677856445, 51.52556684350165),
+    assert len(p.geoms) == 1
+    assert isinstance(p.geoms[0], Polygon)
+    assert list(p.geoms[0].exterior.coords) == [(-0.1487016677856445, 51.52556684350165),
                                           (-0.14063358306884766, 51.5255134425896),
                                           (-0.13865947723388672, 51.5228700191647),
                                           (-0.14093399047851562, 51.52006622056997),

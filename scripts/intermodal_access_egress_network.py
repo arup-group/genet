@@ -3,6 +3,8 @@ import logging
 import os
 import json
 
+import pandas as pd
+
 from genet import read_matsim
 from genet import spatial
 from genet.utils.persistence import ensure_dir
@@ -38,7 +40,7 @@ def find_closest_links_by_step(network_spatial_tree, df_stops, step_size=10, dis
             df_stops=df_stops.loc[df_stops['id'].isin(stop_ids - set(nodes.index)), ['id', 'geometry']].copy(),
             distance=distance)
         _df['catchment'] = distance
-        nodes = nodes.append(_df)
+        nodes = pd.concat([nodes, _df])
     return nodes
 
 

@@ -35,19 +35,17 @@ def generate_edge_vph_geodataframe(df, gdf_links):
     :param gdf_links: geodataframe containing links of the schedule (element) graph
     :return:
     """
-    df.loc[:, 'hour'] = df['departure_time'].dt.round("H")
-    groupby_cols = ['hour', 'trip_id', 'from_stop', 'from_stop_name', 'to_stop', 'to_stop_name']
+    df.loc[:, "hour"] = df["departure_time"].dt.round("H")
+    groupby_cols = ["hour", "trip_id", "from_stop", "from_stop_name", "to_stop", "to_stop_name"]
     df = df.groupby(groupby_cols).count().reset_index()
-    df.loc[:, 'vph'] = 1
-    groupby_cols.remove('trip_id')
+    df.loc[:, "vph"] = 1
+    groupby_cols.remove("trip_id")
     df = df.groupby(groupby_cols).sum().reset_index()
 
-    cols_to_delete = list(set(df.columns) - (set(groupby_cols) | {'vph'}))
-    df = pd.merge(gpd.GeoDataFrame(df, crs=gdf_links.crs), gdf_links, left_on=['from_stop', 'to_stop'],
-                  right_on=['u', 'v'])
-    cols_to_delete.extend(['u', 'v', 'routes', 'services'])
-    df = df.drop(cols_to_delete, axis=1)
-    return df
+    cols_to_delete = df.columns.difference(groupby_cols + ["vph"])
+    gdf = gdf_links.merge(df, left_on=["u", "v"], right_on=["from_stop", "to_stop"])
+    gdf = gdf.drop(cols_to_delete.union(["u", "v", "routes", "services"]), axis=1)
+    return gdf
 
 
 def vehicles_per_hour(df, aggregate_by: list, output_path=''):
@@ -124,7 +122,7 @@ def aggregate_trips_per_day_per_route_by_end_stop_pairs(schedule, trips_per_day_
         if df is None:
             df = df_stops
         else:
-            df = df.append(df_stops)
+            df = pd.concat([df, df_stops])
     df['routes_in_common'] = df.apply(lambda x: route_id_intersect(x), axis=1)
     df = df.dropna()
     trips_per_day_per_route = trips_per_day_per_route.set_index('route_id')
@@ -137,8 +135,14 @@ def aggregate_by_stop_names(df_aggregate_trips_per_day_per_route_by_end_stop_pai
     df = df_aggregate_trips_per_day_per_route_by_end_stop_pairs
     df = df[(df['station_A_name'] != '') & (df['station_B_name'] != '')]
     if not df.empty:
-        df[['station_A_name', 'station_B_name']] = np.sort(df[['station_A_name', 'station_B_name']], axis=1)
-        df = df.groupby(['station_A_name', 'station_B_name', 'mode']).sum()['number_of_trips'].reset_index()
+        df[["station_A_name", "station_B_name"]] = np.sort(
+            df[["station_A_name", "station_B_name"]], axis=1
+        )
+        df = (
+            df.groupby(["station_A_name", "station_B_name", "mode"])["number_of_trips"]
+            .sum()
+            .reset_index()
+        )
     return df
 
 
@@ -203,5 +207,12 @@ def network_routed_distance_gdf(schedule, gdf_network_links):
         col: np.repeat(routes_df[col].values, routes_df['route'].str.len())
         for col in set(routes_df.columns) - {'route', 'sequence'}}
     ).assign(route=np.concatenate(routes_df['route'].values), sequence=np.concatenate(routes_df['sequence'].values))
-    routes_df = routes_df.merge(gdf_network_links[['length', 'geometry']], left_on='route', right_index=True)
-    return routes_df.groupby(['id', 'from_stop', 'to_stop']).apply(combine_route).reset_index(drop=True)
+    routes_gdf = gdf_network_links[["length", "geometry"]].merge(
+        routes_df, right_on="route", left_index=True
+    )
+
+    new_route = routes_gdf.groupby(["id", "from_stop", "to_stop"], as_index=False).apply(
+        combine_route
+    )
+
+    return gpd.GeoDataFrame(new_route).set_crs(routes_gdf.crs)

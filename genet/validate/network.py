@@ -67,7 +67,7 @@ def none_condition(value):
     return value in [None, 'None']
 
 
-@dataclass()
+@dataclass(frozen=True)
 class Condition:
     condition: callable
 
@@ -75,7 +75,7 @@ class Condition:
         return self.condition(value)
 
 
-@dataclass()
+@dataclass(frozen=True)
 class FloatCondition(Condition):
     condition: callable
 
@@ -83,7 +83,7 @@ class FloatCondition(Condition):
         return evaluate_condition_for_floatable(value, self.condition)
 
 
-@dataclass()
+@dataclass(frozen=True)
 class ConditionsToolbox:
     zero: Condition = FloatCondition(zero_value)
     negative: Condition = FloatCondition(negative_value)
