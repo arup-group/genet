@@ -2,6 +2,7 @@ import logging
 import os
 from itertools import chain
 import json
+import math
 
 import geopandas as gpd
 import pandas as pd
@@ -11,6 +12,8 @@ from shapely.geometry import Point, LineString
 import genet.output.sanitiser as sanitiser
 import genet.use.schedule as use_schedule
 import genet.utils.persistence as persistence
+
+from genet.variables import EPSG4326
 
 
 def modal_subset(row, modes):
@@ -243,3 +246,23 @@ def generate_standard_outputs(n, output_dir, gtfs_day='19700101', include_shp_fi
     summary_report = n.summary_report()
     with open(os.path.join(output_dir, 'summary_report.json'), 'w', encoding='utf-8') as f:
         json.dump(sanitiser.sanitise_dictionary(summary_report), f, ensure_ascii=False, indent=4)
+
+
+def generate_headway_geojson(n, gdf, output_dir, filename_suffix):
+    headways = n.schedule.headway_stats()
+    headways_gdf = gdf[["route_id", "geometry"]].merge(headways, how="right", on="route_id")
+    save_geodataframe(headways_gdf.to_crs(EPSG4326), f"headway_stats_{filename_suffix}", output_dir)
+
+
+def generate_speed_geojson(n, gdf, output_dir, filename_suffix):
+    speeds = n.schedule.speed_geodataframe()
+    # fill infinity by large number to show up in visualisations
+    speeds.loc[speeds["speed"] == math.inf, "speed"] = 9999
+
+    speeds = (
+        speeds.groupby(["service_id", "route_id", "route_name", "mode"])
+        .max()["speed"]
+        .reset_index()
+    )
+    speeds_gdf = gdf[["route_id", "geometry"]].merge(speeds, how="right", on="route_id")
+    save_geodataframe(speeds_gdf.to_crs(EPSG4326), f"max_speeds_{filename_suffix}", output_dir)

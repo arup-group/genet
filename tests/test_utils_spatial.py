@@ -346,7 +346,7 @@ def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(networ
         'geometry': {0: Point(-0.15186089346604492, 51.51950409732838),
                      1: Point(-0.15164747576623197, 51.520660715220636),
                      2: Point(-0.1520233977548685, 51.51952913606585)}})
-    stops.crs = {'init': 'epsg:4326'}
+    stops.crs = 'epsg:4326'
 
     closest_links = spatial_tree.closest_links(stops, 30)
     assert_semantically_equal(closest_links.reset_index().groupby('id')['link_id'].apply(list).to_dict(),
