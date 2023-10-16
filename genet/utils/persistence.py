@@ -32,12 +32,14 @@ def listify(value: Union[str, list, set]):
     elif value is None:
         return []
 
+
 def _check_type_and_suffix(input: Any, suffix=Union[str, list[str]]):
     if not isinstance(input, (str, Path)):
         return False
     if not isinstance(suffix, list):
         suffix = [suffix]
     return Path(input).suffix.lower() in suffix
+
 
 def is_yml(path: Union[Path, str]):
     return _check_type_and_suffix(path, [".yml", ".yaml"])
