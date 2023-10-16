@@ -1,7 +1,7 @@
 import os
 import logging
 import shutil
-from typing import Union
+from typing import Any, Union
 from pathlib import Path
 
 
@@ -32,25 +32,31 @@ def listify(value: Union[str, list, set]):
     elif value is None:
         return []
 
+def _check_type_and_suffix(input: Any, suffix=Union[str, list[str]]):
+    if not isinstance(input, (str, Path)):
+        return False
+    if not isinstance(suffix, list):
+        suffix = [suffix]
+    return Path(input).suffix.lower() in suffix
 
 def is_yml(path: Union[Path, str]):
-    return Path(path).suffix.lower() in [".yml", ".yaml"]
+    return _check_type_and_suffix(path, [".yml", ".yaml"])
 
 
 def is_geojson(path: Union[Path, str]):
-    return Path(path).suffix.lower() == ".geojson"
+    return _check_type_and_suffix(path, ".geojson")
 
 
 def is_csv(path: Union[Path, str]):
-    return Path(path).suffix.lower() == ".csv"
+    return _check_type_and_suffix(path, ".csv")
 
 
 def is_json(path: Union[Path, str]):
-    return Path(path).suffix.lower() == ".json"
+    return _check_type_and_suffix(path, ".json")
 
 
 def is_zip(path: Union[Path, str]):
-    return Path(path).suffix.lower() == ".zip"
+    return _check_type_and_suffix(path, ".zip")
 
 
 def zip_folder(folder_path):
