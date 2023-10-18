@@ -19,13 +19,18 @@ def invoke_runner_and_check_files(tmpdir_factory):
     outdir = tmpdir_factory.mktemp("outdir")
 
     def _invoke_runner_and_check_files(
-        func: str, args: list[str], expected_files: list = [], not_expected_files: list = []
+        func: str, args: list[str], expected_files: list = [], expected_files_on_fail: list = []
     ):
+        _check_output_files_do_not_exist(expected_files)
         runner = CliRunner()
         result = runner.invoke(getattr(cli, func), args + [f'--output_dir={outdir}'])
-        assert result.exit_code == 0, f"Script {func} failed."
+        try:
+            assert result.exit_code == 0, f"Script {func} failed."
+        except AssertionError as e:
+            _check_output_files_exist(expected_files_on_fail)
+            raise e
+
         _check_output_files_exist(expected_files)
-        _check_output_files_do_not_exist(not_expected_files)
 
     def _check_output_files_do_not_exist(files: list):
         for file in files:
@@ -48,10 +53,6 @@ def test_add_elevation_to_network(invoke_runner_and_check_files):
             f'--projection={PROJECTION}',
             f'--elevation={EXAMPLE_DATA_DIR / "fitzrovia_elevation.tif"}',
             '--null_value=0',
-            '--write_elevation_to_network',
-            '--write_slope_to_network',
-            '--write_slope_to_object_attribute_file',
-            '--save_jsons'
         ],
         expected_files=[
             'link_slope_dictionary.json',
@@ -316,9 +317,7 @@ def test_validate_network(invoke_runner_and_check_files):
             f'--vehicles={EXAMPLE_VEHICLES}',
             f'--projection={PROJECTION}',
         ],
-        expected_files=[
-            'validation_report.json'
-        ]
+        expected_files=['validation_report.json']
     )
 
 
@@ -334,9 +333,7 @@ def test_google_api_script_throws_error_without_api_key(invoke_runner_and_check_
                 '--traffic_model=best_guess',
                 '--departure_time=now'
             ],
-            not_expected_files=[
-                'api_requests.json',
-            ]
+            expected_files_on_fail=['api_requests.json']
         )
 
     assert excinfo.match('Script send_google_directions_requests_for_network failed.')

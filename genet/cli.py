@@ -197,23 +197,34 @@ def output_dir(func):
     )(func)
 
 
-def osm(func):
-    func = click.option(
-        "-o",
-        "--osm",
-        "path_to_osm",
-        help="Location of the osm file",
-        required=False,
-        type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
-    )(func)
-    return click.option(
-        "-oc",
-        "--osm_config",
-        "path_to_osm_config",
-        help="Location of the config file defining what and how to read from the osm file",
-        required=False,
-        type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
-    )(func)
+def osm(required: bool = True):
+    if not required:
+        kwargs = {"default": None}
+    else:
+        kwargs = {}
+    path_type = click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path)
+
+    def wrapper(func):
+        func = click.option(
+            "-o",
+            "--osm",
+            "path_to_osm",
+            help="Location of the osm file",
+            required=required,
+            type=path_type,
+            **kwargs
+        )(func)
+        return click.option(
+            "-oc",
+            "--osm_config",
+            "path_to_osm_config",
+            help="Location of the config file defining what and how to read from the osm file",
+            required=required,
+            type=path_type,
+            **kwargs
+        )(func)
+
+    return wrapper
 
 
 def gtfs(func):
@@ -252,7 +263,7 @@ def vehicle_scalings(func):
         help="Comma delimited list of scales for vehicles",
         required=False,
         type=str,
-        default=None,
+        default="1,10",
     )(func)
 
 
@@ -317,35 +328,41 @@ def squeeze_args(func):
     "-nv",
     "--null_value",
     help="Value that represents null in the elevation tif file",
-    default=0,
+    default=0.0,
     type=float,
 )
+# this and below are negation flags.
+# I.e., the default is True, defining this argument will set the boolean value of `write_elevation_to_network` to False.
 @click.option(
-    "-we",
-    "--write_elevation_to_network",
-    help="Whether node elevation data should be written as attribute to the network",
-    default=False,
+    "-nwe",
+    "--no-write_elevation_to_network",
+    "write_elevation_to_network",
+    help="Do not write node elevation data as attribute to the network",
+    default=True,
     is_flag=True,
 )
 @click.option(
-    "-wsn",
-    "--write_slope_to_network",
-    help="Whether link slope data should be written as attribute to the network",
-    default=False,
+    "-nwsn",
+    "--no-write_slope_to_network",
+    "write_slope_to_network",
+    help="Do not write link slope data as attribute to the network",
+    default=True,
     is_flag=True,
 )
 @click.option(
-    "-wsoa",
-    "--write_slope_to_object_attribute_file",
-    help="Whether link slope data should be written to object attribute file",
-    default=False,
+    "-nwsoa",
+    "--no-write_slope_to_object_attribute_file",
+    "write_slope_to_object_attribute_file",
+    help="Do not write link slope data to object attribute file",
+    default=True,
     is_flag=True,
 )
 @click.option(
-    "-sj",
-    "--save_jsons",
-    help="Whether elevation and slope dictionaries and report are saved",
-    default=False,
+    "-nsj",
+    "--no-save_jsons",
+    "save_jsons",
+    help="Do not save elevation and slope dictionaries and report",
+    default=True,
     is_flag=True,
 )
 def add_elevation_to_network(
@@ -433,14 +450,14 @@ def add_elevation_to_network(
 
 @cli.command()
 @xml_file("network")
-@xml_file("schedule", False)
+@xml_file("schedule")
 @xml_file("vehicles", False)
 @projection
 @vehicle_scalings
 @output_dir
 def auto_schedule_fixes(
     path_to_network: Path,
-    path_to_schedule: Optional[Path],
+    path_to_schedule: Path,
     path_to_vehicles: Optional[Path],
     projection: str,
     output_dir: Path,
@@ -756,7 +773,7 @@ def intermodal_access_egress_network(
 @xml_file("network", False)
 @projection
 @output_dir
-@osm
+@osm(required=False)
 @gtfs
 @processes
 @click.option(
@@ -833,7 +850,7 @@ def make_pt_network(
 
 
 @cli.command()
-@osm
+@osm(required=True)
 @projection
 @processes
 @output_dir
