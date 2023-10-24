@@ -48,10 +48,9 @@ Each `Route` class object has an attribute `stops` which consists of `genet.Stop
 information for the PT stop.
 
 
-
 ## Setup
 
-To run pre-baked scripts that use GeNet in a number of different scenarios you can use docker, which will save you the
+GeNet CLI supports a number of different usage scenarios. For these you can use docker, which will save you the
 work of installing GeNet locally:
 
 ### Using Docker
@@ -59,15 +58,15 @@ Docker is the recommended way to use GeNet if you do not plan to make any code c
 
 #### Build the image
 
-    docker build -t "genet" .
+    docker build -t "cml-genet" .
 
 #### Using the cli inside a container
 
-    docker run genet --help
+    docker run cml-genet genet --help
 
 to show the list of available commands, and e.g.
 
-    docker run genet simplify-network --help
+    docker run cml-genet genet simplify-network --help
 
 to show description of the command and parameters:
 ```commandline
@@ -97,15 +96,34 @@ Options:
   --help                          Show this message and exit.
 ```
 
-Otherwise, you can [install `genet` as a python package](#installation-as-a-python-package), in your base installation
-of python or a virtual environment.
-Run the pre-baked scripts, write your own scripts or use IPython shell or Jupyter Notebook to load up a network, 
-inspect or change it and save it out to file. Check out the 
+Note, you will reference data outside the docker container as inputs, the docker command will need the path to data
+mounted and be referenced according to the alias given, e.g.
+
+    docker run -v /local/path/:/mnt/ cml-genet genet simplify-network --network /mnt/network.xml [...]
+
+If the input network file lives at `/local/path/network.xml`.
+
+#### Running custom script inside a container
+
+Say you write a script `/local/path/my_genet_scripts/script.py` and you want to run it inside a docker container. 
+You will need to mount the local path to the container for the script to be found and use the generic `python` 
+as part of your command:
+
+    docker run -v /local/path/:/mnt/ cml-genet python /mnt/my_genet_scripts/script.py
+
+Note, if you reference data inside your script, or pass them as arguments to the script, they need to reference the 
+aliased path inside the container, here: `/mnt/`, rather than the path `/local/path/`.
+
+### Installation as a Python Package / CLI
+
+You can in your base installation of python or a virtual environment.
+You can use GeNet's CLI to run pre-baked modifications or checks on networks.
+You can also write your own python scripts, importing genet as a package, use IPython shell or Jupyter Notebook to load 
+up a network, inspect or change it and save it out to file. Check out the 
 [wiki pages](https://github.com/arup-group/genet/wiki/Functionality-and-Usage-Guide) and 
 [example jupyter notebooks](https://github.com/arup-group/genet/tree/master/notebooks) 
 for usage examples.
 
-### Installation as a Python Package / CLI
 **Note:** if you plan only to _use_ GeNet rather than make code changes to it, you can avoid having to perform any
 local installation by using [GeNet's Docker image](#using-docker). If you are going to make code changes or use GeNet's
 CLI locally, follow the steps below:
@@ -151,6 +169,14 @@ Finally, install `GeNet`'s Python dependencies
 
     pip install -e .
 
+After installation, you should be able to successfully run the help command to see all possible commands:
+
+    genet --help
+
+To inspect a specific command, run e.g.:
+
+    genet simplify-network --help
+
 #### Install Kepler dependencies
 
 Please follow [kepler's installation instructions](https://docs.kepler.gl/docs/keplergl-jupyter#install) to be able to 
@@ -173,7 +199,7 @@ To run unit tests within genet python environment:
 
 and within a docker container:
 
-    docker run --entrypoint "python" genet -m pytest -vv tests
+    docker run cml-genet python -m pytest -vv tests
 
 ### Generate a unit test code coverage report
 
