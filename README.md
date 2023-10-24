@@ -61,33 +61,41 @@ Docker is the recommended way to use GeNet if you do not plan to make any code c
 
     docker build -t "genet" .
 
-#### Running a container with a pre-baked script
+#### Using the cli inside a container
 
-    docker run genet reproject_network.py -h
-    
-    usage: reproject_network.py [-h] -n NETWORK [-s SCHEDULE] [-v VEHICLES] -cp
-                                CURRENT_PROJECTION -np NEW_PROJECTION
-                                [-p PROCESSES] -od OUTPUT_DIR
-    
-    Reproject a MATSim network
-    
-    optional arguments:
-      -h, --help            show this help message and exit
-      -n NETWORK, --network NETWORK
-                            Location of the network.xml file
-      -s SCHEDULE, --schedule SCHEDULE
-                            Location of the schedule.xml file
-      -v VEHICLES, --vehicles VEHCILES
-      							  Location of the vehicles.xml file
-      -cp CURRENT_PROJECTION, --current_projection CURRENT_PROJECTION
-                            The projection network is currently in, eg.
-                            "epsg:27700"
-      -np NEW_PROJECTION, --new_projection NEW_PROJECTION
-                            The projection desired, eg. "epsg:27700"
-      -p PROCESSES, --processes PROCESSES
-                            The number of processes to split computation across
-      -od OUTPUT_DIR, --output_dir OUTPUT_DIR
-                            Output directory for the reprojected network
+    docker run genet --help
+
+to show the list of available commands, and e.g.
+
+    docker run genet simplify-network --help
+
+to show description of the command and parameters:
+```commandline
+Usage: genet simplify-network [OPTIONS]
+
+  Simplify a MATSim network by removing intermediate links from paths
+
+Options:
+  -n, --network PATH              Location of the input network.xml file
+                                  [required]
+  -s, --schedule PATH             Location of the input schedule.xml file
+  -v, --vehicles PATH             Location of the input vehicles.xml file
+  -p, --projection TEXT           The projection network is in, eg.
+                                  "epsg:27700"  [required]
+  -pp, --processes INTEGER        Number of parallel processes to split
+                                  process across
+  -vsc, --vehicle_scalings TEXT   Comma delimited list of scales for vehicles
+  -od, --output_dir DIRECTORY     Output directory  [required]
+  -fc, --force_strongly_connected_graph
+                                  If True, checks for disconnected subgraphs
+                                  for modes `walk`, `bike` and `car`. If there
+                                  are more than one strongly connected
+                                  subgraph, genet connects them with links at
+                                  closest points in the graph. The links used
+                                  to connect are weighted at 20% of
+                                  surrounding freespeed and capacity values.
+  --help                          Show this message and exit.
+```
 
 Otherwise, you can [install `genet` as a python package](#installation-as-a-python-package), in your base installation
 of python or a virtual environment.
@@ -97,10 +105,10 @@ inspect or change it and save it out to file. Check out the
 [example jupyter notebooks](https://github.com/arup-group/genet/tree/master/notebooks) 
 for usage examples.
 
-### Installation as a Python Package
+### Installation as a Python Package / CLI
 **Note:** if you plan only to _use_ GeNet rather than make code changes to it, you can avoid having to perform any
-local installation by using [GeNet's Docker image](#using-docker). If you are going to make code changes, or you don't
-want to use Docker for some reason...
+local installation by using [GeNet's Docker image](#using-docker). If you are going to make code changes or use GeNet's
+CLI locally, follow the steps below:
 
 #### Native dependencies
 GeNet uses some Python libraries that rely on underlying native libraries for things like geospatial calculations and
@@ -139,7 +147,7 @@ Create and activate a Python virtual environment
     source venv/bin/activate
 
 #### Install GeNet in to the virtual environment
-Finally install `GeNet`'s Python dependencies
+Finally, install `GeNet`'s Python dependencies
 
     pip install -e .
 
@@ -151,7 +159,6 @@ use the visualisation methods. To see the maps in a jupyter notebook, make sure 
 jupyter nbextension enable --py widgetsnbextension
 ```
 
-
 ## Developing GeNet
 
 We welcome community contributions to GeNet; please see our [guide to contributing](CONTRIBUTING.md) and our
@@ -160,8 +167,13 @@ described below to verify that the code still works. All of the following comman
 directory.
 
 ### Unit tests
+To run unit tests within genet python environment:
 
     python -m pytest -vv tests
+
+and within a docker container:
+
+    docker run --entrypoint "python" genet -m pytest -vv tests
 
 ### Generate a unit test code coverage report
 
