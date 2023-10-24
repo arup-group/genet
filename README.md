@@ -27,23 +27,26 @@
 ## Overview
 
 GeNet provides tools to represent and work with a multi-modal transport network with public transport (PT)
-services. It is based on [MATSim's](https://www.matsim.org/) representation of such networks. The underlying 
-network available to PT services (roads, railways, but also ferry/flight connections) uses a `networkx.MultiDiGraph`
-with additional methods for `'links'` which are unique in `genet.Network` (`networkx.MultiDiGraph` accepts multiple 
-edges between the same from and to node pair; referring to an edge in `networkx.MultiDiGraph` and `genet.Network`
-has the same effects, i.e. the result is a dictionary indexed by the multi edge index). The PT services are 
-represented through `genet.Schedule` class which relies on other `genet` 
-classes: the `Schedule` relies on a list of `genet.Service`'s, which in turns consists of a list of `genet.Route`'s.
-Each `Route` class object has an attribute `stops` which consists of `genet.Stops` objects. The `Stops` carry spatial
-information for the PT stop.
+services. It is based on [MATSim's](https://www.matsim.org/) representation of such networks.
 
 The goal of GeNet is to:
 - Provide a formalised in-memory data structure for representing a multi-modal network with a PT service
 - Enable using the data structure for tasks such as generating auxiliary MATSim files e.g. Road Pricing
-- Simplify the process of modifying a network and provide simple change log to track the differences between the input
+- Simplify the process of modifying a network and provide a simple change log to track the differences between the input
 and output networks.
 - Provide validation methods to check for simple errors such as: whether a `Route` has more than one `Stop` or that the
 underlying graph doesn't have any dead-ends or sources (a place which you can leave but cannot get back to).
+
+The underlying 
+network available to PT services (roads, railways, but also ferry/flight connections) uses a `networkx.MultiDiGraph`
+with additional methods for `'links'` which are unique in `genet.Network` (`networkx.MultiDiGraph` accepts multiple 
+edges between the same from and to node pair; referring to an edge in `networkx.MultiDiGraph` and `genet.Network`
+has the same effects, i.e. the result is a dictionary indexed by the multi edge index). The PT services are 
+represented through the `genet.Schedule` class which relies on other `genet` 
+classes: the `Schedule` relies on a list of `genet.Service`'s, which in turn consists of a list of `genet.Route`'s.
+Each `Route` class object has an attribute `stops` which consists of `genet.Stops` objects. The `Stops` carry spatial
+information for the PT stop.
+
 
 
 ## Setup

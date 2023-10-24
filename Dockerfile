@@ -14,6 +14,7 @@ RUN /usr/local/bin/python -m pip install --no-cache-dir --compile --upgrade pip
 COPY ./scripts .
 COPY . .
 
+RUN pip3 install cmake>=3
 RUN pip3 install --no-cache-dir --compile -e . && pip cache purge
 ENV PYTHONPATH=./scripts:${PYTHONPATH}
 
