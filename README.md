@@ -199,7 +199,7 @@ To run unit tests within genet python environment:
 
 and within a docker container:
 
-    docker run cml-genet python -m pytest -vv tests
+    docker run cml-genet pytest -vv tests
 
 ### Generate a unit test code coverage report
 

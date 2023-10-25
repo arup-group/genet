@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+* GeNet's pre-baked python scripts have been retired in favour of CLI [#194](https://github.com/arup-group/genet/pull/194)
+* **[Breaking change]** Support for python v3.11, updated to more accurate pyproj version [#192](https://github.com/arup-group/genet/pull/192)
+
 ## [v4.0.0] - 2023-08-22
 
 ### Added
