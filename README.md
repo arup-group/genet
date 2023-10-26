@@ -37,12 +37,12 @@ and output networks.
 - Provide validation methods to check for simple errors such as: whether a `Route` has more than one `Stop` or that the
 underlying graph doesn't have any dead-ends or sources (a place which you can leave but cannot get back to).
 
-The underlying 
+The underlying
 network available to PT services (roads, railways, but also ferry/flight connections) uses a `networkx.MultiDiGraph`
-with additional methods for `'links'` which are unique in `genet.Network` (`networkx.MultiDiGraph` accepts multiple 
+with additional methods for `'links'` which are unique in `genet.Network` (`networkx.MultiDiGraph` accepts multiple
 edges between the same from and to node pair; referring to an edge in `networkx.MultiDiGraph` and `genet.Network`
-has the same effects, i.e. the result is a dictionary indexed by the multi edge index). The PT services are 
-represented through the `genet.Schedule` class which relies on other `genet` 
+has the same effects, i.e. the result is a dictionary indexed by the multi edge index). The PT services are
+represented through the `genet.Schedule` class which relies on other `genet`
 classes: the `Schedule` relies on a list of `genet.Service`'s, which in turn consists of a list of `genet.Route`'s.
 Each `Route` class object has an attribute `stops` which consists of `genet.Stops` objects. The `Stops` carry spatial
 information for the PT stop.
@@ -105,23 +105,23 @@ If the input network file lives at `/local/path/network.xml`.
 
 #### Running custom script inside a container
 
-Say you write a script `/local/path/my_genet_scripts/script.py` and you want to run it inside a docker container. 
-You will need to mount the local path to the container for the script to be found and use the generic `python` 
+Say you write a script `/local/path/my_genet_scripts/script.py` and you want to run it inside a docker container.
+You will need to mount the local path to the container for the script to be found and use the generic `python`
 as part of your command:
 
     docker run -v /local/path/:/mnt/ cml-genet python /mnt/my_genet_scripts/script.py
 
-Note, if you reference data inside your script, or pass them as arguments to the script, they need to reference the 
+Note, if you reference data inside your script, or pass them as arguments to the script, they need to reference the
 aliased path inside the container, here: `/mnt/`, rather than the path `/local/path/`.
 
 ### Installation as a Python Package / CLI
 
 You can in your base installation of python or a virtual environment.
 You can use GeNet's CLI to run pre-baked modifications or checks on networks.
-You can also write your own python scripts, importing genet as a package, use IPython shell or Jupyter Notebook to load 
-up a network, inspect or change it and save it out to file. Check out the 
-[wiki pages](https://github.com/arup-group/genet/wiki/Functionality-and-Usage-Guide) and 
-[example jupyter notebooks](https://github.com/arup-group/genet/tree/master/notebooks) 
+You can also write your own python scripts, importing genet as a package, use IPython shell or Jupyter Notebook to load
+up a network, inspect or change it and save it out to file. Check out the
+[wiki pages](https://github.com/arup-group/genet/wiki/Functionality-and-Usage-Guide) and
+[example jupyter notebooks](https://github.com/arup-group/genet/tree/master/notebooks)
 for usage examples.
 
 **Note:** if you plan only to _use_ GeNet rather than make code changes to it, you can avoid having to perform any
@@ -179,7 +179,7 @@ To inspect a specific command, run e.g.:
 
 #### Install Kepler dependencies
 
-Please follow [kepler's installation instructions](https://docs.kepler.gl/docs/keplergl-jupyter#install) to be able to 
+Please follow [kepler's installation instructions](https://docs.kepler.gl/docs/keplergl-jupyter#install) to be able to
 use the visualisation methods. To see the maps in a jupyter notebook, make sure you enable widgets.
 ```
 jupyter nbextension enable --py widgetsnbextension
@@ -209,7 +209,7 @@ To generate an HTML coverage report at `reports/coverage/index.html`:
 
 ### Lint the python code
 
-    ./bash_scripts/lint-check.sh
+    Run `pre-commit install` to install pre-commit, which will lint and format your code whenever you commit staged changes.
 
 ### Smoke test the Jupyter notebooks
 
