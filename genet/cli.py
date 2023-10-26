@@ -13,13 +13,7 @@ from pyproj import CRS
 import genet
 import genet.output.sanitiser as sanitiser
 import genet.utils.spatial as spatial
-from genet import (
-    google_directions,
-    read_gtfs,
-    read_matsim,
-    read_matsim_schedule,
-    read_osm,
-)
+from genet import google_directions, read_gtfs, read_matsim, read_matsim_schedule, read_osm
 from genet.core import Network
 from genet.output.geojson import (
     generate_headway_geojson,
@@ -36,9 +30,7 @@ logger = logging.getLogger(__name__)
 
 def _to_json(dict_to_save: dict, filepath: Path) -> None:
     with filepath.open("w", encoding="utf-8") as f:
-        json.dump(
-            sanitiser.sanitise_dictionary(dict_to_save), f, ensure_ascii=False, indent=4
-        )
+        json.dump(sanitiser.sanitise_dictionary(dict_to_save), f, ensure_ascii=False, indent=4)
 
 
 def _write_scaled_vehicles(schedule, list_of_scales, output_dir):
@@ -212,7 +204,7 @@ def osm(required: bool = True):
             help="Location of the osm file",
             required=required,
             type=path_type,
-            **kwargs
+            **kwargs,
         )(func)
         return click.option(
             "-oc",
@@ -221,7 +213,7 @@ def osm(required: bool = True):
             help="Location of the config file defining what and how to read from the osm file",
             required=required,
             type=path_type,
-            **kwargs
+            **kwargs,
         )(func)
 
     return wrapper
@@ -408,9 +400,7 @@ def add_elevation_to_network(
 
         gdf_nodes = network.to_geodataframe()["nodes"]
         gdf_nodes = gdf_nodes[["id", "z", "geometry"]]
-        save_geodataframe(
-            gdf_nodes.to_crs(EPSG4326), "node_elevation", supporting_outputs
-        )
+        save_geodataframe(gdf_nodes.to_crs(EPSG4326), "node_elevation", supporting_outputs)
 
     logging.info("Creating slope dictionary for network links")
     slope_dictionary = network.get_link_slope_dictionary(elevation_dict=elevation)
@@ -425,11 +415,7 @@ def add_elevation_to_network(
             slope_value = slope_dictionary[link_id]["slope"]
             attrib_dict[link_id] = {
                 "attributes": {
-                    "slope": {
-                        "name": "slope",
-                        "class": "java.lang.String",
-                        "text": slope_value,
-                    }
+                    "slope": {"name": "slope", "class": "java.lang.String", "text": slope_value}
                 }
             }
         network.apply_attributes_to_links(attrib_dict)
@@ -479,9 +465,7 @@ def auto_schedule_fixes(
     """
     ensure_dir(output_dir)
     logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.WARNING)
-    network = _read_network(
-        path_to_network, projection, path_to_schedule, path_to_vehicles
-    )
+    network = _read_network(path_to_network, projection, path_to_schedule, path_to_vehicles)
 
     gdf = network.schedule_network_routes_geodataframe().to_crs(EPSG4326)
 
@@ -527,9 +511,7 @@ def generate_standard_outputs(
 
     logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.WARNING)
 
-    network = _read_network(
-        path_to_network, projection, path_to_schedule, path_to_vehicles
-    )
+    network = _read_network(path_to_network, projection, path_to_schedule, path_to_vehicles)
 
     logging.info("Generating standard outputs")
     network.generate_standard_outputs(output_dir)
@@ -541,10 +523,7 @@ def generate_standard_outputs(
 @output_dir
 @subset_conditions
 def inspect_google_directions_requests_for_network(
-    path_to_network: Path,
-    projection: str,
-    output_dir: Path,
-    subset_conditions: Optional[str],
+    path_to_network: Path, projection: str, output_dir: Path, subset_conditions: Optional[str]
 ):
     """Generate Google Directions API requests for a network for inspection"""
 
@@ -569,16 +548,12 @@ def inspect_google_directions_requests_for_network(
         remove_links = set(network.link_id_mapping.keys()) - set(links_to_keep)
         network.remove_links(remove_links, silent=True)
         api_requests = google_directions.generate_requests(n=network)
-        logging.info(
-            f"Generated {len(api_requests)} requests for the subsetted network"
-        )
+        logging.info(f"Generated {len(api_requests)} requests for the subsetted network")
 
         if output_dir:
             sub_output_dir = output_dir / "subset"
             logging.info(f"Saving subset results to {sub_output_dir}")
-            google_directions.dump_all_api_requests_to_json(
-                api_requests, sub_output_dir
-            )
+            google_directions.dump_all_api_requests_to_json(api_requests, sub_output_dir)
 
 
 @cli.command()
@@ -658,19 +633,13 @@ def intermodal_access_egress_network(
     ensure_dir(output_dir)
     ensure_dir(supporting_outputs)
 
-    network = _read_network(
-        path_to_network, projection, path_to_schedule, path_to_vehicles
-    )
+    network = _read_network(path_to_network, projection, path_to_schedule, path_to_vehicles)
 
-    logging.info(
-        f"The following modes are present in the Schedule: {network.schedule.modes()}"
-    )
+    logging.info(f"The following modes are present in the Schedule: {network.schedule.modes()}")
     df_stops = network.schedule.to_geodataframe()["nodes"].to_crs(EPSG4326)
     if pt_modes is not None:
         pt_modes = pt_modes.split(",")
-        logging.info(
-            f"Stops serving the following modes will be considered: {pt_modes}"
-        )
+        logging.info(f"Stops serving the following modes will be considered: {pt_modes}")
         stops_subset = network.schedule.stops_on_modal_condition(modes=pt_modes)
         df_stops = df_stops.loc[stops_subset]
         df_stops[["lat", "lon", "geometry"]].to_file(
@@ -694,7 +663,7 @@ def intermodal_access_egress_network(
                 distance_threshold=distance_threshold,
             )
 
-            # TODO There are multiple links to choose from, for the time being we are not precious about which link is selected.  # noqa: E501
+            # TODO There are multiple links to choose from, for the time being we are not precious about which link is selected.
             selected_links = closest_links.reset_index().groupby("index").first()
             if len(selected_links) != len(df_stops):
                 logging.warning(
@@ -704,9 +673,7 @@ def intermodal_access_egress_network(
 
             # Let's create some handy geojson outputs to verify our snapping
             selected_links[["catchment", "geometry"]].to_file(
-                os.path.join(
-                    supporting_outputs, f"{snap_mode}_stop_catchments.geojson"
-                ),
+                os.path.join(supporting_outputs, f"{snap_mode}_stop_catchments.geojson"),
                 driver="GeoJSON",
             )
             # join to get link geoms
@@ -718,22 +685,16 @@ def intermodal_access_egress_network(
                 rsuffix="",
             )
             selected_links[["geometry"]].to_file(
-                os.path.join(
-                    supporting_outputs, f"{snap_mode}_access_egress_links.geojson"
-                ),
+                os.path.join(supporting_outputs, f"{snap_mode}_access_egress_links.geojson"),
                 driver="GeoJSON",
             )
             # get number of stops in each catchment
-            catchment_value_counts = (
-                selected_links["catchment"].value_counts().to_dict()
-            )
+            catchment_value_counts = selected_links["catchment"].value_counts().to_dict()
             _to_json(
                 catchment_value_counts,
                 supporting_outputs / f"{snap_mode}_catchment_value_counts.json",
             )
-            logging.info(
-                f"Number of stops in each catchment bin: {catchment_value_counts}"
-            )
+            logging.info(f"Number of stops in each catchment bin: {catchment_value_counts}")
 
             # generate the data dictionaries for updating stops data
             access_link_id_tag = f"accessLinkId_{snap_mode}"
@@ -742,9 +703,7 @@ def intermodal_access_egress_network(
 
             selected_links[access_link_id_tag] = selected_links["link_id"]
             selected_links[accessible_tag] = "true"
-            selected_links[distance_catchment_tag] = selected_links["catchment"].astype(
-                str
-            )
+            selected_links[distance_catchment_tag] = selected_links["catchment"].astype(str)
             new_stops_data = selected_links[
                 [access_link_id_tag, accessible_tag, distance_catchment_tag]
             ].T.to_dict()
@@ -914,9 +873,7 @@ def reproject_network(
 ):
     """Reproject a MATSim network"""
 
-    network = _read_network(
-        path_to_network, current_projection, path_to_schedule, path_to_vehicles
-    )
+    network = _read_network(path_to_network, current_projection, path_to_schedule, path_to_vehicles)
 
     logging.info("Reprojecting the network.")
 
@@ -949,9 +906,7 @@ def scale_vehicles(
     ensure_dir(output_dir)
     logging.info("Reading in schedule at {}".format(path_to_schedule))
     s = read_matsim_schedule(
-        path_to_schedule=path_to_schedule,
-        path_to_vehicles=path_to_vehicles,
-        epsg=projection,
+        path_to_schedule=path_to_schedule, path_to_vehicles=path_to_vehicles, epsg=projection
     )
 
     logging.info("Generating scaled vehicles xml.")
@@ -999,7 +954,7 @@ def scale_vehicles(
     "-tm",
     "--traffic_model",
     help="Google Directions API traffic model to consider when calculating time in traffic for choices. "
-    "See https://developers.google.com/maps/documentation/directions/get-directions#traffic_model",  # noqa
+    "See https://developers.google.com/maps/documentation/directions/get-directions#traffic_model",
     required=False,
     default="best_guess",
 )
@@ -1070,11 +1025,7 @@ def send_google_directions_requests_for_network(
     is_flag=True,
 )
 def separate_modes_in_network(
-    path_to_network: Path,
-    projection: str,
-    output_dir: Path,
-    modes: str,
-    increase_capacity: bool,
+    path_to_network: Path, projection: str, output_dir: Path, modes: str, increase_capacity: bool
 ):
     """Generate new links, each for the use of a singular mode in a MATSim network.
 
@@ -1095,7 +1046,7 @@ def separate_modes_in_network(
         ```
 
         In the case when a link already has a single dedicated mode, no updates are made to the link ID.
-        You can assume that all links that were in the network previously are still there, but their allowed modes may have changed.  # noqa: E501
+        You can assume that all links that were in the network previously are still there, but their allowed modes may have changed.
         So, any simulation outputs may not be valid with this new network.
     """
     modes = modes.split(",")
@@ -1104,9 +1055,7 @@ def separate_modes_in_network(
     ensure_dir(supporting_outputs)
 
     network = _read_network(path_to_network, projection)
-    logging.info(
-        f"Number of links before separating graph: {len(network.link_id_mapping)}"
-    )
+    logging.info(f"Number of links before separating graph: {len(network.link_id_mapping)}")
 
     _generate_modal_network_geojsons(network, modes, supporting_outputs, "before")
 
@@ -1118,10 +1067,7 @@ def separate_modes_in_network(
         modal_links = set(modal_links) & set(df[df != {mode}].index)
         update_mode_links = {k: {"modes": df.loc[k] - {mode}} for k in modal_links}
         new_links = {
-            f"{mode}---{k}": {
-                **network.link(k),
-                **{"modes": {mode}, "id": f"{mode}---{k}"},
-            }
+            f"{mode}---{k}": {**network.link(k), **{"modes": {mode}, "id": f"{mode}---{k}"}}
             for k in modal_links
         }
         network.apply_attributes_to_links(update_mode_links)
@@ -1129,15 +1075,11 @@ def separate_modes_in_network(
         if increase_capacity:
             logging.info(f"Increasing capacity for link of mode {mode} to 9999")
             mode_links = network.extract_links_on_edge_attributes({"modes": mode})
-            df_capacity = network.link_attribute_data_under_keys(["capacity"]).loc[
-                mode_links, :
-            ]
+            df_capacity = network.link_attribute_data_under_keys(["capacity"]).loc[mode_links, :]
             df_capacity["capacity"] = 9999
             network.apply_attributes_to_links(df_capacity.T.to_dict())
 
-    logging.info(
-        f"Number of links after separating graph: {len(network.link_id_mapping)}"
-    )
+    logging.info(f"Number of links after separating graph: {len(network.link_id_mapping)}")
 
     network.write_to_matsim(output_dir)
 
@@ -1161,7 +1103,7 @@ def separate_modes_in_network(
     "-fc",
     "--force_strongly_connected_graph",
     help="If True, checks for disconnected subgraphs for modes `walk`, `bike` and `car`. "
-    "If there are more than one strongly connected subgraph, genet connects them with links at closest points in the graph. "  # noqa: E501
+    "If there are more than one strongly connected subgraph, genet connects them with links at closest points in the graph. "
     "The links used to connect are weighted at 20% of surrounding freespeed and capacity values.",
     default=False,
     is_flag=True,
@@ -1180,9 +1122,7 @@ def simplify_network(
 
     ensure_dir(output_dir)
 
-    network = _read_network(
-        path_to_network, projection, path_to_schedule, path_to_vehicles
-    )
+    network = _read_network(path_to_network, projection, path_to_schedule, path_to_vehicles)
 
     logging.info("Simplifying the Network.")
 
@@ -1202,9 +1142,7 @@ def simplify_network(
         if not network.is_strongly_connected(modes={mode}):
             logging.info(f"The graph for {mode} mode is not strongly connected.")
             if force_strongly_connected_graph:
-                logging.info(
-                    "GeNet will now attempt to add links to connect the graph."
-                )
+                logging.info("GeNet will now attempt to add links to connect the graph.")
                 network.connect_components(modes={mode}, weight=1 / 5)
     end = time.time()
     logging.info(f"This took {round((end - start) / 60, 3)} min.")
@@ -1258,9 +1196,7 @@ def squeeze_external_area(
 
     logging.info("Finding links external to the study area")
     network_gdf = network.to_geodataframe()["links"]
-    network_internal = gpd.sjoin(
-        network_gdf, gdf_study_area, how="inner", predicate="intersects"
-    )
+    network_internal = gpd.sjoin(network_gdf, gdf_study_area, how="inner", predicate="intersects")
     external_links = set(network_gdf["id"].astype("str")) - set(
         network_internal["id"].astype("str")
     )
@@ -1286,9 +1222,7 @@ def squeeze_external_area(
     # THE SQUEEZE SECTION
 
     network_gdf = network_gdf.to_crs(EPSG4326)
-    _gdf = network_gdf[
-        network_gdf.apply(lambda x: modal_subset(x, {"car", "bus"}), axis=1)
-    ]
+    _gdf = network_gdf[network_gdf.apply(lambda x: modal_subset(x, {"car", "bus"}), axis=1)]
     save_geodataframe(
         _gdf[["id", "freespeed", "geometry"]],
         output_dir=supporting_outputs,
@@ -1315,9 +1249,7 @@ def squeeze_external_area(
     logging.info("Generating geojson outputs for visual validation")
     network_gdf = network.to_geodataframe()["links"]
     network_gdf = network_gdf.to_crs(EPSG4326)
-    network_gdf = network_gdf[
-        network_gdf.apply(lambda x: modal_subset(x, {"car", "bus"}), axis=1)
-    ]
+    network_gdf = network_gdf[network_gdf.apply(lambda x: modal_subset(x, {"car", "bus"}), axis=1)]
     save_geodataframe(
         network_gdf[["id", "freespeed", "geometry"]],
         output_dir=supporting_outputs,
@@ -1359,9 +1291,9 @@ def squeeze_urban_links(
 ):
     """Tag minor network links as urban, given geometries: `urban_geometries`.
 
-    Minor links are defined as anything other than: osm way highway tags: motorway, motorway_link, trunk, trunk_link, primary, primary_link.  # noqa: E501
+    Minor links are defined as anything other than: osm way highway tags: motorway, motorway_link, trunk, trunk_link, primary, primary_link.
     Urban geometries are passed via geojson input with a specific format, see command arguments for description.
-    Passing `study_area` subsets the urban geometries and links to be squeezed - only links in the study area will be tagged and squeezed.  # noqa: E501
+    Passing `study_area` subsets the urban geometries and links to be squeezed - only links in the study area will be tagged and squeezed.
     This is useful if your geometries covers a larger area.
     The script then reduces capacity and/or freespeed by a factor of current value on those links.
 
@@ -1389,25 +1321,23 @@ def squeeze_urban_links(
         gdf_study_area = gpd.read_file(path_to_study_area)
         if gdf_study_area.crs != projection:
             logging.info(
-                f"Projecting Study Area geometries from {str(gdf_study_area.crs)} to {projection}, to match the network projection"  # noqa: E501
+                f"Projecting Study Area geometries from {str(gdf_study_area.crs)} to {projection}, to match the network projection"
             )
             gdf_study_area = gdf_study_area.to_crs(CRS(projection))
         logging.info("Subsetting urban geometries on study area")
-        gdf_urban = gpd.sjoin(
-            gdf_urban, gdf_study_area, how="inner", predicate="intersects"
-        ).drop(columns=["index_right"])
+        gdf_urban = gpd.sjoin(gdf_urban, gdf_study_area, how="inner", predicate="intersects").drop(
+            columns=["index_right"]
+        )
 
     logging.info("Finding urban links")
     network_gdf = network.to_geodataframe()["links"]
-    network_urban = gpd.sjoin(
-        network_gdf, gdf_urban, how="inner", predicate="intersects"
-    ).drop(columns=["index_right"])
+    network_urban = gpd.sjoin(network_gdf, gdf_urban, how="inner", predicate="intersects").drop(
+        columns=["index_right"]
+    )
     if path_to_study_area is not None:
         # subsetting gdf_urban on study area is not enough if it consists of polygons that extend beyond
         # but it does make it faster to work with gdf_urban if it was large to begin with
-        network_urban = gpd.sjoin(
-            network_gdf, gdf_study_area, how="inner", predicate="intersects"
-        )
+        network_urban = gpd.sjoin(network_gdf, gdf_study_area, how="inner", predicate="intersects")
     urban_links = set(network_urban["id"].astype("str"))
 
     logging.info("Finding major road links")
@@ -1453,9 +1383,7 @@ def squeeze_urban_links(
 
     logging.info("Generating geojson outputs for visual validation")
     network_gdf = network_gdf.to_crs(EPSG4326)
-    _gdf = network_gdf[
-        network_gdf.apply(lambda x: modal_subset(x, {"car", "bus"}), axis=1)
-    ]
+    _gdf = network_gdf[network_gdf.apply(lambda x: modal_subset(x, {"car", "bus"}), axis=1)]
     save_geodataframe(
         _gdf[["id", "freespeed", "geometry"]],
         output_dir=supporting_outputs,
@@ -1481,9 +1409,7 @@ def squeeze_urban_links(
 
     logging.info("Generating geojson outputs for visual validation")
     network_gdf = network.to_geodataframe()["links"].to_crs(EPSG4326)
-    network_gdf = network_gdf[
-        network_gdf.apply(lambda x: modal_subset(x, {"car", "bus"}), axis=1)
-    ]
+    network_gdf = network_gdf[network_gdf.apply(lambda x: modal_subset(x, {"car", "bus"}), axis=1)]
     save_geodataframe(
         network_gdf[["id", "freespeed", "geometry"]],
         output_dir=supporting_outputs,
@@ -1515,7 +1441,5 @@ def validate_network(
     """Run MATSim specific validation methods on a MATSim network"""
 
     ensure_dir(output_dir)
-    network = _read_network(
-        path_to_network, projection, path_to_schedule, path_to_vehicles
-    )
+    network = _read_network(path_to_network, projection, path_to_schedule, path_to_vehicles)
     _generate_validation_report(network, output_dir)

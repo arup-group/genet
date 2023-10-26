@@ -14,24 +14,27 @@ from rich.table import Table
 
 
 def parse_args(cmd_args):
-    arg_parser = argparse.ArgumentParser(description='Smoke test a set of Jupyter notebook files')
-    arg_parser.add_argument('-d',
-                            '--notebook-directory',
-                            help='the path to the directory containing the notebooks to test')
-    arg_parser.add_argument('-k',
-                            '--kernel-name',
-                            help='the name of an iPython kernel to install',
-                            required=True)
-    arg_parser.add_argument('-n',
-                            '--notebook',
-                            action='append',
-                            help='an iPython notebook to execute - takes precedence over '
-                                 '--notebook-directory if both are set')
+    arg_parser = argparse.ArgumentParser(description="Smoke test a set of Jupyter notebook files")
+    arg_parser.add_argument(
+        "-d",
+        "--notebook-directory",
+        help="the path to the directory containing the notebooks to test",
+    )
+    arg_parser.add_argument(
+        "-k", "--kernel-name", help="the name of an iPython kernel to install", required=True
+    )
+    arg_parser.add_argument(
+        "-n",
+        "--notebook",
+        action="append",
+        help="an iPython notebook to execute - takes precedence over "
+        "--notebook-directory if both are set",
+    )
     return vars(arg_parser.parse_args(cmd_args))
 
 
 def print_banner():
-    banner = '''
+    banner = """
  a,  8a
  `8, `8)                            ,adPPRg,
   8)  ]8                        ,ad888888888b
@@ -51,18 +54,23 @@ def print_banner():
 |  \| |  _ \  \___ \| |\/| | | | | ' /|  _|     | | |  _| \___ \ | |
 | |\  | |_) |  ___) | |  | | |_| | . \| |___    | | | |___ ___) || |
 |_| \_|____/  |____/|_|  |_|\___/|_|\_\_____|   |_| |_____|____/ |_|
-    '''
+    """
     print("{}{}{}".format(Fore.CYAN, banner, Style.RESET_ALL))
 
 
 def install_jupyter_kernel(kernel_name):
-    print("Making sure we have a Jupyter kernel called {}{}{} installed...".format(Fore.YELLOW,
-                                                                                   kernel_name,
-                                                                                   Style.RESET_ALL))
+    print(
+        "Making sure we have a Jupyter kernel called {}{}{} installed...".format(
+            Fore.YELLOW, kernel_name, Style.RESET_ALL
+        )
+    )
     kernel_install_cmd = [
-        'ipython', 'kernel', 'install',
-        '--name', '"{}"'.format(kernel_name),
-        '--user'
+        "ipython",
+        "kernel",
+        "install",
+        "--name",
+        '"{}"'.format(kernel_name),
+        "--user",
     ]
     return run_shell_command(kernel_install_cmd)
 
@@ -70,28 +78,35 @@ def install_jupyter_kernel(kernel_name):
 def execute_notebook(notebook_path, notebook_results_dict):
     print("Executing notebook '{}{}{}'...".format(Fore.YELLOW, notebook_path, Style.RESET_ALL))
     cmd = [
-        'jupyter', 'nbconvert',
-        '--to', 'notebook',
-        '--execute', '"{}"'.format(notebook_path),
-        '--output-dir=/tmp'
+        "jupyter",
+        "nbconvert",
+        "--to",
+        "notebook",
+        "--execute",
+        '"{}"'.format(notebook_path),
+        "--output-dir=/tmp",
     ]
     return_code, cmd, run_time = run_shell_command(cmd)
     notebook_results_dict[notebook_path] = (return_code, run_time)
 
 
 def run_shell_command(shell_cmd):
-    print(Fore.BLUE + ' '.join(shell_cmd))
+    print(Fore.BLUE + " ".join(shell_cmd))
     start_time = datetime.now()
-    rc = subprocess.call(' '.join(shell_cmd), shell=True)
+    rc = subprocess.call(" ".join(shell_cmd), shell=True)
     running_time = datetime.now() - start_time
-    print("{}Shell process return value for {}{}{} was {}{}{}".format(Style.RESET_ALL,
-                                                                      Fore.YELLOW,
-                                                                      shell_cmd,
-                                                                      Style.RESET_ALL,
-                                                                      Fore.YELLOW,
-                                                                      rc,
-                                                                      Style.RESET_ALL))
-    return rc, ' '.join(shell_cmd), running_time
+    print(
+        "{}Shell process return value for {}{}{} was {}{}{}".format(
+            Style.RESET_ALL,
+            Fore.YELLOW,
+            shell_cmd,
+            Style.RESET_ALL,
+            Fore.YELLOW,
+            rc,
+            Style.RESET_ALL,
+        )
+    )
+    return rc, " ".join(shell_cmd), running_time
 
 
 def find_notebooks(notebook_dir):
@@ -101,7 +116,7 @@ def find_notebooks(notebook_dir):
 
 
 def trim_time_delta(time_delta):
-    return str(time_delta).split('.')[0]
+    return str(time_delta).split(".")[0]
 
 
 def print_summary(notebook_results_dict):
@@ -109,66 +124,80 @@ def print_summary(notebook_results_dict):
     console.print("")
     passes = [ret_code for ret_code, time in notebook_results.values() if ret_code == 0]
     failures = [ret_code for ret_code, time in notebook_results.values() if ret_code != 0]
-    table_caption = "{} failed, {} passed in [yellow bold]{}[/yellow bold]"\
-        .format(len(failures),
-                len(passes),
-                trim_time_delta(datetime.now() - start))
-    results_table = Table(show_header=True,
-                          header_style="bold magenta",
-                          title="Smoke Test Summary",
-                          caption=table_caption)
+    table_caption = "{} failed, {} passed in [yellow bold]{}[/yellow bold]".format(
+        len(failures), len(passes), trim_time_delta(datetime.now() - start)
+    )
+    results_table = Table(
+        show_header=True,
+        header_style="bold magenta",
+        title="Smoke Test Summary",
+        caption=table_caption,
+    )
     results_table.add_column("Notebook", justify="left")
     results_table.add_column("Result", justify="left")
     results_table.add_column("Time", style="dim")
     for notebook_file, result in notebook_results_dict.items():
-        short_name = notebook_file.split('/')[-1]
+        short_name = notebook_file.split("/")[-1]
         exit_code, duration = result
         colour = "green" if exit_code == 0 else "red"
         outcome = "PASSED" if exit_code == 0 else "FAILED"
-        results_table.add_row(short_name,
-                              "[{}]{}[/{}]".format(colour, outcome, colour),
-                              trim_time_delta(duration))
+        results_table.add_row(
+            short_name, "[{}]{}[/{}]".format(colour, outcome, colour), trim_time_delta(duration)
+        )
     console.print(results_table)
     console.print("")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print_banner()
     start = datetime.now()
     command_args = parse_args(sys.argv[1:])
-    if command_args['notebook']:
-        notebooks = command_args['notebook']
+    if command_args["notebook"]:
+        notebooks = command_args["notebook"]
         notebooks.sort()
-        print("Executing notebooks files {}{}{}".format(Fore.YELLOW,
-                                                        notebooks,
-                                                        Style.RESET_ALL))
-    elif command_args['notebook_directory']:
-        print("Smoke testing Jupyter notebooks in {}'{}'{} directory".format(Fore.YELLOW,
-                                                                             command_args['notebook_directory'],
-                                                                             Style.RESET_ALL))
-        notebooks = find_notebooks(command_args['notebook_directory'])
-        print("Found {}{}{} notebooks files in {}{}{}".format(Fore.YELLOW,
-                                                              len(notebooks),
-                                                              Style.RESET_ALL,
-                                                              Fore.YELLOW,
-                                                              command_args['notebook_directory'],
-                                                              Style.RESET_ALL))
+        print("Executing notebooks files {}{}{}".format(Fore.YELLOW, notebooks, Style.RESET_ALL))
+    elif command_args["notebook_directory"]:
+        print(
+            "Smoke testing Jupyter notebooks in {}'{}'{} directory".format(
+                Fore.YELLOW, command_args["notebook_directory"], Style.RESET_ALL
+            )
+        )
+        notebooks = find_notebooks(command_args["notebook_directory"])
+        print(
+            "Found {}{}{} notebooks files in {}{}{}".format(
+                Fore.YELLOW,
+                len(notebooks),
+                Style.RESET_ALL,
+                Fore.YELLOW,
+                command_args["notebook_directory"],
+                Style.RESET_ALL,
+            )
+        )
     if not notebooks:
-        print("No notebooks to test - our work here is done. Double check the {}{}{} directory if this seems wrong."
-              .format(Fore.YELLOW, command_args['notebook_directory'], Style.RESET_ALL))
+        print(
+            "No notebooks to test - our work here is done. Double check the {}{}{} directory if this seems wrong.".format(
+                Fore.YELLOW, command_args["notebook_directory"], Style.RESET_ALL
+            )
+        )
         sys.exit(0)
 
     pprint(notebooks, width=120)
-    return_code, cmd, run_time = install_jupyter_kernel(command_args['kernel_name'])
+    return_code, cmd, run_time = install_jupyter_kernel(command_args["kernel_name"])
     if return_code:
-        print("{}Warning: Jupyter kernel installation shell command did not exit normally"
-              " - this may cause problems later{}".format(Fore.RED, Style.RESET_ALL))
+        print(
+            "{}Warning: Jupyter kernel installation shell command did not exit normally"
+            " - this may cause problems later{}".format(Fore.RED, Style.RESET_ALL)
+        )
 
     notebook_results = Manager().dict()
     with multiprocessing.Pool() as pool:
         pool.starmap(execute_notebook, zip(notebooks, repeat(notebook_results)))
 
-    print('------------------------------------------------------')
-    print("\nFinished the smoke test in {}{}{}".format(Fore.YELLOW, datetime.now() - start, Style.RESET_ALL))
+    print("------------------------------------------------------")
+    print(
+        "\nFinished the smoke test in {}{}{}".format(
+            Fore.YELLOW, datetime.now() - start, Style.RESET_ALL
+        )
+    )
     print_summary(notebook_results)
     sys.exit(sum(ret_code for ret_code, time in notebook_results.values()))

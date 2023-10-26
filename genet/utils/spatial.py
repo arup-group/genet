@@ -1,16 +1,18 @@
-import polyline
+import json
 import logging
-import s2sphere as s2
+import statistics
+from typing import Tuple
+
+import geopandas as gpd
 import networkx as nx
 import numpy as np
-from sklearn.neighbors import BallTree
-import statistics
-import json
-from shapely.geometry import LineString, shape, GeometryCollection, MultiLineString, Point
-from shapely.ops import linemerge, split
 import pandas as pd
-import geopandas as gpd
-from typing import Tuple
+import polyline
+import s2sphere as s2
+from shapely.geometry import GeometryCollection, LineString, MultiLineString, Point, shape
+from shapely.ops import linemerge, split
+from sklearn.neighbors import BallTree
+
 import genet.output.geojson as gngeojson
 from genet.exceptions import EmptySpatialTree
 
@@ -98,8 +100,10 @@ def split_line_at_point(point: Point, line: LineString) -> Tuple[LineString, Lin
         # are very close.
         if point.distance(projected_point) < 1e-8:
             # the points are too close
-            logging.warning("Given point is very close, but not cannot be placed on the line. We move it slightly "
-                            "and the resulting split may not be exact.")
+            logging.warning(
+                "Given point is very close, but not cannot be placed on the line. We move it slightly "
+                "and the resulting split may not be exact."
+            )
             point = Point(round(point.x, 2), round(point.y, 2))
         split_line = continue_line_from_two_points(point, projected_point)
         result = tuple(split(line, split_line).geoms)
@@ -145,7 +149,7 @@ def read_geojson_to_shapely(geojson_file):
 
 
 def s2_hex_to_cell_union(hex_area):
-    hex_area = hex_area.split(',')
+    hex_area = hex_area.split(",")
     cell_ids = []
     for token in hex_area:
         cell_ids.append(s2.CellId.from_token(token))
@@ -203,22 +207,24 @@ def map_azimuth_to_name(azimuth):
     degrees from North (0)
     """
     azimuth_to_name = {
-        (-22.5, 22.5): 'North Bound',
-        (22.5, 67.5): 'North-East Bound',
-        (67.5, 112.5): 'East Bound',
-        (112.5, 157.5): 'South-East Bound',
-        (-157.5, -112.5): 'South-West Bound',
-        (-112.5, -67.5): 'West Bound',
-        (-67.5, -22.5): 'North-West Bound',
+        (-22.5, 22.5): "North Bound",
+        (22.5, 67.5): "North-East Bound",
+        (67.5, 112.5): "East Bound",
+        (112.5, 157.5): "South-East Bound",
+        (-157.5, -112.5): "South-West Bound",
+        (-112.5, -67.5): "West Bound",
+        (-67.5, -22.5): "North-West Bound",
     }
     if azimuth > 180 or azimuth < -180:
-        raise NotImplementedError(f'Azimuth value of {azimuth} given. Only implemented for -180 =< azimuth =< 180')
+        raise NotImplementedError(
+            f"Azimuth value of {azimuth} given. Only implemented for -180 =< azimuth =< 180"
+        )
     for (lower_bound, upper_bound), name in azimuth_to_name.items():
         if lower_bound < azimuth <= upper_bound:
             return name
     # (-157.5, -180 | 180, 157.5): 'South Bound'
     if azimuth > 157.5 or azimuth <= -157.5:
-        return 'South Bound'
+        return "South Bound"
 
 
 def get_nearest(src_points, candidates, k_neighbors=1):
@@ -226,7 +232,7 @@ def get_nearest(src_points, candidates, k_neighbors=1):
     """Find nearest neighbors for all source points from a set of candidate points"""
 
     # Create tree from the candidate points
-    tree = BallTree(candidates, leaf_size=15, metric='haversine')
+    tree = BallTree(candidates, leaf_size=15, metric="haversine")
 
     # Find closest points and distances
     distances, indices = tree.query(src_points, k=k_neighbors)
@@ -261,9 +267,15 @@ def nearest_neighbor(left_gdf, right_gdf, return_dist=False):
     # Parse coordinates from points and insert them into a numpy array as RADIANS
     # Notice: should be in Lat/Lon format
     left_radians = np.array(
-        left_gdf[left_geom_col].apply(lambda geom: (geom.y * np.pi / 180, geom.x * np.pi / 180)).to_list())
+        left_gdf[left_geom_col]
+        .apply(lambda geom: (geom.y * np.pi / 180, geom.x * np.pi / 180))
+        .to_list()
+    )
     right_radians = np.array(
-        right[right_geom_col].apply(lambda geom: (geom.y * np.pi / 180, geom.x * np.pi / 180)).to_list())
+        right[right_geom_col]
+        .apply(lambda geom: (geom.y * np.pi / 180, geom.x * np.pi / 180))
+        .to_list()
+    )
 
     # Find the nearest points
     # -----------------------
@@ -281,20 +293,22 @@ def nearest_neighbor(left_gdf, right_gdf, return_dist=False):
     # Add distance if requested
     if return_dist:
         # Convert to meters from radians
-        closest_points['distance'] = dist * APPROX_EARTH_RADIUS
+        closest_points["distance"] = dist * APPROX_EARTH_RADIUS
 
     return closest_points
 
 
 def approximate_metres_distance_in_4326_degrees(distance, lat):
     # https://gis.stackexchange.com/questions/2951/algorithm-for-offsetting-a-latitude-longitude-by-some-amount-of-meters
-    return ((float(distance) / 111111) + float(distance) / (111111 * np.cos(np.radians(float(lat))))) / 2
+    return (
+        (float(distance) / 111111) + float(distance) / (111111 * np.cos(np.radians(float(lat))))
+    ) / 2
 
 
 class SpatialTree(nx.DiGraph):
     def __init__(self, n=None):
         super().__init__()
-        self.links = gpd.GeoDataFrame(columns=['link_id', 'modes', 'geometry'])
+        self.links = gpd.GeoDataFrame(columns=["link_id", "modes", "geometry"])
         if n is not None:
             self.add_links(n)
 
@@ -305,21 +319,34 @@ class SpatialTree(nx.DiGraph):
         :param n: genet.Network object
         :return:
         """
-        self.links = n.to_geodataframe()['links'].to_crs('epsg:4326')
-        self.links = self.links.rename(columns={'id': 'link_id'})
-        self.links = self.links.set_index('link_id', drop=False)
+        self.links = n.to_geodataframe()["links"].to_crs("epsg:4326")
+        self.links = self.links.rename(columns={"id": "link_id"})
+        self.links = self.links.set_index("link_id", drop=False)
 
-        nodes = self.links.set_index('link_id').T.to_dict()
+        nodes = self.links.set_index("link_id").T.to_dict()
         self.add_nodes_from(nodes)
 
-        cols = ['from', 'to', 'link_id']
-        edge_data_cols = list(set(self.links.columns) - set(cols + ['modes', 'geometry', 'u', 'v', 'key']))
-        edges = pd.merge(self.links[cols + edge_data_cols], self.links[cols], left_on='to', right_on='from',
-                         suffixes=('_to', '_from'))
+        cols = ["from", "to", "link_id"]
+        edge_data_cols = list(
+            set(self.links.columns) - set(cols + ["modes", "geometry", "u", "v", "key"])
+        )
+        edges = pd.merge(
+            self.links[cols + edge_data_cols],
+            self.links[cols],
+            left_on="to",
+            right_on="from",
+            suffixes=("_to", "_from"),
+        )
         edge_data = edges[edge_data_cols].T.to_dict()
-        self.add_edges_from(list(zip(edges['link_id_to'],
-                                     edges['link_id_from'],
-                                     [edge_data[idx] for idx in edges['link_id_to'].index])))
+        self.add_edges_from(
+            list(
+                zip(
+                    edges["link_id_to"],
+                    edges["link_id_from"],
+                    [edge_data[idx] for idx in edges["link_id_to"].index],
+                )
+            )
+        )
 
     def modal_links_geodataframe(self, modes):
         """
@@ -331,7 +358,7 @@ class SpatialTree(nx.DiGraph):
             modes = {modes}
         _df = self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, modes), axis=1)]
         if _df.empty:
-            raise EmptySpatialTree(f'No links found satisfying modes: {modes}')
+            raise EmptySpatialTree(f"No links found satisfying modes: {modes}")
         return _df
 
     def modal_subtree(self, modes):
@@ -341,7 +368,7 @@ class SpatialTree(nx.DiGraph):
         """
         sub_tree = self.__class__()
         links = gpd.GeoDataFrame(self.modal_links_geodataframe(modes))
-        sub_tree = self.subgraph(links['link_id'])
+        sub_tree = self.subgraph(links["link_id"])
         sub_tree.links = links
         return sub_tree
 
@@ -354,21 +381,24 @@ class SpatialTree(nx.DiGraph):
         :param distance_radius: metres
         :return: GeoDataFrame
         """
-        bdds = gdf_points['geometry'].bounds
-        approx_lat = (bdds['miny'].mean() + bdds['maxy'].mean()) / 2
-        approx_degree_radius = approximate_metres_distance_in_4326_degrees(distance_radius, approx_lat)
-        gdf_points['geometry'] = gdf_points['geometry'].apply(lambda x: grow_point(x, approx_degree_radius))
+        bdds = gdf_points["geometry"].bounds
+        approx_lat = (bdds["miny"].mean() + bdds["maxy"].mean()) / 2
+        approx_degree_radius = approximate_metres_distance_in_4326_degrees(
+            distance_radius, approx_lat
+        )
+        gdf_points["geometry"] = gdf_points["geometry"].apply(
+            lambda x: grow_point(x, approx_degree_radius)
+        )
         try:
             closest_links = gpd.sjoin(
-                self.links[['link_id', 'geometry']],
-                gdf_points,
-                how='right',
-                predicate='intersects'
+                self.links[["link_id", "geometry"]], gdf_points, how="right", predicate="intersects"
             )
             return closest_links
         except EmptySpatialTree:
             return gpd.GeoDataFrame(
-                columns=set(gdf_points.columns) | {'index_left', 'link_id', 'geometry'}, crs='epsg:4326')
+                columns=set(gdf_points.columns) | {"index_left", "link_id", "geometry"},
+                crs="epsg:4326",
+            )
 
     def path(self, G, source, target, weight=None):
         try:
@@ -376,7 +406,7 @@ class SpatialTree(nx.DiGraph):
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             pass
 
-    def shortest_paths(self, df_pt_edges, from_col='u', to_col='v', weight='length'):
+    def shortest_paths(self, df_pt_edges, from_col="u", to_col="v", weight="length"):
         """
         :param df_pt_edges: pandas DataFrame with a `from_col` and `to_col` defining links stored in the graph for
         which a path is required
@@ -386,15 +416,18 @@ class SpatialTree(nx.DiGraph):
         :return: df_pt_edges with an extra column 'shortest_path'
         """
         if df_pt_edges.empty:
-            df_pt_edges['shortest_path'] = None
+            df_pt_edges["shortest_path"] = None
         else:
             try:
-                df_pt_edges['shortest_path'] = df_pt_edges.apply(
-                    lambda x: self.path(G=self, source=x[from_col], target=x[to_col], weight=weight),
-                    axis=1)
+                df_pt_edges["shortest_path"] = df_pt_edges.apply(
+                    lambda x: self.path(
+                        G=self, source=x[from_col], target=x[to_col], weight=weight
+                    ),
+                    axis=1,
+                )
             except EmptySpatialTree:
-                logging.warning('Shortest path could not be found due to an empty SpatialTree')
-                df_pt_edges['shortest_path'] = None
+                logging.warning("Shortest path could not be found due to an empty SpatialTree")
+                df_pt_edges["shortest_path"] = None
         return df_pt_edges
 
     def path_length(self, G, source, target, weight=None):
@@ -403,7 +436,7 @@ class SpatialTree(nx.DiGraph):
         except nx.NetworkXNoPath:
             pass
 
-    def shortest_path_lengths(self, df_pt_edges, from_col='u', to_col='v', weight='length'):
+    def shortest_path_lengths(self, df_pt_edges, from_col="u", to_col="v", weight="length"):
         """
         :param df_pt_edges: pandas DataFrame with a `from_col` and `to_col` defining links stored in the graph for
         which a path length is required
@@ -413,13 +446,15 @@ class SpatialTree(nx.DiGraph):
         :return: df_pt_edges with an extra column 'shortest_path'
         """
         if df_pt_edges.empty:
-            df_pt_edges['path_lengths'] = None
+            df_pt_edges["path_lengths"] = None
         else:
             try:
-                df_pt_edges['path_lengths'] = df_pt_edges.apply(
-                    lambda x: self.path_length(G=self, source=x[from_col], target=x[to_col],
-                                               weight=weight),
-                    axis=1)
+                df_pt_edges["path_lengths"] = df_pt_edges.apply(
+                    lambda x: self.path_length(
+                        G=self, source=x[from_col], target=x[to_col], weight=weight
+                    ),
+                    axis=1,
+                )
             except EmptySpatialTree:
-                df_pt_edges['path_lengths'] = None
+                df_pt_edges["path_lengths"] = None
         return df_pt_edges

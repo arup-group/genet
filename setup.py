@@ -1,5 +1,6 @@
 import os
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -20,7 +21,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/arup-group/genet",
     packages=find_packages(),
-    python_requires='>=3.7',
+    python_requires=">=3.7",
     install_requires=install_requires,
     include_package_data=True,
     entry_points={"console_scripts": ["genet = genet.cli:cli"]},
