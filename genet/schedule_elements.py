@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import math
-import pkgutil
+import importlib_resources
 from abc import abstractmethod
 from collections import defaultdict
 from copy import deepcopy
@@ -1455,8 +1455,9 @@ class Schedule(ScheduleElement):
                  _graph: nx.DiGraph = None,
                  minimal_transfer_times: Dict[str, Dict[str, float]] = None,
                  vehicles=None,
-                 vehicle_types: Union[str, dict] = pkgutil.get_data(__name__, os.path.join("configs", "vehicles",
-                                                                                           "vehicle_definitions.yml")),
+                 vehicle_types: Union[str, dict] = (
+                    importlib_resources.files("genet") / "configs" / "vehicles" / "vehicle_definitions.yml"
+                 ).as_posix(),
                  **kwargs):
         if isinstance(vehicle_types, dict):
             self.vehicle_types = vehicle_types

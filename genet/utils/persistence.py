@@ -1,7 +1,8 @@
 import os
 import logging
 import shutil
-from typing import Union
+from typing import Any, Union
+from pathlib import Path
 
 
 def ensure_dir(direc):
@@ -32,26 +33,32 @@ def listify(value: Union[str, list, set]):
         return []
 
 
-def is_yml(path):
-    if isinstance(path, str):
-        return path.lower().endswith(".yml") or path.lower().endswith(".yaml")
-    return False
+def _check_type_and_suffix(input: Any, suffix=Union[str, list[str]]):
+    if not isinstance(input, (str, Path)):
+        return False
+    if not isinstance(suffix, list):
+        suffix = [suffix]
+    return Path(input).suffix.lower() in suffix
 
 
-def is_geojson(path):
-    return path.lower().endswith(".geojson")
+def is_yml(path: Union[Path, str]):
+    return _check_type_and_suffix(path, [".yml", ".yaml"])
 
 
-def is_csv(path):
-    return path.lower().endswith(".csv")
+def is_geojson(path: Union[Path, str]):
+    return _check_type_and_suffix(path, ".geojson")
 
 
-def is_json(path):
-    return path.lower().endswith(".json")
+def is_csv(path: Union[Path, str]):
+    return _check_type_and_suffix(path, ".csv")
 
 
-def is_zip(path):
-    return path.lower().endswith(".zip")
+def is_json(path: Union[Path, str]):
+    return _check_type_and_suffix(path, ".json")
+
+
+def is_zip(path: Union[Path, str]):
+    return _check_type_and_suffix(path, ".zip")
 
 
 def zip_folder(folder_path):

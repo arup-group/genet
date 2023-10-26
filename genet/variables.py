@@ -51,3 +51,5 @@ for key, value in EXTENDED_TYPE_DICT.items():
 # e.g. {1: "subway", 400: "subway", 401: "subway", 402: "subway", ...]}
 EXTENDED_TYPE_MAP = dict(zip(new_keys, new_values))
 del new_keys, new_values
+
+EPSG4326 = "epsg:4326"
