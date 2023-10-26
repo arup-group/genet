@@ -2,7 +2,7 @@ import pytest
 
 from genet import Route, Schedule, Service, Stop
 from genet.validate import schedule as schedule_validation
-from tests.fixtures import assert_semantically_equal
+from tests.fixtures import assert_semantically_equal, test_schedule  # noqa: F401
 
 
 @pytest.fixture()

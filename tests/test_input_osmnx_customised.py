@@ -1,5 +1,5 @@
 from genet.input import osmnx_customised
-from tests.fixtures import assert_semantically_equal
+from tests.fixtures import assert_semantically_equal, full_fat_default_config  # noqa: F401
 
 
 def test_return_edges_handles_regular_non_oneway_paths(full_fat_default_config):

@@ -1,7 +1,7 @@
 from pyproj import Proj, Transformer
 
 from genet.schedule_elements import SPATIAL_TOLERANCE, Stop
-from tests.fixtures import assert_semantically_equal
+from tests.fixtures import assert_semantically_equal, stop_epsg_27700  # noqa: F401
 
 
 def test_initiate_stop_with_kwargs():

@@ -5,7 +5,16 @@ from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 
 from genet.input import gtfs_reader
-from tests.fixtures import assert_semantically_equal
+from tests.fixtures import (
+    assert_semantically_equal,
+    correct_routes_db,  # noqa: F401
+    correct_schedule_graph_data_from_test_gtfs,  # noqa: F401
+    correct_schedule_graph_edges_from_test_gtfs,  # noqa: F401
+    correct_schedule_graph_nodes_from_test_gtfs,  # noqa: F401
+    correct_stop_times_db,  # noqa: F401
+    correct_stops_db,  # noqa: F401
+    correct_trips_db,  # noqa: F401
+)
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 gtfs_test_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs"))

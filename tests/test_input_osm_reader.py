@@ -2,7 +2,7 @@ import os
 import sys
 
 from genet.input import osm_reader
-from tests.fixtures import assert_semantically_equal
+from tests.fixtures import assert_semantically_equal, full_fat_default_config  # noqa: F401
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 osm_test_file = os.path.abspath(

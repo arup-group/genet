@@ -7,7 +7,23 @@ from shapely.geometry import LineString
 
 from genet.input import matsim_reader, read
 from genet.utils import java_dtypes
-from tests.fixtures import XmlElement, assert_semantically_equal
+from tests.fixtures import (
+    XmlElement,
+    assert_semantically_equal,
+    correct_services_from_test_pt2matsim_schedule,  # noqa: F401
+)
+from tests.test_output_matsim_xml_writer import (
+    network_with_additional_node_attrib,  # noqa: F401
+    network_with_additional_node_attrib_xml_file,  # noqa: F401
+    schedule_with_additional_attrib,  # noqa: F401
+    schedule_with_additional_attrib_stop,  # noqa: F401
+    schedule_with_additional_attrib_stop_xml_file,  # noqa: F401
+    schedule_with_additional_attribs_xml_file,  # noqa: F401
+    schedule_with_additional_route_attrib,  # noqa: F401
+    schedule_with_additional_route_attribs_xml_file,  # noqa: F401
+    schedule_with_additional_service_attrib,  # noqa: F401
+    schedule_with_additional_service_attribs_xml_file,  # noqa: F401
+)
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(

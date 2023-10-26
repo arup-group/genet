@@ -3,7 +3,14 @@ import os
 from shapely.geometry import LineString
 
 from genet.input import read
-from tests.fixtures import Route, Service, Stop, assert_semantically_equal
+from tests.fixtures import (
+    Route,
+    Service,
+    Stop,
+    assert_semantically_equal,
+    correct_stops_to_route_mapping_from_test_gtfs,  # noqa: F401
+    correct_stops_to_service_mapping_from_test_gtfs,  # noqa: F401
+)
 
 json_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "json"))
 

@@ -15,7 +15,11 @@ from genet.input import read
 from genet.output import matsim_xml_writer
 from genet.schedule_elements import Route, Schedule, Service, Stop, read_vehicle_types
 from tests import xml_diff
-from tests.fixtures import assert_semantically_equal
+from tests.fixtures import (
+    assert_semantically_equal,
+    full_fat_default_config_path,  # noqa: F401
+    network_object_from_test_data,  # noqa: F401
+)
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(

@@ -10,6 +10,7 @@ select = ["E", "F", "I", "Q"]
 ignore = [
     "E501", # line too long: Black will handle this.
     "D1",   # Ignore missing docstrings in public functions/modules. There are just too many of them missing...
+    "F811"  # TODO: reintroduce once fixtures are fixed.
 ]
 
 # Exclude a variety of commonly ignored directories.

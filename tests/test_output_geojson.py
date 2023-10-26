@@ -4,7 +4,7 @@ import pytest
 
 from genet import Network, Route, Schedule, Service, Stop
 from genet.output import geojson as gngeojson
-from tests.fixtures import assert_semantically_equal
+from tests.fixtures import assert_semantically_equal, correct_schedule  # noqa: F401
 
 
 @pytest.fixture()

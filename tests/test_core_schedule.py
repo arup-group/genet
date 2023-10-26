@@ -27,8 +27,15 @@ from tests.fixtures import (
     NetworkForIntermodalAccessEgressTesting,
     assert_logging_warning_caught_with_message_containing,
     assert_semantically_equal,
+    different_test_service,  # noqa: F401
     list_of_times_somewhat_accurate,
+    similar_non_exact_test_route,  # noqa: F401
+    test_service,  # noqa: F401
+    vehicle_definitions_config_path,  # noqa: F401
 )
+from tests.test_core_components_route import route, self_looping_route  # noqa: F401
+from tests.test_core_components_service import service  # noqa: F401
+from tests.test_core_schedule_elements import schedule_graph  # noqa: F401
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_schedule_file = os.path.abspath(
@@ -1354,9 +1361,9 @@ def test_applying_function_to_services(schedule):
 
 def test_applying_function_to_routes(schedule):
     schedule.apply_function_to_routes(function=change_name, location="route_short_name")
-    for route in schedule.routes():
-        assert schedule._graph.graph["routes"][route.id]["route_short_name"] == "new_name"
-        assert route.route_short_name == "new_name"
+    for _route in schedule.routes():
+        assert schedule._graph.graph["routes"][_route.id]["route_short_name"] == "new_name"
+        assert _route.route_short_name == "new_name"
 
 
 def test_applying_function_to_stops(schedule):

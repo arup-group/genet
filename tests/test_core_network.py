@@ -20,7 +20,15 @@ from genet.input import matsim_reader, read
 from genet.schedule_elements import Route, Schedule, Service, Stop
 from genet.utils import plot, spatial
 from genet.validate import network as network_validation
-from tests.fixtures import NetworkForIntermodalAccessEgressTesting, assert_semantically_equal
+from tests.fixtures import (
+    NetworkForIntermodalAccessEgressTesting,
+    assert_semantically_equal,
+    correct_schedule,  # noqa: F401
+    full_fat_default_config_path,  # noqa: F401
+    network_object_from_test_data,  # noqa: F401
+    route,  # noqa: F401
+)
+from tests.test_output_matsim_xml_writer import network_dtd  # noqa: F401
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 pt2matsim_network_test_file = os.path.abspath(

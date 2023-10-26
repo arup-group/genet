@@ -10,6 +10,7 @@ from genet.utils import plot
 from tests.fixtures import (
     assert_logging_warning_caught_with_message_containing,
     assert_semantically_equal,
+    stop_epsg_27700,  # noqa: F401
 )
 
 
