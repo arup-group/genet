@@ -13,7 +13,7 @@ networkx < 4
 numpy >= 1, < 2
 osmium < 3.7
 osmnx < 2
-pandas >= 1.5, < 3
+pandas >= 1.5, < 2.1
 polyline >= 2, < 3
 pyomo >= 6, < 7
 pyproj >= 3, < 4

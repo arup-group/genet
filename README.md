@@ -155,13 +155,13 @@ example:
 #### Install dev prereqs
 (Use equivalent linux or Windows package management as appropriate for your environment)
 
-    brew install python3.7
+    brew install python3.11
     brew install virtualenv
 
 #### Install Python dependencies
 Create and activate a Python virtual environment
 
-    virtualenv -p python3.7 venv
+    virtualenv -p python3.11 venv
     source venv/bin/activate
 
 #### Install GeNet in to the virtual environment
