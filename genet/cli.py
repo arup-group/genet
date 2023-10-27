@@ -47,7 +47,7 @@ def _write_scaled_vehicles(schedule, list_of_scales, output_dir):
         schedule.scale_vehicle_capacity(scale, scale, output_dir)
 
 
-def _generate_validation_report(network, output_dir: Path) -> None:
+def _generate_validation_reports(network, output_dir: Path) -> None:
     logging.info("Generating validation report")
     report = network.generate_validation_report()
     logging.info(f'Graph validation: {report["graph"]["graph_connectivity"]}')
@@ -64,6 +64,10 @@ def _generate_validation_report(network, output_dir: Path) -> None:
         )
 
     _to_json(report, output_dir / "validation_report.json")
+
+    logging.info("Generating summary report")
+    summary_report = network.summary_report()
+    _to_json(summary_report, output_dir / "summary_report.json")
 
 
 def _read_network(
@@ -841,7 +845,7 @@ def make_pt_network(
         "They will be teleported"
     )
     network.teleport_service(service_ids=unsnapped_services)
-    _generate_validation_report(network, output_dir)
+    _generate_validation_reports(network, output_dir)
 
     network.generate_standard_outputs(os.path.join(output_dir, "standard_outputs"))
 
@@ -1216,7 +1220,7 @@ def simplify_network(
         logging.info("Generating scaled vehicles xml.")
         _write_scaled_vehicles(network.schedule, vehicle_scalings, output_dir)
 
-    _generate_validation_report(network, output_dir)
+    _generate_validation_reports(network, output_dir)
 
     network.generate_standard_outputs(os.path.join(output_dir, "standard_outputs"))
 
@@ -1518,4 +1522,4 @@ def validate_network(
     network = _read_network(
         path_to_network, projection, path_to_schedule, path_to_vehicles
     )
-    _generate_validation_report(network, output_dir)
+    _generate_validation_reports(network, output_dir)
