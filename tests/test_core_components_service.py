@@ -11,11 +11,10 @@ from tests.fixtures import (
     Stop,
     assert_logging_warning_caught_with_message_containing,
     assert_semantically_equal,
-    route,  # noqa: F401
     similar_non_exact_test_route,  # noqa: F401
     test_service,  # noqa: F401
 )
-from tests.test_core_components_route import self_looping_route  # noqa: F401
+from tests.test_core_components_route import route, self_looping_route  # noqa: F401
 
 
 @pytest.fixture()
