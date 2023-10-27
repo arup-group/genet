@@ -9,3 +9,5 @@ from genet.exceptions import ScheduleElementGraphSchemaError, RouteInitialisatio
 from genet.utils import graph_operations  # noqa: F401
 from genet.utils import google_directions  # noqa: F401
 from genet.utils import elevation  # noqa: F401
+from genet.utils import spatial  # noqa: F401
+from genet.output import geojson  # noqa: F401

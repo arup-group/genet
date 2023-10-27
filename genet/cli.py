@@ -10,23 +10,8 @@ import geopandas as gpd
 import pandas as pd
 from pyproj import CRS
 
-import genet
+import genet as gn
 import genet.output.sanitiser as sanitiser
-import genet.utils.spatial as spatial
-from genet import (
-    google_directions,
-    read_gtfs,
-    read_matsim,
-    read_matsim_schedule,
-    read_osm,
-)
-from genet.core import Network
-from genet.output.geojson import (
-    generate_headway_geojson,
-    generate_speed_geojson,
-    modal_subset,
-    save_geodataframe,
-)
 from genet.utils.persistence import ensure_dir
 from genet.variables import EPSG4326
 
@@ -75,7 +60,7 @@ def _read_network(
     projection: str,
     path_to_schedule: Optional[Path] = None,
     path_to_vehicles: Optional[Path] = None,
-) -> Network:
+) -> gn.Network:
     logging.info("Reading in network at {}".format(path_to_network))
     if path_to_schedule is not None:
         logging.info(f"Reading in schedule at {path_to_schedule}")
@@ -91,7 +76,7 @@ def _read_network(
             "If your network is road only, that is fine, otherwise if you mix and match them, you will have a bad time."
         )
 
-    network = read_matsim(
+    network = gn.read_matsim(
         path_to_network=path_to_network.as_posix(),
         epsg=projection,
         path_to_schedule=path_to_schedule.as_posix() if path_to_schedule is not None else None,
@@ -149,7 +134,7 @@ def _generate_modal_network_geojsons(network, modes, output_dir, filename_suffix
     for mode in modes:
         _gdf = gdf[gdf["modes"].apply(lambda x: mode in x)]
         _gdf["modes"] = _gdf["modes"].apply(lambda x: ",".join(sorted(list(x))))
-        save_geodataframe(_gdf, f"mode_{mode}_{filename_suffix}", output_dir)
+        gn.geojson.save_geodataframe(_gdf, f"mode_{mode}_{filename_suffix}", output_dir)
 
 
 @click.version_option()
@@ -396,7 +381,7 @@ def add_elevation_to_network(
         _to_json(elevation, output_dir / "node_elevation_dictionary.json")
 
     logging.info("Validating the node elevation data")
-    report = genet.elevation.validation_report_for_node_elevation(elevation)
+    report = gn.elevation.validation_report_for_node_elevation(elevation)
     logging.info(report["summary"])
 
     if save_jsons:
@@ -412,7 +397,7 @@ def add_elevation_to_network(
 
         gdf_nodes = network.to_geodataframe()["nodes"]
         gdf_nodes = gdf_nodes[["id", "z", "geometry"]]
-        save_geodataframe(
+        gn.geojson.save_geodataframe(
             gdf_nodes.to_crs(EPSG4326), "node_elevation", supporting_outputs
         )
 
@@ -443,10 +428,10 @@ def add_elevation_to_network(
         df["slope"] = [x["slope"] for x in df["slope_tuple"]]
         df = df[["id", "slope"]]
         gdf_links = pd.merge(gdf, df, on="id")
-        save_geodataframe(gdf_links.to_crs(EPSG4326), "link_slope", supporting_outputs)
+        gn.geojson.save_geodataframe(gdf_links.to_crs(EPSG4326), "link_slope", supporting_outputs)
 
     if write_slope_to_object_attribute_file:
-        genet.elevation.write_slope_xml(slope_dictionary, output_dir)
+        gn.elevation.write_slope_xml(slope_dictionary, output_dir)
 
     logging.info("Writing the updated network")
     network.write_to_matsim(output_dir)
@@ -491,17 +476,17 @@ def auto_schedule_fixes(
 
     logging.info("Checking for zero headways")
     if network.schedule.has_trips_with_zero_headways():
-        generate_headway_geojson(network, gdf, output_dir, "before")
+        gn.geojson.generate_headway_geojson(network, gdf, output_dir, "before")
         network.schedule.fix_trips_with_zero_headways()
-        generate_headway_geojson(network, gdf, output_dir, "after")
+        gn.geojson.generate_headway_geojson(network, gdf, output_dir, "after")
     else:
         logging.info("No trips with zero headways were found")
 
     logging.info("Checking for infinite speeds")
     if network.schedule.has_infinite_speeds():
-        generate_speed_geojson(network, gdf, output_dir, "before")
+        gn.geojson.generate_speed_geojson(network, gdf, output_dir, "before")
         network.schedule.fix_infinite_speeds()
-        generate_speed_geojson(network, gdf, output_dir, "after")
+        gn.geojson.generate_speed_geojson(network, gdf, output_dir, "after")
     else:
         logging.info("No routes with infinite speeds were found")
 
@@ -555,12 +540,12 @@ def inspect_google_directions_requests_for_network(
     network = _read_network(path_to_network, projection)
 
     logging.info("Generating requests for the network")
-    api_requests = google_directions.generate_requests(n=network)
+    api_requests = gn.google_directions.generate_requests(n=network)
     logging.info(f"Generated {len(api_requests)} requests for the given network")
 
     if output_dir:
         logging.info(f"Saving results to {output_dir}")
-        google_directions.dump_all_api_requests_to_json(api_requests, output_dir)
+        gn.google_directions.dump_all_api_requests_to_json(api_requests, output_dir)
 
     if subset_conditions is not None:
         subset_conditions = subset_conditions.split(",")
@@ -572,7 +557,7 @@ def inspect_google_directions_requests_for_network(
         )
         remove_links = set(network.link_id_mapping.keys()) - set(links_to_keep)
         network.remove_links(remove_links, silent=True)
-        api_requests = google_directions.generate_requests(n=network)
+        api_requests = gn.google_directions.generate_requests(n=network)
         logging.info(
             f"Generated {len(api_requests)} requests for the subsetted network"
         )
@@ -580,7 +565,7 @@ def inspect_google_directions_requests_for_network(
         if output_dir:
             sub_output_dir = output_dir / "subset"
             logging.info(f"Saving subset results to {sub_output_dir}")
-            google_directions.dump_all_api_requests_to_json(
+            gn.google_directions.dump_all_api_requests_to_json(
                 api_requests, sub_output_dir
             )
 
@@ -685,7 +670,7 @@ def intermodal_access_egress_network(
     if network_snap_modes is not None:
         network_snap_modes = network_snap_modes.split(",")
         logging.info("Building Spatial Tree")
-        spatial_tree = spatial.SpatialTree(network)
+        spatial_tree = gn.spatial.SpatialTree(network)
 
         for snap_mode in network_snap_modes:
             logging.info(f"Snapping mode: {snap_mode}")
@@ -805,7 +790,7 @@ def make_pt_network(
 
     if path_to_osm is not None:
         logging.info(f"Reading in network at {path_to_osm}")
-        network = read_osm(path_to_osm, path_to_osm_config, num_processes=processes)
+        network = gn.read_osm(path_to_osm, path_to_osm_config, num_processes=processes)
         logging.info("Simplifying network")
         network.simplify(no_processes=processes)
         logging.info(
@@ -824,7 +809,7 @@ def make_pt_network(
         )
 
     logging.info(f"Reading GTFS at {path_to_gtfs} for day: {gtfs_day}")
-    network.schedule = read_gtfs(path_to_gtfs, day=gtfs_day, epsg=projection)
+    network.schedule = gn.read_gtfs(path_to_gtfs, day=gtfs_day, epsg=projection)
 
     logging.info(
         f"Snapping and routing the schedule onto the network with distance threshold {snapping_distance}"
@@ -876,7 +861,7 @@ def make_road_only_network(
     """Create a road-only MATSim network"""
 
     logging.info("Reading in network at {}".format(osm))
-    network = read_osm(
+    network = gn.read_osm(
         osm_file_path=path_to_osm,
         osm_read_config=path_to_osm_config,
         num_processes=processes,
@@ -952,7 +937,7 @@ def scale_vehicles(
         vehicle_scalings = [float(vsc) for vsc in vehicle_scalings.split(",")]
     ensure_dir(output_dir)
     logging.info("Reading in schedule at {}".format(path_to_schedule))
-    s = read_matsim_schedule(
+    s = gn.read_matsim_schedule(
         path_to_schedule=path_to_schedule,
         path_to_vehicles=path_to_vehicles,
         epsg=projection,
@@ -1042,7 +1027,7 @@ def send_google_directions_requests_for_network(
         network.remove_links(remove_links, silent=True)
         logging.info("Proceeding with the subsetted network")
 
-    google_directions.send_requests_for_network(
+    gn.google_directions.send_requests_for_network(
         n=network,
         request_number_threshold=requests_threshold,
         output_dir=output_dir,
@@ -1281,7 +1266,7 @@ def squeeze_external_area(
 
     logging.info("Generating geojson of external road links")
     external_tag_gdf = network_gdf[network_gdf["id"].isin(set(links_to_squeeze))]
-    save_geodataframe(
+    gn.geojson.save_geodataframe(
         external_tag_gdf[["id", "geometry"]].to_crs(EPSG4326),
         "external_network_links",
         supporting_outputs,
@@ -1291,14 +1276,14 @@ def squeeze_external_area(
 
     network_gdf = network_gdf.to_crs(EPSG4326)
     _gdf = network_gdf[
-        network_gdf.apply(lambda x: modal_subset(x, {"car", "bus"}), axis=1)
+        network_gdf.apply(lambda x: gn.geojson.modal_subset(x, {"car", "bus"}), axis=1)
     ]
-    save_geodataframe(
+    gn.geojson.save_geodataframe(
         _gdf[["id", "freespeed", "geometry"]],
         output_dir=supporting_outputs,
         filename="freespeed_before",
     )
-    save_geodataframe(
+    gn.geojson.save_geodataframe(
         _gdf[["id", "capacity", "geometry"]],
         output_dir=supporting_outputs,
         filename="capacity_before",
@@ -1320,14 +1305,14 @@ def squeeze_external_area(
     network_gdf = network.to_geodataframe()["links"]
     network_gdf = network_gdf.to_crs(EPSG4326)
     network_gdf = network_gdf[
-        network_gdf.apply(lambda x: modal_subset(x, {"car", "bus"}), axis=1)
+        network_gdf.apply(lambda x: gn.geojson.modal_subset(x, {"car", "bus"}), axis=1)
     ]
-    save_geodataframe(
+    gn.geojson.save_geodataframe(
         network_gdf[["id", "freespeed", "geometry"]],
         output_dir=supporting_outputs,
         filename="freespeed_after",
     )
-    save_geodataframe(
+    gn.geojson.save_geodataframe(
         network_gdf[["id", "capacity", "geometry"]],
         output_dir=supporting_outputs,
         filename="capacity_after",
@@ -1440,7 +1425,7 @@ def squeeze_urban_links(
 
     logging.info("Generating geojson of urban road links")
     urban_tag_gdf = network_gdf[network_gdf["id"].isin(set(links_to_tag))]
-    save_geodataframe(
+    gn.geojson.save_geodataframe(
         urban_tag_gdf[["id", "geometry"]].to_crs(EPSG4326),
         "urban_network_links",
         supporting_outputs,
@@ -1458,14 +1443,14 @@ def squeeze_urban_links(
     logging.info("Generating geojson outputs for visual validation")
     network_gdf = network_gdf.to_crs(EPSG4326)
     _gdf = network_gdf[
-        network_gdf.apply(lambda x: modal_subset(x, {"car", "bus"}), axis=1)
+        network_gdf.apply(lambda x: gn.geojson.modal_subset(x, {"car", "bus"}), axis=1)
     ]
-    save_geodataframe(
+    gn.geojson.save_geodataframe(
         _gdf[["id", "freespeed", "geometry"]],
         output_dir=supporting_outputs,
         filename="freespeed_before",
     )
-    save_geodataframe(
+    gn.geojson.save_geodataframe(
         _gdf[["id", "capacity", "geometry"]],
         output_dir=supporting_outputs,
         filename="capacity_before",
@@ -1486,14 +1471,14 @@ def squeeze_urban_links(
     logging.info("Generating geojson outputs for visual validation")
     network_gdf = network.to_geodataframe()["links"].to_crs(EPSG4326)
     network_gdf = network_gdf[
-        network_gdf.apply(lambda x: modal_subset(x, {"car", "bus"}), axis=1)
+        network_gdf.apply(lambda x: gn.geojson.modal_subset(x, {"car", "bus"}), axis=1)
     ]
-    save_geodataframe(
+    gn.geojson.save_geodataframe(
         network_gdf[["id", "freespeed", "geometry"]],
         output_dir=supporting_outputs,
         filename="freespeed_after",
     )
-    save_geodataframe(
+    gn.geojson.save_geodataframe(
         network_gdf[["id", "capacity", "geometry"]],
         output_dir=supporting_outputs,
         filename="capacity_after",
