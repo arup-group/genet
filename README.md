@@ -147,21 +147,21 @@ The solver you use needs to support MILP - mixed integer linear programming.
 The commands for installing the necessary native libraries vary according to the operating system you are using, for
 example:
 
-| OS       | Commands |
-|----------|----------|
-|Mac OS    | `brew install spatialindex` <br/> `brew install gdal --HEAD` <br/> `brew install gdal` <br/> `brew tap coin-or-tools/coinor` <br/> `brew install coin-or-tools/coinor/cbc`|
-|Ubuntu    | `sudo apt install libspatialindex-dev` <br/> `sudo apt install libgdal-dev` <br/> `sudo apt install coinor-cbc`|
+| OS       | Commands                                                                                                                                                                                                                      |
+|----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Mac OS    | `brew install boost` <br/> `brew install spatialindex` <br/> `brew install gdal --HEAD` <br/> `brew install gdal` <br/> `brew tap coin-or-tools/coinor` <br/> `brew install coin-or-tools/coinor/cbc` <br/> `brew install cbc` |
+|Ubuntu    | `sudo apt install libspatialindex-dev` <br/> `sudo apt install libgdal-dev` <br/> `sudo apt install coinor-cbc`                                                                                                               |
 
 #### Install dev prereqs
 (Use equivalent linux or Windows package management as appropriate for your environment)
 
-    brew install python3.7
+    brew install python3.11
     brew install virtualenv
 
 #### Install Python dependencies
 Create and activate a Python virtual environment
 
-    virtualenv -p python3.7 venv
+    virtualenv -p python3.11 venv
     source venv/bin/activate
 
 #### Install GeNet in to the virtual environment
