@@ -1,3 +1,5 @@
+import logging
+
 from genet.auxiliary_files import AuxiliaryFile
 from genet.core import Network
 from genet.input.read import (
@@ -14,6 +16,10 @@ from genet.input.read import (
     read_osm,
 )
 from genet.max_stable_set import MaxStableSet
+from genet.output import geojson
 from genet.schedule_elements import Route, Schedule, Service, Stop
 from genet.use.road_pricing import Toll
-from genet.utils import elevation, google_directions, graph_operations
+from genet.utils import elevation, google_directions, graph_operations, spatial
+
+logging.basicConfig(format="%(levelname)-3s %(asctime)s - %(message)s", level=logging.INFO)
+logger = logging.getLogger(__name__)
