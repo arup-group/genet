@@ -1,11 +1,7 @@
-import logging
 from pathlib import Path
 from typing import Any, Optional
 
 import click
-
-logging.basicConfig(level=logging.INFO, format="%(levelname)-3s %(message)s")
-logger = logging.getLogger(__name__)
 
 
 @click.version_option()

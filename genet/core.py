@@ -35,8 +35,6 @@ import genet.utils.simplification as simplification
 import genet.utils.spatial as spatial
 import genet.validate.network as network_validation
 
-logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
-
 
 class Network:
     def __init__(self, epsg, **kwargs):

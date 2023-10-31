@@ -222,7 +222,6 @@ def auto_schedule_fixes(
          the times at other stops are kept the same as much as possible.
     """
     ensure_dir(output_dir)
-    logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.WARNING)
     network = _read_network(path_to_network, projection, path_to_schedule, path_to_vehicles)
     gdf = network.schedule_network_routes_geodataframe().to_crs(EPSG4326)
     logging.info("Checking for zero headways")
@@ -872,7 +871,6 @@ def generate_standard_outputs(
 ):
     "Generate Standard outputs for a network and/or schedule"
     ensure_dir(output_dir)
-    logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.WARNING)
     network = _read_network(path_to_network, projection, path_to_schedule, path_to_vehicles)
     logging.info("Generating standard outputs")
     network.generate_standard_outputs(output_dir)
