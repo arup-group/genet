@@ -317,7 +317,10 @@ def test_validate_network(invoke_runner_and_check_files):
             f'--vehicles={EXAMPLE_VEHICLES}',
             f'--projection={PROJECTION}',
         ],
-        expected_files=['validation_report.json']
+        expected_files=[
+            'validation_report.json',
+            'summary_report.json',
+        ]
     )
 
 
