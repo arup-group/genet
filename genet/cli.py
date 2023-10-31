@@ -237,18 +237,18 @@ def add_elevation_to_network(
     save_jsons: bool,
 ):
     """Add elevation data to network nodes, validate it, and calculate link slopes."""
-    from genet.use.cli import add_elevation_to_network
+    from genet.use.recipes import add_elevation_to_network
 
     add_elevation_to_network(
-        path_to_network,
-        projection,
-        path_to_elevation,
-        null_value,
-        output_dir,
-        write_elevation_to_network,
-        write_slope_to_network,
-        write_slope_to_object_attribute_file,
-        save_jsons,
+        path_to_network=path_to_network,
+        projection=projection,
+        path_to_elevation=path_to_elevation,
+        null_value=null_value,
+        output_dir=output_dir,
+        write_elevation_to_network=write_elevation_to_network,
+        write_slope_to_network=write_slope_to_network,
+        write_slope_to_object_attribute_file=write_slope_to_object_attribute_file,
+        save_jsons=save_jsons,
     )
 
 
@@ -281,15 +281,15 @@ def auto_schedule_fixes(
          This is corrected by recalculating the arrival and departure times at the problem stops;
          the times at other stops are kept the same as much as possible.
     """
-    from genet.use.cli import auto_schedule_fixes
+    from genet.use.recipes import auto_schedule_fixes
 
     auto_schedule_fixes(
-        path_to_network,
-        path_to_schedule,
-        path_to_vehicles,
-        projection,
-        output_dir,
-        vehicle_scalings,
+        path_to_network=path_to_network,
+        path_to_schedule=path_to_schedule,
+        path_to_vehicles=path_to_vehicles,
+        projection=projection,
+        output_dir=output_dir,
+        vehicle_scalings=vehicle_scalings,
     )
 
 
@@ -307,10 +307,14 @@ def generate_standard_outputs(
     output_dir: Path,
 ):
     """Generate Standard outputs for a network and/or schedule"""
-    from genet.use.cli import generate_standard_outputs
+    from genet.use.recipes import generate_standard_outputs
 
     generate_standard_outputs(
-        path_to_network, path_to_schedule, path_to_vehicles, projection, output_dir
+        path_to_network=path_to_network,
+        path_to_schedule=path_to_schedule,
+        path_to_vehicles=path_to_vehicles,
+        projection=projection,
+        output_dir=output_dir,
     )
 
 
@@ -323,10 +327,13 @@ def inspect_google_directions_requests_for_network(
     path_to_network: Path, projection: str, output_dir: Path, subset_conditions: Optional[str]
 ):
     """Generate Google Directions API requests for a network for inspection"""
-    from genet.use.cli import inspect_google_directions_requests_for_network
+    from genet.use.recipes import inspect_google_directions_requests_for_network
 
     inspect_google_directions_requests_for_network(
-        path_to_network, projection, output_dir, subset_conditions
+        path_to_network=path_to_network,
+        projection=projection,
+        output_dir=output_dir,
+        subset_conditions=subset_conditions,
     )
 
 
@@ -402,19 +409,19 @@ def intermodal_access_egress_network(
     Intended to generate PT schedules to work with SBB extensions in MATSim:
     https://github.com/matsim-org/matsim-libs/tree/master/contribs/sbb-extensions#intermodal-access-and-egress
     """
-    from genet.use.cli import intermodal_access_egress_network
+    from genet.use.recipes import intermodal_access_egress_network
 
     intermodal_access_egress_network(
-        path_to_network,
-        path_to_schedule,
-        path_to_vehicles,
-        projection,
-        output_dir,
-        pt_modes,
-        network_snap_modes,
-        teleport_modes,
-        step_size,
-        distance_threshold,
+        path_to_network=path_to_network,
+        path_to_schedule=path_to_schedule,
+        path_to_vehicles=path_to_vehicles,
+        projection=projection,
+        output_dir=output_dir,
+        pt_modes=pt_modes,
+        network_snap_modes=network_snap_modes,
+        teleport_modes=teleport_modes,
+        step_size=step_size,
+        distance_threshold=distance_threshold,
     )
 
 
@@ -445,18 +452,18 @@ def make_pt_network(
     snapping_distance: float,
 ):
     """Create a PT MATSim network"""
-    from genet.use.cli import make_pt_network
+    from genet.use.recipes import make_pt_network
 
     make_pt_network(
-        path_to_network,
-        projection,
-        output_dir,
-        path_to_osm,
-        path_to_osm_config,
-        path_to_gtfs,
-        gtfs_day,
-        processes,
-        snapping_distance,
+        path_to_network=path_to_network,
+        projection=projection,
+        output_dir=output_dir,
+        path_to_osm=path_to_osm,
+        path_to_osm_config=path_to_osm_config,
+        path_to_gtfs=path_to_gtfs,
+        gtfs_day=gtfs_day,
+        processes=processes,
+        snapping_distance=snapping_distance,
     )
 
 
@@ -481,10 +488,15 @@ def make_road_only_network(
     connected_components: int,
 ):
     """Create a road-only MATSim network"""
-    from genet.use.cli import make_road_only_network
+    from genet.use.recipes import make_road_only_network
 
     make_road_only_network(
-        projection, output_dir, path_to_osm, path_to_osm_config, processes, connected_components
+        projection=projection,
+        output_dir=output_dir,
+        path_to_osm=path_to_osm,
+        path_to_osm_config=path_to_osm_config,
+        processes=processes,
+        connected_components=connected_components,
     )
 
 
@@ -518,16 +530,16 @@ def reproject_network(
     new_projection: str,
 ):
     """Reproject a MATSim network"""
-    from genet.use.cli import reproject_network
+    from genet.use.recipes import reproject_network
 
     reproject_network(
-        path_to_network,
-        path_to_schedule,
-        path_to_vehicles,
-        processes,
-        output_dir,
-        current_projection,
-        new_projection,
+        path_to_network=path_to_network,
+        path_to_schedule=path_to_schedule,
+        path_to_vehicles=path_to_vehicles,
+        processes=processes,
+        output_dir=output_dir,
+        current_projection=current_projection,
+        new_projection=new_projection,
     )
 
 
@@ -545,9 +557,15 @@ def scale_vehicles(
     vehicle_scalings: Optional[str],
 ):
     """Scale PT Schedule vehicles"""
-    from genet.use.cli import scale_vehicles
+    from genet.use.recipes import scale_vehicles
 
-    scale_vehicles(path_to_schedule, path_to_vehicles, projection, output_dir, vehicle_scalings)
+    scale_vehicles(
+        path_to_schedule=path_to_schedule,
+        path_to_vehicles=path_to_vehicles,
+        projection=projection,
+        output_dir=output_dir,
+        vehicle_scalings=vehicle_scalings,
+    )
 
 
 @cli.command()
@@ -615,19 +633,19 @@ def send_google_directions_requests_for_network(
     departure_time: str,
 ):
     """Generate and send Google Directions API requests"""
-    from genet.use.cli import send_google_directions_requests_for_network
+    from genet.use.recipes import send_google_directions_requests_for_network
 
     send_google_directions_requests_for_network(
-        path_to_network,
-        projection,
-        output_dir,
-        subset_conditions,
-        requests_threshold,
-        api_key,
-        secret_name,
-        region_name,
-        traffic_model,
-        departure_time,
+        path_to_network=path_to_network,
+        projection=projection,
+        output_dir=output_dir,
+        subset_conditions=subset_conditions,
+        requests_threshold=requests_threshold,
+        api_key=api_key,
+        secret_name=secret_name,
+        region_name=region_name,
+        traffic_model=traffic_model,
+        departure_time=departure_time,
     )
 
 
@@ -675,9 +693,15 @@ def separate_modes_in_network(
         You can assume that all links that were in the network previously are still there, but their allowed modes may have changed.
         So, any simulation outputs may not be valid with this new network.
     """
-    from genet.use.cli import separate_modes_in_network
+    from genet.use.recipes import separate_modes_in_network
 
-    separate_modes_in_network(path_to_network, projection, output_dir, modes, increase_capacity)
+    separate_modes_in_network(
+        path_to_network=path_to_network,
+        projection=projection,
+        output_dir=output_dir,
+        modes=modes,
+        increase_capacity=increase_capacity,
+    )
 
 
 @cli.command()
@@ -708,17 +732,17 @@ def simplify_network(
     force_strongly_connected_graph: bool,
 ):
     """Simplify a MATSim network by removing intermediate links from paths"""
-    from genet.use.cli import simplify_network
+    from genet.use.recipes import simplify_network
 
     simplify_network(
-        path_to_network,
-        path_to_schedule,
-        path_to_vehicles,
-        projection,
-        processes,
-        output_dir,
-        vehicle_scalings,
-        force_strongly_connected_graph,
+        path_to_network=path_to_network,
+        path_to_schedule=path_to_schedule,
+        path_to_vehicles=path_to_vehicles,
+        projection=projection,
+        processes=processes,
+        output_dir=output_dir,
+        vehicle_scalings=vehicle_scalings,
+        force_strongly_connected_graph=force_strongly_connected_graph,
     )
 
 
@@ -739,10 +763,15 @@ def squeeze_external_area(
 
     To squeeze links within the study area, refer to the `squeeze_urban_links` command.
     """
-    from genet.use.cli import squeeze_external_area
+    from genet.use.recipes import squeeze_external_area
 
     squeeze_external_area(
-        path_to_network, projection, output_dir, path_to_study_area, freespeed, capacity
+        path_to_network=path_to_network,
+        projection=projection,
+        output_dir=output_dir,
+        path_to_study_area=path_to_study_area,
+        freespeed=freespeed,
+        capacity=capacity,
     )
 
 
@@ -780,16 +809,16 @@ def squeeze_urban_links(
 
     To squeeze links outside the study area, refer to the `squeeze_external_area.py` command.
     """
-    from genet.use.cli import squeeze_urban_links
+    from genet.use.recipes import squeeze_urban_links
 
     squeeze_urban_links(
-        path_to_network,
-        projection,
-        output_dir,
-        path_to_urban_geometries,
-        path_to_study_area,
-        freespeed,
-        capacity,
+        path_to_network=path_to_network,
+        projection=projection,
+        output_dir=output_dir,
+        path_to_urban_geometries=path_to_urban_geometries,
+        path_to_study_area=path_to_study_area,
+        freespeed=freespeed,
+        capacity=capacity,
     )
 
 
@@ -807,6 +836,12 @@ def validate_network(
     output_dir: Path,
 ):
     """Run MATSim specific validation methods on a MATSim network"""
-    from genet.use.cli import validate_network
+    from genet.use.recipes import validate_network
 
-    validate_network(path_to_network, path_to_schedule, path_to_vehicles, projection, output_dir)
+    validate_network(
+        path_to_network=path_to_network,
+        path_to_schedule=path_to_schedule,
+        path_to_vehicles=path_to_vehicles,
+        projection=projection,
+        output_dir=output_dir,
+    )
