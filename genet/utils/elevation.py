@@ -1,13 +1,14 @@
-import rioxarray
-import numpy as np
-from lxml import etree
-import os
 import logging
+import os
+
+import numpy as np
+import rioxarray
+from lxml import etree
 
 
 def get_elevation_image(elevation_tif):
     xarr_file = rioxarray.open_rasterio(elevation_tif)
-    if str(xarr_file.rio.crs) != 'EPSG:4326':
+    if str(xarr_file.rio.crs) != "EPSG:4326":
         xarr_file = xarr_file.rio.write_crs(4326, inplace=True)
 
     return xarr_file[0, :, :]
@@ -34,7 +35,7 @@ def validation_report_for_node_elevation(elev_dict, low_limit=-50, mont_blanc_he
 
     elevation_list = []
     for node_id in elev_dict.keys():
-        elevation_list.append(elev_dict[node_id]['z'])
+        elevation_list.append(elev_dict[node_id]["z"])
 
     min_value = np.min(elevation_list)
     max_value = np.max(elevation_list)
@@ -45,23 +46,24 @@ def validation_report_for_node_elevation(elev_dict, low_limit=-50, mont_blanc_he
     too_low = {}
 
     for node_id in elev_dict.keys():
-        node_elev = elev_dict[node_id]['z']
+        node_elev = elev_dict[node_id]["z"]
         if node_elev < low_limit:
             too_low[node_id] = node_elev
         elif node_elev > mont_blanc_height:
             too_high[node_id] = node_elev
 
     report = {
-        'summary': {'total_nodes': len(elevation_list),
-                    'min_value': int(min_value),
-                    'max_value': int(max_value),
-                    'mean': int(mean),
-                    'median': int(median),
-                    'extremely_high_values_count': len(too_high),
-                    'extremely_low_values_count': len(too_low)},
-
-        'values': {'extremely_high_values_dict': too_high,
-                   'extremely_low_values_dict': too_low}}
+        "summary": {
+            "total_nodes": len(elevation_list),
+            "min_value": int(min_value),
+            "max_value": int(max_value),
+            "mean": int(mean),
+            "median": int(median),
+            "extremely_high_values_count": len(too_high),
+            "extremely_low_values_count": len(too_low),
+        },
+        "values": {"extremely_high_values_dict": too_high, "extremely_low_values_dict": too_low},
+    }
 
     return report
 
@@ -72,19 +74,17 @@ def write_slope_xml(link_slope_dictionary, output_dir):
     :param link_slope_dictionary: dictionary of link slopes in format {link_id: {'slope': slope_value}}
     :param output_dir: directory where the XML file will be written to
     """
-    fname = os.path.join(output_dir, 'link_slopes.xml')
-    logging.info(f'Writing {fname}')
+    fname = os.path.join(output_dir, "link_slopes.xml")
+    logging.info(f"Writing {fname}")
 
-    with open(fname, "wb") as f, etree.xmlfile(f, encoding='UTF-8') as xf:
+    with open(fname, "wb") as f, etree.xmlfile(f, encoding="UTF-8") as xf:
         xf.write_declaration(
-            doctype='<!DOCTYPE objectAttributes SYSTEM "http://matsim.org/files/dtd/objectattributes_v1.dtd">')
+            doctype='<!DOCTYPE objectAttributes SYSTEM "http://matsim.org/files/dtd/objectattributes_v1.dtd">'
+        )
         with xf.element("objectAttributes"):
             for link_id, slope_dict in link_slope_dictionary.items():
-                with xf.element("object", {'id': link_id}):
-                    attrib = {
-                        'name': 'slope',
-                        'class': 'java.lang.Double',
-                    }
+                with xf.element("object", {"id": link_id}):
+                    attrib = {"name": "slope", "class": "java.lang.Double"}
                     rec = etree.Element("attribute", attrib)
-                    rec.text = str(slope_dict['slope'])
+                    rec.text = str(slope_dict["slope"])
                     xf.write(rec)

@@ -1,23 +1,24 @@
 import sys
-from numpy import number
+
 from geopandas import GeoDataFrame, GeoSeries
+from numpy import number
 
 
 def sanitise_list(x):
     try:
-        return ','.join(x)
+        return ",".join(x)
     except TypeError:
-        return ','.join(map(str, x))
+        return ",".join(map(str, x))
 
 
 def sanitise_geodataframe(gdf):
     if isinstance(gdf, GeoSeries):
         gdf = GeoDataFrame(gdf)
-    gdf = gdf.fillna('None')
-    object_columns = gdf.select_dtypes(['object']).columns
+    gdf = gdf.fillna("None")
+    object_columns = gdf.select_dtypes(["object"]).columns
     for col in object_columns:
         if gdf[col].apply(lambda x: isinstance(x, (set, list))).any():
-            gdf[col] = gdf[col].apply(lambda x: ','.join(x))
+            gdf[col] = gdf[col].apply(lambda x: ",".join(x))
         elif gdf[col].apply(lambda x: isinstance(x, dict)).any():
             gdf[col] = gdf[col].apply(lambda x: str(x))
     for col in gdf.select_dtypes(include=number).columns.tolist():
@@ -46,7 +47,7 @@ def sanitise_dictionary(d):
     return d
 
 
-def _subset_plot_gdf(data, df, base_keys={'id', 'route_id', 'geometry'}):
+def _subset_plot_gdf(data, df, base_keys={"id", "route_id", "geometry"}):
     data_keys = base_keys
     if isinstance(data, set):
         data_keys |= data

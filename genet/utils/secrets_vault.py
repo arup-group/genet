@@ -1,6 +1,7 @@
-import os
-import boto3
 import json
+import os
+
+import boto3
 
 
 def get_google_directions_api_key(secret_name: str = None, region_name: str = None):
@@ -11,14 +12,14 @@ def get_google_directions_api_key(secret_name: str = None, region_name: str = No
     :return:
     """
     key = None
-    if os.getenv('GOOGLE_DIR_API_KEY'):
-        key = os.getenv('GOOGLE_DIR_API_KEY')
+    if os.getenv("GOOGLE_DIR_API_KEY"):
+        key = os.getenv("GOOGLE_DIR_API_KEY")
     elif secret_name and region_name:
         key = get_secret_as_dict(secret_name, region_name)
-        if 'key' in key:
-            key = key['key']
-        elif 'api_key' in key:
-            key = key['api_key']
+        if "key" in key:
+            key = key["key"]
+        elif "api_key" in key:
+            key = key["api_key"]
     return key
 
 

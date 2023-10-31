@@ -1,11 +1,13 @@
-import pandas as pd
-import json
-import os
 import ast
+import json
 import logging
+import os
 from copy import deepcopy
-import genet.utils.persistence as persistence
+
+import pandas as pd
+
 import genet.utils.dict_support as dict_support
+import genet.utils.persistence as persistence
 
 
 class AuxiliaryFile:
@@ -34,7 +36,9 @@ class AuxiliaryFile:
         elif persistence.is_json(self.path_to_file):
             return self._read_json()
         else:
-            raise NotImplementedError(f'File {self.path_to_file} is not currently supported as an auxiliary file.')
+            raise NotImplementedError(
+                f"File {self.path_to_file} is not currently supported as an auxiliary file."
+            )
 
     def _read_csv(self):
         df = pd.read_csv(self.path_to_file)
@@ -97,12 +101,14 @@ class AuxiliaryFile:
                     else:
                         value = self.map[attachment_data]
                     self.data = dict_support.set_nested_value(
-                        self.data, dict_support.nest_at_leaf(deepcopy(attachment), value))
+                        self.data, dict_support.nest_at_leaf(deepcopy(attachment), value)
+                    )
             else:
                 for attachment in self.attachments:
                     if all([isinstance(x, (list, set)) for x in self.data[attachment]]):
                         self.data[attachment] = self.data[attachment].apply(
-                            lambda x: x.__class__([self.map[i] for i in x]))
+                            lambda x: x.__class__([self.map[i] for i in x])
+                        )
                     else:
                         self.data[attachment] = self.data[attachment].replace(self.map)
             self.build_identity_map()
@@ -110,17 +116,19 @@ class AuxiliaryFile:
     def write_to_file(self, output_dir):
         self.update()
         persistence.ensure_dir(output_dir)
-        logging.info(f'Saving auxiliary file {self.filename} in {output_dir}')
+        logging.info(f"Saving auxiliary file {self.filename} in {output_dir}")
         if persistence.is_csv(self.filename):
             return self._write_csv(output_dir)
         elif persistence.is_json(self.filename):
             return self._write_json(output_dir)
         else:
-            raise NotImplementedError(f'File {self.filename} is not currently supported as an auxiliary file.')
+            raise NotImplementedError(
+                f"File {self.filename} is not currently supported as an auxiliary file."
+            )
 
     def _write_csv(self, output_dir):
         self.data.to_csv(os.path.join(output_dir, self.filename))
 
     def _write_json(self, output_dir):
-        with open(os.path.join(output_dir, self.filename), 'w') as outfile:
+        with open(os.path.join(output_dir, self.filename), "w") as outfile:
             json.dump(self.data, outfile)

@@ -1,15 +1,31 @@
 # NETWORK NODE ATTRIBUTES for use when saving genet.Network to matsim's network.xml
-NECESSARY_NETWORK_NODE_ATTRIBUTES = ['id', 'x', 'y']
-OPTIONAL_NETWORK_NODE_ATTRIBUTES = ['z', 'type', 'origid', 'attributes']
+NECESSARY_NETWORK_NODE_ATTRIBUTES = ["id", "x", "y"]
+OPTIONAL_NETWORK_NODE_ATTRIBUTES = ["z", "type", "origid", "attributes"]
 
 # NETWORK LINK ATTRIBUTES for use when saving genet.Network to matsim's network.xml
-NECESSARY_NETWORK_LINK_ATTRIBUTES = ['id', 'from', 'to', 'length', 'freespeed', 'capacity', 'permlanes', 'modes']
-OPTIONAL_NETWORK_LINK_ATTRIBUTES = ['oneway', 'origid', 'type', 'attributes']
+NECESSARY_NETWORK_LINK_ATTRIBUTES = [
+    "id",
+    "from",
+    "to",
+    "length",
+    "freespeed",
+    "capacity",
+    "permlanes",
+    "modes",
+]
+OPTIONAL_NETWORK_LINK_ATTRIBUTES = ["oneway", "origid", "type", "attributes"]
 
 # NECESSARY STOP FACILITY ATTRIBUTES matsim's expected attributes for transit stops, used when saving schedule.xml
-NECESSARY_STOP_FACILITY_ATTRIBUTES = ['id', 'x', 'y']
+NECESSARY_STOP_FACILITY_ATTRIBUTES = ["id", "x", "y"]
 # ADDITIONAL STOP FACILITY ATTRIBUTES matsim's optional attributes for transit stops, used when saving schedule.xml
-OPTIONAL_STOP_FACILITY_ATTRIBUTES = ['z', 'linkRefId', 'name', 'stopAreaId', 'isBlocking', 'attributes']
+OPTIONAL_STOP_FACILITY_ATTRIBUTES = [
+    "z",
+    "linkRefId",
+    "name",
+    "stopAreaId",
+    "isBlocking",
+    "attributes",
+]
 
 
 # EXTENDED_TYPE_DICT = {mode : [GTFS mode integers]}
@@ -23,19 +39,19 @@ EXTENDED_TYPE_DICT = {
     "ferry": [4],
     "cablecar": [5],
     "gondola": [6],
-    "funicular": [7]
+    "funicular": [7],
 }
 # Now extended, mapping to basic modes
 # https://developers.google.com/transit/gtfs/reference/extended-route-types
-EXTENDED_TYPE_DICT['rail'].extend(list(range(100, 118)))
-EXTENDED_TYPE_DICT['bus'].extend(list(range(200, 210)))
-EXTENDED_TYPE_DICT['subway'].extend(list(range(400, 406)))
-EXTENDED_TYPE_DICT['bus'].extend(list(range(700, 718)))
-EXTENDED_TYPE_DICT['bus'].append(800)
-EXTENDED_TYPE_DICT['tram'].extend(list(range(900, 908)))
-EXTENDED_TYPE_DICT['ferry'].extend([1000, 1200, 1502])
-EXTENDED_TYPE_DICT['funicular'].append(1400)
-EXTENDED_TYPE_DICT['rail'].append(1503)
+EXTENDED_TYPE_DICT["rail"].extend(list(range(100, 118)))
+EXTENDED_TYPE_DICT["bus"].extend(list(range(200, 210)))
+EXTENDED_TYPE_DICT["subway"].extend(list(range(400, 406)))
+EXTENDED_TYPE_DICT["bus"].extend(list(range(700, 718)))
+EXTENDED_TYPE_DICT["bus"].append(800)
+EXTENDED_TYPE_DICT["tram"].extend(list(range(900, 908)))
+EXTENDED_TYPE_DICT["ferry"].extend([1000, 1200, 1502])
+EXTENDED_TYPE_DICT["funicular"].append(1400)
+EXTENDED_TYPE_DICT["rail"].append(1503)
 # there are a few other snowflakes in there which are not an obvious match to the basic modes, so let's skip for now
 
 

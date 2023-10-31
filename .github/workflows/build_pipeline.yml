@@ -30,8 +30,7 @@ jobs:
         export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
         pip install GDAL==3.4.1
         pip install -e .
-    - name: Lint the source code
-      run: ./bash_scripts/lint-check.sh
+
     - name: Unit tests
       run: |
         export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
