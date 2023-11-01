@@ -5709,15 +5709,15 @@ def test_generating_summary_report(network_for_summary_stats):
             "accessibility_tags": {
                 "bike": {
                     "access_tag": "bikeAccessible",
-                    "number_of_stops_with_bikeAccessible_tag": 1,
-                    "unique_values_under_bikeAccessible_tag": {"true"},
+                    "number_of_stops_with_access_tag": 1,
+                    "unique_values_under_access_tag": {"true"},
                     "link_access_tag": "not_connected_to_network",
                     "number_of_stops_with_link_access_tag": 0,
                 },
                 "car": {
                     "access_tag": "carAccessible",
-                    "number_of_stops_with_carAccessible_tag": 2,
-                    "unique_values_under_carAccessible_tag": {"true"},
+                    "number_of_stops_with_access_tag": 2,
+                    "unique_values_under_access_tag": {"true"},
                     "link_access_tag": "accessLinkId_car",
                     "number_of_stops_with_link_access_tag": 2,
                 },

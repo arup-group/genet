@@ -3810,8 +3810,8 @@ class Schedule(ScheduleElement):
                 network_access_tag = f"accessLinkId_{mode}"
                 report["accessibility_tags"][mode] = {
                     "access_tag": col,
-                    f"number_of_stops_with_{col}_tag": len(df[col].dropna()),
-                    f"unique_values_under_{col}_tag": set(df[col].dropna().unique()),
+                    "number_of_stops_with_access_tag": len(df[col].dropna()),
+                    "unique_values_under_access_tag": set(df[col].dropna().unique()),
                     "link_access_tag": network_access_tag
                     if network_access_tag in df.columns
                     else "not_connected_to_network",
