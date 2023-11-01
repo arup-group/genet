@@ -3815,9 +3815,7 @@ class Schedule(ScheduleElement):
                     "link_access_tag": network_access_tag
                     if network_access_tag in df.columns
                     else "not_connected_to_network",
-                    f"number_of_stops_with_{network_access_tag}_tag": len(
-                        df[network_access_tag].dropna()
-                    )
+                    "number_of_stops_with_link_access_tag": len(df[network_access_tag].dropna())
                     if network_access_tag in df.columns
                     else 0,
                 }
