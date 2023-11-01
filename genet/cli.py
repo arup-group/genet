@@ -57,6 +57,10 @@ def _generate_validation_report(network, output_dir: Path) -> None:
 
     _to_json(report, output_dir / "validation_report.json")
 
+    logging.info("Generating summary report")
+    summary_report = network.summary_report()
+    _to_json(summary_report, output_dir / "summary_report.json")
+
 
 def _read_network(
     path_to_network: Path,
