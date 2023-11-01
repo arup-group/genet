@@ -365,7 +365,7 @@ def network_for_summary_stats():
                                     "bikeAccessible": "true",
                                     "accessLinkId_car": "1",
                                     "carAccessible": "true",
-                                    "distance_catchment": "25",
+                                    "car_distance_catchment_tag": "25",
                                 },
                             ),
                             Stop(
@@ -374,6 +374,11 @@ def network_for_summary_stats():
                                 y=182388.0201078112,
                                 epsg="epsg:27700",
                                 linkRefId="link_2",
+                                attributes={
+                                    "accessLinkId_car": "1",
+                                    "carAccessible": "true",
+                                    "car_distance_catchment_tag": "25",
+                                },
                             ),
                         ],
                         trips={
@@ -5681,25 +5686,41 @@ def test_generating_summary_report(network_for_summary_stats):
     report = network_for_summary_stats.summary_report()
     correct_report = {
         "network": {
-            "network_graph_info": {"Number of network links": 2, "Number of network nodes": 3},
+            "network_graph_info": {"number_of_links": 2, "number_of_nodes": 3},
             "modes": {
-                "Modes on network links": {"bike", "walk", "rail", "car"},
-                "Number of links by mode": {"bike": 1, "walk": 1, "rail": 1, "car": 1},
+                "modes_on_links": {"bike", "walk", "rail", "car"},
+                "number_of_links_by_mode": {"bike": 1, "walk": 1, "rail": 1, "car": 1},
             },
-            "osm_highway_tags": {"Number of links by tag": {"secondary": 1}},
+            "osm_highway_tags": {"number_of_links_by_tag": {"secondary": 1}},
         },
         "schedule": {
-            "schedule_info": {"Number of services": 2, "Number of routes": 3, "Number of stops": 4},
+            "schedule_info": {"number_of_services": 2, "number_of_routes": 3, "number_of_stops": 4},
             "modes": {
-                "Modes in schedule": {"rail", "bus"},
-                "Services by mode": {"rail": 1, "bus": 1},
-                "PT stops by mode": {"rail": 2, "bus": 2},
+                "modes_in_schedule": {"rail", "bus"},
+                "services_by_mode": {"rail": 1, "bus": 1},
+                "pt_stops_by_mode": {"rail": 2, "bus": 2},
+            },
+            "stop_attributes": {
+                "accessLinkId_car",
+                "bikeAccessible",
+                "carAccessible",
+                "car_distance_catchment_tag",
             },
             "accessibility_tags": {
-                "Stops with tag bikeAccessible": 1,
-                "Unique values for bikeAccessible tag": {"true"},
-                "Stops with tag carAccessible": 1,
-                "Unique values for carAccessible tag": {"true"},
+                "bike": {
+                    "access_tag": "bikeAccessible",
+                    "number_of_stops_with_bikeAccessible_tag": 1,
+                    "unique_values_under_bikeAccessible_tag": {"true"},
+                    "link_access_tag": "not_connected_to_network",
+                    "number_of_stops_with_accessLinkId_bike_tag": 0,
+                },
+                "car": {
+                    "access_tag": "carAccessible",
+                    "number_of_stops_with_carAccessible_tag": 2,
+                    "unique_values_under_carAccessible_tag": {"true"},
+                    "link_access_tag": "accessLinkId_car",
+                    "number_of_stops_with_accessLinkId_car_tag": 2,
+                },
             },
         },
     }
