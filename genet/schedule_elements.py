@@ -3781,53 +3781,44 @@ class Schedule(ScheduleElement):
     def summary(self):
         report = {}
         schedule_stats = {
-            "Number of services": self.__len__(),
-            "Number of routes": self.number_of_routes(),
-            "Number of stops": len(self.reference_nodes()),
+            "number_of_services": self.__len__(),
+            "number_of_routes": self.number_of_routes(),
+            "number_of_stops": len(self.reference_nodes()),
         }
         report["schedule_info"] = schedule_stats
 
         report["modes"] = {}
         schedule_modes = self.modes()
-        report["modes"]["Modes in schedule"] = schedule_modes
+        report["modes"]["modes_in_schedule"] = schedule_modes
 
         services_by_modes = {}
         for mode in schedule_modes:
             services_by_modes[mode] = len(self.services_on_modal_condition(mode))
-        report["modes"]["Services by mode"] = services_by_modes
+        report["modes"]["services_by_mode"] = services_by_modes
 
         stops_by_modes = {}
         for mode in schedule_modes:
             stops_by_modes[mode] = len(self.stops_on_modal_condition(mode))
-        report["modes"]["PT stops by mode"] = stops_by_modes
+        report["modes"]["pt_stops_by_mode"] = stops_by_modes
 
+        df = pd.DataFrame(list(self.stop_attribute_data("attributes")["attributes"]))
+        report["stop_attributes"] = set(df.columns)
         report["accessibility_tags"] = {}
-        report["accessibility_tags"]["Stops with tag bikeAccessible"] = len(
-            self.stop_attribute_data({"attributes": "bikeAccessible"})
-        )
-        bike_accessible_keys = []
-        bike_attribs_dict = self.stop_attribute_data({"attributes": "bikeAccessible"}).to_dict(
-            orient="index"
-        )
-        for key in bike_attribs_dict.keys():
-            bike_accessible_keys.append(bike_attribs_dict[key]["attributes"]["bikeAccessible"])
-        report["accessibility_tags"]["Unique values for bikeAccessible tag"] = set(
-            bike_accessible_keys
-        )
-
-        report["accessibility_tags"]["Stops with tag carAccessible"] = len(
-            self.stop_attribute_data({"attributes": "carAccessible"})
-        )
-        car_accessible_keys = []
-        car_attribs_dict = self.stop_attribute_data({"attributes": "carAccessible"}).to_dict(
-            orient="index"
-        )
-        for key in car_attribs_dict.keys():
-            car_accessible_keys.append(car_attribs_dict[key]["attributes"]["carAccessible"])
-        report["accessibility_tags"]["Unique values for carAccessible tag"] = set(
-            car_accessible_keys
-        )
-
+        for col in df.columns:
+            if "Accessible" in col:
+                mode = col.replace("Accessible", "")
+                network_access_tag = f"accessLinkId_{mode}"
+                report["accessibility_tags"][mode] = {
+                    "access_tag": col,
+                    "number_of_stops_with_access_tag": len(df[col].dropna()),
+                    "unique_values_under_access_tag": set(df[col].dropna().unique()),
+                    "link_access_tag": network_access_tag
+                    if network_access_tag in df.columns
+                    else "not_connected_to_network",
+                    "number_of_stops_with_link_access_tag": len(df[network_access_tag].dropna())
+                    if network_access_tag in df.columns
+                    else 0,
+                }
         return report
 
 

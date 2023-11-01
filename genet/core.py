@@ -2961,12 +2961,11 @@ class Network:
     def summary(self):
         report = {}
         network_stats = {
-            "Number of network links": nx.number_of_nodes(self.graph),
-            "Number of network nodes": nx.number_of_edges(self.graph),
+            "number_of_links": nx.number_of_nodes(self.graph),
+            "number_of_nodes": nx.number_of_edges(self.graph),
         }
         report["network_graph_info"] = network_stats
-        report["modes"] = {}
-        report["modes"]["Modes on network links"] = self.modes()
+        report["modes"] = {"modes_on_links": self.modes()}
 
         # check for the old format, i.e. long-form attribute notation
         if (
@@ -2995,7 +2994,7 @@ class Network:
                 conditions={"attributes": {"osm:way:highway": tag}}, mixed_dtypes=True
             )
             osm_highway_tags[tag] = len(tag_links)
-        report["osm_highway_tags"] = {"Number of links by tag": osm_highway_tags}
+        report["osm_highway_tags"] = {"number_of_links_by_tag": osm_highway_tags}
 
         links_by_mode = {}
         for mode in self.modes():
@@ -3003,7 +3002,7 @@ class Network:
                 conditions={"modes": mode}, mixed_dtypes=True
             )
             links_by_mode[mode] = len(mode_links)
-        report["modes"]["Number of links by mode"] = links_by_mode
+        report["modes"]["number_of_links_by_mode"] = links_by_mode
 
         return report
 
