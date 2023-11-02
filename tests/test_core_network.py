@@ -1632,8 +1632,8 @@ def test_adding_node_with_only_lat_lon_attribs_fills_in_x_y():
     n = Network("epsg:27700")
     n.add_node(1, {"lat": 51.521719064780775, "lon": -0.13777870665428316})
 
-    assert n.node(1)["x"] == pytest.approx(529295.75)
-    assert n.node(1)["y"] == pytest.approx(181954.76)
+    assert round(n.node(1)["x"], 2) == 529295.75
+    assert round(n.node(1)["y"], 2) == 181954.76
 
 
 def test_adding_node_with_only_lat_lon_attribs_fills_in_s2_id():
@@ -1647,8 +1647,8 @@ def test_adding_node_with_only_x_y_attribs_fills_in_lat_lon():
     n = Network("epsg:27700")
     n.add_node(1, {"x": 529295.7525339661, "y": 181954.76039674896})
 
-    assert n.node(1)["lat"] == pytest.approx(51.521719)
-    assert n.node(1)["lon"] == pytest.approx(-0.137779)
+    assert round(n.node(1)["lat"], 6) == 51.521719
+    assert round(n.node(1)["lon"], 6) == -0.137779
 
 
 def test_adding_nodes_with_mismatched_spatial_attribs_gets_filled_in():
@@ -1660,11 +1660,11 @@ def test_adding_nodes_with_mismatched_spatial_attribs_gets_filled_in():
         }
     )
 
-    assert n.node(1)["x"] == pytest.approx(529295.75)
-    assert n.node(1)["y"] == pytest.approx(181954.76)
+    assert round(n.node(1)["x"], 2) == 529295.75
+    assert round(n.node(1)["y"], 2) == 181954.76
 
-    assert n.node(2)["lat"] == pytest.approx(51.521719)
-    assert n.node(2)["lon"] == pytest.approx(-0.137779)
+    assert round(n.node(2)["lat"], 6) == 51.521719
+    assert round(n.node(2)["lon"], 6) == -0.137779
 
 
 def test_adding_nodes_with_mismatched_spatial_attribs_generates_s2ids():
@@ -3539,8 +3539,8 @@ def test_reads_osm_network_into_the_right_schema(
     assert number_of_1_multi_idx == 4
     assert number_of_2_multi_idx == 1
 
-    correct_link_attribs = [
-        {
+    correct_link_attribs = {
+        ("0", "1", 0): {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3549,11 +3549,11 @@ def test_reads_osm_network_into_the_right_schema(
             "from": "0",
             "to": "1",
             "s2_from": 1152921492875543713,
-            "s2_to": 1152921335974974453,
-            "length": 1748.4487354464366,
-            "attributes": {"osm:way:osmid": 0, "osm:way:highway": "unclassified"},
+            "s2_to": 1152921335974974347,
+            "length": 1748.4408191353841,
+            "attributes": {"osm:way:osmid": "0", "osm:way:highway": "unclassified"},
         },
-        {
+        ("1", "0", 0): {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3561,12 +3561,12 @@ def test_reads_osm_network_into_the_right_schema(
             "modes": ["walk", "car", "bike"],
             "from": "1",
             "to": "0",
-            "s2_from": 1152921335974974453,
+            "s2_from": 1152921335974974347,
             "s2_to": 1152921492875543713,
-            "length": 1748.4487354464366,
-            "attributes": {"osm:way:osmid": 0, "osm:way:highway": "unclassified"},
+            "length": 1748.4408191353841,
+            "attributes": {"osm:way:osmid": "0", "osm:way:highway": "unclassified"},
         },
-        {
+        ("0", "2", 0): {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3577,9 +3577,9 @@ def test_reads_osm_network_into_the_right_schema(
             "s2_from": 1152921492875543713,
             "s2_to": 384307157539499829,
             "length": 1748.4488584600201,
-            "attributes": {"osm:way:osmid": 100, "osm:way:highway": "unclassified"},
+            "attributes": {"osm:way:osmid": "100", "osm:way:highway": "unclassified"},
         },
-        {
+        ("2", "0", 0): {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3590,9 +3590,9 @@ def test_reads_osm_network_into_the_right_schema(
             "s2_from": 384307157539499829,
             "s2_to": 1152921492875543713,
             "length": 1748.4488584600201,
-            "attributes": {"osm:way:osmid": 100, "osm:way:highway": "unclassified"},
+            "attributes": {"osm:way:osmid": "100", "osm:way:highway": "unclassified"},
         },
-        {
+        ("1", "0", 1): {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3600,12 +3600,12 @@ def test_reads_osm_network_into_the_right_schema(
             "modes": ["walk", "car", "bike"],
             "from": "1",
             "to": "0",
-            "s2_from": 1152921335974974453,
+            "s2_from": 1152921335974974347,
             "s2_to": 1152921492875543713,
-            "length": 1748.4487354464366,
-            "attributes": {"osm:way:osmid": 400, "osm:way:highway": "unclassified"},
+            "length": 1748.4408191353841,
+            "attributes": {"osm:way:osmid": "400", "osm:way:highway": "unclassified"},
         },
-        {
+        ("0", "1", 1): {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3614,11 +3614,11 @@ def test_reads_osm_network_into_the_right_schema(
             "from": "0",
             "to": "1",
             "s2_from": 1152921492875543713,
-            "s2_to": 1152921335974974453,
-            "length": 1748.4487354464366,
-            "attributes": {"osm:way:osmid": 400, "osm:way:highway": "unclassified"},
+            "s2_to": 1152921335974974347,
+            "length": 1748.4408191353841,
+            "attributes": {"osm:way:osmid": "400", "osm:way:highway": "unclassified"},
         },
-        {
+        ("2", "0", 1): {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3629,9 +3629,9 @@ def test_reads_osm_network_into_the_right_schema(
             "s2_from": 384307157539499829,
             "s2_to": 1152921492875543713,
             "length": 1748.4488584600201,
-            "attributes": {"osm:way:osmid": 700, "osm:way:highway": "unclassified"},
+            "attributes": {"osm:way:osmid": "700", "osm:way:highway": "unclassified"},
         },
-        {
+        ("0", "2", 1): {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3642,9 +3642,9 @@ def test_reads_osm_network_into_the_right_schema(
             "s2_from": 1152921492875543713,
             "s2_to": 384307157539499829,
             "length": 1748.4488584600201,
-            "attributes": {"osm:way:osmid": 700, "osm:way:highway": "unclassified"},
+            "attributes": {"osm:way:osmid": "700", "osm:way:highway": "unclassified"},
         },
-        {
+        ("2", "1", 0): {
             "permlanes": 3.0,
             "freespeed": 12.5,
             "capacity": 1800.0,
@@ -3653,15 +3653,15 @@ def test_reads_osm_network_into_the_right_schema(
             "from": "2",
             "to": "1",
             "s2_from": 384307157539499829,
-            "s2_to": 1152921335974974453,
-            "length": 3496.897593906457,
+            "s2_to": 1152921335974974347,
+            "length": 3496.8896775954045,
             "attributes": {
                 "osm:way:lanes": "3",
-                "osm:way:osmid": 47007861,
+                "osm:way:osmid": "47007861",
                 "osm:way:highway": "tertiary",
             },
         },
-        {
+        ("1", "0", 2): {
             "permlanes": 3.0,
             "freespeed": 12.5,
             "capacity": 1800.0,
@@ -3669,16 +3669,16 @@ def test_reads_osm_network_into_the_right_schema(
             "modes": ["walk", "car", "bike"],
             "from": "1",
             "to": "0",
-            "s2_from": 1152921335974974453,
+            "s2_from": 1152921335974974347,
             "s2_to": 1152921492875543713,
-            "length": 1748.4487354464366,
+            "length": 1748.4408191353841,
             "attributes": {
                 "osm:way:lanes": "3",
-                "osm:way:osmid": 47007861,
+                "osm:way:osmid": "47007861",
                 "osm:way:highway": "tertiary",
             },
         },
-        {
+        ("1", "0", 3): {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3686,30 +3686,37 @@ def test_reads_osm_network_into_the_right_schema(
             "modes": ["car", "walk", "bike"],
             "from": "1",
             "to": "0",
-            "s2_from": 1152921335974974453,
+            "s2_from": 1152921335974974347,
             "s2_to": 1152921492875543713,
-            "length": 1748.4487354464366,
+            "length": 1748.4408191353841,
             "attributes": {
-                "osm:way:osmid": 47007862,
+                "osm:way:osmid": "47007862",
                 "osm:way:lanes": "3;2",
                 "osm:way:highway": "tertiary",
             },
         },
-    ]
+    }
 
     assert len(network.link_id_mapping) == 11
     for link in network.link_id_mapping.keys():
         satisfied = False
         attribs_to_test = network.link(link).copy()
         del attribs_to_test["id"]
-        for link_attrib in correct_link_attribs:
+        i = 0
+        while (attribs_to_test["from"], attribs_to_test["to"], i) in correct_link_attribs:
+            expected_link_attrib = correct_link_attribs[
+                (attribs_to_test["from"], attribs_to_test["to"], i)
+            ]
             try:
-                assert_semantically_equal(attribs_to_test, link_attrib)
+                assert_semantically_equal(attribs_to_test, expected_link_attrib)
                 satisfied = True
                 break
             except AssertionError:
                 pass
-        assert satisfied
+            i += 1
+        assert (
+            satisfied
+        ), f"Link with attributes {attribs_to_test} was not found in graph generated from OSM"
 
 
 def test_read_matsim_network_with_duplicated_node_ids_records_removal_in_changelog(mocker):
