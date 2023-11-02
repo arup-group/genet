@@ -135,9 +135,11 @@ def test_generating_edge_vph_geodataframe(schedule):
         },
         crs=CRS("epsg:27700"),
     )
-
     assert_geodataframe_equal(
-        gdf.sort_index(axis=1), correct_gdf.sort_index(axis=1), check_less_precise=True
+        gdf.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
+        correct_gdf.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
+        check_less_precise=True,
+        check_like=True,
     )
 
 
@@ -239,7 +241,10 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
     )
 
     assert_geodataframe_equal(
-        gdf.sort_index(axis=1), correct_gdf.sort_index(axis=1), check_less_precise=True
+        gdf.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
+        correct_gdf.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
+        check_less_precise=True,
+        check_like=True,
     )
 
 
@@ -284,7 +289,10 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
     )
 
     assert_geodataframe_equal(
-        gdf.sort_index(axis=1), correct_gdf.sort_index(axis=1), check_less_precise=True
+        gdf.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
+        correct_gdf.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
+        check_less_precise=True,
+        check_like=True,
     )
 
 

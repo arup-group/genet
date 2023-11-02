@@ -1,3 +1,4 @@
+import networkx as nx
 import pytest
 from pandas import DataFrame
 
@@ -700,8 +701,36 @@ def test_problem_with_isolated_catchment_is_partially_viable(mocker, network):
     assert mss.is_partially_viable()
 
 
+def path_lengths_with_clear_preference(*args, **kwargs):
+    path_lengths = {
+        # stop_1 candidates, `link_1_2_bus` is preferred
+        "link_1_2_car": {"link_4_5_car": 9, "link_5_6_car": 9},
+        "link_1_2_bus": {"link_4_5_car": 1, "link_5_6_car": 1},
+        "link_2_3_car": {"link_4_5_car": 9, "link_5_6_car": 9},
+        # stop_2 candidates, `link_4_5_car` is preferred
+        "link_4_5_car": {
+            "link_1_2_car": 1,
+            "link_1_2_bus": 1,
+            "link_2_3_car": 1,
+            "link_7_8_car": 1,
+            "link_8_9_car": 1,
+        },
+        "link_5_6_car": {
+            "link_1_2_car": 9,
+            "link_1_2_bus": 9,
+            "link_2_3_car": 9,
+            "link_7_8_car": 9,
+            "link_8_9_car": 9,
+        },
+        # stop_3 candidates, `link_7_8_car` is preferred
+        "link_7_8_car": {"link_4_5_car": 1, "link_5_6_car": 1},
+        "link_8_9_car": {"link_4_5_car": 9, "link_5_6_car": 9},
+    }
+    return path_lengths[kwargs["source"]][kwargs["target"]]
+
+
 def test_solving_problem_with_isolated_catchments(
-    assert_semantically_equal, mocker, network, network_spatial_tree
+    mocker, assert_semantically_equal, network, network_spatial_tree
 ):
     closest_links = DataFrame(
         {
@@ -727,6 +756,7 @@ def test_solving_problem_with_isolated_catchments(
     ).set_index("id", drop=False)
     closest_links.index.rename(name="index", inplace=True)
     mocker.patch.object(spatial.SpatialTree, "closest_links", return_value=closest_links)
+    mocker.patch.object(nx, "dijkstra_path_length", side_effect=path_lengths_with_clear_preference)
 
     mss = MaxStableSet(
         pt_graph=network.schedule["bus_service"].graph(),
@@ -734,6 +764,7 @@ def test_solving_problem_with_isolated_catchments(
         modes={"car", "bus"},
     )
     mss.solve()
+
     assert mss.solution == {
         "stop_1": "link_1_2_bus",
         "stop_2": "link_4_5_car",
