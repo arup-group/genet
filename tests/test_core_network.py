@@ -2,7 +2,6 @@ import ast
 import json
 import logging
 import os
-import sys
 import uuid
 
 import geopandas as gpd
@@ -20,43 +19,42 @@ from genet.input import matsim_reader, read
 from genet.schedule_elements import Route, Schedule, Service, Stop
 from genet.utils import plot, spatial
 from genet.validate import network as network_validation
-from tests.fixtures import (
-    NetworkForIntermodalAccessEgressTesting,
-    assert_semantically_equal,
-    correct_schedule,  # noqa: F401
-    full_fat_default_config_path,  # noqa: F401
-    network_object_from_test_data,  # noqa: F401
-    route,  # noqa: F401
-)
-from tests.test_output_matsim_xml_writer import network_dtd  # noqa: F401
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_network_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network.xml")
-)
-pt2matsim_schedule_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml")
-)
+pt2matsim_network_test_file = pytest.test_data_dir / "matsim" / "network.xml"
+pt2matsim_schedule_file = pytest.test_data_dir / "matsim" / "schedule.xml"
 
-puma_network_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "puma", "network.xml")
-)
-puma_schedule_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "puma", "schedule.xml")
-)
+puma_network_test_file = pytest.test_data_dir / "puma" / "network.xml"
+puma_schedule_test_file = pytest.test_data_dir / "puma" / "schedule.xml"
 
-simplified_network = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "simplified_network", "network.xml")
-)
-simplified_schedule = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "simplified_network", "schedule.xml")
-)
+simplified_network = pytest.test_data_dir / "simplified_network" / "network.xml"
+simplified_schedule = pytest.test_data_dir / "simplified_network" / "schedule.xml"
 
-network_link_attrib_text_missing = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__), "test_data", "matsim", "network_link_attrib_text_missing.xml"
+network_link_attrib_text_missing = (
+    pytest.test_data_dir / "matsim" / "network_link_attrib_text_missing.xml"
+)
+test_geojson = (pytest.test_data_dir / "test_geojson.geojson").as_posix()
+
+benchmark_path_json = pytest.test_data_dir / "auxiliary_files" / "links_benchmark.json"
+benchmark_path_csv = pytest.test_data_dir / "auxiliary_files" / "links_benchmark.csv"
+
+
+@pytest.fixture()
+def simple_route():
+    return Route(
+        route_short_name="route",
+        mode="bus",
+        stops=[
+            Stop(id="0", x=528504.1342843144, y=182155.7435136598, epsg="epsg:27700"),
+            Stop(id="0", x=528504.1342843144, y=182155.7435136598, epsg="epsg:27700"),
+        ],
+        trips={
+            "trip_id": ["VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00"],
+            "trip_departure_time": ["04:40:00"],
+            "vehicle_id": ["veh_1_bus"],
+        },
+        arrival_offsets=["00:00:00", "00:02:00"],
+        departure_offsets=["00:00:00", "00:02:00"],
     )
-)
 
 
 @pytest.fixture()
@@ -365,7 +363,7 @@ def network_for_summary_stats():
                                     "bikeAccessible": "true",
                                     "accessLinkId_car": "1",
                                     "carAccessible": "true",
-                                    "car_distance_catchment_tag": "25",
+                                    "distance_catchment": "25",
                                 },
                             ),
                             Stop(
@@ -374,11 +372,6 @@ def network_for_summary_stats():
                                 y=182388.0201078112,
                                 epsg="epsg:27700",
                                 linkRefId="link_2",
-                                attributes={
-                                    "accessLinkId_car": "1",
-                                    "carAccessible": "true",
-                                    "car_distance_catchment_tag": "25",
-                                },
                             ),
                         ],
                         trips={
@@ -489,7 +482,7 @@ def test__str__shows_info():
     assert "Schedule info" in n.__str__()
 
 
-def test_reproject_changes_x_y_values_for_all_nodes(network1):
+def test_reproject_changes_x_y_values_for_all_nodes(assert_semantically_equal, network1):
     network1.reproject("epsg:4326")
     nodes = dict(network1.nodes())
     correct_nodes = {
@@ -556,9 +549,11 @@ def test_reproject_changes_x_y_values_for_all_nodes(network1):
     )
 
 
-def test_reproject_delegates_reprojection_to_schedules_own_method(network1, route, mocker):
+def test_reproject_delegates_reprojection_to_schedules_own_method(network1, simple_route, mocker):
     mocker.patch.object(Schedule, "reproject")
-    network1.schedule = Schedule(epsg="epsg:27700", services=[Service(id="id", routes=[route])])
+    network1.schedule = Schedule(
+        epsg="epsg:27700", services=[Service(id="id", routes=[simple_route])]
+    )
     network1.reproject("epsg:4326")
     network1.schedule.reproject.assert_called_once_with("epsg:4326", 1)
 
@@ -607,7 +602,7 @@ def test_reprojecting_links_with_geometries():
     assert round(geometry_coords[-1][1], 7) == 547633.5224837
 
 
-def test_adding_the_same_networks():
+def test_adding_the_same_networks(assert_semantically_equal):
     n_left = Network("epsg:27700")
     n_left.add_node(
         "1",
@@ -686,7 +681,7 @@ def test_adding_the_same_networks():
     )
 
 
-def test_adding_the_same_networks_but_with_differing_projections():
+def test_adding_the_same_networks_but_with_differing_projections(assert_semantically_equal):
     n_left = Network("epsg:27700")
     n_left.add_node(
         "1",
@@ -766,7 +761,7 @@ def test_adding_the_same_networks_but_with_differing_projections():
     )
 
 
-def test_adding_networks_with_clashing_node_ids_does_not_duplicate_data():
+def test_adding_networks_with_clashing_node_ids_does_not_duplicate_data(assert_semantically_equal):
     n_left = Network("epsg:27700")
     n_left.add_node(
         "1",
@@ -845,7 +840,7 @@ def test_adding_networks_with_clashing_node_ids_does_not_duplicate_data():
     )
 
 
-def test_adding_networks_with_clashing_link_ids():
+def test_adding_networks_with_clashing_link_ids(assert_semantically_equal):
     n_left = Network("epsg:27700")
     n_left.add_node(
         "1",
@@ -1003,7 +998,9 @@ def test_adding_networks_with_clashing_multiindices():
     }
 
 
-def test_adding_disjoint_networks_with_unique_ids_results_in_distinct_data_together():
+def test_adding_disjoint_networks_with_unique_ids_results_in_distinct_data_together(
+    assert_semantically_equal,
+):
     n_left = Network("epsg:27700")
     n_left.add_node(
         "1",
@@ -1630,8 +1627,8 @@ def test_adding_node_with_only_lat_lon_attribs_fills_in_x_y():
     n = Network("epsg:27700")
     n.add_node(1, {"lat": 51.521719064780775, "lon": -0.13777870665428316})
 
-    assert round(n.node(1)["x"], 2) == 529295.75
-    assert round(n.node(1)["y"], 2) == 181954.76
+    assert n.node(1)["x"] == pytest.approx(529295.75)
+    assert n.node(1)["y"] == pytest.approx(181954.76)
 
 
 def test_adding_node_with_only_lat_lon_attribs_fills_in_s2_id():
@@ -1645,8 +1642,8 @@ def test_adding_node_with_only_x_y_attribs_fills_in_lat_lon():
     n = Network("epsg:27700")
     n.add_node(1, {"x": 529295.7525339661, "y": 181954.76039674896})
 
-    assert round(n.node(1)["lat"], 6) == 51.521719
-    assert round(n.node(1)["lon"], 6) == -0.137779
+    assert n.node(1)["lat"] == pytest.approx(51.521719)
+    assert n.node(1)["lon"] == pytest.approx(-0.137779)
 
 
 def test_adding_nodes_with_mismatched_spatial_attribs_gets_filled_in():
@@ -1658,11 +1655,11 @@ def test_adding_nodes_with_mismatched_spatial_attribs_gets_filled_in():
         }
     )
 
-    assert round(n.node(1)["x"], 2) == 529295.75
-    assert round(n.node(1)["y"], 2) == 181954.76
+    assert n.node(1)["x"] == pytest.approx(529295.75)
+    assert n.node(1)["y"] == pytest.approx(181954.76)
 
-    assert round(n.node(2)["lat"], 6) == 51.521719
-    assert round(n.node(2)["lon"], 6) == -0.137779
+    assert n.node(2)["lat"] == pytest.approx(51.521719)
+    assert n.node(2)["lon"] == pytest.approx(-0.137779)
 
 
 def test_adding_nodes_with_mismatched_spatial_attribs_generates_s2ids():
@@ -1846,7 +1843,7 @@ def test_adding_multiple_links():
     assert n.link_id_mapping["1"] == {"from": 2, "to": 3, "multi_edge_idx": 0}
 
 
-def test_adding_multiple_links_with_id_clashes():
+def test_adding_multiple_links_with_id_clashes(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link("0", 10, 20)
     assert "0" in n.link_id_mapping
@@ -1865,7 +1862,7 @@ def test_adding_multiple_links_with_id_clashes():
     assert_semantically_equal(links_and_attribs["1"], {"from": 2, "to": 3, "id": "1"})
 
 
-def test_adding_multiple_links_with_multiple_id_clashes():
+def test_adding_multiple_links_with_multiple_id_clashes(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link("0", 10, 20)
     n.add_link("1", 10, 20)
@@ -1888,7 +1885,7 @@ def test_adding_multiple_links_with_multiple_id_clashes():
     )
 
 
-def test_adding_loads_of_multiple_links_between_same_nodes():
+def test_adding_loads_of_multiple_links_between_same_nodes(assert_semantically_equal):
     n = Network("epsg:27700")
     reindexing_dict, links_and_attribs = n.add_links({i: {"from": 1, "to": 2} for i in range(10)})
 
@@ -1914,7 +1911,7 @@ def test_adding_multiple_links_with_multi_idx_clashes():
     assert n.link_id_mapping["4"] == {"from": 2, "to": 3, "multi_edge_idx": 0}
 
 
-def test_adding_multiple_links_with_id_and_multi_idx_clashes():
+def test_adding_multiple_links_with_id_and_multi_idx_clashes(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link("0", 1, 2)
     n.add_link("1", 1, 2)
@@ -1973,7 +1970,7 @@ def test_adding_multiple_links_missing_to_nodes_completely():
     )
 
 
-def test_adding_links_with_different_non_overlapping_attributes():
+def test_adding_links_with_different_non_overlapping_attributes(assert_semantically_equal):
     # generates a nan attribute for link attributes
     n = Network("epsg:27700")
     reindexing_dict, links_and_attributes = n.add_links(
@@ -1995,7 +1992,7 @@ def test_adding_links_with_different_non_overlapping_attributes():
     )
 
 
-def test_adding_multiple_links_to_same_edge_clashing_with_existing_edge():
+def test_adding_multiple_links_to_same_edge_clashing_with_existing_edge(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(link_id="0", u="2", v="2", attribs={"speed": 20})
 
@@ -2085,11 +2082,6 @@ def test_nodes_on_modal_condition():
 
     car_nodes = n.nodes_on_modal_condition(modes=["car"])
     assert set(car_nodes) == {1, 2, 3}
-
-
-test_geojson = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "test_geojson.geojson")
-)
 
 
 def test_nodes_on_spatial_condition_with_geojson(network_object_from_test_data):
@@ -2591,7 +2583,7 @@ def test_reindex_link(network1):
     )
 
 
-def test_reindex_link_when_link_id_already_exists(network1):
+def test_reindex_link_when_link_id_already_exists(assert_semantically_equal, network1):
     assert [id for id, attribs in network1.nodes()] == ["101982", "101986"]
     assert [id for id, attribs in network1.links()] == ["0"]
     assert network1.link("0")["from"] == "101982"
@@ -2607,7 +2599,9 @@ def test_reindex_link_when_link_id_already_exists(network1):
     assert network1.link(link_ids[0]) != network1.link(link_ids[1])
 
 
-def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log():
+def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_change_log(
+    assert_semantically_equal,
+):
     n = Network("epsg:27700")
     n.add_node(1, {"id": 1, "x": 1, "y": 2, "a": 1})
     n.apply_attributes_to_node(1, {"b": 1})
@@ -2669,7 +2663,9 @@ def test_modify_node_adds_attributes_in_the_graph_and_change_is_recorded_by_chan
     )
 
 
-def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log():
+def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_recorded_by_change_log(
+    assert_semantically_equal,
+):
     n = Network("epsg:27700")
     n.add_node(1, {"x": 1, "y": 2, "a": 1})
     n.apply_attributes_to_node(1, {"a": 4})
@@ -2726,7 +2722,9 @@ def test_modify_node_overwrites_existing_attributes_in_the_graph_and_change_is_r
     )
 
 
-def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_recorded_by_change_log():
+def test_modify_nodes_adds_and_changes_attributes_in_the_graph_and_change_is_recorded_by_change_log(
+    assert_semantically_equal,
+):
     n = Network("epsg:27700")
     n.add_node(1, {"x": 1, "y": 2, "a": 1})
     n.add_node(2, {"x": 1, "y": 2, "b": 1})
@@ -3099,7 +3097,7 @@ def multiply_link_attribs(link_attribs):
     return link_attribs["a"] * link_attribs["c"]
 
 
-def test_apply_function_to_links():
+def test_apply_function_to_links(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link("0", 1, 2, attribs={"a": 2, "c": 3})
     n.add_link("1", 1, 2, attribs={"c": 100})
@@ -3362,6 +3360,7 @@ def test_connecting_components_specifying_mode_results_in_four_links_added(islan
 
 def test_connecting_components_of_connected_graph_raises_warning_without_changes(network1, caplog):
     # add link to connect it up >_> ....
+    caplog.set_level(logging.WARNING)
     network1.add_link(
         "1",
         "101986",
@@ -3486,36 +3485,35 @@ def test_schedule_routes_with_disconnected_routes(network_object_from_test_data)
     assert correct_routes == routes
 
 
-def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
-    osm_test_file = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml")
-    )
+def test_reads_osm_network_into_the_right_schema(
+    assert_semantically_equal, full_fat_default_config_path, osm_test_file
+):
     network = read.read_osm(osm_test_file, full_fat_default_config_path, 1, "epsg:27700")
     assert_semantically_equal(
         dict(network.nodes()),
         {
             "0": {
                 "id": "0",
-                "x": 622502.8329601474,
-                "y": -5526117.7779498,
-                "lat": 0.0085544,
-                "lon": -0.0006545,
+                "x": 622502.8306679451,
+                "y": -5526117.781903352,
+                "lat": 0.008554364250688652,
+                "lon": -0.0006545205888310243,
                 "s2_id": 1152921492875543713,
             },
             "1": {
                 "id": "1",
-                "x": 622502.8155666854,
-                "y": -5524378.839099768,
-                "lat": 0.0242785,
-                "lon": -0.0006545,
-                "s2_id": 1152921335974974347,
+                "x": 622502.8132744529,
+                "y": -5524378.838447345,
+                "lat": 0.024278505899735615,
+                "lon": -0.0006545205888310243,
+                "s2_id": 1152921335974974453,
             },
             "2": {
                 "id": "2",
-                "x": 622502.8336936538,
-                "y": -5527856.727857647,
-                "lat": -0.0071698,
-                "lon": -0.0006545,
+                "x": 622502.8314014417,
+                "y": -5527856.725358106,
+                "lat": -0.00716977739835831,
+                "lon": -0.0006545205888310243,
                 "s2_id": 384307157539499829,
             },
         },
@@ -3536,8 +3534,8 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
     assert number_of_1_multi_idx == 4
     assert number_of_2_multi_idx == 1
 
-    correct_link_attribs = {
-        ("0", "1", 0): {
+    correct_link_attribs = [
+        {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3546,11 +3544,11 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             "from": "0",
             "to": "1",
             "s2_from": 1152921492875543713,
-            "s2_to": 1152921335974974347,
-            "length": 1748.4408191353841,
-            "attributes": {"osm:way:osmid": "0", "osm:way:highway": "unclassified"},
+            "s2_to": 1152921335974974453,
+            "length": 1748.4487354464366,
+            "attributes": {"osm:way:osmid": 0, "osm:way:highway": "unclassified"},
         },
-        ("1", "0", 0): {
+        {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3558,12 +3556,12 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             "modes": ["walk", "car", "bike"],
             "from": "1",
             "to": "0",
-            "s2_from": 1152921335974974347,
+            "s2_from": 1152921335974974453,
             "s2_to": 1152921492875543713,
-            "length": 1748.4408191353841,
-            "attributes": {"osm:way:osmid": "0", "osm:way:highway": "unclassified"},
+            "length": 1748.4487354464366,
+            "attributes": {"osm:way:osmid": 0, "osm:way:highway": "unclassified"},
         },
-        ("0", "2", 0): {
+        {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3574,9 +3572,9 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             "s2_from": 1152921492875543713,
             "s2_to": 384307157539499829,
             "length": 1748.4488584600201,
-            "attributes": {"osm:way:osmid": "100", "osm:way:highway": "unclassified"},
+            "attributes": {"osm:way:osmid": 100, "osm:way:highway": "unclassified"},
         },
-        ("2", "0", 0): {
+        {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3587,9 +3585,9 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             "s2_from": 384307157539499829,
             "s2_to": 1152921492875543713,
             "length": 1748.4488584600201,
-            "attributes": {"osm:way:osmid": "100", "osm:way:highway": "unclassified"},
+            "attributes": {"osm:way:osmid": 100, "osm:way:highway": "unclassified"},
         },
-        ("1", "0", 1): {
+        {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3597,12 +3595,12 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             "modes": ["walk", "car", "bike"],
             "from": "1",
             "to": "0",
-            "s2_from": 1152921335974974347,
+            "s2_from": 1152921335974974453,
             "s2_to": 1152921492875543713,
-            "length": 1748.4408191353841,
-            "attributes": {"osm:way:osmid": "400", "osm:way:highway": "unclassified"},
+            "length": 1748.4487354464366,
+            "attributes": {"osm:way:osmid": 400, "osm:way:highway": "unclassified"},
         },
-        ("0", "1", 1): {
+        {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3611,11 +3609,11 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             "from": "0",
             "to": "1",
             "s2_from": 1152921492875543713,
-            "s2_to": 1152921335974974347,
-            "length": 1748.4408191353841,
-            "attributes": {"osm:way:osmid": "400", "osm:way:highway": "unclassified"},
+            "s2_to": 1152921335974974453,
+            "length": 1748.4487354464366,
+            "attributes": {"osm:way:osmid": 400, "osm:way:highway": "unclassified"},
         },
-        ("2", "0", 1): {
+        {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3626,9 +3624,9 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             "s2_from": 384307157539499829,
             "s2_to": 1152921492875543713,
             "length": 1748.4488584600201,
-            "attributes": {"osm:way:osmid": "700", "osm:way:highway": "unclassified"},
+            "attributes": {"osm:way:osmid": 700, "osm:way:highway": "unclassified"},
         },
-        ("0", "2", 1): {
+        {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3639,9 +3637,9 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             "s2_from": 1152921492875543713,
             "s2_to": 384307157539499829,
             "length": 1748.4488584600201,
-            "attributes": {"osm:way:osmid": "700", "osm:way:highway": "unclassified"},
+            "attributes": {"osm:way:osmid": 700, "osm:way:highway": "unclassified"},
         },
-        ("2", "1", 0): {
+        {
             "permlanes": 3.0,
             "freespeed": 12.5,
             "capacity": 1800.0,
@@ -3650,15 +3648,15 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             "from": "2",
             "to": "1",
             "s2_from": 384307157539499829,
-            "s2_to": 1152921335974974347,
-            "length": 3496.8896775954045,
+            "s2_to": 1152921335974974453,
+            "length": 3496.897593906457,
             "attributes": {
                 "osm:way:lanes": "3",
-                "osm:way:osmid": "47007861",
+                "osm:way:osmid": 47007861,
                 "osm:way:highway": "tertiary",
             },
         },
-        ("1", "0", 2): {
+        {
             "permlanes": 3.0,
             "freespeed": 12.5,
             "capacity": 1800.0,
@@ -3666,16 +3664,16 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             "modes": ["walk", "car", "bike"],
             "from": "1",
             "to": "0",
-            "s2_from": 1152921335974974347,
+            "s2_from": 1152921335974974453,
             "s2_to": 1152921492875543713,
-            "length": 1748.4408191353841,
+            "length": 1748.4487354464366,
             "attributes": {
                 "osm:way:lanes": "3",
-                "osm:way:osmid": "47007861",
+                "osm:way:osmid": 47007861,
                 "osm:way:highway": "tertiary",
             },
         },
-        ("1", "0", 3): {
+        {
             "permlanes": 1.0,
             "freespeed": 12.5,
             "capacity": 600.0,
@@ -3683,37 +3681,30 @@ def test_reads_osm_network_into_the_right_schema(full_fat_default_config_path):
             "modes": ["car", "walk", "bike"],
             "from": "1",
             "to": "0",
-            "s2_from": 1152921335974974347,
+            "s2_from": 1152921335974974453,
             "s2_to": 1152921492875543713,
-            "length": 1748.4408191353841,
+            "length": 1748.4487354464366,
             "attributes": {
-                "osm:way:osmid": "47007862",
+                "osm:way:osmid": 47007862,
                 "osm:way:lanes": "3;2",
                 "osm:way:highway": "tertiary",
             },
         },
-    }
+    ]
 
     assert len(network.link_id_mapping) == 11
     for link in network.link_id_mapping.keys():
         satisfied = False
         attribs_to_test = network.link(link).copy()
         del attribs_to_test["id"]
-        i = 0
-        while (attribs_to_test["from"], attribs_to_test["to"], i) in correct_link_attribs:
-            expected_link_attrib = correct_link_attribs[
-                (attribs_to_test["from"], attribs_to_test["to"], i)
-            ]
+        for link_attrib in correct_link_attribs:
             try:
-                assert_semantically_equal(attribs_to_test, expected_link_attrib)
+                assert_semantically_equal(attribs_to_test, link_attrib)
                 satisfied = True
                 break
             except AssertionError:
                 pass
-            i += 1
-        assert (
-            satisfied
-        ), f"Link with attributes {attribs_to_test} was not found in graph generated from OSM"
+        assert satisfied
 
 
 def test_read_matsim_network_with_duplicated_node_ids_records_removal_in_changelog(mocker):
@@ -3993,7 +3984,9 @@ def test_warns_of_no_isolated_nodes_when_trying_to_remove(network_without_isolat
     assert "no isolated nodes" in caplog.records[0].message
 
 
-def test_isolated_nodes_show_up_in_validation_report(network_with_isolated_nodes):
+def test_isolated_nodes_show_up_in_validation_report(
+    assert_semantically_equal, network_with_isolated_nodes
+):
     n = network_with_isolated_nodes["network"]
     report = n.generate_validation_report()
 
@@ -4268,25 +4261,25 @@ def test_generating_n_indicies_for_edges():
     assert not set(n.link_id_mapping.keys()) & idxs
 
 
-def test_has_schedule_with_valid_network_routes_with_valid_routes(route):
+def test_has_schedule_with_valid_network_routes_with_valid_routes(simple_route):
     n = Network("epsg:27700")
     n.add_link("1", 1, 2, attribs={"modes": ["bus"]})
     n.add_link("2", 2, 3, attribs={"modes": ["car", "bus"]})
-    route.route = ["1", "2"]
-    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[route])])
-    route.reindex("service_1")
-    n.schedule.add_route("service", route)
+    simple_route.route = ["1", "2"]
+    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route])])
+    simple_route.reindex("service_1")
+    n.schedule.add_route("service", simple_route)
     n.schedule.apply_attributes_to_routes(
         {"service_0": {"route": ["1", "2"]}, "service_1": {"route": ["1", "2"]}}
     )
     assert n.has_schedule_with_valid_network_routes()
 
 
-def test_has_schedule_with_valid_network_routes_with_some_valid_routes(route):
+def test_has_schedule_with_valid_network_routes_with_some_valid_routes(simple_route):
     n = Network("epsg:27700")
     n.add_link("1", 1, 2)
     n.add_link("2", 2, 3)
-    route.route = ["1", "2"]
+    simple_route.route = ["1", "2"]
     route_2 = Route(
         route_short_name="",
         mode="bus",
@@ -4296,113 +4289,120 @@ def test_has_schedule_with_valid_network_routes_with_some_valid_routes(route):
         departure_offsets=[],
         route=["10000"],
     )
-    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[route, route_2])])
+    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route, route_2])])
     assert not n.has_schedule_with_valid_network_routes()
 
 
-def test_has_schedule_with_valid_network_routes_with_invalid_routes(route):
+def test_has_schedule_with_valid_network_routes_with_invalid_routes(simple_route):
     n = Network("epsg:27700")
     n.add_link("1", 1, 2)
     n.add_link("2", 2, 3)
-    route.route = ["3", "4"]
-    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[route, route])])
+    simple_route.route = ["3", "4"]
+    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route, simple_route])])
     assert not n.has_schedule_with_valid_network_routes()
 
 
-def test_has_schedule_with_valid_network_routes_with_empty_routes(route):
+def test_has_schedule_with_valid_network_routes_with_empty_routes(simple_route):
     n = Network("epsg:27700")
     n.add_link("1", 1, 2)
     n.add_link("2", 2, 3)
-    route.route = []
-    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[route, route])])
+    simple_route.route = []
+    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route, simple_route])])
     assert not n.has_schedule_with_valid_network_routes()
 
 
 @pytest.mark.parametrize(
     "fixture,has_intermodal_connections",
     [
-        (NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(), False),
-        (NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(), True),
-        (NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(), True),
+        ("without_intermodal_access_egress", False),
+        ("with_valid_car_intermodal_access_egress", True),
+        ("with_invalid_intermodal_access_egress", True),
     ],
 )
-def test_recognising_intermodal_connections(fixture, has_intermodal_connections):
-    assert fixture.network.has_intermodal_access_egress_connections() == has_intermodal_connections
+def test_recognising_intermodal_connections(request, fixture, has_intermodal_connections):
+    assert (
+        request.getfixturevalue(fixture).network.has_intermodal_access_egress_connections()
+        == has_intermodal_connections
+    )
 
 
 @pytest.mark.parametrize(
     "fixture",
     [
-        NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(),
-        NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(),
-        NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(),
+        "without_intermodal_access_egress",
+        "with_valid_car_intermodal_access_egress",
+        "with_invalid_intermodal_access_egress",
     ],
 )
-def test_assembling_intermodal_access_egress_connections(fixture):
-    result = fixture.network.intermodal_access_egress_connections()
+def test_assembling_intermodal_access_egress_connections(request, fixture):
+    module = request.getfixturevalue(fixture)
+    result = module.network.intermodal_access_egress_connections()
     if isinstance(result, pd.DataFrame):
-        assert_frame_equal(result, fixture.intermodal_access_egress_connections_dataframe)
+        assert_frame_equal(result, module.intermodal_access_egress_connections_dataframe)
     else:
-        assert result == fixture.intermodal_access_egress_connections_dataframe
+        assert result == module.intermodal_access_egress_connections_dataframe
 
 
 @pytest.mark.parametrize(
     "fixture",
     [
-        NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(),
-        NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(),
-        NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(),
+        "without_intermodal_access_egress",
+        "with_valid_car_intermodal_access_egress",
+        "with_invalid_intermodal_access_egress",
     ],
 )
-def test_reporting_on_invalid_intermodal_connections(fixture):
-    invalid_intermodal_connections = fixture.network.invalid_intermodal_access_egress_connections()
+def test_reporting_on_invalid_intermodal_connections(request, fixture):
+    module = request.getfixturevalue(fixture)
+    invalid_intermodal_connections = module.network.invalid_intermodal_access_egress_connections()
     assert (
         invalid_intermodal_connections
-        == fixture.expected_invalid_intermodal_access_egress_connections
+        == module.expected_invalid_intermodal_access_egress_connections
     )
 
 
 @pytest.mark.parametrize(
     "fixture,has_valid_intermodal_connections",
     [
-        (NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(), True),
-        (NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(), True),
-        (NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(), False),
+        ("without_intermodal_access_egress", True),
+        ("with_valid_car_intermodal_access_egress", True),
+        ("with_invalid_intermodal_access_egress", False),
     ],
 )
-def test_declaration_on_valid_intermodal_connections(fixture, has_valid_intermodal_connections):
+def test_declaration_on_valid_intermodal_connections(
+    request, fixture, has_valid_intermodal_connections
+):
     assert (
-        fixture.network.has_valid_intermodal_access_egress_connections()
+        request.getfixturevalue(fixture).network.has_valid_intermodal_access_egress_connections()
         == has_valid_intermodal_connections
     )
 
 
-def test_invalid_network_routes_with_valid_route(route):
+def test_invalid_network_routes_with_valid_route(simple_route):
     n = Network("epsg:27700")
     n.add_link("1", 1, 2, attribs={"modes": ["car", "bus"]})
     n.add_link("2", 2, 3, attribs={"modes": ["bus"]})
-    route.reindex("route")
-    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[route])])
+    simple_route.reindex("route")
+    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route])])
     n.schedule.apply_attributes_to_routes({"route": {"route": ["1", "2"]}})
     assert n.invalid_network_routes() == []
 
 
-def test_invalid_network_routes_with_invalid_route(route):
+def test_invalid_network_routes_with_invalid_route(simple_route):
     n = Network("epsg:27700")
     n.add_link("1", 1, 2)
     n.add_link("2", 2, 3)
-    route.reindex("route")
-    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[route])])
+    simple_route.reindex("route")
+    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route])])
     n.schedule.apply_attributes_to_routes({"route": {"route": ["3", "4"]}})
     assert n.invalid_network_routes() == ["route"]
 
 
-def test_invalid_network_routes_with_empty_route(route):
+def test_invalid_network_routes_with_empty_route(simple_route):
     n = Network("epsg:27700")
     n.add_link("1", 1, 2)
     n.add_link("2", 2, 3)
-    route.reindex("route")
-    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[route])])
+    simple_route.reindex("route")
+    n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route])])
     n.schedule.apply_attributes_to_routes({"route": {"route": []}})
     assert n.invalid_network_routes() == ["route"]
 
@@ -4509,7 +4509,7 @@ def test_network_routing_in_report_with_valid_network(valid_network_for_validati
     )
 
 
-def test_long_links_show_up_in_validation_report():
+def test_long_links_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1", 1, 2, attribs={"length": 10000, "capacity": 1, "freespeed": 1, "modes": ["car", "bus"]}
@@ -4536,7 +4536,9 @@ offending_link_attribute_values_and_names = [
 
 
 @pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
-def test_values_of_ids_are_not_flagged_in_validation_report(value, offending_value):
+def test_values_of_ids_are_not_flagged_in_validation_report(
+    assert_semantically_equal, value, offending_value
+):
     n = Network("epsg:27700")
     n.add_link(
         offending_value,
@@ -4554,7 +4556,9 @@ def test_values_of_ids_are_not_flagged_in_validation_report(value, offending_val
 
 
 @pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
-def test_values_of_from_node_are_not_flagged_in_validation_report(value, offending_value):
+def test_values_of_from_node_are_not_flagged_in_validation_report(
+    assert_semantically_equal, value, offending_value
+):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4572,7 +4576,9 @@ def test_values_of_from_node_are_not_flagged_in_validation_report(value, offendi
 
 
 @pytest.mark.parametrize("value,offending_value", offending_link_attribute_values_and_names)
-def test_values_of_to_node_are_not_flagged_in_validation_report(value, offending_value):
+def test_values_of_to_node_are_not_flagged_in_validation_report(
+    assert_semantically_equal, value, offending_value
+):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4589,7 +4595,7 @@ def test_values_of_to_node_are_not_flagged_in_validation_report(value, offending
     assert_semantically_equal(report["graph"]["link_attributes"][f"{value}_attributes"], {})
 
 
-def test_zero_value_attributes_show_up_in_validation_report():
+def test_zero_value_attributes_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4613,7 +4619,7 @@ def test_zero_value_attributes_show_up_in_validation_report():
     )
 
 
-def test_negative_value_attributes_show_up_in_validation_report():
+def test_negative_value_attributes_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1", 1, 2, attribs={"length": -1, "capacity": 1, "freespeed": "-5", "modes": ["car", "bus"]}
@@ -4633,7 +4639,7 @@ def test_negative_value_attributes_show_up_in_validation_report():
     )
 
 
-def test_infinite_value_attributes_show_up_in_validation_report():
+def test_infinite_value_attributes_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4661,7 +4667,7 @@ def test_infinite_value_attributes_show_up_in_validation_report():
     )
 
 
-def test_fractional_value_attributes_show_up_in_validation_report():
+def test_fractional_value_attributes_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4684,7 +4690,7 @@ def test_fractional_value_attributes_show_up_in_validation_report():
     )
 
 
-def test_none_value_attributes_show_up_in_validation_report():
+def test_none_value_attributes_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4707,7 +4713,7 @@ def test_none_value_attributes_show_up_in_validation_report():
     )
 
 
-def test_nested_values_show_up_in_validation_report():
+def test_nested_values_show_up_in_validation_report(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "1",
@@ -4733,26 +4739,28 @@ def test_nested_values_show_up_in_validation_report():
 @pytest.mark.parametrize(
     "fixture,is_valid_network",
     [
-        (NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress(), True),
-        (NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress(), True),
-        (NetworkForIntermodalAccessEgressTesting().with_invalid_intermodal_access_egress(), False),
+        ("without_intermodal_access_egress", True),
+        ("with_valid_car_intermodal_access_egress", True),
+        ("with_invalid_intermodal_access_egress", False),
     ],
 )
-def test_intermodal_access_egress_reporting(fixture, is_valid_network):
-    report = fixture.network.generate_validation_report()
+def test_intermodal_access_egress_reporting(request, fixture, is_valid_network):
+    module = request.getfixturevalue(fixture)
+    report = module.network.generate_validation_report()
     assert report["is_valid_network"] == is_valid_network
     assert (
         report["intermodal_access_egress"]["has_valid_intermodal_connections"] == is_valid_network
     )
     assert (
         report["intermodal_access_egress"]["invalid_intermodal_connections"]
-        == fixture.invalid_intermodal_access_egress_connections
+        == module.invalid_intermodal_access_egress_connections
     )
 
 
 def test_check_connectivity_for_mode_warns_of_graphs_with_more_than_single_component(
     mocker, caplog
 ):
+    caplog.set_level(logging.WARNING)
     mocker.patch.object(
         network_validation,
         "describe_graph_connectivity",
@@ -4814,14 +4822,6 @@ def test_write_to_matsim_generates_change_log_csv(network_object_from_test_data,
 
     assert os.path.exists(expected_change_log_path)
     assert os.path.exists(expected_schedule_change_log_path)
-
-
-benchmark_path_json = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "links_benchmark.json")
-)
-benchmark_path_csv = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "auxiliary_files", "links_benchmark.csv")
-)
 
 
 @pytest.fixture()
@@ -5218,13 +5218,13 @@ def network_1_geo_and_json(network1):
     }
 
 
-def test_transforming_network_to_json(network_1_geo_and_json):
+def test_transforming_network_to_json(assert_semantically_equal, network_1_geo_and_json):
     assert_semantically_equal(
         network_1_geo_and_json["network"].to_json(), network_1_geo_and_json["expected_json"]
     )
 
 
-def test_transforming_uneven_network_to_json():
+def test_transforming_uneven_network_to_json(assert_semantically_equal):
     # some nodes and links have different params, we expect only those with values in the json
     n = Network(epsg="epsg:4326")
     n.add_node(
@@ -5313,7 +5313,7 @@ def test_transforming_uneven_network_to_json():
     )
 
 
-def test_saving_network_to_json(network_1_geo_and_json, tmpdir):
+def test_saving_network_to_json(assert_semantically_equal, network_1_geo_and_json, tmpdir):
     network_1_geo_and_json["network"].write_to_json(tmpdir)
     expected_network_json = os.path.join(tmpdir, "network.json")
     assert os.path.exists(expected_network_json)
@@ -5373,7 +5373,7 @@ def test_saving_network_to_geojson(network1, correct_schedule, tmpdir):
     }
 
 
-def test_saving_network_to_csv(network1, correct_schedule, tmpdir):
+def test_saving_network_to_csv(assert_semantically_equal, network1, correct_schedule, tmpdir):
     network1.schedule = correct_schedule
     network1.write_to_csv(tmpdir)
     assert set(os.listdir(tmpdir)) == {"network", "schedule"}
@@ -5434,9 +5434,8 @@ def test_saving_network_to_csv(network1, correct_schedule, tmpdir):
 
 
 def test_reads_node_elevations_from_tif_file(network3):
-    elevation_test_folder = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data", "elevation")
-    )
+    elevation_test_folder = pytest.test_data_dir / "elevation"
+
     elevation_tif_file = os.path.join(elevation_test_folder, "hk_elevation_example.tif")
 
     elev_dict = network3.get_node_elevation_dictionary(elevation_tif_file, null_value=-32768)
@@ -5447,9 +5446,8 @@ def test_reads_node_elevations_from_tif_file(network3):
 
 
 def test_replaces_missing_node_elevations_with_zero(network3):
-    elevation_test_folder = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data", "elevation")
-    )
+    elevation_test_folder = pytest.test_data_dir / "elevation"
+
     elevation_tif_file = os.path.join(elevation_test_folder, "hk_elevation_example.tif")
 
     elev_dict = network3.get_node_elevation_dictionary(elevation_tif_file, null_value=-32768)
@@ -5682,45 +5680,29 @@ def test_splitting_link_updates_route_in_schedule(mocker):
     assert n.schedule.route("1").route == ["AAA", new_link_1_ID, new_link_2_ID, "BBB"]
 
 
-def test_generating_summary_report(network_for_summary_stats):
+def test_generating_summary_report(assert_semantically_equal, network_for_summary_stats):
     report = network_for_summary_stats.summary_report()
     correct_report = {
         "network": {
-            "network_graph_info": {"number_of_links": 2, "number_of_nodes": 3},
+            "network_graph_info": {"Number of network links": 2, "Number of network nodes": 3},
             "modes": {
-                "modes_on_links": {"bike", "walk", "rail", "car"},
-                "number_of_links_by_mode": {"bike": 1, "walk": 1, "rail": 1, "car": 1},
+                "Modes on network links": {"bike", "walk", "rail", "car"},
+                "Number of links by mode": {"bike": 1, "walk": 1, "rail": 1, "car": 1},
             },
-            "osm_highway_tags": {"number_of_links_by_tag": {"secondary": 1}},
+            "osm_highway_tags": {"Number of links by tag": {"secondary": 1}},
         },
         "schedule": {
-            "schedule_info": {"number_of_services": 2, "number_of_routes": 3, "number_of_stops": 4},
+            "schedule_info": {"Number of services": 2, "Number of routes": 3, "Number of stops": 4},
             "modes": {
-                "modes_in_schedule": {"rail", "bus"},
-                "services_by_mode": {"rail": 1, "bus": 1},
-                "pt_stops_by_mode": {"rail": 2, "bus": 2},
-            },
-            "stop_attributes": {
-                "accessLinkId_car",
-                "bikeAccessible",
-                "carAccessible",
-                "car_distance_catchment_tag",
+                "Modes in schedule": {"rail", "bus"},
+                "Services by mode": {"rail": 1, "bus": 1},
+                "PT stops by mode": {"rail": 2, "bus": 2},
             },
             "accessibility_tags": {
-                "bike": {
-                    "access_tag": "bikeAccessible",
-                    "number_of_stops_with_access_tag": 1,
-                    "unique_values_under_access_tag": {"true"},
-                    "link_access_tag": "not_connected_to_network",
-                    "number_of_stops_with_link_access_tag": 0,
-                },
-                "car": {
-                    "access_tag": "carAccessible",
-                    "number_of_stops_with_access_tag": 2,
-                    "unique_values_under_access_tag": {"true"},
-                    "link_access_tag": "accessLinkId_car",
-                    "number_of_stops_with_link_access_tag": 2,
-                },
+                "Stops with tag bikeAccessible": 1,
+                "Unique values for bikeAccessible tag": {"true"},
+                "Stops with tag carAccessible": 1,
+                "Unique values for carAccessible tag": {"true"},
             },
         },
     }

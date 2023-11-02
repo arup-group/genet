@@ -4,60 +4,8 @@ import pytest
 from pandas import DataFrame, Timestamp
 from pandas.testing import assert_frame_equal
 
-from genet.schedule_elements import Service
+from genet.schedule_elements import Route, Service, Stop
 from genet.utils import plot
-from tests.fixtures import (
-    Route,
-    Stop,
-    assert_logging_warning_caught_with_message_containing,
-    assert_semantically_equal,
-    similar_non_exact_test_route,  # noqa: F401
-    test_service,  # noqa: F401
-)
-from tests.test_core_components_route import route, self_looping_route  # noqa: F401
-
-
-@pytest.fixture()
-def service():
-    route_1 = Route(
-        id="1",
-        route_short_name="name",
-        mode="bus",
-        stops=[
-            Stop(id="1", x=4, y=2, epsg="epsg:27700", linkRefId="1"),
-            Stop(id="2", x=1, y=2, epsg="epsg:27700", linkRefId="2"),
-            Stop(id="3", x=3, y=3, epsg="epsg:27700", linkRefId="3"),
-            Stop(id="4", x=7, y=5, epsg="epsg:27700", linkRefId="4"),
-        ],
-        trips={
-            "trip_id": ["1", "2"],
-            "trip_departure_time": ["13:00:00", "13:30:00"],
-            "vehicle_id": ["veh_1_bus", "veh_2_bus"],
-        },
-        arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
-        departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
-        route=["1", "2", "3", "4"],
-    )
-    route_2 = Route(
-        id="2",
-        route_short_name="name_2",
-        mode="bus",
-        stops=[
-            Stop(id="5", x=4, y=2, epsg="epsg:27700", linkRefId="5"),
-            Stop(id="6", x=1, y=2, epsg="epsg:27700", linkRefId="6"),
-            Stop(id="7", x=3, y=3, epsg="epsg:27700", linkRefId="7"),
-            Stop(id="8", x=7, y=5, epsg="epsg:27700", linkRefId="8"),
-        ],
-        trips={
-            "trip_id": ["1", "2"],
-            "trip_departure_time": ["11:00:00", "13:00:00"],
-            "vehicle_id": ["veh_3_bus", "veh_4_bus"],
-        },
-        arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
-        departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
-        route=["5", "6", "7", "8"],
-    )
-    return Service(id="service", routes=[route_1, route_2])
 
 
 @pytest.fixture()
@@ -101,7 +49,7 @@ def strongly_connected_service():
     return Service(id="service", routes=[route_1, route_2])
 
 
-def test_initiating_service(service):
+def test_initiating_service(assert_semantically_equal, service):
     s = service
     assert_semantically_equal(
         dict(s._graph.nodes(data=True)),
@@ -340,7 +288,7 @@ def test_route_is_not_in_exact_list(similar_non_exact_test_route, test_service):
     assert not a.isin_exact([test_service, test_service])
 
 
-def test_build_graph_builds_correct_graph():
+def test_build_graph_builds_correct_graph(assert_semantically_equal):
     route_1 = Route(
         route_short_name="name",
         id="1",
@@ -497,7 +445,7 @@ def test_build_graph_builds_correct_graph():
     )
 
 
-def test_build_graph_builds_correct_graph_when_some_stops_overlap():
+def test_build_graph_builds_correct_graph_when_some_stops_overlap(assert_semantically_equal):
     route_1 = Route(
         route_short_name="name",
         id="1",
@@ -702,7 +650,7 @@ def test_is_valid_with_non_network_route(service):
 
 
 def test_building_trips_dataframe_with_stops_accepts_backwards_compatibility(
-    service, mocker, caplog
+    assert_logging_warning_caught_with_message_containing, service, mocker, caplog
 ):
     mocker.patch.object(Service, "trips_with_stops_to_dataframe")
     service.trips_with_stops_to_dataframe(service.trips_to_dataframe())

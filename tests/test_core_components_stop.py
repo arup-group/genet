@@ -1,7 +1,6 @@
 from pyproj import Proj, Transformer
 
 from genet.schedule_elements import SPATIAL_TOLERANCE, Stop
-from tests.fixtures import assert_semantically_equal, stop_epsg_27700  # noqa: F401
 
 
 def test_initiate_stop_with_kwargs():
@@ -9,7 +8,7 @@ def test_initiate_stop_with_kwargs():
     assert a.has_linkRefId()
 
 
-def test_reproject_stops_without_transformer():
+def test_reproject_stops_without_transformer(assert_semantically_equal):
     a = Stop(id="0", x=528504.1342843144, y=182155.7435136598, epsg="epsg:27700")
     a.reproject("epsg:4326")
 
@@ -22,7 +21,7 @@ def test_reproject_stops_without_transformer():
     assert a.epsg == "epsg:4326"
 
 
-def test_reproject_stops_with_transformer():
+def test_reproject_stops_with_transformer(assert_semantically_equal):
     a = Stop(id="0", x=528504.1342843144, y=182155.7435136598, epsg="epsg:27700")
     transformer = Transformer.from_proj(Proj("epsg:27700"), Proj("epsg:4326"), always_xy=True)
     a.reproject("epsg:4326", transformer)

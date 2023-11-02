@@ -2,11 +2,10 @@ import pytest
 
 from genet import Route, Schedule, Service, Stop
 from genet.validate import schedule as schedule_validation
-from tests.fixtures import assert_semantically_equal, test_schedule  # noqa: F401
 
 
 @pytest.fixture()
-def correct_schedule():
+def incorrect_schedule():
     return Schedule(
         epsg="epsg:27700",
         services=[
@@ -14,23 +13,14 @@ def correct_schedule():
                 id="service",
                 routes=[
                     Route(
-                        id="1",
                         route_short_name="route",
                         mode="bus",
                         stops=[
                             Stop(
-                                id="0",
-                                x=529455.7452394223,
-                                y=182401.37630677427,
-                                epsg="epsg:27700",
-                                linkRefId="1",
+                                id="0", x=528504.1342843144, y=182155.7435136598, epsg="epsg:27700"
                             ),
                             Stop(
-                                id="1",
-                                x=529350.7866124967,
-                                y=182388.0201078112,
-                                epsg="epsg:27700",
-                                linkRefId="2",
+                                id="0", x=528504.1342843144, y=182155.7435136598, epsg="epsg:27700"
                             ),
                         ],
                         trips={
@@ -40,26 +30,16 @@ def correct_schedule():
                         },
                         arrival_offsets=["00:00:00", "00:02:00"],
                         departure_offsets=["00:00:00", "00:02:00"],
-                        route=["1", "2"],
                     ),
                     Route(
-                        id="2",
                         route_short_name="route1",
                         mode="bus",
                         stops=[
                             Stop(
-                                id="0",
-                                x=529455.7452394223,
-                                y=182401.37630677427,
-                                epsg="epsg:27700",
-                                linkRefId="1",
+                                id="0", x=528504.1342843144, y=182155.7435136598, epsg="epsg:27700"
                             ),
                             Stop(
-                                id="1",
-                                x=529350.7866124967,
-                                y=182388.0201078112,
-                                epsg="epsg:27700",
-                                linkRefId="2",
+                                id="0", x=528504.1342843144, y=182155.7435136598, epsg="epsg:27700"
                             ),
                         ],
                         trips={
@@ -69,7 +49,6 @@ def correct_schedule():
                         },
                         arrival_offsets=["00:00:00", "00:03:00"],
                         departure_offsets=["00:00:00", "00:05:00"],
-                        route=["1", "2"],
                     ),
                 ],
             )
@@ -77,7 +56,9 @@ def correct_schedule():
     )
 
 
-def test_generate_validation_report_for_correct_schedule(correct_schedule):
+def test_generate_validation_report_for_correct_schedule(
+    assert_semantically_equal, correct_schedule
+):
     correct_report = {
         "schedule_level": {
             "is_valid_schedule": True,
@@ -133,7 +114,9 @@ def test_generate_validation_report_for_correct_schedule(correct_schedule):
     assert_semantically_equal(report, correct_report)
 
 
-def test_generate_validation_report_for_incorrect_schedule(test_schedule):
+def test_generate_validation_report_for_incorrect_schedule(
+    assert_semantically_equal, incorrect_schedule
+):
     correct_report = {
         "schedule_level": {
             "is_valid_schedule": False,
@@ -184,7 +167,7 @@ def test_generate_validation_report_for_incorrect_schedule(test_schedule):
             },
         },
     }
-    report = schedule_validation.generate_validation_report(test_schedule)
+    report = schedule_validation.generate_validation_report(incorrect_schedule)
     assert_semantically_equal(report, correct_report)
 
 
@@ -243,7 +226,7 @@ def schedule_with_incomplete_vehicle_definition():
 
 
 def test_generate_validation_report_with_schedule_incomplete_vehicle_definitions(
-    schedule_with_incomplete_vehicle_definition,
+    assert_semantically_equal, schedule_with_incomplete_vehicle_definition
 ):
     correct_vehicle_report = {
         "vehicle_definitions_valid": False,
@@ -263,7 +246,7 @@ def test_generate_validation_report_with_schedule_incomplete_vehicle_definitions
     assert_semantically_equal(report["vehicle_level"], correct_vehicle_report)
 
 
-def test_schedule_with_no_unused_vehicles(correct_schedule):
+def test_schedule_with_no_unused_vehicles(assert_semantically_equal, correct_schedule):
     correct_output = set()
     actual_output = correct_schedule.unused_vehicles()
 
@@ -308,14 +291,14 @@ def schedule_with_unused_vehicles():
     return s
 
 
-def test_schedule_with_unused_vehicles(schedule_with_unused_vehicles):
+def test_schedule_with_unused_vehicles(assert_semantically_equal, schedule_with_unused_vehicles):
     unused_correct = set({"veh_2_bus"})
     unused_actual = schedule_with_unused_vehicles.unused_vehicles()
 
     assert_semantically_equal(unused_correct, unused_actual)
 
 
-def test_schedule_with_no_multiple_use_vehicles(correct_schedule):
+def test_schedule_with_no_multiple_use_vehicles(assert_semantically_equal, correct_schedule):
     correct_output = {}
     actual_output = correct_schedule.check_vehicle_uniqueness()
 
@@ -375,7 +358,9 @@ def schedule_with_multiple_use_vehicles():
     return s
 
 
-def test_schedule_with_multiple_use_vehicles(schedule_with_multiple_use_vehicles):
+def test_schedule_with_multiple_use_vehicles(
+    assert_semantically_equal, schedule_with_multiple_use_vehicles
+):
     correct_output = {}
     correct_output["veh_1_bus"] = []
     correct_output["veh_1_bus"].append("VJ00938baa194cee94700312812d208fe79f3297ee_044000")

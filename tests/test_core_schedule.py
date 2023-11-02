@@ -1,7 +1,6 @@
 import json
 import math
 import os
-import sys
 
 import pandas as pd
 import pytest
@@ -9,6 +8,7 @@ from geopandas import GeoDataFrame
 from geopandas.testing import assert_geodataframe_equal
 from pandas import DataFrame, Timedelta, Timestamp
 from pandas.testing import assert_frame_equal
+from pyproj import CRS
 from shapely.geometry import GeometryCollection, LineString, Polygon
 
 from genet.exceptions import ConflictingStopData, InconsistentVehicleModeError, ServiceIndexError
@@ -23,69 +23,36 @@ from genet.schedule_elements import (
 )
 from genet.utils import plot, spatial
 from genet.validate import schedule as schedule_validation
-from tests.fixtures import (
-    NetworkForIntermodalAccessEgressTesting,
-    assert_logging_warning_caught_with_message_containing,
-    assert_semantically_equal,
-    different_test_service,  # noqa: F401
-    list_of_times_somewhat_accurate,
-    similar_non_exact_test_route,  # noqa: F401
-    test_service,  # noqa: F401
-    vehicle_definitions_config_path,  # noqa: F401
-)
-from tests.test_core_components_route import route, self_looping_route  # noqa: F401
-from tests.test_core_components_service import service  # noqa: F401
-from tests.test_core_schedule_elements import schedule_graph  # noqa: F401
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_schedule_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml")
-)
-pt2matsim_vehicles_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml")
-)
+pt2matsim_schedule_file = pytest.test_data_dir / "matsim" / "schedule.xml"
+pt2matsim_vehicles_file = pytest.test_data_dir / "matsim" / "vehicles.xml"
+
+pt2matsim_schedule_extra_stop_file = pytest.test_data_dir / "matsim" / "schedule_extra_stop.xml"
+test_geojson = pytest.test_data_dir / "test_geojson.geojson"
 
 
 @pytest.fixture()
-def schedule():
-    route_1 = Route(
-        route_short_name="name",
-        mode="bus",
-        id="1",
-        stops=[
-            Stop(id="1", x=4, y=2, epsg="epsg:27700"),
-            Stop(id="2", x=1, y=2, epsg="epsg:27700"),
-            Stop(id="3", x=3, y=3, epsg="epsg:27700"),
-            Stop(id="4", x=7, y=5, epsg="epsg:27700"),
+def different_test_service():
+    return Service(
+        id="different_service",
+        routes=[
+            Route(
+                route_short_name="route",
+                mode="bus",
+                stops=[
+                    Stop(id="3", x=528504.1342843144, y=182155.7435136598, epsg="epsg:27700"),
+                    Stop(id="4", x=528504.1342843144, y=182155.7435136598, epsg="epsg:27700"),
+                ],
+                trips={
+                    "trip_id": ["VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00"],
+                    "trip_departure_time": ["04:40:00"],
+                    "vehicle_id": ["veh_1_bus"],
+                },
+                arrival_offsets=["00:00:00", "00:02:00"],
+                departure_offsets=["00:00:00", "00:02:00"],
+            )
         ],
-        trips={
-            "trip_id": ["1", "2"],
-            "trip_departure_time": ["13:00:00", "13:30:00"],
-            "vehicle_id": ["veh_1_bus", "veh_2_bus"],
-        },
-        arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
-        departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
     )
-    route_2 = Route(
-        route_short_name="name_2",
-        mode="bus",
-        id="2",
-        stops=[
-            Stop(id="5", x=4, y=2, epsg="epsg:27700"),
-            Stop(id="6", x=1, y=2, epsg="epsg:27700"),
-            Stop(id="7", x=3, y=3, epsg="epsg:27700"),
-            Stop(id="8", x=7, y=5, epsg="epsg:27700"),
-        ],
-        trips={
-            "trip_id": ["1", "2"],
-            "trip_departure_time": ["11:00:00", "13:00:00"],
-            "vehicle_id": ["veh_3_bus", "veh_4_bus"],
-        },
-        arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
-        departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
-    )
-    service = Service(id="service", routes=[route_1, route_2])
-    return Schedule(epsg="epsg:27700", services=[service])
 
 
 @pytest.fixture()
@@ -132,7 +99,7 @@ def strongly_connected_schedule():
     return Schedule(epsg="epsg:27700", services=[service])
 
 
-def test_initiating_schedule(schedule):
+def test_initiating_schedule(assert_semantically_equal, schedule):
     s = schedule
     assert_semantically_equal(
         dict(s._graph.nodes(data=True)),
@@ -520,7 +487,7 @@ def test_plot_saves_to_the_specified_directory(tmpdir, schedule):
     assert os.path.exists(expected_plot_path)
 
 
-def test_reproject_changes_projection_for_all_stops_in_route():
+def test_reproject_changes_projection_for_all_stops_in_route(assert_semantically_equal):
     correct_x_y = {"x": -0.14967658860132668, "y": 51.52393050617373}
     schedule = Schedule(
         "epsg:27700",
@@ -763,11 +730,6 @@ def test_getting_stops_on_modal_condition(schedule):
     assert set(stop_ids) == {"5", "6", "7", "8", "3", "1", "4", "2"}
 
 
-test_geojson = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "test_geojson.geojson")
-)
-
-
 def test_getting_stops_on_spatial_condition_with_geojson(schedule, mocker):
     mocker.patch.object(
         spatial,
@@ -776,7 +738,7 @@ def test_getting_stops_on_spatial_condition_with_geojson(schedule, mocker):
             [Polygon([(-7.6, 49.7), (-7.4, 49.7), (-7.4, 49.8), (-7.6, 49.8), (-7.6, 49.7)])]
         ),
     )
-    stops = schedule.stops_on_spatial_condition(test_geojson)
+    stops = schedule.stops_on_spatial_condition(test_geojson.as_posix())
     assert set(stops) == {"5", "6", "7", "8", "2", "4", "3", "1"}
 
 
@@ -878,7 +840,7 @@ def test_removing_service_from_copied_schedule_does_not_affect_services_in_origi
 
 
 def test_removing_service_from_copied_schedule_does_not_affect_graph_nodes_of_original(
-    schedule_with_two_services,
+    assert_semantically_equal, schedule_with_two_services
 ):
     subschedule = schedule_with_two_services.__copy__()
     subschedule.remove_service("rail_service")
@@ -1078,7 +1040,7 @@ def test_removing_service_from_copied_schedule_does_not_affect_graph_nodes_of_or
 
 
 def test_removing_service_from_copied_schedule_does_not_affect_vehicles_of_original(
-    schedule_with_two_services,
+    assert_semantically_equal, schedule_with_two_services
 ):
     subschedule = schedule_with_two_services.__copy__()
     subschedule.remove_service("rail_service")
@@ -1098,7 +1060,7 @@ def test_removing_service_from_copied_schedule_does_not_affect_vehicles_of_origi
 
 
 def test_changing_copied_schedule_does_not_affect_transfer_times_of_original(
-    schedule_with_two_services,
+    assert_semantically_equal, schedule_with_two_services
 ):
     subschedule = schedule_with_two_services.__copy__()
     subschedule.remove_stops_from_minimal_transfer_times(["7"])
@@ -1207,7 +1169,9 @@ def test_applying_attributes_changing_id_to_route_throws_error(schedule):
     assert "Changing id can only be done via the `reindex` method" in str(e.value)
 
 
-def test_applying_attributes_changing_stop_ids_to_route_changes_node_and_edge_indexing(schedule):
+def test_applying_attributes_changing_stop_ids_to_route_changes_node_and_edge_indexing(
+    assert_semantically_equal, schedule
+):
     assert schedule._graph.graph["routes"]["1"]["ordered_stops"] == ["1", "2", "3", "4"]
     schedule.apply_attributes_to_routes({"1": {"ordered_stops": ["5", "6", "7", "8"]}})
 
@@ -1373,7 +1337,7 @@ def test_applying_function_to_stops(schedule):
         assert schedule._graph.nodes[stop.id]["name"] == "new_name"
 
 
-def test_adding_service(schedule, service):
+def test_adding_service(assert_semantically_equal, schedule, service):
     service.reindex("different_service")
     service.route("1").reindex("different_service_1")
     service.route("2").reindex("different_service_2")
@@ -1462,7 +1426,7 @@ def test_adding_multiple_services_updates_changelog(schedule, services_to_add):
     ) == [("add", s.id) for s in services_to_add]
 
 
-def test_adding_service_with_clashing_route_ids(schedule, service):
+def test_adding_service_with_clashing_route_ids(assert_semantically_equal, schedule, service):
     service.reindex("different_service")
     schedule.add_service(service)
 
@@ -1492,7 +1456,9 @@ def test_adding_service_with_clashing_id_throws_error(schedule, service):
     assert "already exist" in str(e.value)
 
 
-def test_adding_service_with_clashing_stops_data_does_not_overwrite_existing_stops(schedule):
+def test_adding_service_with_clashing_stops_data_does_not_overwrite_existing_stops(
+    assert_semantically_equal, schedule
+):
     expected_stops_data = {
         "5": {
             "services": {"service", "some_id"},
@@ -1609,7 +1575,7 @@ def test_removing_multiple_services_updates_changelog(schedule, schedule_graph):
     ) == [("remove", s) for s in services_to_remove]
 
 
-def test_adding_route(schedule, route):
+def test_adding_route(assert_semantically_equal, schedule, route):
     route.reindex("new_id")
     schedule.add_route("service", route)
 
@@ -1624,7 +1590,7 @@ def test_adding_route(schedule, route):
     )
 
 
-def test_adding_route_with_clashing_id(schedule, route):
+def test_adding_route_with_clashing_id(assert_semantically_equal, schedule, route):
     schedule.add_route("service", route)
 
     assert set(schedule.route_ids()) == {"1", "2", "service_3"}
@@ -1709,7 +1675,7 @@ def test_adding_multiple_routes_updates_changelog(schedule, routes_to_add):
 
 
 def test_creating_a_route_to_add_using_id_references_to_existing_stops_inherits_schedule_stops_data(
-    schedule,
+    assert_semantically_equal, schedule
 ):
     expected_stops_data = {
         "5": {
@@ -1776,7 +1742,9 @@ def test_creating_a_route_to_add_using_id_references_to_existing_stops_inherits_
     assert_semantically_equal(r.graph()["2"]["5"], {"routes": {"3"}, "services": {"service"}})
 
 
-def test_creating_a_route_to_add_giving_existing_schedule_stops(schedule):
+def test_creating_a_route_to_add_giving_existing_schedule_stops(
+    assert_semantically_equal, schedule
+):
     expected_stops_data = {
         "5": {
             "services": {"service"},
@@ -1876,7 +1844,9 @@ def test_creating_a_route_to_add_giving_existing_schedule_stops(schedule):
     assert_semantically_equal(r.graph()["2"]["5"], {"routes": {"3"}, "services": {"service"}})
 
 
-def test_adding_route_with_clashing_stops_data_does_not_overwrite_existing_stops(schedule):
+def test_adding_route_with_clashing_stops_data_does_not_overwrite_existing_stops(
+    assert_semantically_equal, schedule
+):
     expected_stops_data = {
         "5": {
             "services": {"service"},
@@ -1984,7 +1954,7 @@ def test_adding_route_with_clashing_stops_data_without_force_flag_throws_error(s
     assert "The following stops would inherit data" in str(e.value)
 
 
-def test_extracting_epsg_from_an_intermediate_route_gives_none():
+def test_extracting_epsg_from_an_intermediate_route_gives_none(assert_semantically_equal):
     # intermediate meaning not belonging to a schedule yet but referring to stops in a schedule
     r = Route(
         route_short_name="name",
@@ -1998,7 +1968,7 @@ def test_extracting_epsg_from_an_intermediate_route_gives_none():
     assert r.epsg is None
 
 
-def test_removing_route(schedule):
+def test_removing_route(assert_semantically_equal, schedule):
     schedule.remove_route("2")
     assert set(schedule.route_ids()) == {"1"}
     assert set(schedule.service_ids()) == {"service"}
@@ -2006,7 +1976,7 @@ def test_removing_route(schedule):
     assert_semantically_equal(schedule._graph.graph["service_to_route_map"], {"service": ["1"]})
 
 
-def test_removing_route_updates_services_on_nodes_and_edges(schedule):
+def test_removing_route_updates_services_on_nodes_and_edges(assert_semantically_equal, schedule):
     schedule.remove_route("2")
     assert_semantically_equal(
         dict(schedule.graph().nodes(data=True)),
@@ -2124,14 +2094,16 @@ def test_removing_route_updates_services_on_nodes_and_edges(schedule):
     )
 
 
-def test_removing_route_updates_vehicles(schedule):
+def test_removing_route_updates_vehicles(assert_semantically_equal, schedule):
     schedule.remove_route("2")
     assert_semantically_equal(
         schedule.vehicles, {"veh_1_bus": {"type": "bus"}, "veh_2_bus": {"type": "bus"}}
     )
 
 
-def test_removing_route_with_overlapping_vehicles_leaves_all_vehicles(schedule, route):
+def test_removing_route_with_overlapping_vehicles_leaves_all_vehicles(
+    assert_semantically_equal, schedule, route
+):
     schedule.add_route(route=route, service_id="service")
     schedule.remove_route("1")
     assert_semantically_equal(
@@ -2184,19 +2156,19 @@ def test_removing_multiple_stops(schedule):
     assert {stop.id for stop in schedule.stops()} == {"1", "4", "7", "8", "6", "2"}
 
 
-def test_removing_stop_updates_minimal_tranfer_times(schedule):
+def test_removing_stop_updates_minimal_tranfer_times(assert_semantically_equal, schedule):
     schedule.minimal_transfer_times = {"5": {"2": 0.0}, "2": {"5": 0.0, "3": 0.0}, "3": {"2": 0.0}}
     schedule.remove_stop("5")
     assert_semantically_equal(schedule.minimal_transfer_times, {"2": {"3": 0.0}, "3": {"2": 0.0}})
 
 
-def test_removing_multiple_stops_updates_minimal_tranfer_times(schedule):
+def test_removing_multiple_stops_updates_minimal_tranfer_times(assert_semantically_equal, schedule):
     schedule.minimal_transfer_times = {"5": {"2": 0.0}, "2": {"5": 0.0, "3": 0.0}, "3": {"2": 0.0}}
     schedule.remove_stops(["5", "3"])
     assert_semantically_equal(schedule.minimal_transfer_times, {})
 
 
-def test_removing_key_stops_from_minimal_transfert_times(schedule):
+def test_removing_key_stops_from_minimal_transfert_times(assert_semantically_equal, schedule):
     schedule.minimal_transfer_times = {
         "5": {"2": 0.0},
         "2": {"5": 0.0, "3": 0.0},
@@ -2210,13 +2182,15 @@ def test_removing_key_stops_from_minimal_transfert_times(schedule):
     )
 
 
-def test_removing_val_stops_from_minimal_transfert_times(schedule):
+def test_removing_val_stops_from_minimal_transfert_times(assert_semantically_equal, schedule):
     schedule.minimal_transfer_times = {"2": {"5": 0.0, "3": 0.0}, "3": {"2": 0.0}}
     schedule.remove_stops_from_minimal_transfer_times(["5"])
     assert_semantically_equal(schedule.minimal_transfer_times, {"2": {"3": 0.0}, "3": {"2": 0.0}})
 
 
-def test_removing_stops_from_minimal_transfert_times_cleans_up_empties(schedule):
+def test_removing_stops_from_minimal_transfert_times_cleans_up_empties(
+    assert_semantically_equal, schedule
+):
     schedule.minimal_transfer_times = {"4": {"5": 0.0, "3": 0.0}, "3": {"2": 0.0}}
     schedule.remove_stops_from_minimal_transfer_times(["2"])
     assert_semantically_equal(schedule.minimal_transfer_times, {"4": {"5": 0.0, "3": 0.0}})
@@ -2228,7 +2202,9 @@ def test_removing_unused_stops(schedule):
     assert {stop.id for stop in schedule.stops()} == {"6", "8", "5", "7"}
 
 
-def test_unused_stops_featured_in_minimal_transfer_times_are_kept(schedule):
+def test_unused_stops_featured_in_minimal_transfer_times_are_kept(
+    assert_semantically_equal, schedule
+):
     schedule.minimal_transfer_times = {"5": {"2": 0.0}, "2": {"5": 0.0, "3": 0.0}, "3": {"2": 0.0}}
     schedule.remove_route("1")
     schedule.remove_unused_stops()
@@ -2259,7 +2235,7 @@ def test_read_matsim_schedule_delegates_to_matsim_reader_read_schedule(mocker, r
     )
 
 
-def test_read_matsim_schedule_returns_expected_schedule():
+def test_read_matsim_schedule_returns_expected_schedule(assert_semantically_equal):
     schedule = read.read_matsim_schedule(
         path_to_schedule=pt2matsim_schedule_file, epsg="epsg:27700"
     )
@@ -2322,12 +2298,7 @@ def test_read_matsim_schedule_returns_expected_schedule():
     )
 
 
-pt2matsim_schedule_extra_stop_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule_extra_stop.xml")
-)
-
-
-def test_reading_schedule_with_stops_unused_by_services():
+def test_reading_schedule_with_stops_unused_by_services(assert_semantically_equal):
     schedule = read.read_matsim_schedule(pt2matsim_schedule_extra_stop_file, "epsg:27700")
     assert_semantically_equal(
         dict(schedule.graph().nodes(data=True)),
@@ -2380,7 +2351,7 @@ def test_reading_schedule_with_stops_unused_by_services():
     )
 
 
-def test_reading_vehicles_with_a_schedule():
+def test_reading_vehicles_with_a_schedule(assert_semantically_equal):
     schedule = read.read_matsim_schedule(
         path_to_schedule=pt2matsim_schedule_file,
         path_to_vehicles=pt2matsim_vehicles_file,
@@ -2402,7 +2373,7 @@ def test_reading_vehicles_with_a_schedule():
     )
 
 
-def test_reading_vehicles_after_reading_schedule():
+def test_reading_vehicles_after_reading_schedule(assert_semantically_equal):
     schedule = read.read_matsim_schedule(
         path_to_schedule=pt2matsim_schedule_file,
         path_to_vehicles=pt2matsim_vehicles_file,
@@ -2518,7 +2489,9 @@ def test_recognises_schedule_has_infinite_speed_problem(schedule_with_infinite_s
     assert schedule_with_infinite_speed["schedule"].has_infinite_speeds()
 
 
-def test_updates_offsets_for_stop_with_infinite_speed(schedule_with_infinite_speed):
+def test_updates_offsets_for_stop_with_infinite_speed(
+    list_of_times_somewhat_accurate, schedule_with_infinite_speed
+):
     schedule_with_infinite_speed["schedule"].fix_infinite_speeds()
     assert list_of_times_somewhat_accurate(
         schedule_with_infinite_speed["schedule"]
@@ -2559,20 +2532,20 @@ def test_has_self_loops_with_non_looping_routes(schedule):
     assert not schedule.has_self_loops()
 
 
-def test_schedule_without_intermodal_links_declares_it():
-    schedule = NetworkForIntermodalAccessEgressTesting().without_intermodal_access_egress().schedule
+def test_schedule_without_intermodal_links_declares_it(without_intermodal_access_egress):
+    schedule = without_intermodal_access_egress.schedule
     assert not schedule.has_intermodal_access_egress_connections()
 
 
-def test_schedule_with_intermodal_links_declares_it():
-    schedule = (
-        NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress().schedule
-    )
+def test_schedule_with_intermodal_links_declares_it(with_valid_car_intermodal_access_egress):
+    schedule = with_valid_car_intermodal_access_egress.schedule
     assert schedule.has_intermodal_access_egress_connections()
 
 
-def test_intermodal_access_egress_dataframe_contents_with_well_defined_car_access():
-    fixture = NetworkForIntermodalAccessEgressTesting().with_valid_car_intermodal_access_egress()
+def test_intermodal_access_egress_dataframe_contents_with_well_defined_car_access(
+    with_valid_car_intermodal_access_egress,
+):
+    fixture = with_valid_car_intermodal_access_egress
     df = fixture.schedule.intermodal_access_egress_connections()
     assert_frame_equal(df, fixture.expected_intermodal_access_egress_connections_dataframe)
 
@@ -2614,7 +2587,7 @@ def test_generate_validation_report_delegates_to_method_in_schedule_operations(m
     schedule_validation.generate_validation_report.assert_called_once()
 
 
-def test_build_graph_builds_correct_graph(strongly_connected_schedule):
+def test_build_graph_builds_correct_graph(assert_semantically_equal, strongly_connected_schedule):
     g = strongly_connected_schedule.graph()
 
     assert_semantically_equal(
@@ -2724,7 +2697,7 @@ def test_build_graph_builds_correct_graph(strongly_connected_schedule):
 
 
 def test_building_trips_dataframe_with_stops_accepts_backwards_compatibility(
-    schedule, mocker, caplog
+    assert_logging_warning_caught_with_message_containing, schedule, mocker, caplog
 ):
     mocker.patch.object(Schedule, "trips_with_stops_to_dataframe")
     schedule.trips_with_stops_to_dataframe(schedule.trips_to_dataframe())
@@ -2931,7 +2904,7 @@ def test_building_trips_dataframe_with_stops(schedule):
     assert_frame_equal(df.sort_index(axis=1), correct_df.sort_index(axis=1))
 
 
-def test_generating_vehicles(schedule):
+def test_generating_vehicles(assert_semantically_equal, schedule):
     schedule.generate_vehicles()
     assert_semantically_equal(
         schedule.vehicles,
@@ -2944,7 +2917,9 @@ def test_generating_vehicles(schedule):
     )
 
 
-def test_generating_vehicles_with_shared_vehicles_and_consistent_modes(mocker, schedule):
+def test_generating_vehicles_with_shared_vehicles_and_consistent_modes(
+    assert_semantically_equal, mocker, schedule
+):
     schedule.vehicles = {}
     mocker.patch.object(
         DataFrame,
@@ -2962,7 +2937,7 @@ def test_generating_vehicles_with_shared_vehicles_and_consistent_modes(mocker, s
     )
 
 
-def test_generating_additional_vehicles_by_default(schedule):
+def test_generating_additional_vehicles_by_default(assert_semantically_equal, schedule):
     r = Route(
         route_short_name="N55",
         mode="bus",
@@ -2998,7 +2973,7 @@ def test_generating_additional_vehicles_by_default(schedule):
     )
 
 
-def test_generating_new_vehicles_with_overwite_True(schedule):
+def test_generating_new_vehicles_with_overwite_True(assert_semantically_equal, schedule):
     # change existing vehicle types to be different from mode to test whether they are regenerated with default
     # mode type
     schedule.vehicles = {
@@ -3019,7 +2994,7 @@ def test_generating_new_vehicles_with_overwite_True(schedule):
     )
 
 
-def test_scale_vehicle_capacity(schedule, tmpdir):
+def test_scale_vehicle_capacity(assert_semantically_equal, schedule, tmpdir):
     # assert the initial capacity before scaling
     assert_semantically_equal(
         schedule.vehicle_types["bus"],
@@ -3055,7 +3030,9 @@ def test_scale_vehicle_capacity(schedule, tmpdir):
     )
 
 
-def test_scaling_vehicle_capacity_does_not_affect_original_values(schedule, tmpdir):
+def test_scaling_vehicle_capacity_does_not_affect_original_values(
+    assert_semantically_equal, schedule, tmpdir
+):
     # assert the initial capacity before scaling
     assert_semantically_equal(
         schedule.vehicle_types["bus"],
@@ -3104,7 +3081,9 @@ def test_rejects_inconsistent_modes_when_generating_vehicles(mocker, schedule):
     assert "{'v_1': ['bus', 'rail']}" in str(e.value)
 
 
-def test_generating_route_trips_dataframe_is_backwards_compatible(schedule, mocker, caplog):
+def test_generating_route_trips_dataframe_is_backwards_compatible(
+    assert_logging_warning_caught_with_message_containing, schedule, mocker, caplog
+):
     mocker.patch.object(Schedule, "trips_to_dataframe")
     schedule.route_trips_to_dataframe(gtfs_day="19700102")
     schedule.trips_to_dataframe.assert_called_once_with("19700102")
@@ -3135,7 +3114,9 @@ def test_generating_trips_dataframe(schedule):
     )
 
 
-def test_applying_trips_dataframe_accepts_backwards_compatibility(schedule, mocker, caplog):
+def test_applying_trips_dataframe_accepts_backwards_compatibility(
+    assert_logging_warning_caught_with_message_containing, schedule, mocker, caplog
+):
     mocker.patch.object(Schedule, "set_trips_dataframe")
     schedule.set_route_trips_dataframe(schedule.trips_to_dataframe())
     schedule.set_trips_dataframe.assert_called_once()
@@ -3445,7 +3426,9 @@ def test_generating_trips_dataframe_from_headway(schedule):
     )
 
 
-def test_generating_trips_from_headway_creates_trips_with_vehicles(schedule):
+def test_generating_trips_from_headway_creates_trips_with_vehicles(
+    assert_semantically_equal, schedule
+):
     assert_semantically_equal(
         schedule.route("1").trips,
         {
@@ -3500,7 +3483,7 @@ def test_generating_trips_from_headway_preserves_graph_schema(schedule):
     verify_graph_schema(schedule.graph())
 
 
-def test_generating_trips_from_headway_updates_vehicles(schedule):
+def test_generating_trips_from_headway_updates_vehicles(assert_semantically_equal, schedule):
     assert_semantically_equal(
         schedule.vehicles,
         {
@@ -3576,7 +3559,7 @@ def schedule_for_speed_testing():
                 "routed_speed": {0: float("nan"), 1: float("nan")},
                 "geometry": {0: LineString([(1, 10), (1, 20)]), 1: LineString([(1, 20), (1, 30)])},
             },
-            crs="epsg:27700",
+            crs=CRS("epsg:27700"),
         ),
         "expected_route_speeds": {"service_0": 7.5},
         "expected_speed_report": {},
@@ -3628,7 +3611,7 @@ def schedule_for_testing_0_speed_case():
                 "routed_speed": {0: float("nan")},
                 "geometry": {0: LineString([(1, 10), (1, 10.001)])},
             },
-            crs="epsg:27700",
+            crs=CRS("epsg:27700"),
         ),
         "expected_route_speeds": {"service_0": 0.0},
         "expected_speed_report": {"0_m/s": {"routes": ["service_0"]}},
@@ -3680,7 +3663,7 @@ def schedule_for_testing_inf_speed_case():
                 "routed_speed": {0: float("nan")},
                 "geometry": {0: LineString([(1, 10), (1, 30)])},
             },
-            crs="epsg:27700",
+            crs=CRS("epsg:27700"),
         ),
         "expected_route_speeds": {"service_0": math.inf},
         "expected_speed_report": {"inf_m/s": {"routes": ["service_0"]}},
@@ -3765,7 +3748,7 @@ def test_overlapping_vehicle_types(schedule):
     assert set(overlapping_vehs) == {"rail"}
 
 
-def test_updating_vehicles_with_no_overlap(schedule):
+def test_updating_vehicles_with_no_overlap(assert_semantically_equal, schedule):
     schedule.update_vehicles(
         vehicles={"v_1": {"type": "deathstar"}},
         vehicle_types={
@@ -3878,7 +3861,7 @@ def test_updating_vehicles_with_no_overlap(schedule):
     )
 
 
-def test_updating_vehicles_with_clashes_and_overwrite_on(schedule):
+def test_updating_vehicles_with_clashes_and_overwrite_on(assert_semantically_equal, schedule):
     schedule.update_vehicles(
         vehicles={"veh_2_bus": {"type": "tram"}},
         vehicle_types={
@@ -3916,7 +3899,7 @@ def test_updating_vehicles_with_clashes_and_overwrite_on(schedule):
     )
 
 
-def test_updating_vehicles_with_clashes_and_overwrite_off(schedule):
+def test_updating_vehicles_with_clashes_and_overwrite_off(assert_semantically_equal, schedule):
     schedule.update_vehicles(
         vehicles={"veh_2_bus": {"type": "tram"}},
         vehicle_types={
@@ -4028,7 +4011,9 @@ def test_schedule_with_missing_vehicle_type_returns_expected_information():
     }
 
 
-def test_reading_vehicle_types_from_a_yml_config(vehicle_definitions_config_path):
+def test_reading_vehicle_types_from_a_yml_config(
+    assert_semantically_equal, vehicle_definitions_config_path
+):
     vehicle_types = read_vehicle_types(vehicle_definitions_config_path)
     assert_semantically_equal(
         vehicle_types,
@@ -4313,11 +4298,11 @@ def json_schedule():
     }
 
 
-def test_transforming_schedule_to_json(schedule, json_schedule):
+def test_transforming_schedule_to_json(assert_semantically_equal, schedule, json_schedule):
     assert_semantically_equal(schedule.to_json(), json_schedule)
 
 
-def test_transforming_uneven_schedule_to_json():
+def test_transforming_uneven_schedule_to_json(assert_semantically_equal):
     # the stops have different params, we expect only those with values in the json
     route_2 = Route(
         route_short_name="name",
@@ -4384,7 +4369,7 @@ def test_transforming_uneven_schedule_to_json():
     )
 
 
-def test_writing_schedule_to_json(schedule, json_schedule, tmpdir):
+def test_writing_schedule_to_json(assert_semantically_equal, schedule, json_schedule, tmpdir):
     schedule.write_to_json(tmpdir)
     expected_schedule_json = os.path.join(tmpdir, "schedule.json")
     assert os.path.exists(expected_schedule_json)
@@ -4393,7 +4378,7 @@ def test_writing_schedule_to_json(schedule, json_schedule, tmpdir):
     assert_semantically_equal(output_json, json_schedule)
 
 
-def test_transforming_schedule_to_gtfs(schedule):
+def test_transforming_schedule_to_gtfs(assert_semantically_equal, schedule):
     gtfs = schedule.to_gtfs(gtfs_day="19700101")
     expected_stops = {
         "stop_id": {"5": "5", "6": "6", "7": "7", "8": "8", "3": "3", "2": "2", "4": "4", "1": "1"},

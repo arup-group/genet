@@ -3,16 +3,19 @@ import pytest
 from shapely.geometry import LineString
 
 import genet.utils.simplification as simplification
-from tests.fixtures import assert_semantically_equal
 
 
-def assert_correct_edge_groups(edge_groups_1, edge_groups_2):
-    assert len(edge_groups_1) == len(edge_groups_2)
-    for edge_group_1 in edge_groups_1:
-        for edge_group_2 in edge_groups_2:
-            if edge_group_1 == edge_group_2:
-                edge_groups_2.remove(edge_group_2)
-    assert not edge_groups_2
+@pytest.fixture
+def assert_correct_edge_groups():
+    def _assert_correct_edge_groups(edge_groups_1, edge_groups_2):
+        assert len(edge_groups_1) == len(edge_groups_2)
+        for edge_group_1 in edge_groups_1:
+            for edge_group_2 in edge_groups_2:
+                if edge_group_1 == edge_group_2:
+                    edge_groups_2.remove(edge_group_2)
+        assert not edge_groups_2
+
+    return _assert_correct_edge_groups
 
 
 @pytest.fixture()
@@ -47,7 +50,9 @@ def test_getting_endpoints_with_simple_graph_with_junctions(simple_graph_with_ju
     assert set(endpts) == {1, 2, 5, 6, 11}
 
 
-def test_simplified_paths_with_simple_graph_with_junctions(simple_graph_with_junctions):
+def test_simplified_paths_with_simple_graph_with_junctions(
+    assert_correct_edge_groups, simple_graph_with_junctions
+):
     g = simple_graph_with_junctions
     edge_groups = simplification._get_edge_groups_to_simplify(g)
     assert_correct_edge_groups(edge_groups, [[2, 3, 4, 5], [2, 22, 33, 44, 55, 5]])
@@ -100,7 +105,7 @@ def test_getting_endpoints_with_graph_with_junctions_directed_both_ways(
 
 
 def test_simplified_paths_with_graph_with_junctions_directed_both_ways(
-    graph_with_junctions_directed_both_ways_and_loop,
+    assert_correct_edge_groups, graph_with_junctions_directed_both_ways_and_loop
 ):
     g = graph_with_junctions_directed_both_ways_and_loop
     edge_groups = simplification._get_edge_groups_to_simplify(g)
@@ -127,7 +132,9 @@ def test_getting_endpoints_with_graph_with_loop_at_the_end(graph_with_loop_at_th
     assert set(endpts) == {0, 2, 4}
 
 
-def test_simplified_paths_with_graph_with_loop_at_the_end(graph_with_loop_at_the_end):
+def test_simplified_paths_with_graph_with_loop_at_the_end(
+    assert_correct_edge_groups, graph_with_loop_at_the_end
+):
     g = graph_with_loop_at_the_end
     edge_groups = simplification._get_edge_groups_to_simplify(g)
     assert_correct_edge_groups(edge_groups, [[2, 1, 0], [0, 1, 2], [2, 3, 4]])
@@ -197,7 +204,7 @@ def indexed_edge_groups():
     }
 
 
-def test_merging_edge_data(indexed_edge_groups):
+def test_merging_edge_data(assert_semantically_equal, indexed_edge_groups):
     links_to_add = simplification._process_path(indexed_edge_groups)
 
     assert_semantically_equal(
@@ -234,7 +241,7 @@ def test_merging_edge_data(indexed_edge_groups):
     )
 
 
-def test_merging_edge_data_without_attributes():
+def test_merging_edge_data_without_attributes(assert_semantically_equal):
     links_to_add = simplification._process_path(
         {
             "new_link_id": {
@@ -392,7 +399,7 @@ def test_merging_edge_data_without_attributes():
     )
 
 
-def test_merging_set_attribute_values():
+def test_merging_set_attribute_values(assert_semantically_equal):
     edge_group = {
         "new_link_id": {
             "path": [1, 2, 3],

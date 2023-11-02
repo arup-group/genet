@@ -1,5 +1,4 @@
 import os
-import sys
 import xml.etree.cElementTree as ET
 from collections import OrderedDict
 from copy import deepcopy
@@ -13,69 +12,31 @@ from genet.core import Network
 from genet.exceptions import MalformedAdditionalAttributeError
 from genet.input import read
 from genet.output import matsim_xml_writer
-from genet.schedule_elements import Route, Schedule, Service, Stop, read_vehicle_types
-from tests import xml_diff
-from tests.fixtures import (
-    assert_semantically_equal,
-    full_fat_default_config_path,  # noqa: F401
-    network_object_from_test_data,  # noqa: F401
-)
+from genet.schedule_elements import read_vehicle_types
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_network_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network.xml")
-)
-pt2matsim_schedule_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml")
-)
-pt2matsim_vehicles_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml")
-)
+MATSIM_DATA_DIR = pytest.test_data_dir / "matsim"
+pt2matsim_network_test_file = MATSIM_DATA_DIR / "network.xml"
+pt2matsim_schedule_file = MATSIM_DATA_DIR / "schedule.xml"
+pt2matsim_vehicles_file = MATSIM_DATA_DIR / "vehicles.xml"
 
 
 @pytest.fixture
-def network_dtd():
-    dtd_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data", "dtd", "matsim", "network_v2.dtd")
-    )
-    yield lxml.etree.DTD(dtd_path)
-
-
-@pytest.fixture
-def schedule_dtd():
-    dtd_path = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__), "test_data", "dtd", "matsim", "transitSchedule_v2.dtd"
-        )
-    )
-    yield lxml.etree.DTD(dtd_path)
+def vehicle_types(vehicle_definitions_config_path):
+    return read_vehicle_types(vehicle_definitions_config_path)
 
 
 @pytest.fixture
 def vehicles_xsd():
-    xsd_path = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__), "test_data", "dtd", "matsim", "vehicleDefinitions_v1.0.xsd"
-        )
-    )
+    xsd_path = (pytest.test_data_dir / "dtd" / "matsim" / "vehicleDefinitions_v1.0.xsd").absolute()
 
     xml_schema_doc = lxml.etree.parse(xsd_path)
     yield lxml.etree.XMLSchema(xml_schema_doc)
 
 
 @pytest.fixture
-def vehicle_types():
-    vehicle_types_config = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "genet",
-            "configs",
-            "vehicles",
-            "vehicle_definitions.yml",
-        )
-    )
-    return read_vehicle_types(vehicle_types_config)
+def schedule_dtd():
+    dtd_path = (pytest.test_data_dir / "dtd" / "matsim" / "transitSchedule_v2.dtd").absolute()
+    yield lxml.etree.DTD(dtd_path)
 
 
 def test_generates_valid_matsim_network_xml_file(
@@ -93,11 +54,8 @@ def test_generates_valid_matsim_network_xml_file(
 
 
 def test_network_from_test_osm_data_produces_valid_matsim_network_xml_file(
-    full_fat_default_config_path, network_dtd, tmpdir
+    full_fat_default_config_path, network_dtd, tmpdir, osm_test_file
 ):
-    osm_test_file = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data", "osm", "osm.xml")
-    )
     network = read.read_osm(osm_test_file, full_fat_default_config_path, 1, "epsg:27700")
     network.write_to_matsim(tmpdir)
 
@@ -149,7 +107,7 @@ def test_network_with_extra_attribs_produces_valid_matsim_network_xml_file(
 
 
 def test_network_with_extra_attribs_saves_all_data_to_xml(
-    network_with_extra_attrib, tmpdir, network_dtd
+    assert_semantically_equal, network_with_extra_attrib, tmpdir, network_dtd
 ):
     network_with_extra_attrib.write_to_matsim(tmpdir)
     generated_network_file_path = os.path.join(tmpdir, "network.xml")
@@ -197,7 +155,9 @@ def test_network_with_extra_attribs_saves_all_data_to_xml(
     )
 
 
-def test_tolerates_networks_with_no_oneway_flag_on_links(tmpdir, network_dtd):
+def test_tolerates_networks_with_no_oneway_flag_on_links(
+    assert_semantically_equal, tmpdir, network_dtd
+):
     network = Network("epsg:27700")
     network.add_node("0", attribs={"id": "0", "x": 1, "y": 2, "lat": 1, "lon": 2})
     network.add_node("1", attribs={"id": "1", "x": 2, "y": 2, "lat": 2, "lon": 2})
@@ -269,7 +229,9 @@ def test_tolerates_networks_with_no_oneway_flag_on_links(tmpdir, network_dtd):
     )
 
 
-def test_network_with_attribs_doesnt_loose_any_attributes_after_saving(tmpdir):
+def test_network_with_attribs_doesnt_loose_any_attributes_after_saving(
+    assert_semantically_equal, tmpdir
+):
     network = Network("epsg:27700")
     network.add_node("0", attribs={"id": "0", "x": 1, "y": 2, "lat": 1, "lon": 2})
     network.add_node("1", attribs={"id": "1", "x": 2, "y": 2, "lat": 2, "lon": 2})
@@ -321,7 +283,9 @@ def test_network_with_attribs_doesnt_loose_any_attributes_after_saving(tmpdir):
     assert_semantically_equal(node_attributes_post_save, node_attributes)
 
 
-def test_saving_network_with_geometry_doesnt_change_data_on_the_network(tmpdir):
+def test_saving_network_with_geometry_doesnt_change_data_on_the_network(
+    assert_semantically_equal, tmpdir
+):
     network = Network("epsg:27700")
     network.add_node("0", attribs={"id": "0", "x": 1, "y": 2, "lat": 1, "lon": 2})
     network.add_node("1", attribs={"id": "1", "x": 2, "y": 2, "lat": 2, "lon": 2})
@@ -442,7 +406,7 @@ def network_with_badly_formatted_attributes_and_geometry():
 
 
 def test_saving_network_with_wrongly_formatted_attributes_with_geometry_does_not_alter_attributes_data(
-    tmpdir, network_with_badly_formatted_attributes_and_geometry
+    assert_semantically_equal, tmpdir, network_with_badly_formatted_attributes_and_geometry
 ):
     network_with_badly_formatted_attributes_and_geometry["network"].write_to_matsim(tmpdir)
 
@@ -453,7 +417,7 @@ def test_saving_network_with_wrongly_formatted_attributes_with_geometry_does_not
 
 
 def test_saving_network_with_wrongly_formatted_attributes_with_geometry_removes_bad_attribute_for_saving_to_xml(
-    network_with_badly_formatted_attributes_and_geometry,
+    assert_semantically_equal, network_with_badly_formatted_attributes_and_geometry
 ):
     assert_semantically_equal(
         matsim_xml_writer.check_additional_attributes(
@@ -487,7 +451,7 @@ def test_saving_network_with_badly_formatted_attributes_with_geometry_saves_corr
     assert found_geometry_attrib
 
 
-def test_saving_network_with_bonkers_attributes_with_geometry(tmpdir):
+def test_saving_network_with_bonkers_attributes_with_geometry(assert_semantically_equal, tmpdir):
     # attributes are assumed to be a nested dictionary of very specific format. Due to the fact that user can
     # do virtually anything to edge attributes, or due to calculation error, this may not be the case. If it's not
     # of correct format, we don't expect it to get saved to the matsim network.xml
@@ -540,7 +504,7 @@ def test_saving_network_with_bonkers_attributes_with_geometry(tmpdir):
     assert found_geometry_attrib
 
 
-def test_saving_network_with_correct_attributes_and_geometry(tmpdir):
+def test_saving_network_with_correct_attributes_and_geometry(assert_semantically_equal, tmpdir):
     # attributes are assumed to be a nested dictionary of very specific format. Due to the fact that user can
     # do virtually anything to edge attributes, or due to calculation error, this may not be the case. If it's not
     # of correct format, we don't expect it to get saved to the matsim network.xml
@@ -648,7 +612,9 @@ def test_short_form_can_be_put_in_matsim_format(attribute_in_different_forms):
     )
 
 
-def test_the_value_of_short_form_being_put_in_matsim_format(attribute_in_different_forms):
+def test_the_value_of_short_form_being_put_in_matsim_format(
+    assert_semantically_equal, attribute_in_different_forms
+):
     assert_semantically_equal(
         matsim_xml_writer.format_to_matsim(
             "attrib", attribute_in_different_forms["short_form"]["attrib"]
@@ -664,7 +630,7 @@ def test_malformed_attrib_throws_exception_when_requested_to_put_in_matsim_forma
     assert matsim_xml_writer.EXPECTED_FORMAT_FOR_ADDITIONAL_ATTRIBUTES_MESSAGE in str(e.value)
 
 
-def test_particular_attribute_is_deleted_if_deemed_malformed(mocker):
+def test_particular_attribute_is_deleted_if_deemed_malformed(assert_semantically_equal, mocker):
     mocker.patch.object(matsim_xml_writer, "can_be_put_in_matsim_format", side_effect=[True, False])
     link_attribs = {
         "id": "0",
@@ -695,7 +661,7 @@ def test_particular_attribute_is_deleted_if_deemed_malformed(mocker):
     )
 
 
-def test_attributes_are_deleted_if_all_are_deemed_malformed(mocker):
+def test_attributes_are_deleted_if_all_are_deemed_malformed(assert_semantically_equal, mocker):
     mocker.patch.object(matsim_xml_writer, "can_be_put_in_matsim_format", return_value=False)
     link_attribs = {
         "id": "0",
@@ -725,42 +691,6 @@ def test_attributes_are_deleted_if_all_are_deemed_malformed(mocker):
     )
 
 
-@pytest.fixture()
-def network_with_additional_node_attrib():
-    network = Network("epsg:27700")
-    network.add_node("0", attribs={"id": "0", "x": 1, "y": 2, "attributes": {"osm:node:data": 3}})
-    network.add_node("1", attribs={"id": "1", "x": 2, "y": 2})
-    network.add_link(
-        "0",
-        "0",
-        "1",
-        attribs={
-            "id": "0",
-            "from": "0",
-            "to": "1",
-            "length": 1,
-            "freespeed": 1,
-            "capacity": 20,
-            "permlanes": 1,
-            "oneway": "1",
-            "modes": ["car"],
-        },
-    )
-    return network
-
-
-@pytest.fixture()
-def network_with_additional_node_attrib_xml_file():
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "test_data",
-            "matsim",
-            "network_with_additional_node_attrib.xml",
-        )
-    )
-
-
 def test_network_with_additional_node_attribs_produces_valid_matsim_xml_file(
     network_with_additional_node_attrib, tmpdir, network_dtd
 ):
@@ -775,6 +705,7 @@ def test_network_with_additional_node_attribs_produces_valid_matsim_xml_file(
 
 
 def test_network_with_additional_node_attribs_saves_all_data_to_xml(
+    assert_xml_semantically_equal,
     network_with_additional_node_attrib,
     tmpdir,
     network_dtd,
@@ -783,7 +714,7 @@ def test_network_with_additional_node_attribs_saves_all_data_to_xml(
     network_with_additional_node_attrib.write_to_matsim(tmpdir)
 
     generated_network_file_path = os.path.join(tmpdir, "network.xml")
-    xml_diff.assert_semantically_equal(
+    assert_xml_semantically_equal(
         generated_network_file_path, network_with_additional_node_attrib_xml_file
     )
 
@@ -820,14 +751,15 @@ def network_with_additional_simple_form_node_attrib():
 
 
 def test_simple_form_additional_attributes_are_indistinguishable_in_xml(
+    assert_xml_semantically_equal,
     tmpdir,
     network_with_additional_simple_form_node_attrib,
     network_with_additional_node_attrib_xml_file,
 ):
     network_with_additional_simple_form_node_attrib.write_to_matsim(tmpdir)
 
-    generated_network_file_path = os.path.join(tmpdir, "network.xml")
-    xml_diff.assert_semantically_equal(
+    generated_network_file_path = tmpdir.join("network.xml")
+    assert_xml_semantically_equal(
         generated_network_file_path, network_with_additional_node_attrib_xml_file
     )
 
@@ -838,7 +770,7 @@ def test_non_string_simple_form_additional_attribute_saves_to_xml_correctly(tmpd
 
     network.write_to_matsim(tmpdir)
 
-    xml_data = xmltodict.parse(open(os.path.join(tmpdir, "network.xml")).read())
+    xml_data = xmltodict.parse(tmpdir.join("network.xml").read())
     assert (
         xml_data["network"]["nodes"]["node"]["attributes"]["attribute"]["@name"] == "osm:node:data"
     )
@@ -850,13 +782,11 @@ def test_non_string_simple_form_additional_attribute_saves_to_xml_correctly(tmpd
 
 
 def test_write_matsim_network_produces_semantically_equal_xml_to_input_matsim_xml(
-    network_object_from_test_data, tmpdir
+    assert_xml_semantically_equal, network_object_from_test_data, tmpdir
 ):
     matsim_xml_writer.write_matsim_network(tmpdir, network_object_from_test_data)
 
-    xml_diff.assert_semantically_equal(
-        os.path.join(tmpdir, "network.xml"), pt2matsim_network_test_file
-    )
+    assert_xml_semantically_equal(os.path.join(tmpdir, "network.xml"), pt2matsim_network_test_file)
 
 
 def test_generates_valid_matsim_schedule_xml_file(
@@ -876,17 +806,15 @@ def test_generates_valid_matsim_schedule_xml_file(
 
 
 def test_write_matsim_schedule_produces_semantically_equal_xml_to_input_matsim_xml(
-    network_object_from_test_data, tmpdir
+    assert_xml_semantically_equal, network_object_from_test_data, tmpdir
 ):
     matsim_xml_writer.write_matsim_schedule(tmpdir, network_object_from_test_data.schedule)
 
-    xml_diff.assert_semantically_equal(
-        os.path.join(tmpdir, "schedule.xml"), pt2matsim_schedule_file
-    )
+    assert_xml_semantically_equal(os.path.join(tmpdir, "schedule.xml"), pt2matsim_schedule_file)
 
 
 def test_write_matsim_schedule_produces_semantically_equal_xml_to_input_matsim_xml_if_stops_need_to_reprojected(
-    network_object_from_test_data, tmpdir
+    assert_xml_semantically_equal, network_object_from_test_data, tmpdir
 ):
     # we change all the stops in the one service and one route that exists in the test data
     network_object_from_test_data.schedule.route(
@@ -895,52 +823,7 @@ def test_write_matsim_schedule_produces_semantically_equal_xml_to_input_matsim_x
 
     matsim_xml_writer.write_matsim_schedule(tmpdir, network_object_from_test_data.schedule)
 
-    xml_diff.assert_semantically_equal(
-        os.path.join(tmpdir, "schedule.xml"), pt2matsim_schedule_file
-    )
-
-
-@pytest.fixture()
-def schedule_with_additional_attrib_stop():
-    schedule = Schedule("epsg:27700")
-    schedule.add_service(
-        Service(
-            id="s1",
-            routes=[
-                Route(
-                    id="r1",
-                    route_short_name="r1",
-                    mode="bus",
-                    arrival_offsets=["00:00:00", "00:01:00"],
-                    departure_offsets=["00:00:00", "00:01:00"],
-                    headway_spec={("07:00:00", "08:00:00"): 20},
-                    stops=[
-                        Stop(
-                            "s1",
-                            x=1,
-                            y=1,
-                            epsg="epsg:27700",
-                            attributes={"carAccessible": "true", "accessLinkId_car": "linkID"},
-                        ),
-                        Stop("s2", x=1, y=1, epsg="epsg:27700"),
-                    ],
-                )
-            ],
-        )
-    )
-    return schedule
-
-
-@pytest.fixture()
-def schedule_with_additional_attrib_stop_xml_file():
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "test_data",
-            "matsim",
-            "schedule_stops_with_additional_attrib.xml",
-        )
-    )
+    assert_xml_semantically_equal(os.path.join(tmpdir, "schedule.xml"), pt2matsim_schedule_file)
 
 
 def test_schedule_with_additional_stop_attribs_produces_valid_matsim_xml_file(
@@ -957,15 +840,15 @@ def test_schedule_with_additional_stop_attribs_produces_valid_matsim_xml_file(
 
 
 def test_schedule_with_additional_stop_attribs_saves_all_data_to_xml(
+    assert_xml_semantically_equal,
     schedule_with_additional_attrib_stop,
     tmpdir,
-    network_dtd,
     schedule_with_additional_attrib_stop_xml_file,
 ):
     schedule_with_additional_attrib_stop.write_to_matsim(tmpdir)
 
     generated_schedule_file_path = os.path.join(tmpdir, "schedule.xml")
-    xml_diff.assert_semantically_equal(
+    assert_xml_semantically_equal(
         generated_schedule_file_path, schedule_with_additional_attrib_stop_xml_file
     )
 
@@ -978,44 +861,6 @@ def test_saving_schedule_with_additional_stop_attribs_does_not_change_data_post_
         "carAccessible": "true",
         "accessLinkId_car": "linkID",
     }
-
-
-@pytest.fixture()
-def schedule_with_additional_route_attrib():
-    schedule = Schedule("epsg:27700")
-    schedule.add_service(
-        Service(
-            id="s1",
-            routes=[
-                Route(
-                    id="r1",
-                    route_short_name="r1",
-                    mode="bus",
-                    arrival_offsets=["00:00:00", "00:01:00"],
-                    departure_offsets=["00:00:00", "00:01:00"],
-                    headway_spec={("07:00:00", "08:00:00"): 20},
-                    attributes={"additional_attrib": "attrib_value"},
-                    stops=[
-                        Stop("s1", x=1, y=1, epsg="epsg:27700"),
-                        Stop("s2", x=1, y=1, epsg="epsg:27700"),
-                    ],
-                )
-            ],
-        )
-    )
-    return schedule
-
-
-@pytest.fixture()
-def schedule_with_additional_route_attribs_xml_file():
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "test_data",
-            "matsim",
-            "schedule_route_with_additional_attrib.xml",
-        )
-    )
 
 
 def test_schedule_with_additional_route_attribs_produces_valid_matsim_xml_file(
@@ -1032,15 +877,15 @@ def test_schedule_with_additional_route_attribs_produces_valid_matsim_xml_file(
 
 
 def test_schedule_with_additional_route_attribs_saves_all_data_to_xml(
+    assert_xml_semantically_equal,
     schedule_with_additional_route_attrib,
     tmpdir,
-    network_dtd,
     schedule_with_additional_route_attribs_xml_file,
 ):
     schedule_with_additional_route_attrib.write_to_matsim(tmpdir)
 
     generated_schedule_file_path = os.path.join(tmpdir, "schedule.xml")
-    xml_diff.assert_semantically_equal(
+    assert_xml_semantically_equal(
         generated_schedule_file_path, schedule_with_additional_route_attribs_xml_file
     )
 
@@ -1052,44 +897,6 @@ def test_saving_schedule_with_additional_route_attribs_does_not_change_data_post
     assert (
         schedule_with_additional_route_attrib.route("r1").attributes["additional_attrib"]
         == "attrib_value"
-    )
-
-
-@pytest.fixture()
-def schedule_with_additional_service_attrib():
-    schedule = Schedule("epsg:27700")
-    schedule.add_service(
-        Service(
-            id="s1",
-            routes=[
-                Route(
-                    id="r1",
-                    route_short_name="r1",
-                    mode="bus",
-                    arrival_offsets=["00:00:00", "00:01:00"],
-                    departure_offsets=["00:00:00", "00:01:00"],
-                    headway_spec={("07:00:00", "08:00:00"): 20},
-                    stops=[
-                        Stop("s1", x=1, y=1, epsg="epsg:27700"),
-                        Stop("s2", x=1, y=1, epsg="epsg:27700"),
-                    ],
-                )
-            ],
-            attributes={"additional_attrib": "attrib_value"},
-        )
-    )
-    return schedule
-
-
-@pytest.fixture()
-def schedule_with_additional_service_attribs_xml_file():
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "test_data",
-            "matsim",
-            "schedule_service_with_additional_attrib.xml",
-        )
     )
 
 
@@ -1107,15 +914,15 @@ def test_schedule_with_additional_service_attribs_produces_valid_matsim_xml_file
 
 
 def test_schedule_with_additional_service_attribs_saves_all_data_to_xml(
+    assert_xml_semantically_equal,
     schedule_with_additional_service_attrib,
     tmpdir,
-    network_dtd,
     schedule_with_additional_service_attribs_xml_file,
 ):
     schedule_with_additional_service_attrib.write_to_matsim(tmpdir)
 
     generated_schedule_file_path = os.path.join(tmpdir, "schedule.xml")
-    xml_diff.assert_semantically_equal(
+    assert_xml_semantically_equal(
         generated_schedule_file_path, schedule_with_additional_service_attribs_xml_file
     )
 
@@ -1127,41 +934,6 @@ def test_saving_schedule_with_additional_service_attribs_does_not_change_data_po
     assert (
         schedule_with_additional_service_attrib["s1"].attributes["additional_attrib"]
         == "attrib_value"
-    )
-
-
-@pytest.fixture()
-def schedule_with_additional_attrib():
-    schedule = Schedule("epsg:27700")
-    schedule.attributes["additional_attrib"] = "attrib_value"
-    schedule.add_service(
-        Service(
-            id="s1",
-            routes=[
-                Route(
-                    id="r1",
-                    route_short_name="r1",
-                    mode="bus",
-                    arrival_offsets=["00:00:00", "00:01:00"],
-                    departure_offsets=["00:00:00", "00:01:00"],
-                    headway_spec={("07:00:00", "08:00:00"): 20},
-                    stops=[
-                        Stop("s1", x=1, y=1, epsg="epsg:27700"),
-                        Stop("s2", x=1, y=1, epsg="epsg:27700"),
-                    ],
-                )
-            ],
-        )
-    )
-    return schedule
-
-
-@pytest.fixture()
-def schedule_with_additional_attribs_xml_file():
-    return os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__), "test_data", "matsim", "schedule_with_additional_attrib.xml"
-        )
     )
 
 
@@ -1179,12 +951,15 @@ def test_schedule_with_additional_attribs_produces_valid_matsim_xml_file(
 
 
 def test_schedule_with_additional_attribs_saves_all_data_to_xml(
-    schedule_with_additional_attrib, tmpdir, network_dtd, schedule_with_additional_attribs_xml_file
+    assert_xml_semantically_equal,
+    schedule_with_additional_attrib,
+    tmpdir,
+    schedule_with_additional_attribs_xml_file,
 ):
     schedule_with_additional_attrib.write_to_matsim(tmpdir)
 
     generated_schedule_file_path = os.path.join(tmpdir, "schedule.xml")
-    xml_diff.assert_semantically_equal(
+    assert_xml_semantically_equal(
         generated_schedule_file_path, schedule_with_additional_attribs_xml_file
     )
 
@@ -1270,7 +1045,7 @@ def test_throws_exception_when_generating_vehicles_xml_from_unrecognised_vehicle
 
 
 def test_write_matsim_vehicles_produces_semantically_equal_xml_to_input_matsim_xml(
-    network_object_from_test_data, tmpdir
+    assert_xml_semantically_equal, network_object_from_test_data, tmpdir
 ):
     network = network_object_from_test_data
     matsim_xml_writer.write_matsim_schedule(tmpdir, network.schedule)
@@ -1278,9 +1053,7 @@ def test_write_matsim_vehicles_produces_semantically_equal_xml_to_input_matsim_x
         tmpdir, network.schedule.vehicles, network.schedule.vehicle_types
     )
 
-    xml_diff.assert_semantically_equal(
-        os.path.join(tmpdir, "vehicles.xml"), pt2matsim_vehicles_file
-    )
+    assert_xml_semantically_equal(os.path.join(tmpdir, "vehicles.xml"), pt2matsim_vehicles_file)
 
 
 def test_network_with_elevation_data_produces_valid_matsim_network_xml_file(tmpdir, network_dtd):
@@ -1313,7 +1086,7 @@ def test_network_with_elevation_data_produces_valid_matsim_network_xml_file(tmpd
     )
 
 
-def test_nodes_with_elevation_written_correctly_to_xml_network(tmpdir, network_dtd):
+def test_nodes_with_elevation_written_correctly_to_xml_network(assert_semantically_equal, tmpdir):
     network = Network("epsg:27700")
     network.add_node("0", attribs={"id": "0", "x": 1, "y": 2, "z": 3, "lat": 1, "lon": 2})
     network.add_node("1", attribs={"id": "1", "x": 2, "y": 2, "z": 0, "lat": 2, "lon": 2})

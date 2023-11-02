@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import sys
 import time
 from concurrent.futures._base import Future
 
@@ -13,17 +12,8 @@ from shapely.geometry import LineString
 
 from genet.core import Network
 from genet.utils import google_directions, secrets_vault
-from tests.fixtures import (
-    assert_logging_warning_caught_with_message_containing,
-    assert_semantically_equal,
-)
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-example_google_speed_data = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__), "test_data", "example_google_speed_data", "api_requests.json"
-    )
-)
+example_google_speed_data = pytest.test_data_dir / "example_google_speed_data" / "api_requests.json"
 
 
 @pytest.fixture()
@@ -334,7 +324,7 @@ def test_send_requests_for_road_network(
     )
 
 
-def test_read_api_requests():
+def test_read_api_requests(assert_semantically_equal):
     api_requests = google_directions.read_api_requests(example_google_speed_data)
     assert_semantically_equal(
         api_requests,
@@ -413,7 +403,7 @@ def test_queries_build_correctly_with_correct_unix_time():
     )
 
 
-def test_generating_requests_on_non_simplified_graphs():
+def test_generating_requests_on_non_simplified_graphs(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link("0", 1, 2, attribs={"modes": ["car"]})
     n.add_link("1", 2, 3, attribs={"modes": ["car"]})
@@ -451,7 +441,7 @@ def test_generating_requests_on_non_simplified_graphs():
     )
 
 
-def test_generating_requests_on_simplified_graphs():
+def test_generating_requests_on_simplified_graphs(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_link(
         "0",
@@ -563,7 +553,7 @@ def test_generating_requests_on_simplified_graphs():
     )
 
 
-def test_sending_requests(mocker, google_directions_api_response):
+def test_sending_requests(assert_semantically_equal, mocker, google_directions_api_response):
     mocker.patch.object(time, "time", return_value=12345)
     mocker.patch.object(
         secrets_vault, "get_google_directions_api_key", return_value="super_awesome_key"
@@ -633,7 +623,9 @@ def test_sending_requests_throws_error_if_key_not_found(mocker):
     assert "API key was not found" in str(e.value)
 
 
-def test_parsing_routes_with_a_good_response(google_directions_api_response, generated_request):
+def test_parsing_routes_with_a_good_response(
+    assert_semantically_equal, google_directions_api_response, generated_request
+):
     legs = google_directions_api_response.json()["routes"][0]["legs"]
     expected_speed = sum([leg["distance"]["value"] for leg in legs]) / sum(
         [leg["duration_in_traffic"]["value"] for leg in legs]
@@ -648,7 +640,11 @@ def test_parsing_routes_with_a_good_response(google_directions_api_response, gen
 
 
 def test_parsing_routes_with_a_response_without_traffic_info(
-    google_directions_api_response_without_traffic_info, generated_request, caplog
+    assert_semantically_equal,
+    assert_logging_warning_caught_with_message_containing,
+    google_directions_api_response_without_traffic_info,
+    generated_request,
+    caplog,
 ):
     legs = google_directions_api_response_without_traffic_info.json()["routes"][0]["legs"]
     expected_speed = sum([leg["distance"]["value"] for leg in legs]) / sum(
@@ -667,7 +663,7 @@ def test_parsing_routes_with_a_response_without_traffic_info(
 
 
 def test_parsing_routes_with_multiple_legs_response(
-    google_directions_api_response_multiple_legs, generated_request
+    assert_semantically_equal, google_directions_api_response_multiple_legs, generated_request
 ):
     legs = google_directions_api_response_multiple_legs.json()["routes"][0]["legs"]
     expected_speed = sum([leg["distance"]["value"] for leg in legs]) / sum(
@@ -683,7 +679,11 @@ def test_parsing_routes_with_multiple_legs_response(
 
 
 def test_parsing_routes_with_a_bad_response(
-    caplog, request_denied_google_directions_api_response, generated_request
+    assert_semantically_equal,
+    assert_logging_warning_caught_with_message_containing,
+    caplog,
+    request_denied_google_directions_api_response,
+    generated_request,
 ):
     with caplog.at_level(logging.INFO):
         data = google_directions.parse_routes(
@@ -696,7 +696,7 @@ def test_parsing_routes_with_a_bad_response(
 
 
 def test_parsing_routes_with_multiple_routes_selects_the_one_closest(
-    mocker, google_directions_api_response, generated_request
+    assert_semantically_equal, mocker, google_directions_api_response, generated_request
 ):
     mocker.patch.object(Response, "json", return_value={"routes": [1, 2]})
     mocker.patch.object(
@@ -721,7 +721,12 @@ def test_parsing_routes_with_multiple_routes_selects_the_one_closest(
     )
 
 
-def test_parsing_routes_with_bad_request(caplog, bad_request_google_directions_api_response):
+def test_parsing_routes_with_bad_request(
+    assert_semantically_equal,
+    assert_logging_warning_caught_with_message_containing,
+    caplog,
+    bad_request_google_directions_api_response,
+):
     with caplog.at_level(logging.INFO):
         data = google_directions.parse_routes(
             bad_request_google_directions_api_response, "ahmyHzvYkCvCuCdDcBrB"
@@ -730,7 +735,9 @@ def test_parsing_routes_with_bad_request(caplog, bad_request_google_directions_a
     assert_logging_warning_caught_with_message_containing(caplog, "Request was not successful.")
 
 
-def test_parse_results(mocker, generated_request, google_directions_api_response):
+def test_parse_results(
+    assert_semantically_equal, mocker, generated_request, google_directions_api_response
+):
     request = FuturesSession(max_workers=1).get("http://hello.com")
     mocker.patch.object(request, "result", return_value=google_directions_api_response)
     o_d = generated_request["path_nodes"][0], generated_request["path_nodes"][-1]
@@ -773,7 +780,7 @@ def test_parse_results(mocker, generated_request, google_directions_api_response
     )
 
 
-def test_mapping_results_to_edges_with_singular_route_data():
+def test_mapping_results_to_edges_with_singular_route_data(assert_semantically_equal):
     api_requests = {
         ("107316", "107352"): {
             "path_nodes": [
@@ -863,7 +870,7 @@ def test_mapping_results_to_edges_with_singular_route_data():
     )
 
 
-def test_mapping_results_to_edges_with_overlapping_edges():
+def test_mapping_results_to_edges_with_overlapping_edges(assert_semantically_equal):
     api_requests = {
         ("107316", "107352"): {
             "path_nodes": [

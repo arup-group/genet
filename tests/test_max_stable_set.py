@@ -1,10 +1,8 @@
-import networkx as nx
 import pytest
 from pandas import DataFrame
 
 import genet.utils.spatial as spatial
 from genet import MaxStableSet, Network, Route, Schedule, Service, Stop
-from tests.fixtures import assert_semantically_equal
 
 
 @pytest.fixture()
@@ -352,7 +350,7 @@ def test_stops_missing_nearest_links_identifies_stops_with_missing_closest_links
 
 
 def test_build_graph_for_maximum_stable_set_problem_with_non_trivial_closest_link_selection_pool(
-    mocker, network, network_spatial_tree
+    assert_semantically_equal, mocker, network, network_spatial_tree
 ):
     closest_links = DataFrame(
         {
@@ -446,7 +444,7 @@ def test_build_graph_for_maximum_stable_set_problem_with_non_trivial_closest_lin
 
 
 def test_build_graph_for_maximum_stable_set_problem_with_no_path_between_isolated_node(
-    mocker, network
+    assert_semantically_equal, mocker, network
 ):
     closest_links = DataFrame(
         {
@@ -702,35 +700,9 @@ def test_problem_with_isolated_catchment_is_partially_viable(mocker, network):
     assert mss.is_partially_viable()
 
 
-def path_lengths_with_clear_preference(*args, **kwargs):
-    path_lengths = {
-        # stop_1 candidates, `link_1_2_bus` is preferred
-        "link_1_2_car": {"link_4_5_car": 9, "link_5_6_car": 9},
-        "link_1_2_bus": {"link_4_5_car": 1, "link_5_6_car": 1},
-        "link_2_3_car": {"link_4_5_car": 9, "link_5_6_car": 9},
-        # stop_2 candidates, `link_4_5_car` is preferred
-        "link_4_5_car": {
-            "link_1_2_car": 1,
-            "link_1_2_bus": 1,
-            "link_2_3_car": 1,
-            "link_7_8_car": 1,
-            "link_8_9_car": 1,
-        },
-        "link_5_6_car": {
-            "link_1_2_car": 9,
-            "link_1_2_bus": 9,
-            "link_2_3_car": 9,
-            "link_7_8_car": 9,
-            "link_8_9_car": 9,
-        },
-        # stop_3 candidates, `link_7_8_car` is preferred
-        "link_7_8_car": {"link_4_5_car": 1, "link_5_6_car": 1},
-        "link_8_9_car": {"link_4_5_car": 9, "link_5_6_car": 9},
-    }
-    return path_lengths[kwargs["source"]][kwargs["target"]]
-
-
-def test_solving_problem_with_isolated_catchments(mocker, network, network_spatial_tree):
+def test_solving_problem_with_isolated_catchments(
+    assert_semantically_equal, mocker, network, network_spatial_tree
+):
     closest_links = DataFrame(
         {
             "id": {
@@ -755,7 +727,6 @@ def test_solving_problem_with_isolated_catchments(mocker, network, network_spati
     ).set_index("id", drop=False)
     closest_links.index.rename(name="index", inplace=True)
     mocker.patch.object(spatial.SpatialTree, "closest_links", return_value=closest_links)
-    mocker.patch.object(nx, "dijkstra_path_length", side_effect=path_lengths_with_clear_preference)
 
     mss = MaxStableSet(
         pt_graph=network.schedule["bus_service"].graph(),
@@ -763,7 +734,6 @@ def test_solving_problem_with_isolated_catchments(mocker, network, network_spati
         modes={"car", "bus"},
     )
     mss.solve()
-
     assert mss.solution == {
         "stop_1": "link_1_2_bus",
         "stop_2": "link_4_5_car",
@@ -818,7 +788,9 @@ def test_solving_problem_with_isolated_catchments(mocker, network, network_spati
     )
 
 
-def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(mocker, network):
+def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(
+    assert_semantically_equal, mocker, network
+):
     closest_links = DataFrame(
         {
             "id": {0: "stop_2", 1: "stop_2", 2: "stop_3", 3: "stop_3", 4: "stop_1", 5: "stop_1"},
@@ -1033,7 +1005,9 @@ def partial_mss(network):
     return mss
 
 
-def test_partial_mss_problem_generates_correct_network_routes(partial_mss):
+def test_partial_mss_problem_generates_correct_network_routes(
+    assert_semantically_equal, partial_mss
+):
     changeset = partial_mss.to_changeset(
         DataFrame(
             {
@@ -1081,7 +1055,9 @@ def test_partial_mss_problem_generates_correct_network_routes(partial_mss):
     )
 
 
-def test_partial_mss_problem_generates_updated_modes_for_links(partial_mss):
+def test_partial_mss_problem_generates_updated_modes_for_links(
+    assert_semantically_equal, partial_mss
+):
     changeset = partial_mss.to_changeset(
         DataFrame(
             {
@@ -1105,7 +1081,7 @@ def test_partial_mss_problem_generates_updated_modes_for_links(partial_mss):
     )
 
 
-def test_partial_mss_problem_generates_new_artificial_links(partial_mss):
+def test_partial_mss_problem_generates_new_artificial_links(assert_semantically_equal, partial_mss):
     changeset = partial_mss.to_changeset(
         DataFrame(
             {
@@ -1138,7 +1114,9 @@ def test_partial_mss_problem_generates_new_artificial_links(partial_mss):
     )
 
 
-def test_partial_mss_problem_generates_new_network_nodes_from_unsnapped_stops(partial_mss):
+def test_partial_mss_problem_generates_new_network_nodes_from_unsnapped_stops(
+    assert_semantically_equal, partial_mss
+):
     changeset = partial_mss.to_changeset(
         DataFrame(
             {
@@ -1165,7 +1143,9 @@ def test_partial_mss_problem_generates_new_network_nodes_from_unsnapped_stops(pa
     )
 
 
-def test_partial_mss_problem_genrates_new_stops_with_linkrefids(partial_mss):
+def test_partial_mss_problem_genrates_new_stops_with_linkrefids(
+    assert_semantically_equal, partial_mss
+):
     changeset = partial_mss.to_changeset(
         DataFrame(
             {
@@ -1264,7 +1244,7 @@ def test_partial_mss_problem_generates_edge_update_for_schedule(partial_mss):
     ]
 
 
-def test_combining_two_changesets_with_overlap(partial_mss):
+def test_combining_two_changesets_with_overlap(assert_semantically_equal, partial_mss):
     service_1_route_1_pt_edges = partial_mss.pt_edges[
         partial_mss.pt_edges["routes"].apply(lambda x: "service_1_route_1" in x)
     ]

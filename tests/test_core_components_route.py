@@ -7,33 +7,6 @@ from pandas.testing import assert_frame_equal
 from genet.exceptions import ServiceIndexError
 from genet.schedule_elements import Route, Stop, verify_graph_schema
 from genet.utils import plot
-from tests.fixtures import (
-    assert_logging_warning_caught_with_message_containing,
-    assert_semantically_equal,
-    stop_epsg_27700,  # noqa: F401
-)
-
-
-@pytest.fixture()
-def route():
-    a = Stop(id="1", x=4, y=2, epsg="epsg:27700", linkRefId="1")
-    b = Stop(id="2", x=1, y=2, epsg="epsg:27700", linkRefId="2")
-    c = Stop(id="3", x=3, y=3, epsg="epsg:27700", linkRefId="3")
-    d = Stop(id="4", x=7, y=5, epsg="epsg:27700", linkRefId="4")
-    return Route(
-        route_short_name="name",
-        mode="bus",
-        stops=[a, b, c, d],
-        trips={
-            "trip_id": ["1", "2"],
-            "trip_departure_time": ["10:00:00", "20:00:00"],
-            "vehicle_id": ["veh_1_bus", "veh_2_bus"],
-        },
-        arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
-        departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
-        route=["1", "2", "3", "4"],
-        id="1",
-    )
 
 
 @pytest.fixture()
@@ -58,28 +31,7 @@ def strongly_connected_route():
     )
 
 
-@pytest.fixture()
-def self_looping_route():
-    return Route(
-        route_short_name="name",
-        mode="bus",
-        stops=[
-            Stop(id="1", x=4, y=2, epsg="epsg:27700"),
-            Stop(id="1", x=4, y=2, epsg="epsg:27700"),
-            Stop(id="3", x=3, y=3, epsg="epsg:27700"),
-            Stop(id="4", x=7, y=5, epsg="epsg:27700"),
-        ],
-        trips={
-            "trip_id": ["1", "2"],
-            "trip_departure_time": ["10:00:00", "20:00:00"],
-            "vehicle_id": ["veh_3_bus", "veh_4_bus"],
-        },
-        arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
-        departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
-    )
-
-
-def test_initiating_route(route):
+def test_initiating_route(assert_semantically_equal, route):
     r = route
     assert_semantically_equal(
         dict(r._graph.nodes(data=True)),
@@ -173,7 +125,7 @@ def test_initiating_route(route):
     )
 
 
-def test_initiating_route_with_headway_spec():
+def test_initiating_route_with_headway_spec(assert_semantically_equal):
     r = Route(
         id="route_ID",
         route_short_name="name",
@@ -220,7 +172,7 @@ def test_initiating_route_with_headway_spec():
     )
 
 
-def test_updating_route_trips_with_headway(route):
+def test_updating_route_trips_with_headway(assert_semantically_equal, route):
     route.generate_trips_from_headway({("01:00:00", "02:00:00"): 20, ("02:00:00", "03:00:00"): 30})
     assert_semantically_equal(
         route.trips,
@@ -301,7 +253,7 @@ def test_plot_saves_to_the_specified_directory(tmpdir, route):
     assert os.path.exists(expected_plot_path)
 
 
-def test_build_graph_builds_correct_graph():
+def test_build_graph_builds_correct_graph(assert_semantically_equal):
     route = Route(
         route_short_name="name",
         mode="bus",
@@ -710,7 +662,9 @@ def test_is_valid_with_single_stop_network():
     assert not route.is_valid_route()
 
 
-def test_building_trips_dataframe_with_stops_accepts_backwards_compatibility(route, mocker, caplog):
+def test_building_trips_dataframe_with_stops_accepts_backwards_compatibility(
+    assert_logging_warning_caught_with_message_containing, route, mocker, caplog
+):
     mocker.patch.object(Route, "trips_with_stops_to_dataframe")
     route.trips_with_stops_to_dataframe(route.trips_to_dataframe())
     route.trips_with_stops_to_dataframe.assert_called_once()

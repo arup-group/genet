@@ -4,23 +4,11 @@ import pytest
 import xarray as xr
 
 import genet.utils.elevation as elevation
-from tests import xml_diff
-from tests.fixtures import assert_semantically_equal
 
-
-@pytest.fixture()
-def slope_xml_file():
-    return os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "test_data", "elevation", "link_slopes.xml")
-    )
-
-
-elevation_test_folder = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "elevation")
-)
-tif_path = os.path.join(elevation_test_folder, "hk_elevation_example.tif")
-tif_path_crs_not_4326 = os.path.join(elevation_test_folder, "hk_elevation_example_crs_2326.tif")
-array_path = os.path.join(elevation_test_folder, "elevation_image.nc")
+elevation_test_folder = pytest.test_data_dir / "elevation"
+tif_path = elevation_test_folder / "hk_elevation_example.tif"
+tif_path_crs_not_4326 = elevation_test_folder / "hk_elevation_example_crs_2326.tif"
+array_path = elevation_test_folder / "elevation_image.nc"
 
 
 def test_output_type_get_elevation_image():
@@ -47,7 +35,7 @@ def test_get_elevation_data():
     assert output == 446
 
 
-def test_validation_report_for_node_elevation_dictionary():
+def test_validation_report_for_node_elevation_dictionary(assert_semantically_equal):
     # based on network4() fixture
     elevation_dictionary = {"101982": {"z": -51}, "101990": {"z": 100}}
     report = elevation.validation_report_for_node_elevation(elevation_dictionary)
@@ -67,9 +55,10 @@ def test_validation_report_for_node_elevation_dictionary():
     assert_semantically_equal(report, correct_report)
 
 
-def test_writing_slope_saves_data_to_xml(tmpdir, slope_xml_file):
+def test_writing_slope_saves_data_to_xml(assert_xml_semantically_equal, tmpdir):
+    slope_xml_file = pytest.test_data_dir / "elevation" / "link_slopes.xml"
     slope_dictionary = {"0": {"slope": 2.861737280890912}, "1": {"slope": -0.1}}
     elevation.write_slope_xml(slope_dictionary, tmpdir)
 
     generated_elevation_file_path = os.path.join(tmpdir, "link_slopes.xml")
-    xml_diff.assert_semantically_equal(generated_elevation_file_path, slope_xml_file)
+    assert_xml_semantically_equal(generated_elevation_file_path, slope_xml_file)

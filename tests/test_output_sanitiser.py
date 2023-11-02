@@ -1,7 +1,6 @@
 from genet import Network
 from genet.output import geojson as gngeojson
 from genet.output import sanitiser
-from tests.fixtures import assert_semantically_equal
 
 
 def test_sanitising_list():
@@ -14,7 +13,7 @@ def test_sanitising_set():
     assert sanitised == "3"
 
 
-def test_sanitising_geodataframes_with_ids_list(tmpdir):
+def test_sanitising_geodataframes_with_ids_list(assert_semantically_equal):
     n = Network("epsg:27700")
     n.add_node(
         "0", attribs={"x": 528704.1425925883, "y": 182068.78193707118, "s2_id": 7860190995130875979}
