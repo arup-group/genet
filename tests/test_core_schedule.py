@@ -32,6 +32,48 @@ test_geojson = pytest.test_data_dir / "test_geojson.geojson"
 
 
 @pytest.fixture()
+def schedule():
+    route_1 = Route(
+        route_short_name="name",
+        mode="bus",
+        id="1",
+        stops=[
+            Stop(id="1", x=4, y=2, epsg="epsg:27700"),
+            Stop(id="2", x=1, y=2, epsg="epsg:27700"),
+            Stop(id="3", x=3, y=3, epsg="epsg:27700"),
+            Stop(id="4", x=7, y=5, epsg="epsg:27700"),
+        ],
+        trips={
+            "trip_id": ["1", "2"],
+            "trip_departure_time": ["13:00:00", "13:30:00"],
+            "vehicle_id": ["veh_1_bus", "veh_2_bus"],
+        },
+        arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
+        departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
+    )
+    route_2 = Route(
+        route_short_name="name_2",
+        mode="bus",
+        id="2",
+        stops=[
+            Stop(id="5", x=4, y=2, epsg="epsg:27700"),
+            Stop(id="6", x=1, y=2, epsg="epsg:27700"),
+            Stop(id="7", x=3, y=3, epsg="epsg:27700"),
+            Stop(id="8", x=7, y=5, epsg="epsg:27700"),
+        ],
+        trips={
+            "trip_id": ["1", "2"],
+            "trip_departure_time": ["11:00:00", "13:00:00"],
+            "vehicle_id": ["veh_3_bus", "veh_4_bus"],
+        },
+        arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
+        departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
+    )
+    service = Service(id="service", routes=[route_1, route_2])
+    return Schedule(epsg="epsg:27700", services=[service])
+
+
+@pytest.fixture()
 def different_test_service():
     return Service(
         id="different_service",

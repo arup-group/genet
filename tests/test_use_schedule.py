@@ -14,6 +14,48 @@ from genet import Route, Schedule, Service, Stop
 from genet.output import geojson as gngeojson
 
 
+@pytest.fixture()
+def schedule():
+    route_1 = Route(
+        route_short_name="name",
+        mode="bus",
+        id="1",
+        stops=[
+            Stop(id="1", x=4, y=2, epsg="epsg:27700", name="Stop_1"),
+            Stop(id="2", x=1, y=2, epsg="epsg:27700", name="Stop_2"),
+            Stop(id="3", x=3, y=3, epsg="epsg:27700", name="Stop_3"),
+            Stop(id="4", x=7, y=5, epsg="epsg:27700"),
+        ],
+        trips={
+            "trip_id": ["1", "2"],
+            "trip_departure_time": ["17:00:00", "18:30:00"],
+            "vehicle_id": ["veh_1_bus", "veh_2_bus"],
+        },
+        arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
+        departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
+    )
+    route_2 = Route(
+        route_short_name="name_2",
+        mode="bus",
+        id="2",
+        stops=[
+            Stop(id="4", x=7, y=5, epsg="epsg:27700"),
+            Stop(id="3", x=3, y=3, epsg="epsg:27700", name="Stop_3"),
+            Stop(id="2", x=1, y=2, epsg="epsg:27700", name="Stop_2"),
+            Stop(id="1", x=4, y=2, epsg="epsg:27700", name="Stop_1"),
+        ],
+        trips={
+            "trip_id": ["1", "2"],
+            "trip_departure_time": ["17:00:00", "18:30:00"],
+            "vehicle_id": ["veh_3_bus", "veh_4_bus"],
+        },
+        arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
+        departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
+    )
+    service = Service(id="service", routes=[route_1, route_2])
+    return Schedule(epsg="epsg:27700", services=[service])
+
+
 def test_sanitising_time_with_default_day():
     t = use_schedule.sanitise_time("12:46:20")
     assert t == datetime(year=1970, month=1, day=1, hour=12, minute=46, second=20)
