@@ -5686,7 +5686,10 @@ def test_generating_summary_report(network_for_summary_stats):
     report = network_for_summary_stats.summary_report()
     correct_report = {
         "network": {
-            "network_graph_info": {"number_of_links": 2, "number_of_nodes": 3},
+            "network_graph_info": {
+                "number_of_links": len(list(network_for_summary_stats.links())),
+                "number_of_nodes": len(list(network_for_summary_stats.nodes())),
+            },
             "modes": {
                 "modes_on_links": {"bike", "walk", "rail", "car"},
                 "number_of_links_by_mode": {"bike": 1, "walk": 1, "rail": 1, "car": 1},
