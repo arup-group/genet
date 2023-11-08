@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+* Fixed summary report:
+  * Intermodal Access/Egress reporting is more general (not expecting just car and bike mode access to PT) [#204](https://github.com/arup-group/genet/pull/204)
+  * Node/Links numbers were reported incorrectly (switched) [#207](https://github.com/arup-group/genet/pull/207)
+
 ### Changed
 * GeNet's pre-baked python scripts have been retired in favour of CLI [#194](https://github.com/arup-group/genet/pull/194)
 * **[Breaking change]** Support for python v3.11, updated to more accurate pyproj version [#192](https://github.com/arup-group/genet/pull/192)
