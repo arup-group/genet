@@ -4,7 +4,6 @@ import pytest
 from pandas import DataFrame
 
 import genet.utils.dict_support as dict_support
-from tests.fixtures import assert_semantically_equal
 
 
 def test_set_nested_value_overwrites_current_value():
@@ -85,34 +84,36 @@ def test_merging_simple_dictionaries():
     assert return_d == {"a": 1, "b": 5, "c": 8}
 
 
-def test_merging_dictionaries_with_lists():
+def test_merging_dictionaries_with_lists(assert_semantically_equal):
     return_d = dict_support.merge_complex_dictionaries(
         {"a": 1, "b": [3, 6], "c": [1]}, {"b": [5], "c": [8, 90]}
     )
     assert_semantically_equal(return_d, {"a": 1, "b": [3, 6, 5], "c": [1, 8, 90]})
 
 
-def test_preserves_duplicates_in_input_list_when_merging_dictionaries():
+def test_preserves_duplicates_in_input_list_when_merging_dictionaries(assert_semantically_equal):
     return_d = dict_support.merge_complex_dictionaries({"b": [6, 6]}, {"b": [5]})
     assert_semantically_equal(return_d, {"b": [6, 6, 5]})
 
 
-def test_preserves_resulting_duplicates_in_lists_when_merging_dictionaries():
+def test_preserves_resulting_duplicates_in_lists_when_merging_dictionaries(
+    assert_semantically_equal,
+):
     return_d = dict_support.merge_complex_dictionaries({"b": [6]}, {"b": [5, 6]})
     assert_semantically_equal(return_d, {"b": [6, 5, 6]})
 
 
-def test_preserves_lists_order_when_merging_dictionaries():
+def test_preserves_lists_order_when_merging_dictionaries(assert_semantically_equal):
     return_d = dict_support.merge_complex_dictionaries({"b": [1, 2]}, {"b": [3, 4]})
     assert_semantically_equal(return_d, {"b": [1, 2, 3, 4]})
 
 
-def test_combines_sets_with_or_operator_when_merging_dictionaries():
+def test_combines_sets_with_or_operator_when_merging_dictionaries(assert_semantically_equal):
     return_d = dict_support.merge_complex_dictionaries({"b": {1, 2}}, {"b": {2, 3}})
     assert_semantically_equal(return_d, {"b": {1, 2, 3}})
 
 
-def test_does_not_mutate_parameters_when_merging_complex_dictionaries():
+def test_does_not_mutate_parameters_when_merging_complex_dictionaries(assert_semantically_equal):
     A = {"a": {1, 2}, "b": [6, 6], "c": {"a": {1, 2}, "b": [6, 6]}, "d": "hey"}
     B = {"a": {2, 3}, "b": [5], "c": {"a": {2, 3}, "b": [5]}, "d": "yo"}
     A_before = deepcopy(A)
@@ -124,34 +125,34 @@ def test_does_not_mutate_parameters_when_merging_complex_dictionaries():
     assert_semantically_equal(B, B_before)
 
 
-def test_merging_nested_dictionaries():
+def test_merging_nested_dictionaries(assert_semantically_equal):
     return_d = dict_support.merge_complex_dictionaries(
         {"a": 1, "b": {3: 5}, "c": {1: 4}}, {"b": {5: 3}, "c": {8: 90}}
     )
     assert_semantically_equal(return_d, {"a": 1, "b": {3: 5, 5: 3}, "c": {1: 4, 8: 90}})
 
 
-def test_merging_dictionaries_with_nested_lists():
+def test_merging_dictionaries_with_nested_lists(assert_semantically_equal):
     return_d = dict_support.merge_complex_dictionaries(
         {"a": 1, "b": {"a": [3, 6]}, "c": {"b": [1]}}, {"b": {"a": [5]}, "c": {"b": [8, 90]}}
     )
     assert_semantically_equal(return_d, {"a": 1, "b": {"a": [3, 6, 5]}, "c": {"b": [8, 90, 1]}})
 
 
-def test_merging_dictionaries_with_nested_sets():
+def test_merging_dictionaries_with_nested_sets(assert_semantically_equal):
     return_d = dict_support.merge_complex_dictionaries(
         {"a": 1, "b": {"a": {3, 6}}, "c": {"b": {1}}}, {"b": {"a": {5}}, "c": {"b": {8, 90}}}
     )
     assert_semantically_equal(return_d, {"a": 1, "b": {"a": {3, 6, 5}}, "c": {"b": {8, 90, 1}}})
 
 
-def test_merging_dicts_with_lists():
+def test_merging_dicts_with_lists(assert_semantically_equal):
     d = dict_support.merge_complex_dictionaries({"1": [""], "2": []}, {"3": ["1"], "1": ["2"]})
 
     assert_semantically_equal(d, {"1": ["", "2"], "2": [], "3": ["1"]})
 
 
-def test_merging_dicts_with_lists_when_one_dict_is_empty():
+def test_merging_dicts_with_lists_when_one_dict_is_empty(assert_semantically_equal):
     d = dict_support.merge_complex_dictionaries({"1": [""], "2": []}, {})
 
     assert_semantically_equal(d, {"1": [""], "2": []})
@@ -165,7 +166,7 @@ def test_deeper_dict_to_string():
     assert dict_support.dict_to_string({"deeper": {"nested": "dict"}}) == "deeper::nested::dict"
 
 
-def test_dataframe_to_dict_returns_dictionary_ignoring_nan_values():
+def test_dataframe_to_dict_returns_dictionary_ignoring_nan_values(assert_semantically_equal):
     df = DataFrame({"id": [1, 2, 3], "value": ["6", float("nan"), 5]})
     assert_semantically_equal(
         dict_support.dataframe_to_dict(df.T),

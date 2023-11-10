@@ -4,7 +4,6 @@ import pytest
 
 from genet import Network, Route, Schedule, Service, Stop
 from genet.output import geojson as gngeojson
-from tests.fixtures import assert_semantically_equal, correct_schedule  # noqa: F401
 
 
 @pytest.fixture()
@@ -55,7 +54,7 @@ def test_saving_values_which_result_in_overflow(tmpdir):
     n.write_to_geojson(tmpdir)
 
 
-def test_generating_network_graph_geodataframe(network):
+def test_generating_network_graph_geodataframe(assert_semantically_equal, network):
     gdfs = gngeojson.generate_geodataframes(network.graph)
     nodes, links = gdfs["nodes"], gdfs["links"]
     correct_nodes = {
@@ -89,8 +88,12 @@ def test_generating_network_graph_geodataframe(network):
         "modes": {"link_0": ["car", "walk"], "link_1": ["bike"], "link_2": ["rail"]},
     }
 
-    assert_semantically_equal(nodes.drop("geometry", axis=1).to_dict(), correct_nodes)
-    assert_semantically_equal(links.drop("geometry", axis=1).to_dict(), correct_links)
+    assert_semantically_equal(
+        nodes.drop("geometry", axis=1, errors="ignore").to_dict(), correct_nodes
+    )
+    assert_semantically_equal(
+        links.drop("geometry", axis=1, errors="ignore").to_dict(), correct_links
+    )
 
     assert round(nodes.loc["0", "geometry"].coords[:][0][0], 7) == round(528704.1425925883, 7)
     assert round(nodes.loc["0", "geometry"].coords[:][0][1], 7) == round(182068.78193707118, 7)
@@ -107,7 +110,7 @@ def test_generating_network_graph_geodataframe(network):
     assert links.crs == "EPSG:27700"
 
 
-def test_generating_schedule_graph_geodataframe(network):
+def test_generating_schedule_graph_geodataframe(assert_semantically_equal, network):
     gdfs = gngeojson.generate_geodataframes(network.schedule.graph())
     nodes, links = gdfs["nodes"], gdfs["links"]
     correct_nodes = {

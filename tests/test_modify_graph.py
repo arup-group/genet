@@ -1,8 +1,7 @@
 from genet.modify import graph
-from tests.fixtures import assert_semantically_equal
 
 
-def test_reproj():
+def test_reproj(assert_semantically_equal):
     nodes = graph.reproj(
         {"node": {"x": 528704.1425925883, "y": 182068.78193707118}}, "epsg:27700", "epsg:4326"
     )

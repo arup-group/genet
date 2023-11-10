@@ -6,6 +6,7 @@ from geopandas import GeoDataFrame
 from geopandas.testing import assert_geodataframe_equal
 from pandas import DataFrame, Timestamp
 from pandas.testing import assert_frame_equal
+from pyproj import CRS
 from shapely.geometry import LineString
 
 import genet.use.schedule as use_schedule
@@ -84,9 +85,9 @@ def test_generating_edge_vph_geodataframe(schedule):
     gdfs = gngeojson.generate_geodataframes(schedule.graph())
     links = gdfs["links"]
     df = schedule.trips_with_stops_to_dataframe()
-    df = use_schedule.generate_edge_vph_geodataframe(df, links)
+    gdf = use_schedule.generate_edge_vph_geodataframe(df, links)
 
-    correct_df = GeoDataFrame(
+    correct_gdf = GeoDataFrame(
         {
             "hour": {
                 0: Timestamp("1970-01-01 17:00:00"),
@@ -174,12 +175,11 @@ def test_generating_edge_vph_geodataframe(schedule):
                 11: LineString([(7, 5), (3, 3)]),
             },
         },
-        crs="epsg:27700",
+        crs=CRS("epsg:27700"),
     )
-
     assert_geodataframe_equal(
-        df.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
-        correct_df.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
+        gdf.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
+        correct_gdf.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
         check_less_precise=True,
         check_like=True,
     )
@@ -189,9 +189,9 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
     gdfs = gngeojson.generate_geodataframes(schedule["service"].graph())
     links = gdfs["links"]
     df = schedule["service"].trips_with_stops_to_dataframe()
-    df = use_schedule.generate_edge_vph_geodataframe(df, links)
+    gdf = use_schedule.generate_edge_vph_geodataframe(df, links)
 
-    correct_df = GeoDataFrame(
+    correct_gdf = GeoDataFrame(
         {
             "hour": {
                 0: Timestamp("1970-01-01 17:00:00"),
@@ -279,12 +279,12 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
                 11: LineString([(7, 5), (3, 3)]),
             },
         },
-        crs="epsg:27700",
+        crs=CRS("epsg:27700"),
     )
 
     assert_geodataframe_equal(
-        df.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
-        correct_df.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
+        gdf.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
+        correct_gdf.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
         check_less_precise=True,
         check_like=True,
     )
@@ -294,9 +294,9 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
     gdfs = gngeojson.generate_geodataframes(schedule.route("2").graph())
     links = gdfs["links"]
     df = schedule.route("2").trips_with_stops_to_dataframe()
-    df = use_schedule.generate_edge_vph_geodataframe(df, links)
+    gdf = use_schedule.generate_edge_vph_geodataframe(df, links)
 
-    correct_df = GeoDataFrame(
+    correct_gdf = GeoDataFrame(
         {
             "hour": {
                 0: Timestamp("1970-01-01 17:00:00"),
@@ -327,12 +327,12 @@ def test_generating_edge_vph_geodataframe_for_route(schedule):
                 5: LineString([(7, 5), (3, 3)]),
             },
         },
-        crs="epsg:27700",
+        crs=CRS("epsg:27700"),
     )
 
     assert_geodataframe_equal(
-        df.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
-        correct_df.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
+        gdf.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
+        correct_gdf.sort_values(by=["from_stop", "to_stop", "hour"]).reset_index(drop=True),
         check_less_precise=True,
         check_like=True,
     )

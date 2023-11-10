@@ -6,7 +6,6 @@ from pandas.testing import assert_frame_equal
 
 from genet.core import Network
 from genet.utils import graph_operations
-from tests.fixtures import assert_semantically_equal
 
 
 def generate_output_tree(root):
@@ -751,7 +750,7 @@ def test_parsing_extra_nested_attribute_from_attributes_tree():
     assert graph_operations.parse_leaf(node) == {"attributes": {"hello": {"text": "moar"}}}
 
 
-def test_get_attribute_data_under_key_with_non_nested_key():
+def test_get_attribute_data_under_key_with_non_nested_key(assert_semantically_equal):
     input_list = [
         (
             "0",
@@ -784,7 +783,9 @@ def test_get_attribute_data_under_key_with_non_nested_key():
     assert_semantically_equal(data, {"2": ["walk", "car"]})
 
 
-def test_get_attribute_data_under_key_with_nested_link_data_and_nested_key():
+def test_get_attribute_data_under_key_with_nested_link_data_and_nested_key(
+    assert_semantically_equal,
+):
     input_list = [
         (
             "0",
@@ -818,7 +819,7 @@ def test_get_attribute_data_under_key_with_nested_link_data_and_nested_key():
     assert_semantically_equal(data, {"0": "primary", "1": "secondary"})
 
 
-def test_get_nested_attribute_data_with_some_data_missing():
+def test_get_nested_attribute_data_with_some_data_missing(assert_semantically_equal):
     input_list = [
         ("0", {"attributes": {"osm:way:nope": "primary"}}),
         ("1", {"attributes": {"osm:way:lanes": "1"}}),
@@ -865,8 +866,12 @@ def test_building_attribute_dataframe_with_multiple_keys_and_index_name():
 
 
 def test_building_attribute_dataframe_with_multiple_keys_and_iterator():
+    def _iterate(data):
+        for _ in data:
+            yield _
+
     data = [("1", {"key": 1, "another_key": 2}), ("2", {"key": 3, "another_key": 11})]
-    df = graph_operations.build_attribute_dataframe(iter(data), keys=["key", "another_key"])
+    df = graph_operations.build_attribute_dataframe(_iterate(data), keys=["key", "another_key"])
     assert_frame_equal(df, DataFrame({"key": {"1": 1, "2": 3}, "another_key": {"1": 2, "2": 11}}))
 
 
@@ -886,7 +891,7 @@ def add_attributes(x):
     return x["a"] + x["b"]
 
 
-def test_applying_function_to_attributes():
+def test_applying_function_to_attributes(assert_semantically_equal):
     d = graph_operations.apply_to_attributes(
         [(1, {"a": 2, "b": 4}), (2, {"1": 4, "2": 8}), (3, {"a": 6, "b": 10})],
         add_attributes,
@@ -903,7 +908,7 @@ def test_apply_to_attributes_delegates_to_correct_function_when_passed_dict(mock
     )
 
 
-def test_applying_dict_map_to_attributes():
+def test_applying_dict_map_to_attributes(assert_semantically_equal):
     d = graph_operations.apply_to_attributes(
         [(1, {"a": 2, "b": 4}), (2, {"a": 4, "b": 8}), (3, {"a": 6, "b": 10})], {2: 0, 4: 10}, "a"
     )
@@ -950,7 +955,9 @@ def test_consolidating_node_ids_does_nothing_to_matching_nodes_in_matching_coord
     }
 
 
-def test_consolidating_node_ids_updates_nodes_data_for_overlapping_nodes_of_different_coordinate_system():
+def test_consolidating_node_ids_updates_nodes_data_for_overlapping_nodes_of_different_coordinate_system(
+    assert_semantically_equal,
+):
     n_left = Network("epsg:27700")
     n_left.epsg = "epsg:27700"
     n_left.add_node(
@@ -994,7 +1001,7 @@ def test_consolidating_node_ids_updates_nodes_data_for_overlapping_nodes_of_diff
     )
 
 
-def test_consolidating_node_ids_reprojects_non_overlapping_nodes():
+def test_consolidating_node_ids_reprojects_non_overlapping_nodes(assert_semantically_equal):
     n_left = Network("epsg:27700")
     n_left.epsg = "epsg:27700"
     n_left.add_node(
@@ -1038,7 +1045,7 @@ def test_consolidating_node_ids_reprojects_non_overlapping_nodes():
     )
 
 
-def test_add_reindexes_node_if_clashes_with_spatially_matched_nodes():
+def test_add_reindexes_node_if_clashes_with_spatially_matched_nodes(assert_semantically_equal):
     n_left = Network("epsg:27700")
     n_left.epsg = "epsg:27700"
     n_left.add_node(
@@ -1084,7 +1091,7 @@ def test_add_reindexes_node_if_clashes_with_spatially_matched_nodes():
     )
 
 
-def test_add_reindexes_node_if_clashes_with_spatially_unmatched_nodes():
+def test_add_reindexes_node_if_clashes_with_spatially_unmatched_nodes(assert_semantically_equal):
     n_left = Network("epsg:27700")
     n_left.epsg = "epsg:27700"
     n_left.add_node(

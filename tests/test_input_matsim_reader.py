@@ -1,66 +1,80 @@
 import os
-import sys
+from dataclasses import dataclass, field
 
 import pytest
 from pyproj import Proj, Transformer
 from shapely.geometry import LineString
 
 from genet.input import matsim_reader, read
+from genet.schedule_elements import Route, Service, Stop
 from genet.utils import java_dtypes
-from tests.fixtures import (
-    XmlElement,
-    assert_semantically_equal,
-    correct_services_from_test_pt2matsim_schedule,  # noqa: F401
-)
-from tests.test_output_matsim_xml_writer import (
-    network_with_additional_node_attrib,  # noqa: F401
-    network_with_additional_node_attrib_xml_file,  # noqa: F401
-    schedule_with_additional_attrib,  # noqa: F401
-    schedule_with_additional_attrib_stop,  # noqa: F401
-    schedule_with_additional_attrib_stop_xml_file,  # noqa: F401
-    schedule_with_additional_attribs_xml_file,  # noqa: F401
-    schedule_with_additional_route_attrib,  # noqa: F401
-    schedule_with_additional_route_attribs_xml_file,  # noqa: F401
-    schedule_with_additional_service_attrib,  # noqa: F401
-    schedule_with_additional_service_attribs_xml_file,  # noqa: F401
-)
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-pt2matsim_network_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network.xml")
+MATSIM_DATA_DIR = pytest.test_data_dir / "matsim"
+pt2matsim_network_test_file = MATSIM_DATA_DIR / "network.xml"
+pt2matsim_network_multiple_edges_test_file = MATSIM_DATA_DIR / "network_multiple_edges.xml"
+pt2matsim_network_clashing_link_ids_test_file = MATSIM_DATA_DIR / "network_clashing_link_ids.xml"
+pt2matsim_network_clashing_node_ids_test_file = MATSIM_DATA_DIR / "network_clashing_node_ids.xml"
+matsim_output_network_path = MATSIM_DATA_DIR / "matsim_output_network.xml"
+pt2matsim_network_with_geometry_file = MATSIM_DATA_DIR / "network_with_geometry.xml"
+pt2matsim_network_with_singular_geometry_file = (
+    MATSIM_DATA_DIR / "network_with_singular_geometry.xml"
 )
-pt2matsim_network_multiple_edges_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_multiple_edges.xml")
-)
-pt2matsim_network_clashing_link_ids_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_clashing_link_ids.xml")
-)
-pt2matsim_network_clashing_node_ids_test_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_clashing_node_ids.xml")
-)
-matsim_output_network_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "matsim_output_network.xml")
-)
-pt2matsim_network_with_geometry_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "network_with_geometry.xml")
-)
-pt2matsim_network_with_singular_geometry_file = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__), "test_data", "matsim", "network_with_singular_geometry.xml"
-    )
-)
-pt2matsim_NZ_network = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "NZ_network.xml")
-)
-pt2matsim_schedule_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "schedule.xml")
-)
-pt2matsim_vehicles_file = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "matsim", "vehicles.xml")
-)
+pt2matsim_NZ_network = MATSIM_DATA_DIR / "NZ_network.xml"
+pt2matsim_schedule_file = MATSIM_DATA_DIR / "schedule.xml"
+pt2matsim_vehicles_file = MATSIM_DATA_DIR / "vehicles.xml"
 
 
-def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
+@pytest.fixture()
+def xml_elem_with_missing_class():
+    @dataclass()
+    class XmlElement:
+        """class for mocking xml elements"""
+
+        tag: str
+        text: str
+        tail: str = ""
+        attrib: dict = field(default_factory=dict)
+
+    return XmlElement(attrib={"name": "some_attrib"}, tag="attribute", text="hello")
+
+
+@pytest.fixture()
+def correct_services_from_test_pt2matsim_schedule():
+    stops = [
+        Stop(id="26997928P", x="528464.1342843144", y="182179.7435136598", epsg="epsg:27700"),
+        Stop(
+            id="26997928P.link:1", x="528464.1342843144", y="182179.7435136598", epsg="epsg:27700"
+        ),
+    ]
+
+    stops[0].add_additional_attributes({"name": "Brunswick Place (Stop P)", "isBlocking": "false"})
+    stops[1].add_additional_attributes({"name": "Brunswick Place (Stop P)", "isBlocking": "false"})
+
+    services = [
+        Service(
+            id="10314",
+            routes=[
+                Route(
+                    route_short_name="12",
+                    mode="bus",
+                    stops=stops,
+                    route=["1"],
+                    trips={
+                        "trip_id": ["VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00"],
+                        "trip_departure_time": ["04:40:00"],
+                        "vehicle_id": ["veh_bus_1"],
+                    },
+                    arrival_offsets=["00:00:00", "00:02:00"],
+                    departure_offsets=["00:00:00", "00:02:00"],
+                    await_departure=[True, True],
+                )
+            ],
+        )
+    ]
+    return services
+
+
+def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges(assert_semantically_equal):
     correct_nodes = {
         "21667818": {
             "id": "21667818",
@@ -126,7 +140,7 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges():
     assert_semantically_equal(duplicated_link_ids, {})
 
 
-def test_reading_NZ_network():
+def test_reading_NZ_network(assert_semantically_equal):
     n = read.read_matsim(path_to_network=pt2matsim_NZ_network, epsg="epsg:2193")
     assert_semantically_equal(
         dict(n.nodes()),
@@ -170,7 +184,9 @@ def test_reading_NZ_network():
     )
 
 
-def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_nodes_and_edges():
+def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_nodes_and_edges(
+    assert_semantically_equal,
+):
     correct_nodes = {
         "21667818": {
             "id": "21667818",
@@ -266,7 +282,9 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
     assert_semantically_equal(duplicated_link_ids, {})
 
 
-def test_read_network_builds_graph_with_unique_links_given_matsim_network_with_clashing_link_ids():
+def test_read_network_builds_graph_with_unique_links_given_matsim_network_with_clashing_link_ids(
+    assert_semantically_equal,
+):
     correct_nodes = {
         "21667818": {
             "id": "21667818",
@@ -363,7 +381,7 @@ def test_read_network_builds_graph_with_unique_links_given_matsim_network_with_c
     assert_semantically_equal(duplicated_link_ids, {"1": ["1_1"]})
 
 
-def test_read_network_rejects_non_unique_nodes():
+def test_read_network_rejects_non_unique_nodes(assert_semantically_equal):
     correct_nodes = {
         "21667818": {
             "id": "21667818",
@@ -499,7 +517,7 @@ def matsim_output_network():
     }
 
 
-def test_reading_matsim_output_network(matsim_output_network):
+def test_reading_matsim_output_network(assert_semantically_equal, matsim_output_network):
     n = read.read_matsim(path_to_network=matsim_output_network["file_path"], epsg="epsg:27700")
 
     assert_semantically_equal(
@@ -513,7 +531,7 @@ def test_reading_matsim_output_network(matsim_output_network):
     )
 
 
-def test_reading_network_with_geometry_attributes():
+def test_reading_network_with_geometry_attributes(assert_semantically_equal):
     correct_links = {
         "1": {
             "id": "1",
@@ -561,7 +579,9 @@ def test_reading_network_with_geometry_attributes():
     assert_semantically_equal(dict(n.links()), correct_links)
 
 
-def test_reading_network_with_singular_geometry_attribute_cleans_up_empty_attributes_dict():
+def test_reading_network_with_singular_geometry_attribute_cleans_up_empty_attributes_dict(
+    assert_semantically_equal,
+):
     correct_links = {
         "1": {
             "id": "1",
@@ -612,7 +632,9 @@ def test_network_with_additional_attributes_logs_warning_when_long_form_is_force
     )
 
 
-def test_forcing_long_form_in_network_with_additional_link_attributes_reads_links_data_correctly():
+def test_forcing_long_form_in_network_with_additional_link_attributes_reads_links_data_correctly(
+    assert_semantically_equal,
+):
     n = read.read_matsim(
         path_to_network=pt2matsim_network_test_file,
         epsg="epsg:27700",
@@ -641,7 +663,9 @@ def test_forcing_long_form_in_network_with_additional_link_attributes_reads_link
     )
 
 
-def test_forcing_long_form_in_network_with_additional_link_attributes_reads_network_level_attributes_to_short_form():
+def test_forcing_long_form_in_network_with_additional_link_attributes_reads_network_level_attributes_to_short_form(
+    assert_semantically_equal,
+):
     n = read.read_matsim(
         path_to_network=pt2matsim_network_test_file,
         epsg="epsg:27700",
@@ -651,7 +675,9 @@ def test_forcing_long_form_in_network_with_additional_link_attributes_reads_netw
 
 
 def test_network_with_additional_node_attributes_reads_data_correctly(
-    network_with_additional_node_attrib_xml_file, network_with_additional_node_attrib
+    assert_semantically_equal,
+    network_with_additional_node_attrib_xml_file,
+    network_with_additional_node_attrib,
 ):
     n = read.read_matsim(
         path_to_network=network_with_additional_node_attrib_xml_file, epsg="epsg:27700"
@@ -662,7 +688,7 @@ def test_network_with_additional_node_attributes_reads_data_correctly(
 
 
 def test_forcing_long_form_in_network_with_additional_node_attributes_reads_nodes_data_correctly(
-    network_with_additional_node_attrib_xml_file,
+    assert_semantically_equal, network_with_additional_node_attrib_xml_file
 ):
     n = read.read_matsim(
         path_to_network=network_with_additional_node_attrib_xml_file,
@@ -676,7 +702,7 @@ def test_forcing_long_form_in_network_with_additional_node_attributes_reads_node
 
 
 def test_forcing_long_form_in_network_with_additional_node_attributes_reads_network_level_attributes_to_short_form(
-    network_with_additional_node_attrib_xml_file,
+    assert_semantically_equal, network_with_additional_node_attrib_xml_file
 ):
     n = read.read_matsim(
         path_to_network=network_with_additional_node_attrib_xml_file,
@@ -686,7 +712,9 @@ def test_forcing_long_form_in_network_with_additional_node_attributes_reads_netw
     assert_semantically_equal(n.attributes, {"crs": "epsg:27700"})
 
 
-def test_read_schedule_reads_the_data_correctly(correct_services_from_test_pt2matsim_schedule):
+def test_read_schedule_reads_the_data_correctly(
+    assert_semantically_equal, correct_services_from_test_pt2matsim_schedule
+):
     (
         services,
         minimalTransferTimes,
@@ -704,7 +732,9 @@ def test_read_schedule_reads_the_data_correctly(correct_services_from_test_pt2ma
 
 
 def test_schedule_with_additional_stop_attributes_reads_data_correctly(
-    schedule_with_additional_attrib_stop_xml_file, schedule_with_additional_attrib_stop
+    assert_semantically_equal,
+    schedule_with_additional_attrib_stop_xml_file,
+    schedule_with_additional_attrib_stop,
 ):
     s = read.read_matsim_schedule(schedule_with_additional_attrib_stop_xml_file, "epsg:27700")
     data_from_xml = dict(s.graph().nodes())
@@ -714,7 +744,7 @@ def test_schedule_with_additional_stop_attributes_reads_data_correctly(
 
 
 def test_forcing_long_form_in_schedule_with_additional_stop_attributes_reads_data_correctly(
-    schedule_with_additional_attrib_stop_xml_file,
+    assert_semantically_equal, schedule_with_additional_attrib_stop_xml_file
 ):
     s = read.read_matsim_schedule(
         schedule_with_additional_attrib_stop_xml_file, "epsg:27700", force_long_form_attributes=True
@@ -733,7 +763,7 @@ def test_forcing_long_form_in_schedule_with_additional_stop_attributes_reads_dat
 
 
 def test_forcing_long_form_in_schedule_with_additional_stop_attributes_reads_schedule_level_attributes_to_short_form(
-    schedule_with_additional_attrib_stop_xml_file,
+    assert_semantically_equal, schedule_with_additional_attrib_stop_xml_file
 ):
     s = read.read_matsim_schedule(
         schedule_with_additional_attrib_stop_xml_file, "epsg:27700", force_long_form_attributes=True
@@ -742,7 +772,9 @@ def test_forcing_long_form_in_schedule_with_additional_stop_attributes_reads_sch
 
 
 def test_schedule_with_additional_route_attributes_reads_data_correctly(
-    schedule_with_additional_route_attribs_xml_file, schedule_with_additional_route_attrib
+    assert_semantically_equal,
+    schedule_with_additional_route_attribs_xml_file,
+    schedule_with_additional_route_attrib,
 ):
     s = read.read_matsim_schedule(schedule_with_additional_route_attribs_xml_file, "epsg:27700")
     assert s.route("r1").has_attrib("attributes")
@@ -752,7 +784,7 @@ def test_schedule_with_additional_route_attributes_reads_data_correctly(
 
 
 def test_forcing_long_form_in_schedule_with_additional_route_attributes_reads_data_correctly(
-    schedule_with_additional_route_attribs_xml_file,
+    assert_semantically_equal, schedule_with_additional_route_attribs_xml_file
 ):
     s = read.read_matsim_schedule(
         schedule_with_additional_route_attribs_xml_file,
@@ -772,7 +804,7 @@ def test_forcing_long_form_in_schedule_with_additional_route_attributes_reads_da
 
 
 def test_forcing_long_form_in_schedule_with_additional_route_attributes_reads_schedule_level_attributes_to_short_form(
-    schedule_with_additional_route_attribs_xml_file,
+    assert_semantically_equal, schedule_with_additional_route_attribs_xml_file
 ):
     s = read.read_matsim_schedule(
         schedule_with_additional_route_attribs_xml_file,
@@ -783,7 +815,9 @@ def test_forcing_long_form_in_schedule_with_additional_route_attributes_reads_sc
 
 
 def test_schedule_with_additional_service_attributes_reads_data_correctly(
-    schedule_with_additional_service_attribs_xml_file, schedule_with_additional_service_attrib
+    assert_semantically_equal,
+    schedule_with_additional_service_attribs_xml_file,
+    schedule_with_additional_service_attrib,
 ):
     s = read.read_matsim_schedule(schedule_with_additional_service_attribs_xml_file, "epsg:27700")
     assert s["s1"].has_attrib("attributes")
@@ -793,7 +827,7 @@ def test_schedule_with_additional_service_attributes_reads_data_correctly(
 
 
 def test_forcing_long_form_in_schedule_with_additional_service_attributes_reads_data_correctly(
-    schedule_with_additional_service_attribs_xml_file,
+    assert_semantically_equal, schedule_with_additional_service_attribs_xml_file
 ):
     s = read.read_matsim_schedule(
         schedule_with_additional_service_attribs_xml_file,
@@ -813,7 +847,7 @@ def test_forcing_long_form_in_schedule_with_additional_service_attributes_reads_
 
 
 def test_forcing_long_form_in_schedule_with_additional_service_attributes_reads_schedule_level_attributes_to_short_form(
-    schedule_with_additional_service_attribs_xml_file,
+    assert_semantically_equal, schedule_with_additional_service_attribs_xml_file
 ):
     s = read.read_matsim_schedule(
         schedule_with_additional_service_attribs_xml_file,
@@ -824,7 +858,9 @@ def test_forcing_long_form_in_schedule_with_additional_service_attributes_reads_
 
 
 def test_schedule_with_additional_attributes_reads_data_correctly(
-    schedule_with_additional_attribs_xml_file, schedule_with_additional_attrib
+    assert_semantically_equal,
+    schedule_with_additional_attribs_xml_file,
+    schedule_with_additional_attrib,
 ):
     s = read.read_matsim_schedule(schedule_with_additional_attribs_xml_file, "epsg:27700")
     assert s.has_attrib("attributes")
@@ -832,7 +868,7 @@ def test_schedule_with_additional_attributes_reads_data_correctly(
 
 
 def test_schedule_with_additional_attributes_persists_to_short_form_when_long_form_is_forced(
-    schedule_with_additional_attribs_xml_file,
+    assert_semantically_equal, schedule_with_additional_attribs_xml_file
 ):
     s = read.read_matsim_schedule(
         schedule_with_additional_attribs_xml_file, "epsg:27700", force_long_form_attributes=True
@@ -855,11 +891,6 @@ def test_schedule_with_additional_attributes_logs_warning_when_long_form_is_forc
     )
 
 
-@pytest.fixture()
-def xml_elem_with_missing_class():
-    return XmlElement(attrib={"name": "some_attrib"}, tag="attribute", text="hello")
-
-
 def test_reading_additional_attributes_into_short_form_with_missing_class_defaults_to_string(
     xml_elem_with_missing_class, caplog
 ):
@@ -879,7 +910,7 @@ def test_reading_additional_attributes_into_long_form_with_missing_class_default
     assert "does not have a Java class declared." in caplog.records[0].message
 
 
-def test_reading_pt2matsim_vehicles():
+def test_reading_pt2matsim_vehicles(assert_semantically_equal):
     vehicles, vehicle_types = matsim_reader.read_vehicles(pt2matsim_vehicles_file)
 
     assert_semantically_equal(vehicles, {"veh_0_bus": {"type": "bus"}})
@@ -899,7 +930,7 @@ def test_reading_pt2matsim_vehicles():
     )
 
 
-def test_uses_node_elevation_data_when_present_in_network_file(tmpdir):
+def test_uses_node_elevation_data_when_present_in_network_file(assert_semantically_equal, tmpdir):
     nodes_with_elevations = {
         "1": {
             "id": "1",

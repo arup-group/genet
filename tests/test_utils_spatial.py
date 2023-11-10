@@ -1,23 +1,16 @@
-import os
-import sys
-
 import pytest
 import s2sphere
 from geopandas import GeoDataFrame
 from numpy import int64
 from pandas import DataFrame
-from pyproj import Geod
+from pyproj import CRS, Geod
 from shapely.geometry import LineString, MultiLineString, Point, Polygon
 
 from genet import Network
 from genet.exceptions import EmptySpatialTree
 from genet.utils import spatial
-from tests.fixtures import assert_semantically_equal
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-test_geojson = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "test_geojson.geojson")
-)
+test_geojson = pytest.test_data_dir / "test_geojson.geojson"
 
 
 def test_azimuth_to_name_with_east():
@@ -423,7 +416,7 @@ def network():
     return n
 
 
-def test_SpatialTree_adds_links(network):
+def test_SpatialTree_adds_links(assert_semantically_equal, network):
     spatial_tree = spatial.SpatialTree(network)
 
     assert_semantically_equal(
@@ -458,7 +451,9 @@ def test_subsetting_links_df_by_mode_that_isnt_present_throws_error(network):
     assert "No links found" in str(e.value)
 
 
-def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(network):
+def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(
+    assert_semantically_equal, network
+):
     spatial_tree = spatial.SpatialTree(network).modal_subtree(modes="car")
     stops = GeoDataFrame(
         {
@@ -483,7 +478,9 @@ def test_SpatialTree_closest_links_in_london_finds_links_within_30_metres(networ
     )
 
 
-def test_SpatialTree_closest_links_in_london_finds_a_link_within_13_metres(network):
+def test_SpatialTree_closest_links_in_london_finds_a_link_within_13_metres(
+    assert_semantically_equal, network
+):
     spatial_tree = spatial.SpatialTree(network).modal_subtree(modes="car")
     stops = GeoDataFrame(
         {
@@ -494,7 +491,7 @@ def test_SpatialTree_closest_links_in_london_finds_a_link_within_13_metres(netwo
                 2: Point(-0.1520233977548685, 51.51952913606585),
             },
         },
-        crs="epsg:4326",
+        crs=CRS("epsg:4326"),
     )
 
     closest_links = spatial_tree.closest_links(stops, 13)
@@ -505,7 +502,9 @@ def test_SpatialTree_closest_links_in_london_finds_a_link_within_13_metres(netwo
     )
 
 
-def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
+def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres(
+    assert_semantically_equal,
+):
     # (close to equator)
     n = Network("epsg:4326")
     n.add_nodes(
@@ -517,7 +516,7 @@ def test_SpatialTree_closest_links_in_indonesia_finds_link_within_20_metres():
     n.add_link(link_id="link_1", u="1", v="2", attribs={"modes": ["car"]})
     spatial_tree = spatial.SpatialTree(n).modal_subtree(modes="car")
     stops = GeoDataFrame(
-        {"geometry": {"stop_15m_to_link_1": Point(109.380607, 0.320333)}}, crs="epsg:4326"
+        {"geometry": {"stop_15m_to_link_1": Point(109.380607, 0.320333)}}, crs=CRS("epsg:4326")
     )
 
     closest_links = spatial_tree.closest_links(stops, 20)
@@ -540,7 +539,7 @@ def test_SpatialTree_closest_links_in_indonesia_doesnt_find_link_within_10_metre
     n.add_link(link_id="link_1", u="1", v="2", attribs={"modes": ["car"]})
     spatial_tree = spatial.SpatialTree(n).modal_subtree(modes="car")
     stops = GeoDataFrame(
-        {"geometry": {"stop_15m_to_link_1": Point(109.380607, 0.320333)}}, crs="epsg:4326"
+        {"geometry": {"stop_15m_to_link_1": Point(109.380607, 0.320333)}}, crs=CRS("epsg:4326")
     )
 
     closest_links = spatial_tree.closest_links(stops, 10)
@@ -548,7 +547,9 @@ def test_SpatialTree_closest_links_in_indonesia_doesnt_find_link_within_10_metre
     assert closest_links.empty
 
 
-def test_SpatialTree_closest_links_in_north_canada_finds_link_within_30_metres():
+def test_SpatialTree_closest_links_in_north_canada_finds_link_within_30_metres(
+    assert_semantically_equal,
+):
     # (out in the boonies)
     n = Network("epsg:4326")
     n.add_nodes(
@@ -560,7 +561,7 @@ def test_SpatialTree_closest_links_in_north_canada_finds_link_within_30_metres()
     n.add_link(link_id="link_1", u="1", v="2", attribs={"modes": ["car"]})
     spatial_tree = spatial.SpatialTree(n).modal_subtree(modes="car")
     stops = GeoDataFrame(
-        {"geometry": {"stop_15m_to_link_1": Point(-93.250971, 73.664114)}}, crs="epsg:4326"
+        {"geometry": {"stop_15m_to_link_1": Point(-93.250971, 73.664114)}}, crs=CRS("epsg:4326")
     )
 
     closest_links = spatial_tree.closest_links(stops, 30)
@@ -582,7 +583,7 @@ def test_SpatialTree_closest_links_in_north_canada_doesnt_find_link_within_10_me
     n.add_link(link_id="link_1", u="1", v="2", attribs={"modes": ["car"]})
     spatial_tree = spatial.SpatialTree(n).modal_subtree(modes="car")
     stops = GeoDataFrame(
-        {"geometry": {"stop_15m_to_link_1": Point(-93.250971, 73.664114)}}, crs="epsg:4326"
+        {"geometry": {"stop_15m_to_link_1": Point(-93.250971, 73.664114)}}, crs=CRS("epsg:4326")
     )
 
     closest_links = spatial_tree.closest_links(stops, 10)
@@ -590,7 +591,7 @@ def test_SpatialTree_closest_links_in_north_canada_doesnt_find_link_within_10_me
     assert closest_links.empty
 
 
-def test_SpatialTree_shortest_paths(network):
+def test_SpatialTree_shortest_paths(assert_semantically_equal, network):
     spatial_tree = spatial.SpatialTree(network).modal_subtree(modes="car")
     df = DataFrame(
         {
@@ -611,7 +612,7 @@ def test_SpatialTree_shortest_paths(network):
     )
 
 
-def test_SpatialTree_shortest_path_lengths(network):
+def test_SpatialTree_shortest_path_lengths(assert_semantically_equal, network):
     spatial_tree = spatial.SpatialTree(network).modal_subtree(modes="car")
     df = DataFrame(
         {

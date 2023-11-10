@@ -1,5 +1,4 @@
 from genet.utils import parallel
-from tests.fixtures import assert_semantically_equal
 
 
 def test_split_list_returns_the_one_list_it_was_given_when_there_is_one_process():
@@ -46,7 +45,7 @@ def test_split_dict_returns_correctly_partitioned_dicts():
     ]
 
 
-def test_combine_dict():
+def test_combine_dict(assert_semantically_equal):
     combined_list = parallel.combine_dict(
         [
             {0: "0", 1: "2", 2: "4"},
@@ -102,17 +101,16 @@ def test_multiprocess_wrapping_with_processes_param():
     assert output == list(range(0, 200))
 
 
-def custom_simple_split_method(dict_to_listify):
-    return [{i: v} for i, v in dict_to_listify.items()]
-
-
 def test_multiprocess_wrapping_with_custom_simple_split_method():
     # i.e. doesnt rely on number of processes
     input = dict(zip(range(10), ["a"] * 10))
 
+    def _custom_simple_split_method(data):
+        return [{i: v} for i, v in data.items()]
+
     output = parallel.multiprocess_wrap(
         data=input,
-        split=custom_simple_split_method,
+        split=_custom_simple_split_method,
         apply=dict_to_list_function,
         combine=parallel.combine_list,
         processes=2,

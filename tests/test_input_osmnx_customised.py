@@ -1,8 +1,9 @@
 from genet.input import osmnx_customised
-from tests.fixtures import assert_semantically_equal, full_fat_default_config  # noqa: F401
 
 
-def test_return_edges_handles_regular_non_oneway_paths(full_fat_default_config):
+def test_return_edges_handles_regular_non_oneway_paths(
+    assert_semantically_equal, full_fat_default_config
+):
     paths = {
         0: {
             "osmid": 0,
@@ -24,7 +25,7 @@ def test_return_edges_handles_regular_non_oneway_paths(full_fat_default_config):
         )
 
 
-def test_return_edges_handles_oneway_paths(full_fat_default_config):
+def test_return_edges_handles_oneway_paths(assert_semantically_equal, full_fat_default_config):
     paths = {
         0: {
             "osmid": 0,
@@ -46,7 +47,9 @@ def test_return_edges_handles_oneway_paths(full_fat_default_config):
         )
 
 
-def test_return_edges_handles_reversed_oneway_paths(full_fat_default_config):
+def test_return_edges_handles_reversed_oneway_paths(
+    assert_semantically_equal, full_fat_default_config
+):
     paths = {
         0: {
             "osmid": 0,
@@ -68,7 +71,9 @@ def test_return_edges_handles_reversed_oneway_paths(full_fat_default_config):
         )
 
 
-def test_return_edges_handles_roundabouts_as_oneway(full_fat_default_config):
+def test_return_edges_handles_roundabouts_as_oneway(
+    assert_semantically_equal, full_fat_default_config
+):
     paths = {
         0: {
             "osmid": 0,

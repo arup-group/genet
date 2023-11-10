@@ -12,7 +12,7 @@ from genet.validate.network import (
 
 
 @pytest.mark.parametrize(
-    "value,condition,expected_result",
+    ["value", "condition", "expected_result"],
     [
         ("0.00", zero_value, True),
         ("0.0", zero_value, True),
@@ -31,7 +31,7 @@ def test_string_cases_for_float_conditions(value, condition, expected_result):
 
 
 @pytest.mark.parametrize(
-    "value,condition,expected_result",
+    ["value", "condition", "expected_result"],
     [("None", none_condition, True), (None, none_condition, True)],
 )
 def test_cases_for_none_conditions(value, condition, expected_result):

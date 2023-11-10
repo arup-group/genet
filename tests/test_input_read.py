@@ -1,21 +1,28 @@
 import os
 
+import pytest
 from shapely.geometry import LineString
 
 from genet.input import read
-from tests.fixtures import (
-    Route,
-    Service,
-    Stop,
-    assert_semantically_equal,
-    correct_stops_to_route_mapping_from_test_gtfs,  # noqa: F401
-    correct_stops_to_service_mapping_from_test_gtfs,  # noqa: F401
-)
+from genet.schedule_elements import Route, Service, Stop
 
-json_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "json"))
+json_test_folder = pytest.test_data_dir / "json"
+geojson_test_folder = pytest.test_data_dir / "geojson"
+csv_test_folder = pytest.test_data_dir / "csv"
+gtfs_test_folder = pytest.test_data_dir / "gtfs"
 
 
-def test_reading_json():
+@pytest.fixture()
+def correct_stops_to_service_mapping_from_test_gtfs():
+    return {"BSN": {"1001"}, "BSE": {"1001"}, "RSE": {"1002"}, "RSN": {"1002"}}
+
+
+@pytest.fixture()
+def correct_stops_to_route_mapping_from_test_gtfs():
+    return {"BSE": {"1001_0"}, "BSN": {"1001_0"}, "RSE": {"1002_0"}, "RSN": {"1002_0"}}
+
+
+def test_reading_json(assert_semantically_equal):
     n = read.read_json(
         network_path=os.path.join(json_test_folder, "network.json"),
         schedule_path=os.path.join(json_test_folder, "schedule.json"),
@@ -200,12 +207,7 @@ def test_reading_json():
     )
 
 
-geojson_test_folder = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "test_data", "geojson")
-)
-
-
-def test_reading_geojson():
+def test_reading_geojson(assert_semantically_equal):
     n = read.read_geojson_network(
         nodes_path=os.path.join(geojson_test_folder, "network_nodes.geojson"),
         links_path=os.path.join(geojson_test_folder, "network_links.geojson"),
@@ -336,10 +338,7 @@ def test_reading_geojson():
     )
 
 
-csv_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "csv"))
-
-
-def test_reading_network_csv():
+def test_reading_network_csv(assert_semantically_equal):
     n = read.read_csv(
         os.path.join(csv_test_folder, "nodes.csv"),
         os.path.join(csv_test_folder, "links.csv"),
@@ -461,11 +460,10 @@ def test_reading_network_csv():
     )
 
 
-gtfs_test_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data", "gtfs"))
-
-
 def test_read_gtfs_returns_expected_schedule(
-    correct_stops_to_service_mapping_from_test_gtfs, correct_stops_to_route_mapping_from_test_gtfs
+    assert_semantically_equal,
+    correct_stops_to_service_mapping_from_test_gtfs,
+    correct_stops_to_route_mapping_from_test_gtfs,
 ):
     schedule = read.read_gtfs(gtfs_test_folder, "20190604")
 
