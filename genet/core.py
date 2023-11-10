@@ -2961,8 +2961,8 @@ class Network:
     def summary(self):
         report = {}
         network_stats = {
-            "number_of_links": nx.number_of_nodes(self.graph),
-            "number_of_nodes": nx.number_of_edges(self.graph),
+            "number_of_links": nx.number_of_edges(self.graph),
+            "number_of_nodes": nx.number_of_nodes(self.graph),
         }
         report["network_graph_info"] = network_stats
         report["modes"] = {"modes_on_links": self.modes()}
