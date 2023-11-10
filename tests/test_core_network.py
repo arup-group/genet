@@ -4326,9 +4326,9 @@ def test_has_schedule_with_valid_network_routes_with_empty_routes(simple_route):
 @pytest.mark.parametrize(
     "fixture,has_intermodal_connections",
     [
-        ("without_intermodal_access_egress", False),
-        ("with_valid_car_intermodal_access_egress", True),
-        ("with_invalid_intermodal_access_egress", True),
+        ("network_without_intermodal_access_egress", False),
+        ("network_with_valid_car_intermodal_access_egress", True),
+        ("network_with_invalid_intermodal_access_egress", True),
     ],
 )
 def test_recognising_intermodal_connections(request, fixture, has_intermodal_connections):
@@ -4341,9 +4341,9 @@ def test_recognising_intermodal_connections(request, fixture, has_intermodal_con
 @pytest.mark.parametrize(
     "fixture",
     [
-        "without_intermodal_access_egress",
-        "with_valid_car_intermodal_access_egress",
-        "with_invalid_intermodal_access_egress",
+        "network_without_intermodal_access_egress",
+        "network_with_valid_car_intermodal_access_egress",
+        "network_with_invalid_intermodal_access_egress",
     ],
 )
 def test_assembling_intermodal_access_egress_connections(request, fixture):
@@ -4358,9 +4358,9 @@ def test_assembling_intermodal_access_egress_connections(request, fixture):
 @pytest.mark.parametrize(
     "fixture",
     [
-        "without_intermodal_access_egress",
-        "with_valid_car_intermodal_access_egress",
-        "with_invalid_intermodal_access_egress",
+        "network_without_intermodal_access_egress",
+        "network_with_valid_car_intermodal_access_egress",
+        "network_with_invalid_intermodal_access_egress",
     ],
 )
 def test_reporting_on_invalid_intermodal_connections(request, fixture):
@@ -4375,9 +4375,9 @@ def test_reporting_on_invalid_intermodal_connections(request, fixture):
 @pytest.mark.parametrize(
     "fixture,has_valid_intermodal_connections",
     [
-        ("without_intermodal_access_egress", True),
-        ("with_valid_car_intermodal_access_egress", True),
-        ("with_invalid_intermodal_access_egress", False),
+        ("network_without_intermodal_access_egress", True),
+        ("network_with_valid_car_intermodal_access_egress", True),
+        ("network_with_invalid_intermodal_access_egress", False),
     ],
 )
 def test_declaration_on_valid_intermodal_connections(
@@ -4751,9 +4751,9 @@ def test_nested_values_show_up_in_validation_report(assert_semantically_equal):
 @pytest.mark.parametrize(
     "fixture,is_valid_network",
     [
-        ("without_intermodal_access_egress", True),
-        ("with_valid_car_intermodal_access_egress", True),
-        ("with_invalid_intermodal_access_egress", False),
+        ("network_without_intermodal_access_egress", True),
+        ("network_with_valid_car_intermodal_access_egress", True),
+        ("network_with_invalid_intermodal_access_egress", False),
     ],
 )
 def test_intermodal_access_egress_reporting(request, fixture, is_valid_network):

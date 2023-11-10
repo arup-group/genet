@@ -967,17 +967,17 @@ def network_for_intermodal_access_egress_testing():
 
 
 @pytest.fixture
-def without_intermodal_access_egress(network_for_intermodal_access_egress_testing):
+def network_without_intermodal_access_egress(network_for_intermodal_access_egress_testing):
     return network_for_intermodal_access_egress_testing.without_intermodal_access_egress()
 
 
 @pytest.fixture
-def with_valid_car_intermodal_access_egress(network_for_intermodal_access_egress_testing):
+def network_with_valid_car_intermodal_access_egress(network_for_intermodal_access_egress_testing):
     return network_for_intermodal_access_egress_testing.with_valid_car_intermodal_access_egress()
 
 
 @pytest.fixture
-def with_invalid_intermodal_access_egress(network_for_intermodal_access_egress_testing):
+def network_with_invalid_intermodal_access_egress(network_for_intermodal_access_egress_testing):
     return network_for_intermodal_access_egress_testing.with_invalid_intermodal_access_egress()
 
 
