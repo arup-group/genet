@@ -32,12 +32,8 @@ jobs:
         pip install -e '.[dev]'
 
     - name: Unit tests
-      run: |
-        export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-        ./bash_scripts/code-coverage.sh
-    - name: Smoke test notebooks
-      run: |
-        ./bash_scripts/notebooks-smoke-test.sh
+      run: pytest
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:

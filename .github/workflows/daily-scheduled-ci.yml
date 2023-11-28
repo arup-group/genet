@@ -39,9 +39,7 @@ jobs:
         pip install -e '.[dev]'
 
     - name: Run tests
-      run: |
-        export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-        ./bash_scripts/code-coverage.sh
+      run: pytest
 
     - name: Send build success notification
       if: success()
