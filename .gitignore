@@ -54,6 +54,7 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+reports/
 
 # Translations
 *.mo
@@ -122,15 +123,5 @@ dmypy.json
 .pyre/
 .idea
 
-tests/test_outputs/
-test_chunks.csv
-reports/
-mprofile*
-benchmark-outputs/
-working-dir/
-scripts/secrets-mgr-exploration.py
-*.nbconvert.*
-example_data/pt2matsim_network/genet_output/*
-genet_output/*
-example_data/output_*/*
-example_data/api_requests_send.json
+# Project specific
+examples/example_data/outputs

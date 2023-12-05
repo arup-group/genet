@@ -192,25 +192,25 @@ We welcome community contributions to GeNet; please see our [guide to contributi
 described below to verify that the code still works. All of the following commands assume you are in the project's root
 directory.
 
-### Unit tests
-To run unit tests within genet python environment:
+### tests
+To run unit tests within genet python environment (including testing example notebooks):
 
-    python -m pytest -vv tests
+    pytest
 
 and within a docker container:
 
-    docker run cml-genet pytest -vv tests
+    docker run cml-genet pytest -vv
+
+In either case, for shorter test runtimes, append 'tests/' to limit to the unit tests and ignore notebook tests.
 
 ### Generate a unit test code coverage report
 
 To generate an HTML coverage report at `reports/coverage/index.html`:
 
-    ./bash_scripts/code-coverage.sh
+    pytest --cov-report=html
+
+Coverage will also be tracked in pull requests.
 
 ### Lint the python code
 
     Run `pre-commit install` to install pre-commit, which will lint and format your code whenever you commit staged changes.
-
-### Smoke test the Jupyter notebooks
-
-    ./bash_scripts/notebooks-smoke-test.sh
