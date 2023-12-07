@@ -10,18 +10,12 @@
     + [Building the image](#build-the-image)
     + [Running GeNet from the container](#running-a-container-with-a-pre-baked-script)
   * [Installation as a Python Package](#installation-as-a-python-package)
-    + [Native dependencies](#native-dependencies)
+    + [Installing a development environment](#installing-a-development-environment)
     + [A note on the mathematical solver](#a-note-on-the-mathematical-solver)
-    + [Installing the native dependencies](#installing-the-native-dependencies)
-    + [Install dev prereqs](#install-dev-prereqs)
-    + [Install Python dependencies](#install-python-dependencies)
-    + [Install GeNet in to the virtual environment](#install-genet-in-to-the-virtual-environment)
-    + [Install Kepler dependencies](#install-kepler-dependencies)
 - [Developing GeNet](#developing-genet)
   * [Unit tests](#unit-tests)
   * [Code coverage report](#generate-a-unit-test-code-coverage-report)
   * [Linting](#lint-the-python-code)
-  * [Smoke testing Jupyter notebooks](#smoke-test-the-jupyter-notebooks)
 
 
 ## Overview
@@ -114,103 +108,71 @@ as part of your command:
 Note, if you reference data inside your script, or pass them as arguments to the script, they need to reference the
 aliased path inside the container, here: `/mnt/`, rather than the path `/local/path/`.
 
-### Installation as a Python Package / CLI
+### Installation as a Python Package
 
-You can in your base installation of python or a virtual environment.
 You can use GeNet's CLI to run pre-baked modifications or checks on networks.
-You can also write your own python scripts, importing genet as a package, use IPython shell or Jupyter Notebook to load
-up a network, inspect or change it and save it out to file. Check out the
-[wiki pages](https://github.com/arup-group/genet/wiki/Functionality-and-Usage-Guide) and
-[example jupyter notebooks](https://github.com/arup-group/genet/tree/master/notebooks)
-for usage examples.
+You can also write your own python scripts, importing genet as a package, use IPython shell or Jupyter Notebook to load up a network, inspect or change it and save it out to file.
+Check out the [wiki pages](https://github.com/arup-group/genet/wiki/Functionality-and-Usage-Guide) and [example jupyter notebooks](https://github.com/arup-group/genet/tree/master/notebooks) for usage examples.
 
-**Note:** if you plan only to _use_ GeNet rather than make code changes to it, you can avoid having to perform any
-local installation by using [GeNet's Docker image](#using-docker). If you are going to make code changes or use GeNet's
-CLI locally, follow the steps below:
+**Note:** if you plan only to _use_ GeNet rather than make code changes to it, you can ignore the rest of this section and instead use [GeNet's Docker image](#using-docker).
+If you are going to make code changes or use GeNet's CLI locally, follow the steps below to [install a development environment](#installing-a-development-environment).
 
-#### Native dependencies
-GeNet uses some Python libraries that rely on underlying native libraries for things like geospatial calculations and
-linear programming solvers. Before you install GeNet's Python dependencies, you must first install these native
-libraries.
+### Installing a development environment
+
+To create a development environment for genet, with all libraries required for development and quality assurance installed, it is easiest to install genet using the [mamba](https://mamba.readthedocs.io/en/latest/index.html) package manager, as follows:
+
+1. Install mamba with the [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge) executable for your operating system.
+2. Open the command line (or the "miniforge prompt" in Windows).
+3. Download (a.k.a., clone) the genet repository: `git clone git@github.com:arup-group/genet.git`
+4. Change into the `genet` directory: `cd genet`
+5. Create the genet mamba environment: `mamba create -n genet -c conda-forge -c city-modelling-lab --file requirements/base.txt --file requirements/dev.txt`
+6. Activate the genet mamba environment: `mamba activate genet`
+7. Install the genet package into the environment, in editable mode and ignoring dependencies (we have dealt with those when creating the mamba environment): `pip install --no-deps -e .`
+8. Create a jupyter kernel linked to the environment to enable example notebook testing: `ipython kernel install --user --name=genet`
+
+All together:
+``` shell
+git clone git@github.com:arup-group/genet.git
+cd genet
+mamba create -n genet -c conda-forge -c city-modelling-lab --file requirements/base.txt --file requirements/dev.txt
+mamba activate genet
+pip install --no-deps -e .
+ipython kernel install --user --name=genet
+```
 
 #### A note on the mathematical solver
+
 **Note**: The default CBC solver is pre-installed inside [GeNet's Docker image](#using-docker), which can save you some
 installation effort
 
-To use methods which snap public transit to the graph, GeNet uses a mathematical solver. If you won't be using such
-functionality, you do not need to install this solver.
+To use methods which snap public transit to the graph, GeNet uses a mathematical solver.
+If you won't be using such functionality, you do not need to install this solver.
 Methods default to [CBC](https://projects.coin-or.org/Cbc), an open source solver.
+You can install this solver (`coin-or-cbc`) along with your other requirements when creating the environment: `mamba create -n genet -c conda-forge -c city-modelling-lab coin-or-cbc --file requirements/base.txt --file requirements/dev.txt`,
+or install it after the fact `mamba install -n genet coin-or-cbc`
+
 Another good open source choice is [GLPK](https://www.gnu.org/software/glpk/).
 The solver you use needs to support MILP - mixed integer linear programming.
 
-#### Installing the native dependencies
-The commands for installing the necessary native libraries vary according to the operating system you are using, for
-example:
-
-| OS       | Commands                                                                                                                                                                                                                      |
-|----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|Mac OS    | `brew install boost` <br/> `brew install spatialindex` <br/> `brew install gdal --HEAD` <br/> `brew install gdal` <br/> `brew tap coin-or-tools/coinor` <br/> `brew install coin-or-tools/coinor/cbc` <br/> `brew install cbc` |
-|Ubuntu    | `sudo apt install libspatialindex-dev` <br/> `sudo apt install libgdal-dev` <br/> `sudo apt install coinor-cbc`                                                                                                               |
-
-#### Install dev prereqs
-(Use equivalent linux or Windows package management as appropriate for your environment)
-
-    brew install python3.11
-    brew install virtualenv
-
-#### Install Python dependencies
-Create and activate a Python virtual environment
-
-    virtualenv -p python3.11 venv
-    source venv/bin/activate
-
-#### Install GeNet in to the virtual environment
-Finally, install `GeNet`'s Python dependencies
-
-    pip install -e .
-
-After installation, you should be able to successfully run the help command to see all possible commands:
-
-    genet --help
-
-To inspect a specific command, run e.g.:
-
-    genet simplify-network --help
-
-#### Install Kepler dependencies
-
-Please follow [kepler's installation instructions](https://docs.kepler.gl/docs/keplergl-jupyter#install) to be able to
-use the visualisation methods. To see the maps in a jupyter notebook, make sure you enable widgets.
-```
-jupyter nbextension enable --py widgetsnbextension
-```
-
 ## Developing GeNet
 
-We welcome community contributions to GeNet; please see our [guide to contributing](CONTRIBUTING.md) and our
-[community code of conduct](CODE_OF_CONDUCT.md). If you are making changes to the codebase, you should use the tools
-described below to verify that the code still works. All of the following commands assume you are in the project's root
-directory.
+We welcome community contributions to GeNet; please see our [guide to contributing](CONTRIBUTING.md) and our [community code of conduct](CODE_OF_CONDUCT.md).
+If you are making changes to the codebase, you should use the tools described below to verify that the code still works.
+All of the following commands assume you are in the project's root directory.
 
 ### Unit tests
-To run unit tests within genet python environment:
 
-    python -m pytest -vv tests
-
-and within a docker container:
-
-    docker run cml-genet pytest -vv tests
+To run unit tests within genet python environment, run `pytest`.
+To improve test runtime you can focus only on the unit tests and not on the tests of the example jupyter notebooks: `pytest tests/`.
+To run tests in the Docker container, you will need to update the Dockerfile to include development dependencies and then you can run `docker run cml-genet pytest`.
 
 ### Generate a unit test code coverage report
 
 To generate an HTML coverage report at `reports/coverage/index.html`:
 
-    ./bash_scripts/code-coverage.sh
+    pytest --cov-report=html
 
 ### Lint the python code
 
     Run `pre-commit install` to install pre-commit, which will lint and format your code whenever you commit staged changes.
 
-### Smoke test the Jupyter notebooks
-
-    ./bash_scripts/notebooks-smoke-test.sh
