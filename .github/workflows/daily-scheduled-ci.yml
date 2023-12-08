@@ -22,7 +22,7 @@ jobs:
       cache_mamba_env: false
       lint: false
       mamba_env_name: daily-ci
-      additional_mamba_args: coin-or-cbc "proj>=9.3"
+      additional_mamba_args: coin-or-cbc
 
   slack-notify-ci:
     needs: test
