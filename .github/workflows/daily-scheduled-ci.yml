@@ -2,7 +2,7 @@ name: Daily CI
 
 on:
   schedule:
-    - cron: '23 14 * * 1-5'
+    - cron: '37 14 * * 1-5'  # checks on the 37th minute of the 14th hour every weekday
 
 jobs:
   get-date:
