@@ -3526,11 +3526,11 @@ class Schedule(ScheduleElement):
         self, output_dir, gtfs_day="19700101", include_geojson_files=False, include_shp_files=False
     ):
         """
-        Generates geojsons that can be used for generating standard kepler visualisations.
-        These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
+        Generates spatial geoparquet files that can be used for visualisations.
+        These can also be used for validating the schedule for example inspecting the stops and
         the shape of modal subgraphs.
-        :param output_dir: path to folder where to save resulting geojsons
-        :param gtfs_day: day in format YYYYMMDD for the network's schedule for consistency in visualisations,
+        :param output_dir: path to folder where to save resulting files
+        :param gtfs_day: day in format YYYYMMDD for the schedule for consistency in visualisations,
         defaults to 1970/01/01 otherwise
         :param include_geojson_files: whether to generate geojson outputs as well
         :param include_shp_files: whether to generate shape file outputs as well

@@ -2613,7 +2613,7 @@ class Network:
         self, output_dir, gtfs_day="19700101", include_geojson_files=False, include_shp_files=False
     ):
         """
-        Generates spatial geoparquet that can be used for generating standard visualisations.
+        Generates spatial geoparquet files that can be used for visualisations.
         These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
         the shape of modal subgraphs.
         :param output_dir: path to folder where to save resulting files
