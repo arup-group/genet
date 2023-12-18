@@ -1038,3 +1038,25 @@ def make_network_with_elevations_xml_string(nodes_with_elevations_dict, link_dic
         network_xml += " </attributes> </link>"
     network_xml += " </links> </network>"
     return network_xml
+
+
+class ElemWithText:
+    def __init__(self, text):
+        self.text = text
+        self.attrib = {"name": "doesn't matter"}
+
+
+@pytest.mark.parametrize(
+    "case,input_elem_text,expected_output",
+    [
+        ("is_just_a_string", "hello", "hello"),
+        ("is_a_java_array", "{'hello', 'yes'}", {"hello", "yes"}),
+        ("is_none", None, ""),
+    ],
+)
+def test_read_additional_attrib_text(case, input_elem_text, expected_output):
+    elem = ElemWithText(input_elem_text)
+    output = matsim_reader._read_additional_attrib_text(elem=elem)
+    assert output == expected_output, AssertionError(
+        f"Elem for case {case} did not produce the expected result"
+    )
