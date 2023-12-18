@@ -2609,17 +2609,27 @@ class Network:
             )
         return con_desc
 
-    def generate_standard_outputs(self, output_dir, gtfs_day="19700101", include_shp_files=False):
+    def generate_standard_outputs(
+        self, output_dir, gtfs_day="19700101", include_geojson_files=False, include_shp_files=False
+    ):
         """
-        Generates geojsons that can be used for generating standard kepler visualisations.
+        Generates spatial geoparquet that can be used for generating standard visualisations.
         These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
         the shape of modal subgraphs.
-        :param output_dir: path to folder where to save resulting geojsons
+        :param output_dir: path to folder where to save resulting files
         :param gtfs_day: day in format YYYYMMDD for the network's schedule for consistency in visualisations,
         defaults to 1970/01/01 otherwise
+        :param include_geojson_files: whether to generate geojson outputs as well
+        :param include_shp_files: whether to generate shape file outputs as well
         :return: None
         """
-        geojson.generate_standard_outputs(self, output_dir, gtfs_day, include_shp_files)
+        geojson.generate_standard_outputs(
+            self,
+            output_dir,
+            gtfs_day=gtfs_day,
+            include_shp_files=include_shp_files,
+            include_geojson_files=include_geojson_files,
+        )
         logging.info("Finished generating standard outputs. Zipping folder.")
         persistence.zip_folder(output_dir)
 
@@ -2697,30 +2707,77 @@ class Network:
             self.schedule.write_to_json(output_dir)
         self.write_extras(output_dir)
 
-    def write_to_geojson(self, output_dir, epsg: str = None):
+    def write_spatial(
+        self, output_dir, epsg: str = None, to_parquet=False, to_geojson=False, to_shp=False
+    ):
         """
-        Writes Network graph and Schedule (if applicable) to nodes and links geojson files.
+        Transforms Network and Schedule (if applicable) to geopandas.GeoDataFrame of nodes and links and saves to
+        the given format to the requested file format(s)
         :param output_dir: output directory
-        :param epsg: projection if the geometry is to be reprojected, defaults to own projection
-        :return:
+        :param epsg: projection, if the geometry is to be reprojected, defaults to own projection
+        :param to_parquet: whether to save to parquet file format, defaults to no
+        :param to_geojson: whether to save to geojson file format, defaults to no
+        :param to_shp: whether to save to shape file format, defaults to no
+        :return: None, files are saved to disk
         """
+        if not any((to_parquet, to_geojson, to_shp)):
+            raise RuntimeError(
+                "You've requested to save Network as a GeoDataFrame but did not select any of the "
+                "file formats available"
+            )
+
         persistence.ensure_dir(output_dir)
         _network = self.to_geodataframe()
         if epsg is not None:
             _network["nodes"] = _network["nodes"].to_crs(epsg)
             _network["links"] = _network["links"].to_crs(epsg)
-        logging.info(f"Saving Network to GeoJSON in {output_dir}")
-        geojson.save_geodataframe(_network["nodes"], "network_nodes", output_dir)
-        geojson.save_geodataframe(_network["links"], "network_links", output_dir)
-        geojson.save_geodataframe(
-            _network["nodes"]["geometry"], "network_nodes_geometry_only", output_dir
-        )
-        geojson.save_geodataframe(
-            _network["links"]["geometry"], "network_links_geometry_only", output_dir
-        )
+        logging.info(f"Saving Network in {output_dir}")
+        for gdf, filename in (
+            (_network["nodes"], "network_nodes"),
+            (_network["links"], "network_links"),
+            (_network["nodes"]["geometry"], "network_nodes_geometry_only"),
+            (_network["links"]["geometry"], "network_links_geometry_only"),
+        ):
+            geojson.save_geodataframe(
+                gdf,
+                filename,
+                output_dir,
+                to_parquet=to_parquet,
+                to_geojson=to_geojson,
+                to_shp=to_shp,
+            )
         if self.schedule:
-            self.schedule.write_to_geojson(output_dir, epsg)
+            self.schedule.write_spatial(
+                output_dir, epsg=epsg, to_parquet=to_parquet, to_geojson=to_geojson, to_shp=to_shp
+            )
         self.write_extras(output_dir)
+
+    def write_to_geojson(self, output_dir, epsg: str = None):
+        """
+        Writes Network graph and Schedule (if applicable) to nodes and links geojson files.
+        :param output_dir: output directory
+        :param epsg: projection if the geometry is to be reprojected, defaults to own projection
+        :return: None, files are saved to disk
+        """
+        self.write_spatial(output_dir=output_dir, epsg=epsg, to_geojson=True)
+
+    def write_to_parquet(self, output_dir, epsg: str = None):
+        """
+        Writes Network graph and Schedule (if applicable) to nodes and links parquet files.
+        :param output_dir: output directory
+        :param epsg: projection if the geometry is to be reprojected, defaults to own projection
+        :return: None, files are saved to disk
+        """
+        self.write_spatial(output_dir=output_dir, epsg=epsg, to_parquet=True)
+
+    def write_to_shp(self, output_dir, epsg: str = None):
+        """
+        Writes Network graph and Schedule (if applicable) to nodes and links shape files.
+        :param output_dir: output directory
+        :param epsg: projection if the geometry is to be reprojected, defaults to own projection
+        :return: None, files are saved to disk
+        """
+        self.write_spatial(output_dir=output_dir, epsg=epsg, to_shp=True)
 
     def to_geodataframe(self):
         """

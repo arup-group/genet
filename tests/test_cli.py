@@ -60,8 +60,8 @@ def test_add_elevation_to_network(invoke_runner_and_check_files):
             "link_slopes.xml",
             "network.xml",
             "node_elevation_dictionary.json",
-            os.path.join("supporting_outputs", "link_slope.geojson"),
-            os.path.join("supporting_outputs", "node_elevation.geojson"),
+            os.path.join("supporting_outputs", "link_slope.parquet"),
+            os.path.join("supporting_outputs", "node_elevation.parquet"),
             "validation_report_for_elevation.json",
         ],
     )
@@ -96,14 +96,14 @@ def test_generate_standard_outputs(invoke_runner_and_check_files):
             f"--projection={PROJECTION}",
         ],
         expected_files=[
-            "network_nodes.geojson",
-            "schedule_nodes.geojson",
+            "network_nodes.parquet",
+            "schedule_nodes.parquet",
             "summary_report.json",
-            "network_links.geojson",
-            "schedule_links.geojson",
-            os.path.join("schedule", "speed", "pt_network_speeds.geojson"),
-            os.path.join("schedule", "speed", "pt_speeds.geojson"),
-            os.path.join("routing", "schedule_network_routes_geodataframe.geojson"),
+            "network_links.parquet",
+            "schedule_links.parquet",
+            os.path.join("schedule", "speed", "pt_network_speeds.parquet"),
+            os.path.join("schedule", "speed", "pt_speeds.parquet"),
+            os.path.join("routing", "schedule_network_routes_geodataframe.parquet"),
         ],
     )
 
@@ -213,8 +213,8 @@ def test_separate_modes_in_network(invoke_runner_and_check_files):
         expected_files=[
             "validation_report.json",
             "network.xml",
-            os.path.join("supporting_outputs", "mode_bus_after.geojson"),
-            os.path.join("supporting_outputs", "mode_bus_before.geojson"),
+            os.path.join("supporting_outputs", "mode_bus_after.parquet"),
+            os.path.join("supporting_outputs", "mode_bus_before.parquet"),
         ],
     )
 
@@ -256,11 +256,11 @@ def test_squeeze_external_area(invoke_runner_and_check_files):
         ],
         expected_files=[
             "network.xml",
-            os.path.join("supporting_outputs", "external_network_links.geojson"),
-            os.path.join("supporting_outputs", "capacity_before.geojson"),
-            os.path.join("supporting_outputs", "freespeed_after.geojson"),
-            os.path.join("supporting_outputs", "capacity_after.geojson"),
-            os.path.join("supporting_outputs", "freespeed_before.geojson"),
+            os.path.join("supporting_outputs", "external_network_links.parquet"),
+            os.path.join("supporting_outputs", "capacity_before.parquet"),
+            os.path.join("supporting_outputs", "freespeed_after.parquet"),
+            os.path.join("supporting_outputs", "capacity_after.parquet"),
+            os.path.join("supporting_outputs", "freespeed_before.parquet"),
         ],
     )
 
@@ -280,11 +280,11 @@ def test_squeeze_urban_links(invoke_runner_and_check_files):
         ],
         expected_files=[
             "network.xml",
-            os.path.join("supporting_outputs", "capacity_before.geojson"),
-            os.path.join("supporting_outputs", "freespeed_after.geojson"),
-            os.path.join("supporting_outputs", "urban_network_links.geojson"),
-            os.path.join("supporting_outputs", "capacity_after.geojson"),
-            os.path.join("supporting_outputs", "freespeed_before.geojson"),
+            os.path.join("supporting_outputs", "capacity_before.parquet"),
+            os.path.join("supporting_outputs", "freespeed_after.parquet"),
+            os.path.join("supporting_outputs", "urban_network_links.parquet"),
+            os.path.join("supporting_outputs", "capacity_after.parquet"),
+            os.path.join("supporting_outputs", "freespeed_before.parquet"),
         ],
     )
 

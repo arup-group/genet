@@ -59,28 +59,53 @@ def generate_geodataframes(graph):
     return {"nodes": nodes, "links": links}
 
 
-def save_geodataframe(gdf, filename, output_dir, include_shp_files=False):
+def save_geodataframe(
+    gdf: gpd.GeoDataFrame,
+    filename: str,
+    output_dir: str,
+    to_parquet=True,
+    to_geojson=False,
+    to_shp=False,
+):
+    """
+    Saves geopandas.GeoDataFrame to the requested file format(s) - parquet is the default
+    :param _gdf: GeoDataFrame to save to disk
+    :param filename: name of the file, without extension
+    :param output_dir: path to folder where to save the file
+    :param to_parquet: whether to save to parquet file format, defaults to yes
+    :param to_geojson: whether to save to parquet file format, defaults to no
+    :param to_shp: whether to save to shape file format, defaults to no
+    :return: None, files are saved to disk
+    """
     if not gdf.empty:
-        gdf = sanitiser.sanitise_geodataframe(gdf)
+        _gdf = sanitiser.sanitise_geodataframe(gdf.copy())
         persistence.ensure_dir(output_dir)
-        gdf.to_file(os.path.join(output_dir, f"{filename}.geojson"), driver="GeoJSON")
-        for col in [col for col in gdf.columns if is_datetime(gdf[col])]:
-            gdf[col] = gdf[col].astype(str)
-        if include_shp_files:
+        if not any((to_parquet, to_geojson, to_shp)):
+            raise RuntimeError(
+                "You've requested to save a GeoDataFrame but did not select any of the file formats available"
+            )
+        if to_parquet:
+            _gdf.to_parquet(os.path.join(output_dir, f"{filename}.parquet"))
+        if to_geojson:
+            _gdf.to_file(os.path.join(output_dir, f"{filename}.geojson"), driver="GeoJSON")
+        if to_shp:
+            for col in [col for col in _gdf.columns if is_datetime(_gdf[col])]:
+                _gdf[col] = _gdf[col].astype(str)
             shp_files = os.path.join(output_dir, "shp_files")
             persistence.ensure_dir(shp_files)
-            gdf.to_file(os.path.join(shp_files, f"{filename}.shp"))
+            _gdf.to_file(os.path.join(shp_files, f"{filename}.shp"))
 
 
 def generate_standard_outputs_for_schedule(
     schedule,
     output_dir,
     gtfs_day="19700101",
+    include_geojson_files=False,
     include_shp_files=False,
     schedule_network_factor=1.3,
     gdf_network_links=None,
 ):
-    logging.info("Generating geojson standard outputs for schedule")
+    logging.info("Generating spatial standard outputs for schedule")
     schedule_links = schedule.to_geodataframe()["links"].to_crs("epsg:4326")
     df = schedule.trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
     df_all_modes_vph = None
@@ -95,7 +120,8 @@ def generate_standard_outputs_for_schedule(
             df_vph,
             filename=f"vehicles_per_hour_{mode}",
             output_dir=vph_dir,
-            include_shp_files=include_shp_files,
+            to_shp=include_shp_files,
+            to_geojson=include_geojson_files,
         )
 
         if df_all_modes_vph is None:
@@ -111,13 +137,15 @@ def generate_standard_outputs_for_schedule(
             schedule_subgraph["links"].to_crs("epsg:4326"),
             filename=f"schedule_subgraph_links_{mode}",
             output_dir=subgraph_dir,
-            include_shp_files=include_shp_files,
+            to_shp=include_shp_files,
+            to_geojson=include_geojson_files,
         )
         save_geodataframe(
             schedule_subgraph["nodes"].to_crs("epsg:4326"),
             filename=f"schedule_subgraph_nodes_{mode}",
             output_dir=subgraph_dir,
-            include_shp_files=include_shp_files,
+            to_shp=include_shp_files,
+            to_geojson=include_geojson_files,
         )
 
     logging.info("Saving vehicles per hour for all PT modes")
@@ -125,7 +153,8 @@ def generate_standard_outputs_for_schedule(
         df_all_modes_vph,
         filename="vehicles_per_hour_all_modes",
         output_dir=vph_dir,
-        include_shp_files=include_shp_files,
+        to_shp=include_shp_files,
+        to_geojson=include_geojson_files,
     )
     logging.info("Saving vehicles per hour for all PT modes for selected hour slices")
     for h in [7, 8, 9, 13, 16, 17, 18]:
@@ -133,7 +162,8 @@ def generate_standard_outputs_for_schedule(
             df_all_modes_vph[df_all_modes_vph["hour"].dt.hour == h],
             filename=f"vph_all_modes_within_{h - 1}:30-{h}:30",
             output_dir=vph_dir,
-            include_shp_files=include_shp_files,
+            to_shp=include_shp_files,
+            to_geojson=include_geojson_files,
         )
 
     logging.info(
@@ -149,7 +179,8 @@ def generate_standard_outputs_for_schedule(
         ],
         filename="pt_network_speeds",
         output_dir=speed_dir,
-        include_shp_files=include_shp_files,
+        to_shp=include_shp_files,
+        to_geojson=include_geojson_files,
     )
     speeds_gdf = gpd.GeoDataFrame(
         pd.merge(
@@ -164,7 +195,8 @@ def generate_standard_outputs_for_schedule(
         speeds_gdf[["service_id", "route_id", "mode", "from_stop", "to_stop", "speed", "geometry"]],
         filename="pt_speeds",
         output_dir=speed_dir,
-        include_shp_files=include_shp_files,
+        to_shp=include_shp_files,
+        to_geojson=include_geojson_files,
     )
 
     logging.info("Generating csv for vehicles per hour for each service")
@@ -203,10 +235,21 @@ def generate_standard_outputs_for_schedule(
 
 
 def generate_standard_outputs(
-    n, output_dir, gtfs_day="19700101", include_shp_files=False, schedule_network_factor=1.3
+    n,
+    output_dir,
+    gtfs_day="19700101",
+    include_geojson_files=False,
+    include_shp_files=False,
+    schedule_network_factor=1.3,
 ):
-    logging.info(f"Generating geojson outputs for the entire network in {output_dir}")
-    n.write_to_geojson(output_dir, epsg="epsg:4326")
+    logging.info(f"Generating spatial outputs for the entire network in {output_dir}")
+    n.write_spatial(
+        output_dir,
+        epsg="epsg:4326",
+        to_parquet=True,
+        to_geojson=include_geojson_files,
+        to_shp=include_shp_files,
+    )
 
     graph_links = n.to_geodataframe()["links"].to_crs("epsg:4326")
 
@@ -219,7 +262,9 @@ def generate_standard_outputs(
                 gdf_car[[attribute, "geometry", "id"]],
                 filename=f"car_{attribute}_subgraph",
                 output_dir=graph_output_dir,
-                include_shp_files=include_shp_files,
+                to_parquet=True,
+                to_geojson=include_geojson_files,
+                to_shp=include_shp_files,
             )
         except KeyError:
             logging.warning(f"Your network is missing a vital attribute {attribute}")
@@ -235,7 +280,9 @@ def generate_standard_outputs(
             graph_links[graph_links["id"].isin(tag_links)],
             filename=f"car_osm_highway_{tag}",
             output_dir=graph_output_dir,
-            include_shp_files=include_shp_files,
+            to_parquet=True,
+            to_geojson=include_geojson_files,
+            to_shp=include_shp_files,
         )
 
     for mode in n.modes():
@@ -245,7 +292,9 @@ def generate_standard_outputs(
             gdf[["geometry", "id"]],
             filename=f"subgraph_geometry_{mode}",
             output_dir=os.path.join(graph_output_dir, "geometry_only_subgraphs"),
-            include_shp_files=include_shp_files,
+            to_parquet=True,
+            to_geojson=include_geojson_files,
+            to_shp=include_shp_files,
         )
 
     # schedule outputs
@@ -265,7 +314,9 @@ def generate_standard_outputs(
             gdf_routes,
             filename="schedule_network_routes_geodataframe",
             output_dir=os.path.join(output_dir, "routing"),
-            include_shp_files=include_shp_files,
+            to_parquet=True,
+            to_geojson=include_geojson_files,
+            to_shp=include_shp_files,
         )
 
     summary_report = n.summary_report()

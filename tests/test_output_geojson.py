@@ -110,6 +110,36 @@ def test_generating_network_graph_geodataframe(assert_semantically_equal, networ
     assert links.crs == "EPSG:27700"
 
 
+def test_writing_spatial_produces_files(tmpdir):
+    n = Network("epsg:27700")
+    n.add_nodes(
+        {
+            "0": {"x": 528704, "y": 182068, "s2_id": 7860190995130875979},
+            "1": {"x": 528805, "y": 182169, "s2_id": 7860190995130875123},
+        }
+    )
+    n.add_links(
+        {
+            "link_0": {
+                "id": "link_0",
+                "from": "0",
+                "to": "1",
+                "length": 123,
+                "modes": ["car", "walk"],
+                "something": "yes",
+            },
+            "link_1": {
+                "id": "link_1",
+                "from": "1",
+                "to": "0",
+                "length": 123,
+                "modes": ["car", "walk"],
+            },
+        }
+    )
+    n.write_spatial(tmpdir, to_parquet=True, to_geojson=True, to_shp=True)
+
+
 def test_generating_schedule_graph_geodataframe(assert_semantically_equal, network):
     gdfs = gngeojson.generate_geodataframes(network.schedule.graph())
     nodes, links = gdfs["nodes"], gdfs["links"]
@@ -167,20 +197,61 @@ def test_generating_standard_outputs_after_modifying_modes_in_schedule(network, 
     gngeojson.generate_standard_outputs_for_schedule(network.schedule, tmpdir)
 
 
-def test_save_to_geojson(network, tmpdir):
+def test_save_to_geojson_generates_files(network, tmpdir):
     assert os.listdir(tmpdir) == []
     network.write_to_geojson(tmpdir)
     assert set(os.listdir(tmpdir)) == {
-        "schedule_nodes.geojson",
-        "schedule_links.geojson",
         "network_nodes.geojson",
-        "schedule_nodes_geometry_only.geojson",
         "network_nodes_geometry_only.geojson",
-        "schedule_links_geometry_only.geojson",
-        "network_links_geometry_only.geojson",
         "network_links.geojson",
+        "network_links_geometry_only.geojson",
+        "schedule_nodes.geojson",
+        "schedule_nodes_geometry_only.geojson",
+        "schedule_links.geojson",
+        "schedule_links_geometry_only.geojson",
         "network_change_log.csv",
         "schedule_change_log.csv",
+    }
+
+
+def test_save_to_parquet_generates_files(network, tmpdir):
+    assert os.listdir(tmpdir) == []
+    network.write_to_parquet(tmpdir)
+    assert set(os.listdir(tmpdir)) == {
+        "network_nodes.parquet",
+        "network_nodes_geometry_only.parquet",
+        "network_links.parquet",
+        "network_links_geometry_only.parquet",
+        "schedule_nodes.parquet",
+        "schedule_nodes_geometry_only.parquet",
+        "schedule_links.parquet",
+        "schedule_links_geometry_only.parquet",
+        "network_change_log.csv",
+        "schedule_change_log.csv",
+    }
+
+
+def test_save_to_shp_generates_files(network, tmpdir):
+    assert os.listdir(tmpdir) == []
+    network.write_to_shp(tmpdir)
+    assert set(os.listdir(tmpdir)) == {
+        "shp_files",
+        "schedule_change_log.csv",
+        "network_change_log.csv",
+    }
+    assert set(os.listdir(tmpdir / "shp_files")) == {
+        f"{file}.{ext}"
+        for file in {
+            "network_nodes",
+            "network_nodes_geometry_only",
+            "network_links",
+            "network_links_geometry_only",
+            "schedule_nodes",
+            "schedule_nodes_geometry_only",
+            "schedule_links",
+            "schedule_links_geometry_only",
+        }
+        for ext in {"cpg", "shx", "shp", "prj", "dbf"}
     }
 
 
@@ -309,24 +380,25 @@ def test_generating_standard_outputs(network, tmpdir):
     network.generate_standard_outputs(tmpdir, include_shp_files=True)
     assert set(os.listdir(tmpdir)) == {
         "graph",
-        "schedule_links_geometry_only.geojson",
-        "network_nodes_geometry_only.geojson",
-        "network_links.geojson",
-        "network_links_geometry_only.geojson",
-        "schedule_nodes.geojson",
-        "schedule_nodes_geometry_only.geojson",
+        "schedule_links_geometry_only.parquet",
+        "network_nodes_geometry_only.parquet",
+        "network_links.parquet",
+        "network_links_geometry_only.parquet",
+        "schedule_nodes.parquet",
+        "schedule_nodes_geometry_only.parquet",
         "schedule",
-        "network_nodes.geojson",
-        "schedule_links.geojson",
+        "network_nodes.parquet",
+        "schedule_links.parquet",
         "network_change_log.csv",
         "schedule_change_log.csv",
+        "shp_files",
         "routing",
         "summary_report.json",
     }
     assert set(os.listdir(os.path.join(tmpdir, "graph"))) == {
-        "car_capacity_subgraph.geojson",
-        "car_freespeed_subgraph.geojson",
-        "car_osm_highway_unclassified.geojson",
+        "car_capacity_subgraph.parquet",
+        "car_freespeed_subgraph.parquet",
+        "car_osm_highway_unclassified.parquet",
         "geometry_only_subgraphs",
         "shp_files",
     }
@@ -348,11 +420,11 @@ def test_generating_standard_outputs(network, tmpdir):
         "car_osm_highway_unclassified.cpg",
     }
     assert set(os.listdir(os.path.join(tmpdir, "graph", "geometry_only_subgraphs"))) == {
-        "subgraph_geometry_walk.geojson",
-        "subgraph_geometry_rail.geojson",
-        "subgraph_geometry_car.geojson",
+        "subgraph_geometry_walk.parquet",
+        "subgraph_geometry_rail.parquet",
+        "subgraph_geometry_car.parquet",
         "shp_files",
-        "subgraph_geometry_bike.geojson",
+        "subgraph_geometry_bike.parquet",
     }
     assert set(
         os.listdir(os.path.join(tmpdir, "graph", "geometry_only_subgraphs", "shp_files"))
@@ -389,19 +461,19 @@ def test_generating_standard_outputs(network, tmpdir):
         "speed",
     }
     assert set(os.listdir(os.path.join(tmpdir, "schedule", "speed"))) == {
-        "pt_speeds.geojson",
+        "pt_speeds.parquet",
         "shp_files",
-        "pt_network_speeds.geojson",
+        "pt_network_speeds.parquet",
     }
     assert set(os.listdir(os.path.join(tmpdir, "schedule", "vehicles_per_hour"))) == {
         "vph_per_service.csv",
-        "vehicles_per_hour_all_modes.geojson",
+        "vehicles_per_hour_all_modes.parquet",
         "vph_per_stop_departing_from.csv",
-        "vph_all_modes_within_6:30-7:30.geojson",
+        "vph_all_modes_within_6:30-7:30.parquet",
         "vph_per_stop_arriving_at.csv",
         "shp_files",
-        "vehicles_per_hour_bus.geojson",
-        "vehicles_per_hour_rail.geojson",
+        "vehicles_per_hour_bus.parquet",
+        "vehicles_per_hour_rail.parquet",
     }
     assert set(os.listdir(os.path.join(tmpdir, "schedule", "vehicles_per_hour", "shp_files"))) == {
         "vehicles_per_hour_all_modes.cpg",
@@ -426,11 +498,11 @@ def test_generating_standard_outputs(network, tmpdir):
         "vph_all_modes_within_6:30-7:30.cpg",
     }
     assert set(os.listdir(os.path.join(tmpdir, "schedule", "subgraphs"))) == {
-        "schedule_subgraph_links_bus.geojson",
-        "schedule_subgraph_links_rail.geojson",
+        "schedule_subgraph_links_bus.parquet",
+        "schedule_subgraph_links_rail.parquet",
         "shp_files",
-        "schedule_subgraph_nodes_bus.geojson",
-        "schedule_subgraph_nodes_rail.geojson",
+        "schedule_subgraph_nodes_bus.parquet",
+        "schedule_subgraph_nodes_rail.parquet",
     }
     assert set(os.listdir(os.path.join(tmpdir, "schedule", "subgraphs", "shp_files"))) == {
         "schedule_subgraph_nodes_rail.prj",
@@ -457,6 +529,6 @@ def test_generating_standard_outputs(network, tmpdir):
 
     assert set(os.listdir(os.path.join(tmpdir, "routing"))) == {
         "shp_files",
-        "schedule_network_routes_geodataframe.geojson",
+        "schedule_network_routes_geodataframe.parquet",
     }
     assert os.path.exists(tmpdir + ".zip")
