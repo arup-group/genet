@@ -24,13 +24,7 @@ def network(correct_schedule):
         attribs={
             "length": 123,
             "modes": ["bike"],
-            "attributes": {
-                "osm:way:highway": {
-                    "name": "osm:way:highway",
-                    "class": "java.lang.String",
-                    "text": "unclassified",
-                }
-            },
+            "attributes": {"osm:way:highway": {"unclassified"}},
         },
     )
     n.add_link("link_2", "1", "0", attribs={"length": 123, "modes": ["rail"]})

@@ -270,11 +270,11 @@ def generate_standard_outputs(
             logging.warning(f"Your network is missing a vital attribute {attribute}")
 
     logging.info("Generating geojson outputs for different highway tags in car modal subgraph")
-    highway_tags = n.link_attribute_data_under_key({"attributes": {"osm:way:highway": "text"}})
+    highway_tags = n.link_attribute_data_under_key({"attributes": "osm:way:highway"})
     highway_tags = set(chain.from_iterable(highway_tags.apply(lambda x: persistence.setify(x))))
     for tag in highway_tags:
         tag_links = n.extract_links_on_edge_attributes(
-            conditions={"attributes": {"osm:way:highway": {"text": tag}}}, mixed_dtypes=True
+            conditions={"attributes": {"osm:way:highway": tag}}, mixed_dtypes=True
         )
         save_geodataframe(
             graph_links[graph_links["id"].isin(tag_links)],
