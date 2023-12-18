@@ -72,9 +72,9 @@ def save_geodataframe(
     :param _gdf: GeoDataFrame to save to disk
     :param filename: name of the file, without extension
     :param output_dir: path to folder where to save the file
-    :param to_parquet: whether to save to parquet file format, defaults to yes
-    :param to_geojson: whether to save to parquet file format, defaults to no
-    :param to_shp: whether to save to shape file format, defaults to no
+    :param to_parquet: whether to save to parquet file format, defaults to True
+    :param to_geojson: whether to save to parquet file format, defaults to False
+    :param to_shp: whether to save to shape file format, defaults to False
     :return: None, files are saved to disk
     """
     if not gdf.empty:
