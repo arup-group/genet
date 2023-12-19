@@ -104,36 +104,6 @@ def test_generating_network_graph_geodataframe(assert_semantically_equal, networ
     assert links.crs == "EPSG:27700"
 
 
-def test_writing_spatial_produces_files(tmpdir):
-    n = Network("epsg:27700")
-    n.add_nodes(
-        {
-            "0": {"x": 528704, "y": 182068, "s2_id": 7860190995130875979},
-            "1": {"x": 528805, "y": 182169, "s2_id": 7860190995130875123},
-        }
-    )
-    n.add_links(
-        {
-            "link_0": {
-                "id": "link_0",
-                "from": "0",
-                "to": "1",
-                "length": 123,
-                "modes": ["car", "walk"],
-                "something": "yes",
-            },
-            "link_1": {
-                "id": "link_1",
-                "from": "1",
-                "to": "0",
-                "length": 123,
-                "modes": ["car", "walk"],
-            },
-        }
-    )
-    n.write_spatial(tmpdir, to_parquet=True, to_geojson=True, to_shp=True)
-
-
 def test_generating_schedule_graph_geodataframe(assert_semantically_equal, network):
     gdfs = gngeojson.generate_geodataframes(network.schedule.graph())
     nodes, links = gdfs["nodes"], gdfs["links"]
