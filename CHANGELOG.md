@@ -3,11 +3,13 @@
 ## [Unreleased]
 
 ### Fixed
+* Fixed generating standard outputs by highway tag which were broken after moving to to storing additional attributes in short form [#217](https://github.com/arup-group/genet/pull/217)
 * Fixed summary report:
-  * Intermodal Access/Egress reporting is more general (not expecting just car and bike mode access to PT) [#204](https://github.com/arup-group/genet/pull/204)
   * Node/Links numbers were reported incorrectly (switched) [#207](https://github.com/arup-group/genet/pull/207)
+  * Intermodal Access/Egress reporting is more general (not expecting just car and bike mode access to PT) [#204](https://github.com/arup-group/genet/pull/204)
 
 ### Changed
+* GeNet's standard outputs now produce geoparquet format by default [#217](https://github.com/arup-group/genet/pull/217). The output file size is reduced significantly (e.g. network links output was reduced by ~80% on a test network). Networks/Schedules can still be saved to geojson and shape files as before.
 * GeNet's pre-baked python scripts have been retired in favour of CLI [#194](https://github.com/arup-group/genet/pull/194)
 * **[Breaking change]** Support for python v3.11, updated to more accurate pyproj version [#192](https://github.com/arup-group/genet/pull/192)
 
