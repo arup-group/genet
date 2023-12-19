@@ -1,0 +1,120 @@
+{
+  "schedule": {
+    "stops": {
+      "490000235X.link:1": {
+        "lon": 51.51668503324075,
+        "id": "490000235X.link:1",
+        "name": "Tottenham Court Road Station (Stop X)",
+        "y": 181412.0975758662,
+        "lat": -0.12809598708996447,
+        "x": 529981.7958802709,
+        "isBlocking": "false",
+        "linkRefId": "1",
+        "s2_id": 2507584377443783851
+      },
+      "490000235YB.link:10": {
+        "lon": 51.51609803324078,
+        "id": "490000235YB.link:10",
+        "name": "Oxford Street  Soho Street (Stop YB)",
+        "y": 181336.2815925331,
+        "lat": -0.13404398709291862,
+        "x": 529570.7813227688,
+        "isBlocking": "false",
+        "linkRefId": "10",
+        "s2_id": 2507584474601580133
+      }
+    },
+    "services": {
+      "20274": {
+        "id": "20274",
+        "name": "N55",
+        "routes": {
+          "VJ6c64ab7b477e201cae950efde5bd0cb4e2e8888e": {
+            "route_short_name": "N55",
+            "mode": "bus",
+            "trips": {
+              "trip_id": [
+                "VJ4e00b97ca9c6c0c96da8f793dfbd37b11f647fa7_03:40:00"
+              ],
+              "trip_departure_time": [
+                "03:40:00"
+              ],
+              "vehicle_id": [
+                "veh_0_bus"
+              ]
+            },
+            "arrival_offsets": [
+              "00:00:00",
+              "00:02:20"
+            ],
+            "departure_offsets": [
+              "00:00:00",
+              "00:02:20"
+            ],
+            "route_long_name": "",
+            "id": "VJ6c64ab7b477e201cae950efde5bd0cb4e2e8888e",
+            "route": [
+              "1",
+              "10"
+            ],
+            "await_departure": [
+              true,
+              true
+            ],
+            "ordered_stops": [
+              "490000235X.link:1",
+              "490000235YB.link:10"
+            ]
+          }
+        }
+      }
+    },
+    "minimal_transfer_times": {
+      "490000235X.link:1": {
+        "stop": "490000235YB.link:10",
+        "transferTime": 100.0
+      },
+      "490000235YB.link:10": {
+        "stop": "490000235X.link:1",
+        "transferTime": 100.0
+      }
+    }
+  },
+  "vehicles": {
+    "vehicle_types": {
+      "bus": {
+        "capacity": {
+          "seats": {
+            "persons": "70"
+          },
+          "standingRoom": {
+            "persons": "0"
+          }
+        },
+        "length": {
+          "meter": "18.0"
+        },
+        "width": {
+          "meter": "2.5"
+        },
+        "accessTime": {
+          "secondsPerPerson": "0.5"
+        },
+        "egressTime": {
+          "secondsPerPerson": "0.5"
+        },
+        "doorOperation": {
+          "mode": "serial"
+        },
+        "passengerCarEquivalents": {
+          "pce": "2.8"
+        }
+      }
+    },
+    "vehicles": {
+      "veh_0_bus": {
+        "type": "bus"
+      }
+    }
+  }
+}

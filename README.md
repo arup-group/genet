@@ -160,11 +160,16 @@ We welcome community contributions to GeNet; please see our [guide to contributi
 If you are making changes to the codebase, you should use the tools described below to verify that the code still works.
 All of the following commands assume you are in the project's root directory.
 
-### Unit tests
+### Tests
+To run unit tests within genet python environment (including testing example notebooks):
 
-To run unit tests within genet python environment, run `pytest`.
-To improve test runtime you can focus only on the unit tests and not on the tests of the example jupyter notebooks: `pytest tests/`.
-To run tests in the Docker container, you will need to update the Dockerfile to include development dependencies and then you can run `docker run cml-genet pytest`.
+    pytest
+
+and within a docker container:
+
+    docker run cml-genet pytest -vv
+
+In either case, for shorter test runtimes, append 'tests/' to limit to the unit tests and ignore notebook tests.
 
 ### Generate a unit test code coverage report
 
@@ -172,7 +177,8 @@ To generate an HTML coverage report at `reports/coverage/index.html`:
 
     pytest --cov-report=html
 
+Coverage will also be tracked in pull requests.
+
 ### Lint the python code
 
     Run `pre-commit install` to install pre-commit, which will lint and format your code whenever you commit staged changes.
-
