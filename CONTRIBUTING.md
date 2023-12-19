@@ -65,14 +65,15 @@ automated `PEP8` checks and runs unit tests in a fresh environment, as well as i
 8. Update/add to or generate a new jupyter notebook in `notebooks` directory which takes the user through your new feature or
 change.
    1. Jupyter notebooks are closely linked to the [wiki pages](https://github.com/arup-group/genet/wiki).
-      1. Make sure you follow the naming convention: `number.number. Theme: Catchy Title`
-      2. Make sure you structure the notebook in a way that you would like to see it in a wiki page, with a lot of
+      1. Make sure you follow the naming convention to title your page: `number.number. Theme: Catchy Title`
+      2. Make sure to also name the notebook so that it is machine readable: `number_number_theme_catchy_title.ipynb`
+      3. Make sure you structure the notebook in a way that you would like to see it in a wiki page, with a lot of
       markdown cells containing quality descriptions. Use existing notebook as examples.
    2. After your changes have been merged, you may like to update the wiki pages. To do this in an automated way:
       1. Clone the wiki part of the repo: ```git clone https://github.com/arup-group/genet.wiki.git```
-      2. Run the `notebooks/generate_usage_wiki_from_notebooks.py` script, pointing at the folder containing the
+      2. Run the `examples/generate_usage_wiki_from_notebooks.py` script, pointing at the folder containing the
       notebooks and the wiki repo folder to receive the output.
-   3. You may use example data already in `example_data` directory of this repo, or add more (small amount of) data to
+   3. You may use example data already in `examples/example_data` directory of this repo, or add more (small amount of) data to
    it to show off your new features.
 9. Add section in the `README.md` which shows usage of your new feature. This can be paraphrased from the jupyter
 notebook in point above.
