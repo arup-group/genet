@@ -24,7 +24,7 @@ def network(correct_schedule):
         attribs={
             "length": 123,
             "modes": ["bike"],
-            "attributes": {"osm:way:highway": {"unclassified"}},
+            "attributes": {"osm:way:highway": "unclassified"},
         },
     )
     n.add_link("link_2", "1", "0", attribs={"length": 123, "modes": ["rail"]})
@@ -65,13 +65,7 @@ def test_generating_network_graph_geodataframe(assert_semantically_equal, networ
         "length": {"link_0": 123, "link_1": 123, "link_2": 123},
         "attributes": {
             "link_0": float("nan"),
-            "link_1": {
-                "osm:way:highway": {
-                    "name": "osm:way:highway",
-                    "class": "java.lang.String",
-                    "text": "unclassified",
-                }
-            },
+            "link_1": {"osm:way:highway": "unclassified"},
             "link_2": float("nan"),
         },
         "to": {"link_0": "1", "link_1": "1", "link_2": "0"},
