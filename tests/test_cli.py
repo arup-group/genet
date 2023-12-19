@@ -7,7 +7,7 @@ from click.testing import CliRunner
 from genet import cli
 
 GENET_ROOT_DIR = importlib_resources.files("genet").parent
-EXAMPLE_DATA_DIR = GENET_ROOT_DIR / "example_data"
+EXAMPLE_DATA_DIR = GENET_ROOT_DIR / "examples" / "example_data"
 
 EXAMPLE_NETWORK = EXAMPLE_DATA_DIR / "pt2matsim_network" / "network.xml"
 EXAMPLE_SCHEDULE = EXAMPLE_DATA_DIR / "pt2matsim_network" / "schedule.xml"
@@ -52,7 +52,7 @@ def test_add_elevation_to_network(invoke_runner_and_check_files):
         args=[
             f"--network={EXAMPLE_NETWORK}",
             f"--projection={PROJECTION}",
-            f'--elevation={EXAMPLE_DATA_DIR / "fitzrovia_elevation.tif"}',
+            f'--elevation={pytest.test_data_dir / "elevation" / "fitzrovia_elevation.tif"}',
             "--null_value=0",
         ],
         expected_files=[
@@ -272,7 +272,7 @@ def test_squeeze_urban_links(invoke_runner_and_check_files):
             f"--network={EXAMPLE_NETWORK}",
             f"--projection={PROJECTION}",
             f'--study_area={os.path.join(EXAMPLE_DATA_DIR, "Fitzrovia_polygon.geojson")}',
-            f'--urban_geometries={os.path.join(EXAMPLE_DATA_DIR, "Fitzrovia_urban_polygon.geojson")}',
+            f'--urban_geometries={pytest.test_data_dir / "geojson" / "Fitzrovia_urban_polygon.geojson"}',
             "--freespeed",
             "0.5",
             "--capacity",
