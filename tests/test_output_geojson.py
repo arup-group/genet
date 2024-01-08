@@ -397,7 +397,7 @@ def test_generating_standard_outputs(network, tmpdir):
         "vph_per_service.csv",
         "vehicles_per_hour_all_modes.geojson",
         "vph_per_stop_departing_from.csv",
-        "vph_all_modes_within_6:30-7:30.geojson",
+        "vph_all_modes_within_6_30-7_30.geojson",
         "vph_per_stop_arriving_at.csv",
         "shp_files",
         "vehicles_per_hour_bus.geojson",
@@ -405,7 +405,7 @@ def test_generating_standard_outputs(network, tmpdir):
     }
     assert set(os.listdir(os.path.join(tmpdir, "schedule", "vehicles_per_hour", "shp_files"))) == {
         "vehicles_per_hour_all_modes.cpg",
-        "vph_all_modes_within_6:30-7:30.shx",
+        "vph_all_modes_within_6_30-7_30.shx",
         "vehicles_per_hour_rail.prj",
         "vehicles_per_hour_bus.shp",
         "vehicles_per_hour_bus.dbf",
@@ -414,16 +414,16 @@ def test_generating_standard_outputs(network, tmpdir):
         "vehicles_per_hour_all_modes.prj",
         "vehicles_per_hour_bus.shx",
         "vehicles_per_hour_rail.dbf",
-        "vph_all_modes_within_6:30-7:30.dbf",
+        "vph_all_modes_within_6_30-7_30.dbf",
         "vehicles_per_hour_rail.cpg",
-        "vph_all_modes_within_6:30-7:30.shp",
+        "vph_all_modes_within_6_30-7_30.shp",
         "vehicles_per_hour_rail.shp",
         "vehicles_per_hour_all_modes.shx",
         "vehicles_per_hour_bus.cpg",
         "vehicles_per_hour_all_modes.shp",
-        "vph_all_modes_within_6:30-7:30.prj",
+        "vph_all_modes_within_6_30-7_30.prj",
         "vehicles_per_hour_all_modes.dbf",
-        "vph_all_modes_within_6:30-7:30.cpg",
+        "vph_all_modes_within_6_30-7_30.cpg",
     }
     assert set(os.listdir(os.path.join(tmpdir, "schedule", "subgraphs"))) == {
         "schedule_subgraph_links_bus.geojson",

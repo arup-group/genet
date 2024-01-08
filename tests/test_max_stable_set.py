@@ -1,3 +1,5 @@
+import shutil
+
 import networkx as nx
 import pytest
 from pandas import DataFrame
@@ -732,6 +734,9 @@ def path_lengths_with_clear_preference(*args, **kwargs):
 def test_solving_problem_with_isolated_catchments(
     mocker, assert_semantically_equal, network, network_spatial_tree
 ):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
+
     closest_links = DataFrame(
         {
             "id": {
@@ -822,6 +827,8 @@ def test_solving_problem_with_isolated_catchments(
 def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(
     assert_semantically_equal, mocker, network
 ):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     closest_links = DataFrame(
         {
             "id": {0: "stop_2", 1: "stop_2", 2: "stop_3", 3: "stop_3", 4: "stop_1", 5: "stop_1"},

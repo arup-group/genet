@@ -1,3 +1,5 @@
+import shutil
+
 import networkx as nx
 import pytest
 from pandas import DataFrame
@@ -131,6 +133,8 @@ def test_service():
 def test_snapping_pt_route_results_in_all_stops_with_link_references_and_routes_between_them(
     test_network, test_spatialtree
 ):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     mss = MaxStableSet(
         pt_graph=test_network.schedule.route("40230_1").graph(),
         network_spatial_tree=test_spatialtree.modal_subtree(modes={"car", "bus"}),
@@ -148,6 +152,8 @@ def test_snapping_pt_route_results_in_all_stops_with_link_references_and_routes_
 def test_snapping_partial_pt_route_results_in_all_stops_with_link_references_and_routes_between_viable_catchments(
     mocker, test_network, test_spatialtree
 ):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     df = DataFrame(
         {
             "index_left": {
@@ -248,6 +254,8 @@ def test_snapping_partial_pt_route_results_in_all_stops_with_link_references_and
 def test_snapping_disconnected_partial_pt_route_results_in_all_stops_with_link_references_and_routes_between_viable_catchments(
     mocker, test_network, test_spatialtree
 ):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     df = DataFrame(
         {
             "index_left": {
@@ -358,6 +366,8 @@ def test_snapping_disconnected_partial_pt_route_results_in_all_stops_with_link_r
 def test_artificially_filling_in_solution_for_partial_pt_routing_problem_results_in_correct_solution_and_routed_path(
     mocker, test_network, test_spatialtree
 ):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     df = DataFrame(
         {
             "index_left": {
@@ -471,6 +481,8 @@ def test_artificially_filling_in_solution_for_partial_pt_routing_problem_results
 
 
 def test_routing_service_with_directional_split(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_service("service_bus", allow_directional_split=True)
 
@@ -481,6 +493,8 @@ def test_routing_service_with_directional_split(test_network, test_service):
 
 
 def test_routing_service_without_directional_split(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_service("service_bus", allow_directional_split=False)
 
@@ -491,6 +505,8 @@ def test_routing_service_without_directional_split(test_network, test_service):
 
 
 def test_routing_service_with_additional_modes(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_service("service_bus", additional_modes="car")
 
@@ -501,6 +517,8 @@ def test_routing_service_with_additional_modes(test_network, test_service):
 
 
 def test_routing_services_with_shared_stops(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     test_network.schedule = Schedule(
         epsg="epsg:27700",
         services=[
@@ -607,6 +625,8 @@ def test_routing_services_with_stops_that_have_colons_in_id_and_are_unsnapped(te
 
 
 def test_routing_services_to_network_with_clashing_artificial_links(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     # teleport first to create artificial links - recreates a InvalidMaxStableSetProblem of completely connected
     # catchments
@@ -849,6 +869,9 @@ def test_teleporting_service_with_some_stops_snapped_to_non_existing_links(
 
 
 def test_routing_schedule_with_directional_split(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
+
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_schedule(allow_directional_split=True)
 
@@ -859,6 +882,9 @@ def test_routing_schedule_with_directional_split(test_network, test_service):
 
 
 def test_routing_schedule_without_directional_split(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
+
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_schedule(allow_directional_split=False)
 
@@ -869,6 +895,9 @@ def test_routing_schedule_without_directional_split(test_network, test_service):
 
 
 def test_routing_schedule_with_additional_modes(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
+
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_schedule(
         additional_modes={"bus": {"car"}, "tram": ["rail", "car"], "subway": "rail"}
@@ -881,6 +910,9 @@ def test_routing_schedule_with_additional_modes(test_network, test_service):
 
 
 def test_routing_schedule_specifying_services(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
+
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_schedule(services=["service_bus"])
 

@@ -1,69 +1,36 @@
-name: Daily GeNet CI Build
+name: Daily CI
 
 on:
   schedule:
-    - cron: '37 14 * * 1-5'
+    - cron: '37 14 * * 1-5'  # checks on the 37th minute of the 14th hour every weekday
 
 jobs:
-  build:
+  get-date:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Add date to github output env
+        run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-    - uses: actions/setup-python@v1
-      with:
-        python-version: 3.11
+  test:
+    needs: get-date
+    uses: arup-group/actions-city-modelling-lab/.github/workflows/python-install-lint-test.yml@main
+    with:
+      os: ubuntu-latest
+      py3version: "11"
+      notebook_kernel: genet
+      pytest_args: '--no-cov'  # ignore coverage
+      cache_mamba_env: false
+      lint: false
+      mamba_env_name: daily-ci
+      additional_mamba_args: coin-or-cbc
 
-    - uses: actions/cache@v1
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Install dependencies
-      run: |
-        export ACCEPT_EULA=Y
-        sudo apt-get update
-        python -m pip install --upgrade pip
-        sudo apt-get install -y python3-pip libgdal-dev locales
-        sudo apt-get install -y libspatialindex-dev
-        sudo apt-get install -y coinor-cbc
-        export CPLUS_INCLUDE_PATH=/usr/include/gdal
-        export C_INCLUDE_PATH=/usr/include/gdal
-        sudo apt-get install ca-certificates
-        export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-        pip install GDAL==3.4.1
-        pip install -e '.[dev]'
-
-    - name: Install jupyter kernel
-      run: python -m ipykernel install --user --name genet
-
-    - name: Run tests
-      run: pytest
-
-    - name: Send build success notification
-      if: success()
-      uses: rtCamp/action-slack-notify@v2.2.0
-      env:
-        SLACK_MESSAGE: ${{ github.repository }} Daily scheduled CI Build ${{ github.run_number }} has succeeded
-        SLACK_TITLE: Daily Scheduled CI Build Success
-        SLACK_CHANNEL: city-modelling-feeds
-        SLACK_USERNAME: GitHub Build Bot
-        SLACK_ICON: https://slack-files2.s3-us-west-2.amazonaws.com/avatars/2017-12-19/288981919427_f45f04edd92902a96859_512.png
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-
-    - name: Send build failure notification
-      if: failure()
-      uses: rtCamp/action-slack-notify@v2.2.0
-      env:
-        SLACK_COLOR: '#FF0000'
-        SLACK_LINK_NAMES: true
-        SLACK_MESSAGE: '<!here> ${{ github.repository }} Daily scheduled CI Build ${{ github.run_number }} has failed'
-        SLACK_TITLE: Daily Scheduled CI Build Failure!
-        SLACK_CHANNEL: city-modelling-feeds
-        SLACK_USERNAME: GitHub Build Bot
-        SLACK_ICON: https://slack-files2.s3-us-west-2.amazonaws.com/avatars/2017-12-19/288981919427_f45f04edd92902a96859_512.png
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+  slack-notify-ci:
+    needs: test
+    if: always()
+    uses: arup-group/actions-city-modelling-lab/.github/workflows/slack-notify.yml@main
+    secrets:
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+    with:
+      result: needs.test.result
+      channel: genet-feed
+      message: Daily CI action
