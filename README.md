@@ -31,8 +31,7 @@ and output networks.
 - Provide validation methods to check for simple errors such as: whether a `Route` has more than one `Stop` or that the
 underlying graph doesn't have any dead-ends or sources (a place which you can leave but cannot get back to).
 
-The underlying
-network available to PT services (roads, railways, but also ferry/flight connections) uses a `networkx.MultiDiGraph`
+The underlying network available to PT services (roads, railways, but also ferry/flight connections) uses a `networkx.MultiDiGraph`
 with additional methods for `'links'` which are unique in `genet.Network` (`networkx.MultiDiGraph` accepts multiple
 edges between the same from and to node pair; referring to an edge in `networkx.MultiDiGraph` and `genet.Network`
 has the same effects, i.e. the result is a dictionary indexed by the multi edge index). The PT services are
