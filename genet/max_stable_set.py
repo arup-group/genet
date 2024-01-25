@@ -1,6 +1,7 @@
 import itertools
 import logging
 from copy import deepcopy
+from typing import List
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -17,6 +18,10 @@ def has_attrib(attrib_value):
     # used with a method to extract graph elements with a specific attribute key regardless of the value, if the key
     # exists, this function evaluates to True.
     return True
+
+
+def process_model_result(result_list: List[str]):
+    return [v.strip("x[\\']") for v in result_list]
 
 
 class MaxStableSet:
@@ -297,11 +302,13 @@ class MaxStableSet:
             # Solution parse
             # --------------------------------------------------------
 
-            selected = [
-                str(v).strip("x[\\']")
-                for v in model.component_data_objects(pe.Var)
-                if v.value is not None and float(v.value) == 1.0
-            ]
+            selected = process_model_result(
+                [
+                    str(v)
+                    for v in model.component_data_objects(pe.Var)
+                    if v.value is not None and float(v.value) == 1.0
+                ]
+            )
             # solution maps Stop IDs to Link IDs
             self.solution = {
                 self.problem_graph.nodes[node]["id"]: self.problem_graph.nodes[node]["link_id"]

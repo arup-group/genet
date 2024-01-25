@@ -6,6 +6,7 @@ from pandas import DataFrame
 
 import genet.utils.spatial as spatial
 from genet import MaxStableSet, Network, Route, Schedule, Service, Stop
+from genet.max_stable_set import process_model_result
 
 
 @pytest.fixture()
@@ -1522,3 +1523,22 @@ def test_combining_two_changesets_with_overlap(assert_semantically_equal, partia
             {"routes": {"service_1_route_2"}, "services": {"bus_service"}},
         ),
     ]
+
+
+@pytest.mark.parametrize(
+    "case_name,model_output,expected",
+    [
+        (
+            "simple stops",
+            ["x['stop_3.link:link_7_8_car']", "x['stop_1.link:link_4_5_car']"],
+            ["stop_3.link:link_7_8_car", "stop_1.link:link_4_5_car"],
+        ),
+        (
+            "stops with x in name",
+            ["x['x_stop.link:1234']", "x['stopx.link:1234']", "x['stxop.link:1234']"],
+            ["x_stop.link:1234", "stopx.link:1234", "stxop.link:1234"],
+        ),
+    ],
+)
+def test_processing_model_results(case_name, model_output, expected):
+    assert process_model_result(model_output) == expected
