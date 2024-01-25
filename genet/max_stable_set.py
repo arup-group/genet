@@ -21,7 +21,7 @@ def has_attrib(attrib_value):
 
 
 def process_model_result(result_list: List[str]):
-    return [v.strip("x[\\']") for v in result_list]
+    return [v.replace("x['", "").replace("']", "") for v in result_list]
 
 
 class MaxStableSet:
