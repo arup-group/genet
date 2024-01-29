@@ -1,12 +1,13 @@
 import shutil
 
 import networkx as nx
+import pyomo.environ as pe
 import pytest
 from pandas import DataFrame
 
 import genet.utils.spatial as spatial
 from genet import MaxStableSet, Network, Route, Schedule, Service, Stop
-from genet.max_stable_set import process_model_result
+from genet.max_stable_set import get_indices_of_chosen_problem_graph_nodes
 
 
 @pytest.fixture()
@@ -1526,19 +1527,43 @@ def test_combining_two_changesets_with_overlap(assert_semantically_equal, partia
 
 
 @pytest.mark.parametrize(
-    "case_name,model_output,expected",
+    "case_name,stop_ids",
     [
-        (
-            "simple stops",
-            ["x['stop_3.link:link_7_8_car']", "x['stop_1.link:link_4_5_car']"],
-            ["stop_3.link:link_7_8_car", "stop_1.link:link_4_5_car"],
-        ),
+        ("simple stops", ["stop_3.link:link_7_8_car", "stop_1.link:link_4_5_car"]),
         (
             "stops with x in name",
-            ["x['x_stop.link:1234']", "x['stopx.link:1234']", "x['stxop.link:1234']"],
-            ["x_stop.link:1234", "stopx.link:1234", "stxop.link:1234"],
+            ["x_stop.link:1234", "stopx.link:1234", "stxop.link:1234", "stop.link:1234x"],
         ),
     ],
 )
-def test_processing_model_results(case_name, model_output, expected):
-    assert process_model_result(model_output) == expected
+def test_indices_of_chosen_variables_remain_unchanged_during_solution_extraction(
+    case_name, stop_ids
+):
+    model = pe.ConcreteModel()
+    model.x = pe.Var(stop_ids, within=pe.Binary)
+    # set all variables as chosen, we only care about their indices being correct
+    for v in model.component_data_objects(pe.Var):
+        v.value = 1.0
+
+    assert get_indices_of_chosen_problem_graph_nodes(model) == stop_ids
+
+
+def test_indices_of_expected_solution_nodes_are_extracted_from_the_model():
+    solution_nodes = ["stop_3.link:link_7_8_car", "bababooey"]
+    zero_value_nodes = ["some_zero_node"]
+    none_value_nodes = ["some_none_node"]
+
+    model = pe.ConcreteModel()
+    model.x = pe.Var(solution_nodes + zero_value_nodes + none_value_nodes, within=pe.Binary)
+    # set expected variable values (fake a solution)
+    for v in model.component_data_objects(pe.Var):
+        if v.index() in solution_nodes:
+            v.value = 1.0
+        elif v.index() in zero_value_nodes:
+            v.value = 0.0
+        elif v.index() in none_value_nodes:
+            v.value = None
+        else:
+            raise RuntimeError(f"Unrecognised variable: {v.index()}")
+
+    assert get_indices_of_chosen_problem_graph_nodes(model) == solution_nodes

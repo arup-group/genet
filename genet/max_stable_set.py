@@ -1,7 +1,6 @@
 import itertools
 import logging
 from copy import deepcopy
-from typing import List
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -20,8 +19,12 @@ def has_attrib(attrib_value):
     return True
 
 
-def process_model_result(result_list: List[str]):
-    return [v.replace("x['", "").replace("']", "") for v in result_list]
+def get_indices_of_chosen_problem_graph_nodes(model: pe.Model):
+    return [
+        v.index()
+        for v in model.component_data_objects(pe.Var)
+        if v.value is not None and float(v.value) == 1.0
+    ]
 
 
 class MaxStableSet:
@@ -302,13 +305,8 @@ class MaxStableSet:
             # Solution parse
             # --------------------------------------------------------
 
-            selected = process_model_result(
-                [
-                    str(v)
-                    for v in model.component_data_objects(pe.Var)
-                    if v.value is not None and float(v.value) == 1.0
-                ]
-            )
+            selected = get_indices_of_chosen_problem_graph_nodes(model)
+
             # solution maps Stop IDs to Link IDs
             self.solution = {
                 self.problem_graph.nodes[node]["id"]: self.problem_graph.nodes[node]["link_id"]
