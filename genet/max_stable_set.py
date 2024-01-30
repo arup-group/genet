@@ -19,6 +19,14 @@ def has_attrib(attrib_value):
     return True
 
 
+def get_indices_of_chosen_problem_graph_nodes(model: pe.Model):
+    return [
+        v.index()
+        for v in model.component_data_objects(pe.Var)
+        if v.value is not None and float(v.value) == 1.0
+    ]
+
+
 class MaxStableSet:
     def __init__(self, pt_graph, network_spatial_tree, modes, distance_threshold=30, step_size=10):
         self.service_modes = modes
@@ -297,11 +305,8 @@ class MaxStableSet:
             # Solution parse
             # --------------------------------------------------------
 
-            selected = [
-                str(v).strip("x[\\']")
-                for v in model.component_data_objects(pe.Var)
-                if v.value is not None and float(v.value) == 1.0
-            ]
+            selected = get_indices_of_chosen_problem_graph_nodes(model)
+
             # solution maps Stop IDs to Link IDs
             self.solution = {
                 self.problem_graph.nodes[node]["id"]: self.problem_graph.nodes[node]["link_id"]
