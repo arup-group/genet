@@ -1,0 +1,48 @@
+name: Pull Request CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - README.md
+      - CHANGELOG.md
+      - LICENSE
+      - CONTRIBUTING.md
+      - docs/**
+      - mkdocs.yml
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        py3version: ["9", "11"]
+        include:
+          - os: windows-latest
+            add_args: ""
+          - os: ubuntu-latest
+            add_args: coin-or-cbc
+          - os: macos-latest
+            add_args: coin-or-cbc
+      fail-fast: false
+    uses: arup-group/actions-city-modelling-lab/.github/workflows/python-install-lint-test.yml@main
+    with:
+      os: ${{ matrix.os }}
+      py3version: ${{ matrix.py3version }}
+      notebook_kernel: genet
+      lint: false
+      pytest_args: '--no-cov'  # ignore coverage
+      upload_to_codecov: false
+      additional_mamba_args: ${{ matrix.add_args }}
+
+  test-coverage:
+    uses: arup-group/actions-city-modelling-lab/.github/workflows/python-install-lint-test.yml@main
+    with:
+      os: ubuntu-latest
+      py3version: "11"
+      notebook_kernel: genet
+      lint: false
+      pytest_args: 'tests/'  # ignore example notebooks
+      upload_to_codecov: true
+      additional_mamba_args: coin-or-cbc

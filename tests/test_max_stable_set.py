@@ -1,9 +1,13 @@
+import shutil
+
 import networkx as nx
+import pyomo.environ as pe
 import pytest
 from pandas import DataFrame
 
 import genet.utils.spatial as spatial
 from genet import MaxStableSet, Network, Route, Schedule, Service, Stop
+from genet.max_stable_set import get_indices_of_chosen_problem_graph_nodes
 
 
 @pytest.fixture()
@@ -732,6 +736,9 @@ def path_lengths_with_clear_preference(*args, **kwargs):
 def test_solving_problem_with_isolated_catchments(
     mocker, assert_semantically_equal, network, network_spatial_tree
 ):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
+
     closest_links = DataFrame(
         {
             "id": {
@@ -822,6 +829,8 @@ def test_solving_problem_with_isolated_catchments(
 def test_problem_with_isolated_catchment_finds_solution_for_viable_stops(
     assert_semantically_equal, mocker, network
 ):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     closest_links = DataFrame(
         {
             "id": {0: "stop_2", 1: "stop_2", 2: "stop_3", 3: "stop_3", 4: "stop_1", 5: "stop_1"},
@@ -1515,3 +1524,46 @@ def test_combining_two_changesets_with_overlap(assert_semantically_equal, partia
             {"routes": {"service_1_route_2"}, "services": {"bus_service"}},
         ),
     ]
+
+
+@pytest.mark.parametrize(
+    "case_name,stop_ids",
+    [
+        ("simple stops", ["stop_3.link:link_7_8_car", "stop_1.link:link_4_5_car"]),
+        (
+            "stops with x in name",
+            ["x_stop.link:1234", "stopx.link:1234", "stxop.link:1234", "stop.link:1234x"],
+        ),
+    ],
+)
+def test_indices_of_chosen_variables_remain_unchanged_during_solution_extraction(
+    case_name, stop_ids
+):
+    model = pe.ConcreteModel()
+    model.x = pe.Var(stop_ids, within=pe.Binary)
+    # set all variables as chosen, we only care about their indices being correct
+    for v in model.component_data_objects(pe.Var):
+        v.value = 1.0
+
+    assert get_indices_of_chosen_problem_graph_nodes(model) == stop_ids
+
+
+def test_indices_of_expected_solution_nodes_are_extracted_from_the_model():
+    solution_nodes = ["stop_3.link:link_7_8_car", "bababooey"]
+    zero_value_nodes = ["some_zero_node"]
+    none_value_nodes = ["some_none_node"]
+
+    model = pe.ConcreteModel()
+    model.x = pe.Var(solution_nodes + zero_value_nodes + none_value_nodes, within=pe.Binary)
+    # set expected variable values (fake a solution)
+    for v in model.component_data_objects(pe.Var):
+        if v.index() in solution_nodes:
+            v.value = 1.0
+        elif v.index() in zero_value_nodes:
+            v.value = 0.0
+        elif v.index() in none_value_nodes:
+            v.value = None
+        else:
+            raise RuntimeError(f"Unrecognised variable: {v.index()}")
+
+    assert get_indices_of_chosen_problem_graph_nodes(model) == solution_nodes

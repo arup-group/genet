@@ -131,7 +131,7 @@ def generate_standard_outputs_for_schedule(
     for h in [7, 8, 9, 13, 16, 17, 18]:
         save_geodataframe(
             df_all_modes_vph[df_all_modes_vph["hour"].dt.hour == h],
-            filename=f"vph_all_modes_within_{h - 1}:30-{h}:30",
+            filename=f"vph_all_modes_within_{h - 1}_30-{h}_30",
             output_dir=vph_dir,
             include_shp_files=include_shp_files,
         )

@@ -6,7 +6,7 @@ minversion = "6.0"
 # `--nbmake --nbmake-kernel=genet` - test example notebooks using the "genet" notebook kernel (uses nbmake)
 # `--cov --cov-report=xml --cov-config=pyproject.toml` - generate coverage report for tests (uses pytest-cov; call `--no-cov` in CLI to switch off; `--cov-config` include to avoid bug)
 addopts = "-rav --strict-markers -nauto --nbmake --nbmake-kernel=genet --cov --cov-report=xml --cov-config=pyproject.toml"
-testpaths = ["tests", "notebooks"]
+testpaths = ["tests", "examples"]
 
 # to mark a test, decorate it with `@pytest.mark.MARKER-NAME`
 # then add MARKER-NAME to the markers list.
