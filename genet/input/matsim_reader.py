@@ -138,7 +138,7 @@ def _read_additional_attrib_text(elem):
             f"Elem {elem.attrib['name']} is being read as None. Defaulting value to empty string."
         )
     elif ("," in elem.text) and elem.attrib["name"] != "geometry":
-        t = set(elem.text.split(","))
+        t = set(elem.text.strip("{}").replace(("'"), "").replace(" ", "").split(","))
     else:
         t = elem.text
     return t
