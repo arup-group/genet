@@ -14,13 +14,15 @@ def sanitise_list(x):
 def sanitise_geodataframe(gdf):
     if isinstance(gdf, GeoSeries):
         gdf = GeoDataFrame(gdf)
-    gdf = gdf.fillna("None")
     object_columns = gdf.select_dtypes(["object"]).columns
     for col in object_columns:
+        not_missing_mask = gdf[col].notna()
         if gdf[col].apply(lambda x: isinstance(x, (set, list))).any():
-            gdf[col] = gdf[col].apply(lambda x: ",".join(x))
+            gdf.loc[not_missing_mask, col] = gdf.loc[not_missing_mask, col].apply(
+                lambda x: ",".join(x)
+            )
         elif gdf[col].apply(lambda x: isinstance(x, dict)).any():
-            gdf[col] = gdf[col].apply(lambda x: str(x))
+            gdf.loc[not_missing_mask, col] = gdf.loc[not_missing_mask, col].apply(lambda x: str(x))
     for col in gdf.select_dtypes(include=number).columns.tolist():
         if (gdf[col] > sys.maxsize).any():
             gdf[col] = gdf[col].apply(lambda x: str(x))
