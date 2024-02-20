@@ -1,0 +1,24 @@
+name: Feature Request
+description: Suggest an idea for GeNet.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for letting us know about your idea!
+  - type: textarea
+    id: description
+    attributes:
+      label: What can be improved?
+      placeholder: Tell us what you would like to see!
+      value: "GeNet should include flying car routes!"
+    validations:
+      required: true
+  - type: textarea
+    id: version
+    attributes:
+      label: Version
+      description: What version of GeNet are you using?
+      placeholder: v4.0.0
+    validations:
+      required: true

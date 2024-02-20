@@ -1,6 +1,6 @@
 import logging
 from itertools import count, filterfalse
-from typing import Callable, Dict, Iterable, Union
+from typing import Callable, Dict, Iterable, Optional, Union
 
 import pandas as pd
 from anytree import Node, RenderTree
@@ -54,9 +54,14 @@ class Filter:
 
     def __init__(
         self,
-        conditions: Union[
-            list,
-            Dict[str, Union[dict, Union[str, int, float], list, Callable[[str, int, float], bool]]],
+        conditions: Optional[
+            Union[
+                list,
+                Dict[
+                    str,
+                    Union[dict, Union[str, int, float], list, Callable[[str, int, float], bool]],
+                ],
+            ]
         ] = None,
         how=any,
         mixed_dtypes=True,
@@ -257,7 +262,9 @@ def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
     return data
 
 
-def build_attribute_dataframe(iterator, keys: Union[list, str], index_name: str = None):
+def build_attribute_dataframe(
+    iterator, keys: Union[Iterable, str], index_name: Optional[str] = None
+):
     """
     Builds a pandas.DataFrame from data in iterator.
     :param iterator: iterator or list of tuples (id, dictionary data with keys of interest)
