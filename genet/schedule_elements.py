@@ -2852,6 +2852,9 @@ class Schedule(ScheduleElement):
             # assumed to be a shapely.geometry input
             return self._find_stops_on_shapely_geometry(region_input)
 
+    def _add_additional_attribute_to_graph(self, k, v):
+        raise NotImplementedError
+
     def _find_stops_on_geojson(self, geojson_input):
         shapely_input = spatial.read_geojson_to_shapely(geojson_input)
         return self._find_stops_on_shapely_geometry(shapely_input)
