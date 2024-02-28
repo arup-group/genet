@@ -1,6 +1,6 @@
 # Contributing
 
-genet is an actively maintained and utilised project.
+GeNet is an actively maintained and utilised project.
 
 ## How to contribute
 

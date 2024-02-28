@@ -11,7 +11,7 @@ body:
     attributes:
       label: What can be improved?
       placeholder: Tell us what you would like to see!
-      value: "GeNet should include flying car routes!"
+      value: "GeNet should support 'piggyback' mode when building networks from OSM data."
     validations:
       required: true
   - type: textarea

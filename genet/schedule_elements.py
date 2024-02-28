@@ -3893,8 +3893,6 @@ class Schedule(ScheduleElement):
     def write_to_gtfs(self, output_dir: str, gtfs_day: str = "19700101"):
         """Writes 'stops', 'routes', 'trips', 'stop_times', 'calendar' tables to CSV files.
 
-        FIXME: Is this mixed up with `write_to_csv`?
-
         Args:
             output_dir (str): folder to output csv or txt files.
             gtfs_day (str, optional): day used for GTFS when creating the network in YYYYMMDD format. Defaults to "19700101".

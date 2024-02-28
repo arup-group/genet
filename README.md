@@ -7,6 +7,7 @@ GeNet provides tools to represent and work with a multi-modal transport network 
 services. It is based on [MATSim's](https://www.matsim.org/) representation of such networks.
 
 The goal of GeNet is to:
+
 - Provide a formalised in-memory data structure for representing a multi-modal network with a PT service
 - Enable using the data structure for tasks such as generating auxiliary MATSim files e.g. Road Pricing
 - Simplify the process of modifying a network and provide a simple change log to track the differences between the input
@@ -93,7 +94,7 @@ ipython kernel install --user --name=genet
 ## Building the documentation
 
 If you are unable to access the online documentation, you can build the documentation locally.
-First, [install a development environment of genet](https://arup-group.github.io/genet/latest/contributing/coding/), then deploy the documentation using [mike](https://github.com/jimporter/mike):
+First, [install a development environment of genet](#installing-a-development-environment), then deploy the documentation using [mike](https://github.com/jimporter/mike):
 
 ```
 mike deploy develop
