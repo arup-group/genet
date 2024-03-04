@@ -32,4 +32,4 @@ remove:
   route:  # if there are no routes left in a service, the service will be deleted
     - id: "route-1"
   service:
-    - id: "service-"
+    - id: "service-1"
