@@ -1,0 +1,35 @@
+add:
+  # add new stops, routes and services
+  stop:
+    - id: ""
+      ... # add all the available arguments
+      ... # stop pairs to insert between
+      ... # link ref ID or request to snap later
+  route:
+    - id: ""
+      ... # add all the available arguments
+      ... # headway/frequency
+      ... # recalculate/set offsets
+      ... # reroute/teleport/snap
+  service:
+    - id: ""
+      ... # add all the available arguments
+      ... # reroute/teleport/snap
+
+modify:
+  # only give attributes that need changing
+  stop:
+    - id: ""
+  route:
+    - id: ""
+  service:
+    - id: ""
+
+remove:
+  # just IDs needed
+  stop:  # should this remove stops in affected routes and leave the rest of the route in-tact?
+    - id: "stop-1"
+  route:  # if there are no routes left in a service, the service will be deleted
+    - id: "route-1"
+  service:
+    - id: "service-"
