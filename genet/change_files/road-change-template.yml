@@ -1,0 +1,61 @@
+add:
+  # add new links and nodes, remember to connect links to some existing nodes too!
+  node:
+    - id: "SCHEME-NODE-1"
+      x: 12.34  # x,y in epsg: 27700
+      y: 56.78
+      split_links: # note that node has to be close to the links that it is splitting
+        - "existing-link-1-2"
+        - "existing-link-2-1"
+    - id: "SCHEME-NODE-2"
+      lat: 12.34  # lat, lon in epsg: 4326 - will compute x,y in epsg: 27700 required by the network
+      lon: 56.78
+  link:  # make sure when adding links, you connect them to existing nodes in the network, otherwise the resulting network will be disconnected!
+    - id: "SCHEME-existing-node-1-SCHEME-NODE-1"
+      from: "existing-node-1"
+      to: "SCHEME-NODE-1"
+      length: 10  # optional, in metres
+      freespeed: 14  # metres / second
+      permlanes: 2  # lanes
+      capacity: 600 # this should be the whole link capacity: base capacity per lane * lane
+      modes:
+        - car
+        - bus
+      attributes:  # you can add extra attributes to links, these can be anything you like, unlike the official link attributes like capacity, freespeed etc.
+        osm:way:highway: "motorway"
+        custom_attribute_is_fine_too: "Hi!_Try_to_avoid_spaces_in_strings"
+    - id: "SCHEME-LINK-1-2"
+      from: "SCHEME-NODE-1"
+      to: "SCHEME-NODE-2"
+      length: 10  # optional, in metres
+      freespeed: 14  # metres / second
+      permlanes: 1  # lanes
+      capacity: 300 # this should be the whole link capacity: base capacity per lane * lane
+      modes: car
+    - id: "SCHEME-NODE-2-existing-node-2"
+      from: "SCHEME-NODE-2"
+      to: "existing-node-2"
+      length: 10  # optional, in metres
+      freespeed: 14  # metres / second
+      permlanes: 1  # lanes
+      capacity: 300 # this should be the whole link capacity: base capacity per lane * lane
+      modes: car
+
+modify:
+  # only give attributes that need changing unless special 'convenience' cases, see below
+  link:
+    - id: "1234"
+      capacity: 9000 # does not change permlanes
+    - id: "2345"
+      permlanes: 3 # will compute current base per lane capacity and update that capacity with new lanes
+    - id: "3456"
+      capacity: 9000
+      permlanes: 3 # will set capacity and lanes as given
+
+remove:
+  # just IDs needed
+  node:  # removing a node will also remove all links connected to that node
+    - "1"
+    - "2"
+  link:
+    - "4567"
