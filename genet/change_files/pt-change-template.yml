@@ -5,7 +5,7 @@ add:
       x: "12345.6789"
       y: "98765.4321"
       epsg: "epsg:27700"  # projection of the schedule, matching the projection of gien x,y values
-      name:  # optional, human readable name
+      name: "Stop 1 Name"  # optional, human readable name
       attributes:  # these can be anything but useful for adding connection to other modes via SBB intermodal access/egress
         bikeAccessible: "true"  # for teleported modes, "modeAccessible: true" is sufficient
         carAccessible: "true"
@@ -28,7 +28,15 @@ add:
 modify:
   # only give attributes that need changing
   stop:
-    - id: ""
+    - id: "stop-1"
+      name: "Stop 1 Name"
+      linkRefId: "link-B-C"  # this changes the snapping of the stop and will lead to any related route to be re-routed
+      attributes:  # here we disconnect the stop from being accessible by car of bike
+        bikeAccessible: "false"
+        carAccessible: "false"
+    - id: "stop-2"
+      attributes:  # here we connect the stop to a different place in the car network
+        accessLinkId_car": "a-different-link"
   route:
     - id: ""
   service:
