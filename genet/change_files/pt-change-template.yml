@@ -1,10 +1,19 @@
 add:
   # add new stops, routes and services
   stop:
-    - id: ""
-      ... # add all the available arguments
-      ... # stop pairs to insert between
-      ... # link ref ID or request to snap later
+    - id: "stop-1"
+      x: "12345.6789"
+      y: "98765.4321"
+      epsg: "epsg:27700"  # projection of the schedule, matching the projection of gien x,y values
+      name:  # optional, human readable name
+      attributes:  # these can be anything but useful for adding connection to other modes via SBB intermodal access/egress
+        bikeAccessible: "true"  # for teleported modes, "modeAccessible: true" is sufficient
+        carAccessible: "true"
+        accessLinkId_car": "link-A-B"  # for a routed modes, you will need to add specific link "accessLinkId_mode: some_network"
+      insert_between:
+        - ["stop-A", "stop-B"]  # existing stop pairs to insert between in existing routes
+        - ["stop-B", "stop-A"]  # order matters
+      linkRefId: "link-B-C"  # link that is used for PT vehicle network routes, if not provided, will default to snapping
   route:
     - id: ""
       ... # add all the available arguments
