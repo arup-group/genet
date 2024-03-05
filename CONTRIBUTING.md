@@ -65,9 +65,9 @@ To contribute changes:
 
 Before submitting a pull request, check whether you have:
 
-* Added your changes to `CHANGELOG.md`.
-* Added or updated documentation for your changes.
-* Added tests if you implemented new functionality.
+- Added your changes to `CHANGELOG.md`.
+- Added or updated documentation for your changes.
+- Added tests if you implemented new functionality or fixed a bug.
 
 When opening a pull request, please provide a clear summary of your changes!
 
