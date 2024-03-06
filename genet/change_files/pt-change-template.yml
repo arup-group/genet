@@ -1,7 +1,7 @@
 add:
   # add new stops, routes and services
   stop:
-    - id: "stop-1"
+    - id: "stop-1"  # unique identifier
       x: "12345.6789"
       y: "98765.4321"
       epsg: "epsg:27700"  # projection of the schedule, matching the projection of gien x,y values
@@ -14,14 +14,47 @@ add:
         - ["stop-A", "stop-B"]  # existing stop pairs to insert between in existing routes
         - ["stop-B", "stop-A"]  # order matters
       linkRefId: "link-B-C"  # link that is used for PT vehicle network routes, if not provided, will default to snapping
+
   route:
-    - id: ""
-      ... # add all the available arguments
-      ... # headway/frequency
-      ... # recalculate/set offsets
-      ... # reroute/teleport/snap
+    - id: "route-1"  # unique identifier
+      route_short_name: "short-name"
+      route_long_name: "Long name"  # optional longer name
+      mode: "bus"
+      stops:
+        - "stop-1"
+        - "existing-stop-A"
+        - "existing-stop-B"
+      speed: 40  # this calculates the offsets for arrival at and departure from stops of services
+      routed_distance_factor: 1.3  # distance between stops will be multiplied by this factor when computing offsets
+      # alternatively, you can set offsets manually:
+#      arrival_offsets:  # if setting offsets manually, make sure they match the number of stops
+#        - "00:00:00"
+#        - "00:02:00"
+#        - "00:04:00"
+#      departure_offsets:  # if setting offsets manually, make sure they match the number of stops
+#        - "00:00:00"
+#        - "00:02:00"
+#        - "00:04:00"
+      headway_spec:  # within the temporal brackets of operation, specify the headway for the service (in minutes)
+        00:00:00-06:00:00: 30
+        06:00:00-10:00:00: 10
+        10:00:00-16:00:00: 30
+        16:00:00-19:00:00: 10
+        19:00:00-23:59:59: 30
+#      frequency:  # alternatively to headway, within the temporal brackets of operation, specify the frequency per hour
+#        00:00:00-06:00:00: 2
+#        06:00:00-10:00:00: 6
+#        10:00:00-16:00:00: 2
+#        16:00:00-19:00:00: 6
+#        19:00:00-23:59:59: 2
+
+      route: "snap"  # rather than list of link ID, it's the request to snap, reroute or teleport.
+#      route: "snap" - snaps the stops and finds a network route
+#      route: "route" - only available with stops which are snapped already (provided with "linkRefId" attribute)
+#      route: "teleport" - we choose teleport for any PT other than bus which needs to interact with other traffic
+
   service:
-    - id: ""
+    - id: ""  # unique identifier
       ... # add all the available arguments
       ... # reroute/teleport/snap
 
