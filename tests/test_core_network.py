@@ -386,7 +386,7 @@ def network_for_summary_stats():
                         },
                         arrival_offsets=["00:00:00", "00:02:00"],
                         departure_offsets=["00:00:00", "00:02:00"],
-                        route=["link_1", "link_2"],
+                        network_route=["link_1", "link_2"],
                     ),
                     Route(
                         id="2",
@@ -433,7 +433,7 @@ def network_for_summary_stats():
                         },
                         arrival_offsets=["00:00:00", "00:03:00"],
                         departure_offsets=["00:00:00", "00:05:00"],
-                        route=["link_1", "link_2"],
+                        network_route=["link_1", "link_2"],
                     ),
                 ],
             ),
@@ -3466,7 +3466,7 @@ def test_schedule_routes_with_an_empty_service(network_object_from_test_data):
         "departure_offsets": [],
         "route_long_name": "",
         "id": "1",
-        "route": [],
+        "network_route": [],
         "await_departure": [],
         "ordered_stops": [],
     }
@@ -3483,7 +3483,7 @@ def test_schedule_routes_with_disconnected_routes(network_object_from_test_data)
     n = network_object_from_test_data
     n.add_link("2", 2345678, 987875)
     n.schedule.apply_attributes_to_routes(
-        {"VJbd8660f05fe6f744e58a66ae12bd66acbca88b98": {"route": ["1", "2"]}}
+        {"VJbd8660f05fe6f744e58a66ae12bd66acbca88b98": {"network_route": ["1", "2"]}}
     )
     correct_routes = [["25508485", "21667818"], [2345678, 987875]]
     routes = n.schedule_routes_nodes()
@@ -3854,7 +3854,7 @@ def test_generating_pt_network_route_geodataframe():
                             "trip_departure_time": ["04:40:00"],
                             "vehicle_id": ["veh_1_bus"],
                         },
-                        route=["l1", "l2"],
+                        network_route=["l1", "l2"],
                         arrival_offsets=["00:00:00", "00:02:00", "00:04:00"],
                         departure_offsets=["00:00:00", "00:02:00", "00:04:00"],
                     )
@@ -4137,7 +4137,7 @@ def test_valid_network_route():
         trips={},
         arrival_offsets=[],
         departure_offsets=[],
-        route=["1", "2"],
+        network_route=["1", "2"],
     )
     assert n.is_valid_network_route(r)
 
@@ -4153,7 +4153,7 @@ def test_network_route_with_wrong_links():
         trips={},
         arrival_offsets=[],
         departure_offsets=[],
-        route=["1", "2"],
+        network_route=["1", "2"],
     )
     assert not n.is_valid_network_route(r)
 
@@ -4169,7 +4169,7 @@ def test_network_route_with_empty_link_list():
         trips={},
         arrival_offsets=[],
         departure_offsets=[],
-        route=[],
+        network_route=[],
     )
     assert not n.is_valid_network_route(r)
 
@@ -4185,7 +4185,7 @@ def test_network_route_with_incorrect_modes_on_link():
         trips={},
         arrival_offsets=[],
         departure_offsets=[],
-        route=["1", "2"],
+        network_route=["1", "2"],
     )
     assert not n.is_valid_network_route(r)
 
@@ -4277,12 +4277,12 @@ def test_has_schedule_with_valid_network_routes_with_valid_routes(simple_route):
     n = Network("epsg:27700")
     n.add_link("1", 1, 2, attribs={"modes": ["bus"]})
     n.add_link("2", 2, 3, attribs={"modes": ["car", "bus"]})
-    simple_route.route = ["1", "2"]
+    simple_route.network_route = ["1", "2"]
     n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route])])
     simple_route.reindex("service_1")
     n.schedule.add_route("service", simple_route)
     n.schedule.apply_attributes_to_routes(
-        {"service_0": {"route": ["1", "2"]}, "service_1": {"route": ["1", "2"]}}
+        {"service_0": {"network_route": ["1", "2"]}, "service_1": {"network_route": ["1", "2"]}}
     )
     assert n.has_schedule_with_valid_network_routes()
 
@@ -4291,7 +4291,7 @@ def test_has_schedule_with_valid_network_routes_with_some_valid_routes(simple_ro
     n = Network("epsg:27700")
     n.add_link("1", 1, 2)
     n.add_link("2", 2, 3)
-    simple_route.route = ["1", "2"]
+    simple_route.network_route = ["1", "2"]
     route_2 = Route(
         route_short_name="",
         mode="bus",
@@ -4299,7 +4299,7 @@ def test_has_schedule_with_valid_network_routes_with_some_valid_routes(simple_ro
         trips={"trip_id": ["1"], "trip_departure_time": ["13:00:00"], "vehicle_id": ["veh_1_bus"]},
         arrival_offsets=[],
         departure_offsets=[],
-        route=["10000"],
+        network_route=["10000"],
     )
     n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route, route_2])])
     assert not n.has_schedule_with_valid_network_routes()
@@ -4309,7 +4309,7 @@ def test_has_schedule_with_valid_network_routes_with_invalid_routes(simple_route
     n = Network("epsg:27700")
     n.add_link("1", 1, 2)
     n.add_link("2", 2, 3)
-    simple_route.route = ["3", "4"]
+    simple_route.network_route = ["3", "4"]
     n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route, simple_route])])
     assert not n.has_schedule_with_valid_network_routes()
 
@@ -4318,7 +4318,7 @@ def test_has_schedule_with_valid_network_routes_with_empty_routes(simple_route):
     n = Network("epsg:27700")
     n.add_link("1", 1, 2)
     n.add_link("2", 2, 3)
-    simple_route.route = []
+    simple_route.network_route = []
     n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route, simple_route])])
     assert not n.has_schedule_with_valid_network_routes()
 
@@ -4395,7 +4395,7 @@ def test_invalid_network_routes_with_valid_route(simple_route):
     n.add_link("2", 2, 3, attribs={"modes": ["bus"]})
     simple_route.reindex("route")
     n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route])])
-    n.schedule.apply_attributes_to_routes({"route": {"route": ["1", "2"]}})
+    n.schedule.apply_attributes_to_routes({"route": {"network_route": ["1", "2"]}})
     assert n.invalid_network_routes() == []
 
 
@@ -4405,7 +4405,7 @@ def test_invalid_network_routes_with_invalid_route(simple_route):
     n.add_link("2", 2, 3)
     simple_route.reindex("route")
     n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route])])
-    n.schedule.apply_attributes_to_routes({"route": {"route": ["3", "4"]}})
+    n.schedule.apply_attributes_to_routes({"route": {"network_route": ["3", "4"]}})
     assert n.invalid_network_routes() == ["route"]
 
 
@@ -4415,7 +4415,7 @@ def test_invalid_network_routes_with_empty_route(simple_route):
     n.add_link("2", 2, 3)
     simple_route.reindex("route")
     n.schedule = Schedule(n.epsg, [Service(id="service", routes=[simple_route])])
-    n.schedule.apply_attributes_to_routes({"route": {"route": []}})
+    n.schedule.apply_attributes_to_routes({"route": {"network_route": []}})
     assert n.invalid_network_routes() == ["route"]
 
 
@@ -5681,7 +5681,7 @@ def test_splitting_link_updates_route_in_schedule(mocker):
                         },
                         arrival_offsets=["00:00:00", "00:02:00"],
                         departure_offsets=["00:00:00", "00:02:00"],
-                        route=["AAA", "l1", "BBB"],
+                        network_route=["AAA", "l1", "BBB"],
                     )
                 ],
             )
@@ -5689,7 +5689,7 @@ def test_splitting_link_updates_route_in_schedule(mocker):
     )
     n.split_link_at_point("l1", 528568.5, 177243)
 
-    assert n.schedule.route("1").route == ["AAA", new_link_1_ID, new_link_2_ID, "BBB"]
+    assert n.schedule.route("1").network_route == ["AAA", new_link_1_ID, new_link_2_ID, "BBB"]
 
 
 def test_generating_summary_report(assert_semantically_equal, network_for_summary_stats):

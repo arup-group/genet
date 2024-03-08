@@ -8,7 +8,7 @@ from abc import abstractmethod
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime, timedelta
-from typing import Dict, List, Set, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 import dictdiffer
 import geopandas as gpd
@@ -674,7 +674,7 @@ class Route(ScheduleElement):
         departure_offsets: List[str],
         trips: Dict[str, List[str]] = None,
         headway_spec: Dict[tuple, int] = None,
-        route: list = None,
+        network_route: Optional[list] = None,
         route_long_name: str = "",
         id: str = "",
         await_departure: list = None,
@@ -698,10 +698,10 @@ class Route(ScheduleElement):
                 "Please provide trip or headway information to initialise Route object"
             )
 
-        if route is None:
-            self.route = []
+        if network_route is None:
+            self.network_route = []
         else:
-            self.route = route
+            self.network_route = network_route
         if await_departure is None:
             self.await_departure = []
         else:
@@ -1084,7 +1084,7 @@ class Route(ScheduleElement):
         return False
 
     def has_network_route(self):
-        return self.route
+        return self.network_route
 
     def divide_network_route_between_stops(self):
         if self.has_network_route():
@@ -1093,7 +1093,7 @@ class Route(ScheduleElement):
                 raise RuntimeError(
                     "This Stops in this Route are not snapped to the network via `linkRefId` attribute"
                 )
-            return use_schedule.divide_network_route(self.route, stops_linkrefids)
+            return use_schedule.divide_network_route(self.network_route, stops_linkrefids)
         else:
             raise RuntimeError("This Route does not have a network route to divide")
 
@@ -1117,7 +1117,7 @@ class Route(ScheduleElement):
                 if reassembled_route[i - 1] != reassembled_route[i]
             ]
             if (len(stops_linkrefids) - 1) == len(divided_route) and (
-                reassembled_route == self.route
+                reassembled_route == self.network_route
             ):
                 return True
         return False
@@ -3812,12 +3812,16 @@ class Schedule(ScheduleElement):
                     "access_tag": col,
                     "number_of_stops_with_access_tag": len(df[col].dropna()),
                     "unique_values_under_access_tag": set(df[col].dropna().unique()),
-                    "link_access_tag": network_access_tag
-                    if network_access_tag in df.columns
-                    else "not_connected_to_network",
-                    "number_of_stops_with_link_access_tag": len(df[network_access_tag].dropna())
-                    if network_access_tag in df.columns
-                    else 0,
+                    "link_access_tag": (
+                        network_access_tag
+                        if network_access_tag in df.columns
+                        else "not_connected_to_network"
+                    ),
+                    "number_of_stops_with_link_access_tag": (
+                        len(df[network_access_tag].dropna())
+                        if network_access_tag in df.columns
+                        else 0
+                    ),
                 }
         return report
 

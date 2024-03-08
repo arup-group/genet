@@ -58,7 +58,7 @@ def correct_services_from_test_pt2matsim_schedule():
                     route_short_name="12",
                     mode="bus",
                     stops=stops,
-                    route=["1"],
+                    network_route=["1"],
                     trips={
                         "trip_id": ["VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00"],
                         "trip_departure_time": ["04:40:00"],

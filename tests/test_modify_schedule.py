@@ -647,14 +647,14 @@ def test_teleporting_service(test_network, test_service):
     assert rep["graph"]["graph_connectivity"]["car"]["number_of_connected_subgraphs"] == 1
     assert rep["schedule"]["schedule_level"]["is_valid_schedule"]
     assert rep["routing"]["services_have_routes_in_the_graph"]
-    assert test_network.schedule.route("route_1").route == [
+    assert test_network.schedule.route("route_1").network_route == [
         "artificial_link===from:490004695A===to:490004695A",
         "artificial_link===from:490004695A===to:490000235C",
         "artificial_link===from:490000235C===to:490000235C",
         "artificial_link===from:490000235C===to:490000089A",
         "artificial_link===from:490000089A===to:490000089A",
     ]
-    assert test_network.schedule.route("route_2").route == [
+    assert test_network.schedule.route("route_2").network_route == [
         "artificial_link===from:490000089A===to:490000089A",
         "artificial_link===from:490000089A===to:490000252X",
         "artificial_link===from:490000252X===to:490000252X",
@@ -725,21 +725,21 @@ def test_teleporting_more_than_one_service(test_network, test_service):
     assert rep["graph"]["graph_connectivity"]["car"]["number_of_connected_subgraphs"] == 1
     assert rep["schedule"]["schedule_level"]["is_valid_schedule"]
     assert rep["routing"]["services_have_routes_in_the_graph"]
-    assert test_network.schedule.route("route_1").route == [
+    assert test_network.schedule.route("route_1").network_route == [
         "artificial_link===from:490004695A===to:490004695A",
         "artificial_link===from:490004695A===to:490000235C",
         "artificial_link===from:490000235C===to:490000235C",
         "artificial_link===from:490000235C===to:490000089A",
         "artificial_link===from:490000089A===to:490000089A",
     ]
-    assert test_network.schedule.route("route_2").route == [
+    assert test_network.schedule.route("route_2").network_route == [
         "artificial_link===from:490000089A===to:490000089A",
         "artificial_link===from:490000089A===to:490000252X",
         "artificial_link===from:490000252X===to:490000252X",
         "artificial_link===from:490000252X===to:490000078Q",
         "artificial_link===from:490000078Q===to:490000078Q",
     ]
-    assert test_network.schedule.route("route_1_rail").route == [
+    assert test_network.schedule.route("route_1_rail").network_route == [
         "artificial_link===from:490004695A===to:490004695A",
         "artificial_link===from:490004695A===to:490000235C",
         "artificial_link===from:490000235C===to:490000235C",
@@ -792,14 +792,14 @@ def test_teleporting_service_with_some_snapped_stops(test_network, test_service)
     assert rep["graph"]["graph_connectivity"]["car"]["number_of_connected_subgraphs"] == 1
     assert rep["schedule"]["schedule_level"]["is_valid_schedule"]
     assert rep["routing"]["services_have_routes_in_the_graph"]
-    assert test_network.schedule.route("route_1").route == [
+    assert test_network.schedule.route("route_1").network_route == [
         "artificial_link===from:490004695A===to:490004695A",
         "artificial_link===from:490004695A===to:490000235C",
         "artificial_link===from:490000235C===to:490000235C",
         "artificial_link===from:490000235C===to:490000089A",
         "artificial_link===from:490000089A===to:490000089A",
     ]
-    assert test_network.schedule.route("route_2").route == [
+    assert test_network.schedule.route("route_2").network_route == [
         "artificial_link===from:490000089A===to:490000089A",
         "artificial_link===from:490000089A===to:5221366094904818311",
         "5221366094904818311_5221366094903752729",
@@ -839,14 +839,14 @@ def test_teleporting_service_with_some_stops_snapped_to_non_existing_links(
     assert rep["graph"]["graph_connectivity"]["car"]["number_of_connected_subgraphs"] == 1
     assert rep["schedule"]["schedule_level"]["is_valid_schedule"]
     assert rep["routing"]["services_have_routes_in_the_graph"]
-    assert test_network.schedule.route("route_1").route == [
+    assert test_network.schedule.route("route_1").network_route == [
         "artificial_link===from:490004695A===to:490004695A",
         "artificial_link===from:490004695A===to:490000235C",
         "artificial_link===from:490000235C===to:490000235C",
         "artificial_link===from:490000235C===to:490000089A",
         "artificial_link===from:490000089A===to:490000089A",
     ]
-    assert test_network.schedule.route("route_2").route == [
+    assert test_network.schedule.route("route_2").network_route == [
         "artificial_link===from:490000089A===to:490000089A",
         "artificial_link===from:490000089A===to:490000252X",
         "artificial_link===from:490000252X===to:490000252X",
@@ -923,22 +923,22 @@ def test_routing_schedule_specifying_services(test_network, test_service):
 
 
 def test_rerouting_service(test_network):
-    test_network.schedule._graph.graph["routes"]["7797_0"]["route"] = []
-    test_network.schedule._graph.graph["routes"]["7797_1"]["route"] = []
+    test_network.schedule._graph.graph["routes"]["7797_0"]["network_route"] = []
+    test_network.schedule._graph.graph["routes"]["7797_1"]["network_route"] = []
 
     test_network.reroute("7797")
 
-    assert test_network.schedule._graph.graph["routes"]["7797_0"]["route"]
-    assert test_network.schedule._graph.graph["routes"]["7797_1"]["route"]
+    assert test_network.schedule._graph.graph["routes"]["7797_0"]["network_route"]
+    assert test_network.schedule._graph.graph["routes"]["7797_1"]["network_route"]
     test_network.schedule["7797"].is_valid_service()
 
 
 def test_rerouting_route(test_network):
-    test_network.schedule._graph.graph["routes"]["7797_0"]["route"] = []
+    test_network.schedule._graph.graph["routes"]["7797_0"]["network_route"] = []
 
     test_network.reroute("7797_0")
 
-    assert test_network.schedule._graph.graph["routes"]["7797_0"]["route"]
+    assert test_network.schedule._graph.graph["routes"]["7797_0"]["network_route"]
     test_network.schedule.route("7797_0").is_valid_route()
 
 
@@ -965,7 +965,7 @@ def test_rerouting_with_stops_that_have_repeated_linkrefids_does_not_route_betwe
     ]
     test_network.reroute("7797_1")
 
-    new_route = test_network.schedule.route("7797_1").route
+    new_route = test_network.schedule.route("7797_1").network_route
     assert new_route != old_route
     # check double linkref is mentioned only once
     assert [i for i in new_route if i == "5221390688151572741_5221390688151572741"] == [
@@ -980,11 +980,11 @@ def test_rerouting_nonexistent_id_throws_error(test_network):
 
 
 def test_rerouting_with_extra_mode(test_network):
-    test_network.schedule._graph.graph["routes"]["7797_0"]["route"] = []
+    test_network.schedule._graph.graph["routes"]["7797_0"]["network_route"] = []
 
     test_network.reroute("7797_0", additional_modes="car")
 
-    assert test_network.schedule._graph.graph["routes"]["7797_0"]["route"]
+    assert test_network.schedule._graph.graph["routes"]["7797_0"]["network_route"]
     test_network.schedule.route("7797_0").is_valid_route()
 
 
