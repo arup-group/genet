@@ -1,0 +1,3519 @@
+<!-- Directory to customise the mkdocs "material" theme. See [here](https://squidfunk.github.io/mkdocs-material/customization) for more detail. -->
+<!--Add download button to all pages built from jupyter notebooks-->
+
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../../CHANGELOG/">
+      
+      
+        <link rel="next" href="../../reference/genet/auxiliary_files/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.13">
+    
+    
+      
+        <title>Command line interface - Network Scenario Generator (GeNet)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.7e359304.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../static/extras.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#cli-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Network Scenario Generator (GeNet)" class="md-header__button md-logo" aria-label="Network Scenario Generator (GeNet)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Network Scenario Generator (GeNet)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Command line interface
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/arup-group/genet/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Network Scenario Generator (GeNet)" class="md-nav__button md-logo" aria-label="Network Scenario Generator (GeNet)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Network Scenario Generator (GeNet)
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/arup-group/genet/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../docker/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using GeNet as a Docker image
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Examples
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Examples
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/1_intro_to_genet/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    1. Introduction to GeNet
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/2_1_reading_data_matsim/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    2.1. Reading data: MATSim networks
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/2_2_reading_data_osm/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    2.2. Reading data: OSM
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/2_3_reading_data_gtfs/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    2.3. Reading data: GTFS
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/2_4_reading_data_csv/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    2.4. Reading data: CSV
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/2_5_reading_data_json_geojson/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    2.5. Reading data: JSON &amp; GeoJSON
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/3_1_writing_data_matsim/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    3.1. Writing data: MATSim
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/3_2_writing_data_gtfs/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    3.2. Writing data: GTFS
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/3_3_writing_data_csv/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    3.3. Writing data: CSV
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/3_4_writing_data_json_geojson/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    3.4. Writing data: JSON &amp; GeoJSON
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/4_1_using_network_accessing_data/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    4.1. Using the Network object: Accessing data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/4_2_using_network_road_pricing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    4.2. Using the Network object: Road Pricing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/4_3_using_network_routing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    4.3. Using the Network object: Routing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/4_4_using_network_auxiliary_files_referencing_network_ids/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    4.4. Using the Network object: Auxiliary files
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/5_1_modifying_network_graph/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    5.1. Modifying the Network object: Graph
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/5_2_modifying_network_pt_schedule/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    5.2. Modifying the Network object: Public transport schedules
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/5_3_modifying_network_simplification/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    5.3. Modifying the Network object: Simplifying
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/5_4_modifying_network_addition/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    5.4. Modifying the Network object: Addition
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/6_1_validating_network_matsim_specific/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    6.1. Validating the Network object: MatSim
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/6_2_validating_network_google_directions_api/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    6.2. Validating the Network object: Google Directions API for speed calculation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/7_visualising_network/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    7. Visualising Network
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CHANGELOG/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Changelog
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Command line interface
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Command line interface
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#genet" class="md-nav__link">
+    <span class="md-ellipsis">
+      genet
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="genet">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#genet-add-elevation-to-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      add-elevation-to-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-auto-schedule-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      auto-schedule-fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-generate-standard-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      generate-standard-outputs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-inspect-google-directions-requests-for-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      inspect-google-directions-requests-for-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-intermodal-access-egress-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      intermodal-access-egress-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-make-pt-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      make-pt-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-make-road-only-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      make-road-only-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-reproject-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      reproject-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-scale-vehicles" class="md-nav__link">
+    <span class="md-ellipsis">
+      scale-vehicles
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-send-google-directions-requests-for-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      send-google-directions-requests-for-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-separate-modes-in-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      separate-modes-in-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-simplify-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      simplify-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-squeeze-external-area" class="md-nav__link">
+    <span class="md-ellipsis">
+      squeeze-external-area
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-squeeze-urban-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      squeeze-urban-links
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-validate-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      validate-network
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_2" id="__nav_7_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Python API
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_2">
+            <span class="md-nav__icon md-icon"></span>
+            Python API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/auxiliary_files/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.auxiliary_files
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/core/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.core
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/exceptions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.exceptions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/max_stable_set/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.max_stable_set
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/schedule_elements/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.schedule_elements
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/variables/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.variables
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_2_7" id="__nav_7_2_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    genet.input
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_7_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            genet.input
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/input/gtfs_reader/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.input.gtfs_reader
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/input/matsim_reader/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.input.matsim_reader
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/input/osm_reader/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.input.osm_reader
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/input/osmnx_customised/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.input.osmnx_customised
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/input/read/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.input.read
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_2_8" id="__nav_7_2_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    genet.modify
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_7_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            genet.modify
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/modify/change_log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.modify.change_log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/modify/graph/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.modify.graph
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/modify/schedule/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.modify.schedule
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_2_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_2_9" id="__nav_7_2_9_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    genet.output
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_7_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            genet.output
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/output/geojson/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.output.geojson
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/output/matsim_xml_values/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.output.matsim_xml_values
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/output/matsim_xml_writer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.output.matsim_xml_writer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/output/sanitiser/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.output.sanitiser
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_2_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_2_10" id="__nav_7_2_10_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    genet.use
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_7_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            genet.use
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/use/road_pricing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.use.road_pricing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/use/schedule/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.use.schedule
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_2_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_2_11" id="__nav_7_2_11_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    genet.utils
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_7_2_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_2_11">
+            <span class="md-nav__icon md-icon"></span>
+            genet.utils
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/dict_support/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.dict_support
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/elevation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.elevation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/google_directions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.google_directions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/graph_operations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.graph_operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/java_dtypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.java_dtypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/pandas_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.pandas_helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/parallel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.parallel
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/persistence/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.persistence
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/plot/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.plot
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/secrets_vault/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.secrets_vault
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/simplification/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.simplification
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/spatial/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.spatial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_2_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_2_12" id="__nav_7_2_12_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    genet.validate
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_7_2_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_2_12">
+            <span class="md-nav__icon md-icon"></span>
+            genet.validate
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/validate/network/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.validate.network
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/validate/schedule/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.validate.schedule
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#genet" class="md-nav__link">
+    <span class="md-ellipsis">
+      genet
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="genet">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#genet-add-elevation-to-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      add-elevation-to-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-auto-schedule-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      auto-schedule-fixes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-generate-standard-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      generate-standard-outputs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-inspect-google-directions-requests-for-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      inspect-google-directions-requests-for-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-intermodal-access-egress-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      intermodal-access-egress-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-make-pt-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      make-pt-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-make-road-only-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      make-road-only-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-reproject-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      reproject-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-scale-vehicles" class="md-nav__link">
+    <span class="md-ellipsis">
+      scale-vehicles
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-send-google-directions-requests-for-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      send-google-directions-requests-for-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-separate-modes-in-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      separate-modes-in-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-simplify-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      simplify-network
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-squeeze-external-area" class="md-nav__link">
+    <span class="md-ellipsis">
+      squeeze-external-area
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-squeeze-urban-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      squeeze-urban-links
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#genet-validate-network" class="md-nav__link">
+    <span class="md-ellipsis">
+      validate-network
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+
+
+
+                  
+
+  
+  
+
+
+<h1 id="cli-reference">CLI Reference<a class="headerlink" href="#cli-reference" title="Permanent link">#</a></h1>
+<p>This page provides documentation for our command line tools.</p>
+<h2 id="genet">genet<a class="headerlink" href="#genet" title="Permanent link">#</a></h2>
+<p>GeNet Command Line Tool.</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>genet [OPTIONS] COMMAND [ARGS]...
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--version</code></td>
+<td>boolean</td>
+<td>Show the version and exit.</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-add-elevation-to-network">genet add-elevation-to-network<a class="headerlink" href="#genet-add-elevation-to-network" title="Permanent link">#</a></h3>
+<p>Add elevation data to network nodes, validate it, and calculate link slopes.</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>genet add-elevation-to-network [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-el</code>, <code>--elevation</code></td>
+<td>path</td>
+<td>Path to the elevation tif file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-nv</code>, <code>--null_value</code></td>
+<td>float</td>
+<td>Value that represents null in the elevation tif file</td>
+<td><code>0.0</code></td>
+</tr>
+<tr>
+<td><code>-nwe</code>, <code>--no-write_elevation_to_network</code></td>
+<td>boolean</td>
+<td>Do not write node elevation data as attribute to the network</td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td><code>-nwsn</code>, <code>--no-write_slope_to_network</code></td>
+<td>boolean</td>
+<td>Do not write link slope data as attribute to the network</td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td><code>-nwsoa</code>, <code>--no-write_slope_to_object_attribute_file</code></td>
+<td>boolean</td>
+<td>Do not write link slope data to object attribute file</td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td><code>-nsj</code>, <code>--no-save_jsons</code></td>
+<td>boolean</td>
+<td>Do not save elevation and slope dictionaries and report</td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-auto-schedule-fixes">genet auto-schedule-fixes<a class="headerlink" href="#genet-auto-schedule-fixes" title="Permanent link">#</a></h3>
+<p>Script to check and correct, if needed, the speed and headway of services in the schedule.</p>
+<p>Checks and corrects for:
+   - zero headways - we check that there are no 0 minute headways.
+     that would mean two of the same trips start at the same time.
+     To correct this we delete one of the trips, treating it as a duplicate.
+   - infinite speeds - We calculate speed between each stop pair for services.
+     We use the declared times at stops and crow-fly distance * 1.3 network factor.
+     This is done also for routed modes like bus to simplify things,
+     as we are only after infinite speeds which will show up whether we use the true route or not.
+     Infinite speeds exist as a consequence of division by zero (time).
+     This is corrected by recalculating the arrival and departure times at the problem stops;
+     the times at other stops are kept the same as much as possible.</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>genet auto-schedule-fixes [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-s</code>, <code>--schedule</code></td>
+<td>path</td>
+<td>Location of the input schedule.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-v</code>, <code>--vehicles</code></td>
+<td>path</td>
+<td>Location of the input vehicles.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-vsc</code>, <code>--vehicle_scalings</code></td>
+<td>text</td>
+<td>Comma delimited list of scales for vehicles</td>
+<td><code>1,10</code></td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-generate-standard-outputs">genet generate-standard-outputs<a class="headerlink" href="#genet-generate-standard-outputs" title="Permanent link">#</a></h3>
+<p>Generate Standard outputs for a network and/or schedule</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>genet generate-standard-outputs [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-s</code>, <code>--schedule</code></td>
+<td>path</td>
+<td>Location of the input schedule.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-v</code>, <code>--vehicles</code></td>
+<td>path</td>
+<td>Location of the input vehicles.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-inspect-google-directions-requests-for-network">genet inspect-google-directions-requests-for-network<a class="headerlink" href="#genet-inspect-google-directions-requests-for-network" title="Permanent link">#</a></h3>
+<p>Generate Google Directions API requests for a network for inspection</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>genet inspect-google-directions-requests-for-network [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-sc</code>, <code>--subset_conditions</code></td>
+<td>text</td>
+<td>Comma delimited list of values to subset the network by using attributes-osm:way:highway network attributes, e.g., <code VALUE_S_="VALUE(S)'" _attributes_:="'attributes':" _osm:way:highway_:="{'osm:way:highway':">primary,motorway</code>}</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-intermodal-access-egress-network">genet intermodal-access-egress-network<a class="headerlink" href="#genet-intermodal-access-egress-network" title="Permanent link">#</a></h3>
+<p>Process to add access and egress links for PT stops of given modes.</p>
+<p>Intended to generate PT schedules to work with SBB extensions in MATSim:
+https://github.com/matsim-org/matsim-libs/tree/master/contribs/sbb-extensions#intermodal-access-and-egress</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>genet intermodal-access-egress-network [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-s</code>, <code>--schedule</code></td>
+<td>path</td>
+<td>Location of the input schedule.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-v</code>, <code>--vehicles</code></td>
+<td>path</td>
+<td>Location of the input vehicles.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-pm</code>, <code>--pt_modes</code></td>
+<td>text</td>
+<td>Comma delimited list of modes to subset stops of interest. A stop is linked to a mode via a transit route using that stop. Optional, otherwise considers all stops</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-nm</code>, <code>--network_snap_modes</code></td>
+<td>text</td>
+<td>Comma delimited list of modes to subset the network graph. The links from this modal subgraph will be considered for the stop to graph relationship. Two new attributes (per mode) will be added to PT stops:xmodeAccessible = true and accessLinkId_xmode = link_id</td>
+<td><code>car</code></td>
+</tr>
+<tr>
+<td><code>-tm</code>, <code>--teleport_modes</code></td>
+<td>text</td>
+<td>Comma delimited list of (teleported) modes to enable for given PT stops No links will be found for these modes. One new attributes (per mode) will be added to PT stops: xmodeAccessible = true</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-ss</code>, <code>--step_size</code></td>
+<td>float</td>
+<td>In metres. This process finds links in the nearest neighbourhood of a stop. The size of the neighbourhood increases by <code>step_size</code> value each time until it finds links to relate to stops.</td>
+<td><code>25</code></td>
+</tr>
+<tr>
+<td><code>-dt</code>, <code>--distance_threshold</code></td>
+<td>float</td>
+<td>In metres. This is the limit of how wide the search area for a link can be for each stop.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-make-pt-network">genet make-pt-network<a class="headerlink" href="#genet-make-pt-network" title="Permanent link">#</a></h3>
+<p>Create a PT MATSim network</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>genet make-pt-network [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-oc</code>, <code>--osm_config</code></td>
+<td>file</td>
+<td>Location of the config file defining what and how to read from the osm file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--osm</code></td>
+<td>file</td>
+<td>Location of the osm file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-gd</code>, <code>--gtfs_day</code></td>
+<td>text</td>
+<td>gtfs day to use in the format <code>YYYYMMDD</code></td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-g</code>, <code>--gtfs</code></td>
+<td>path</td>
+<td>Location of the gtfs zip file of folder with gtfs text files</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-pp</code>, <code>--processes</code></td>
+<td>integer</td>
+<td>Number of parallel processes to split process across</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>-sd</code>, <code>--snapping_distance</code></td>
+<td>float</td>
+<td>Distance for snapping network nodes to transit stops</td>
+<td><code>30</code></td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-make-road-only-network">genet make-road-only-network<a class="headerlink" href="#genet-make-road-only-network" title="Permanent link">#</a></h3>
+<p>Create a road-only MATSim network</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>genet make-road-only-network [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-oc</code>, <code>--osm_config</code></td>
+<td>file</td>
+<td>Location of the config file defining what and how to read from the osm file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--osm</code></td>
+<td>file</td>
+<td>Location of the osm file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-pp</code>, <code>--processes</code></td>
+<td>integer</td>
+<td>Number of parallel processes to split process across</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-cc</code>, <code>--connected_components</code></td>
+<td>integer</td>
+<td>Number of connected components within graph for modes <code>walk</code>,<code>bike</code>,<code>car</code></td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-reproject-network">genet reproject-network<a class="headerlink" href="#genet-reproject-network" title="Permanent link">#</a></h3>
+<p>Reproject a MATSim network</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>genet reproject-network [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-s</code>, <code>--schedule</code></td>
+<td>path</td>
+<td>Location of the input schedule.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-v</code>, <code>--vehicles</code></td>
+<td>path</td>
+<td>Location of the input vehicles.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-pp</code>, <code>--processes</code></td>
+<td>integer</td>
+<td>Number of parallel processes to split process across</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-cp</code>, <code>--current_projection</code></td>
+<td>text</td>
+<td>The projection network is currently in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-np</code>, <code>--new_projection</code></td>
+<td>text</td>
+<td>The projection desired, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-scale-vehicles">genet scale-vehicles<a class="headerlink" href="#genet-scale-vehicles" title="Permanent link">#</a></h3>
+<p>Scale PT Schedule vehicles</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>genet scale-vehicles [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-s</code>, <code>--schedule</code></td>
+<td>path</td>
+<td>Location of the input schedule.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-v</code>, <code>--vehicles</code></td>
+<td>path</td>
+<td>Location of the input vehicles.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-vsc</code>, <code>--vehicle_scalings</code></td>
+<td>text</td>
+<td>Comma delimited list of scales for vehicles</td>
+<td><code>1,10</code></td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-send-google-directions-requests-for-network">genet send-google-directions-requests-for-network<a class="headerlink" href="#genet-send-google-directions-requests-for-network" title="Permanent link">#</a></h3>
+<p>Generate and send Google Directions API requests</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>genet send-google-directions-requests-for-network [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-sc</code>, <code>--subset_conditions</code></td>
+<td>text</td>
+<td>Comma delimited list of values to subset the network by using attributes-osm:way:highway network attributes, e.g., <code VALUE_S_="VALUE(S)'" _attributes_:="'attributes':" _osm:way:highway_:="{'osm:way:highway':">primary,motorway</code>}</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-t</code>, <code>--requests_threshold</code></td>
+<td>integer</td>
+<td>Max number of API requests you are happy to send. If exceeded, will fail without sending any</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-k</code>, <code>--api_key</code></td>
+<td>text</td>
+<td>Google Directions API key if not using AWS secrets manager</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-sn</code>, <code>--secret_name</code></td>
+<td>text</td>
+<td>Secret name in AWS Secrets manager, if not passing the API key directly</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-rn</code>, <code>--region_name</code></td>
+<td>text</td>
+<td>Region name in AWS, if not passing the API key directly</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-tm</code>, <code>--traffic_model</code></td>
+<td>text</td>
+<td>Google Directions API traffic model to consider when calculating time in traffic for choices. See https://developers.google.com/maps/documentation/directions/get-directions#traffic_model</td>
+<td><code>best_guess</code></td>
+</tr>
+<tr>
+<td><code>-dp</code>, <code>--departure_time</code></td>
+<td>text</td>
+<td>desired time of departure, in unix time, or <code>now</code> for current traffic conditions</td>
+<td><code>now</code></td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-separate-modes-in-network">genet separate-modes-in-network<a class="headerlink" href="#genet-separate-modes-in-network" title="Permanent link">#</a></h3>
+<p>Generate new links, each for the use of a singular mode in a MATSim network.</p>
+<p>This creates separate modal subgraphs for the given modes.
+It can be used with MATSim to ensure the two modes do not come in contact.</p>
+<p>Examples:</p>
+<div class="language-text highlight"><pre><span></span><code>```python
+[1] network.link(&quot;LINK_ID&quot;)
+[out] {&quot;id&quot;: &quot;LINK_ID&quot;, &quot;modes&quot;: {&quot;car&quot;, &quot;bike&quot;}, &quot;freespeed&quot;: 5, ...}
+```
+
+The new bike link will assume all the same attributes apart from the &quot;modes&quot;:
+```python
+[1] network.link(&quot;bike---LINK_ID&quot;)`
+[out] {&quot;id&quot;: &quot;bike---LINK_ID&quot;, &quot;modes&quot;: {&quot;bike&quot;}, &quot;freespeed&quot;: 5, ...}
+```
+
+In the case when a link already has a single dedicated mode, no updates are made to the link ID.
+You can assume that all links that were in the network previously are still there, but their allowed modes may have changed.
+So, any simulation outputs may not be valid with this new network.
+</code></pre></div>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>genet separate-modes-in-network [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-m</code>, <code>--modes</code></td>
+<td>text</td>
+<td>Comma delimited list of modes to split from the network</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-ic</code>, <code>--increase_capacity</code></td>
+<td>boolean</td>
+<td>Sets capacity on detached links to 9999</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-simplify-network">genet simplify-network<a class="headerlink" href="#genet-simplify-network" title="Permanent link">#</a></h3>
+<p>Simplify a MATSim network by removing intermediate links from paths</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>genet simplify-network [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-s</code>, <code>--schedule</code></td>
+<td>path</td>
+<td>Location of the input schedule.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-v</code>, <code>--vehicles</code></td>
+<td>path</td>
+<td>Location of the input vehicles.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-pp</code>, <code>--processes</code></td>
+<td>integer</td>
+<td>Number of parallel processes to split process across</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>-vsc</code>, <code>--vehicle_scalings</code></td>
+<td>text</td>
+<td>Comma delimited list of scales for vehicles</td>
+<td><code>1,10</code></td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-fc</code>, <code>--force_strongly_connected_graph</code></td>
+<td>boolean</td>
+<td>If True, checks for disconnected subgraphs for modes <code>walk</code>, <code>bike</code> and <code>car</code>. If there are more than one strongly connected subgraph, genet connects them with links at closest points in the graph. The links used to connect are weighted at 20% of surrounding freespeed and capacity values.</td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-squeeze-external-area">genet squeeze-external-area<a class="headerlink" href="#genet-squeeze-external-area" title="Permanent link">#</a></h3>
+<p>Changes <code>freespeed</code> and <code>capacity</code> values for links <strong>outside</strong> of the given <code>study_area</code> by given factors.</p>
+<p>To squeeze links within the study area, refer to the <code>squeeze_urban_links</code> command.</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>genet squeeze-external-area [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-c</code>, <code>--capacity</code></td>
+<td>float</td>
+<td>Factor, e.g. 0.5, to reduce the 'capacity' attribute for the roads being squeezed. The current value will be multiplied by this factor.</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>-f</code>, <code>--freespeed</code></td>
+<td>float</td>
+<td>Factor, e.g. 0.5, to reduce the 'freespeed' attribute for the roads being squeezed. The current value will be multiplied by this factor.</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>-sa</code>, <code>--study_area</code></td>
+<td>path</td>
+<td>Geojson or shp file that when read into geopandas produces a table with a geometry column that describes the area which should be left unaffected by speed and capacity factors.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-squeeze-urban-links">genet squeeze-urban-links<a class="headerlink" href="#genet-squeeze-urban-links" title="Permanent link">#</a></h3>
+<p>Tag minor network links as urban, given geometries: <code>urban_geometries</code>.</p>
+<p>Minor links are defined as anything other than: osm way highway tags: motorway, motorway_link, trunk, trunk_link, primary, primary_link.
+Urban geometries are passed via geojson input with a specific format, see command arguments for description.
+Passing <code>study_area</code> subsets the urban geometries and links to be squeezed - only links in the study area will be tagged and squeezed.
+This is useful if your geometries covers a larger area.
+The script then reduces capacity and/or freespeed by a factor of current value on those links.</p>
+<p>To squeeze links outside the study area, refer to the <code>squeeze_external_area.py</code> command.</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>genet squeeze-urban-links [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-ug</code>, <code>--urban_geometries</code></td>
+<td>path</td>
+<td>Geojson or shp file that when read into geopandas produces a table with columns: "label" (with at least some of the values in this column being a string: "urban") and "geometry" (polygons defining urban areas)</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-c</code>, <code>--capacity</code></td>
+<td>float</td>
+<td>Factor, e.g. 0.5, to reduce the 'capacity' attribute for the roads being squeezed. The current value will be multiplied by this factor.</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>-f</code>, <code>--freespeed</code></td>
+<td>float</td>
+<td>Factor, e.g. 0.5, to reduce the 'freespeed' attribute for the roads being squeezed. The current value will be multiplied by this factor.</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>-sa</code>, <code>--study_area</code></td>
+<td>path</td>
+<td>Geojson or shp file that when read into geopandas produces a table with a geometry column that describes the area which should be left unaffected by speed and capacity factors.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="genet-validate-network">genet validate-network<a class="headerlink" href="#genet-validate-network" title="Permanent link">#</a></h3>
+<p>Run MATSim specific validation methods on a MATSim network</p>
+<p><strong>Usage:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>genet validate-network [OPTIONS]
+</span></code></pre></div>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n</code>, <code>--network</code></td>
+<td>path</td>
+<td>Location of the input network.xml file</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-s</code>, <code>--schedule</code></td>
+<td>path</td>
+<td>Location of the input schedule.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-v</code>, <code>--vehicles</code></td>
+<td>path</td>
+<td>Location of the input vehicles.xml file</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>-p</code>, <code>--projection</code></td>
+<td>text</td>
+<td>The projection network is in, eg. "epsg:27700"</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>-od</code>, <code>--output_dir</code></td>
+<td>directory</td>
+<td>Output directory</td>
+<td>_required</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>boolean</td>
+<td>Show this message and exit.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indexes", "navigation.top", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.c8d2eff1.min.js"></script>
+      
+    
+  </body>
+</html>
