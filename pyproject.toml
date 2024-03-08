@@ -32,7 +32,7 @@ output = "reports/coverage/coverage.xml"
 
 [tool.black]
 line-length = 100
-skip_magic_trailing_comma = true
+skip-magic-trailing-comma = true
 
 [tool.ruff]
 line-length = 100

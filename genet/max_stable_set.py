@@ -428,10 +428,14 @@ class MaxStableSet:
                 "partial, this will result in gaps in routed paths."
             )
 
-    def routed_path(self, ordered_stops):
-        """
-        :param ordered_stops: list of stops in the route (not artificial/snapped stops)
-        :return:
+    def routed_path(self, ordered_stops: list) -> list:
+        """Get a routed path based on list of ordered stops.
+
+        Args:
+            ordered_stops (list): list of stops in the route (not artificial/snapped stops).
+
+        Returns:
+            list: Routed path.
         """
         path = []
         for u, v in zip(ordered_stops[:-1], ordered_stops[1:]):

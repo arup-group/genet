@@ -4,11 +4,11 @@ import json
 import logging
 import math
 import os
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Callable, Iterator, Literal, Optional, Union
 
 import dictdiffer
 import geopandas as gpd
@@ -17,9 +17,11 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import yaml
+from keplergl import KeplerGl
 from pandas import DataFrame, Series
 from pyproj import Geod, Transformer
 from s2sphere import CellId
+from shapely.geometry.base import BaseGeometry
 
 import genet.modify.change_log as change_log
 import genet.modify.schedule as mod_schedule
@@ -50,12 +52,13 @@ from genet.exceptions import (
 SPATIAL_TOLERANCE = 8
 
 
-class ScheduleElement:
+class ScheduleElement(ABC):
     """
     Base class for Route, Service and Schedule
     """
 
     def __init__(self):
+        self._graph: nx.DiGraph
         # check if in graph first
         if "crs" in self._graph.graph:
             self.epsg = self._graph.graph["crs"]
@@ -79,13 +82,13 @@ class ScheduleElement:
         else:
             raise RouteIndexError(f"Route with index {route_id} not found")
 
-    def _stop_ids_in_graph(self, stop_ids: List[str]):
+    def _stop_ids_in_graph(self, stop_ids: list[str]):
         return set(stop_ids).issubset(set(self._graph.nodes))
 
-    def _route_ids_in_graph(self, route_ids: List[str]):
+    def _route_ids_in_graph(self, route_ids: list[str]):
         return set(route_ids).issubset(set(self._graph.graph["routes"].keys()))
 
-    def _service_ids_in_graph(self, service_ids: List[str]):
+    def _service_ids_in_graph(self, service_ids: list[str]):
         return set(service_ids).issubset(set(self._graph.graph["services"].keys()))
 
     def change_log(self):
@@ -96,10 +99,10 @@ class ScheduleElement:
         pass
 
     def add_additional_attributes(self, attribs: dict):
-        """
-        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
-        :param attribs: the additional attributes {attribute_name: attribute_value}
-        :return:
+        """Adds attributes defined by keys of the attribs dictionary with values of the corresponding values.
+
+        Args:
+            attribs (dict): The additional attributes `{attribute_name: attribute_value}`
         """
         for k, v in attribs.items():
             if k not in self.__dict__:
@@ -114,11 +117,16 @@ class ScheduleElement:
     def reference_nodes(self):
         pass
 
-    def route_reference_nodes(self, route_id):
-        """
-        Method to extract nodes for a route straight from the graph, equivalent to route_object.reference_nodes() but
-        faster if used from a higher order object like Service or Schedule
-        :return: graph nodes for the route with ID: route_id - not ordered
+    def route_reference_nodes(self, route_id: Union[str, int]) -> set:
+        """Method to extract nodes for a route straight from the graph.
+
+        Equivalent to route_object.reference_nodes() but faster if used from a higher order object like Service or Schedule.
+
+        Args:
+            route_id (Union[str, int]): Route in graph.
+
+        Returns:
+            set: graph nodes for the route with ID: route_id - not ordered
         """
         return {
             node
@@ -126,11 +134,16 @@ class ScheduleElement:
             if route_id in node_routes
         }
 
-    def service_reference_nodes(self, service_id):
-        """
-        Method to extract nodes for a service straight from the graph, equivalent to service_object.reference_nodes()
-        but faster if used from a higher order object: Schedule
-        :return: graph nodes for the service with ID: service_id - not ordered
+    def service_reference_nodes(self, service_id: Union[str, int]) -> set:
+        """Method to extract nodes for a service straight from the graph.
+
+        Equivalent to service_object.reference_nodes() but faster if used from a higher order object: Schedule.
+
+        Args:
+            service_id (Union[str, int]): Service in graph.
+
+        Returns:
+            set: graph nodes for the service with ID: service_id - not ordered.
         """
         return {
             node
@@ -142,11 +155,16 @@ class ScheduleElement:
     def reference_edges(self):
         pass
 
-    def route_reference_edges(self, route_id):
-        """
-        Method to extract edges for a route straight from the graph, equivalent to route_object.reference_edges() but
-        faster if used from a higher order object like Service or Schedule
-        :return: graph edges for the route with ID: route_id
+    def route_reference_edges(self, route_id: Union[str, int]) -> set:
+        """Method to extract edges for a route straight from the graph.
+
+        Equivalent to route_object.reference_edges() but faster if used from a higher order object like Service or Schedule.
+
+        Args:
+            route_id (Union[str, int]): Route in graph.
+
+        Returns:
+            set: graph edges for the route with ID: route_id
         """
         return {
             (u, v)
@@ -154,11 +172,17 @@ class ScheduleElement:
             if route_id in edge_routes
         }
 
-    def service_reference_edges(self, service_id):
-        """
-        Method to extract nodes for a service straight from the graph, equivalent to service_object.reference_edges()
-        but faster if used from a higher order object: Schedule
-        :return: graph edges for the service with ID: service_id
+    def service_reference_edges(self, service_id: Union[str, int]) -> set:
+        """Method to extract nodes for a service straight from the graph
+
+        Equivalent to service_object.reference_edges() but faster if used from a higher order object: Schedule.
+
+        Args:
+            service_id (Union[str, int]): Service in graph.
+
+        Returns:
+            set: graph edges for the service with ID: service_id
+
         """
         return {
             (u, v)
@@ -166,46 +190,64 @@ class ScheduleElement:
             if service_id in edge_services
         }
 
-    def _remove_routes_from_nodes(self, nodes: Set[str], route_ids: Set[str]):
+    @abstractmethod
+    def plot(self, output_dir: str = "", data: Union[bool, set] = False) -> KeplerGl:
+        """Plots the schedule element on a kepler map.
+
+        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install.
+
+        Args:
+            output_dir (str, optional): Output directory for the image, if passed, will save plot to html. Defaults to "".
+            data (Union[bool, set], optional):
+                If False, only the geometry and ID will be visible.
+                If True, will visualise all data on the map (not suitable for large networks)
+                If a set of keys e.g. {'name'}, will visualise those keys.
+                Defaults to False.
+
+        Returns:
+            KeplerGl: Kepler plot object
+        """
+
+    def _remove_routes_from_nodes(self, nodes: set[str], route_ids: set[str]):
         for node in nodes:
             self._graph.nodes[node]["routes"] = self._graph.nodes[node]["routes"] - route_ids
 
-    def _remove_routes_from_edges(self, edges: Set[Tuple[str, str]], route_ids: Set[str]):
+    def _remove_routes_from_edges(self, edges: set[tuple[str, str]], route_ids: set[str]):
         for u, v in edges:
             self._graph[u][v]["routes"] = self._graph[u][v]["routes"] - route_ids
 
-    def _add_routes_to_nodes(self, nodes: Set[str], route_ids: Set[str]):
+    def _add_routes_to_nodes(self, nodes: set[str], route_ids: set[str]):
         for node in nodes:
             self._graph.nodes[node]["routes"] = self._graph.nodes[node]["routes"] | route_ids
 
-    def _add_routes_to_edges(self, edges: Set[Tuple[str, str]], route_ids: Set[str]):
+    def _add_routes_to_edges(self, edges: set[tuple[str, str]], route_ids: set[str]):
         for u, v in edges:
             self._graph[u][v]["routes"] = self._graph[u][v]["routes"] | route_ids
 
-    def _remove_services_from_nodes(self, nodes: Set[str], service_ids: Set[str]):
+    def _remove_services_from_nodes(self, nodes: set[str], service_ids: set[str]):
         for node in nodes:
             self._graph.nodes[node]["services"] = self._graph.nodes[node]["services"] - service_ids
 
-    def _remove_services_from_edges(self, edges: Set[Tuple[str, str]], service_ids: Set[str]):
+    def _remove_services_from_edges(self, edges: set[tuple[str, str]], service_ids: set[str]):
         for u, v in edges:
             self._graph[u][v]["services"] = self._graph[u][v]["services"] - service_ids
 
-    def _add_services_to_nodes(self, nodes: Set[str], service_ids: Set[str]):
+    def _add_services_to_nodes(self, nodes: set[str], service_ids: set[str]):
         for node in nodes:
             self._graph.nodes[node]["services"] = self._graph.nodes[node]["services"] | service_ids
 
-    def _add_services_to_edges(self, edges: Set[Tuple[str, str]], service_ids: Set[str]):
+    def _add_services_to_edges(self, edges: set[tuple[str, str]], service_ids: set[str]):
         for u, v in edges:
             self._graph[u][v]["services"] = self._graph[u][v]["services"] | service_ids
 
-    def _generate_services_on_nodes(self, nodes: Set[str]):
+    def _generate_services_on_nodes(self, nodes: set[str]):
         for node in nodes:
             self._graph.nodes[node]["services"] = {
                 self._graph.graph["route_to_service_map"][r_id]
                 for r_id in self._graph.nodes[node]["routes"]
             }
 
-    def _generate_services_on_edges(self, edges: Set[Tuple[str, str]]):
+    def _generate_services_on_edges(self, edges: set[tuple[str, str]]):
         for u, v in edges:
             self._graph[u][v]["services"] = {
                 self._graph.graph["route_to_service_map"][r_id]
@@ -220,10 +262,10 @@ class ScheduleElement:
         }
         return Stop(**stop_data)
 
-    def stops(self):
+    def stops(self) -> Iterator["Stop"]:
         """
-        Iterable returns stops in the Schedule Element
-        :return:
+        Yields:
+            Iterable returns stops in the Schedule Element
         """
         for s in self.reference_nodes():
             yield self.stop(s)
@@ -256,11 +298,14 @@ class ScheduleElement:
     def stop_to_route_ids_map(self):
         return dict(self.graph().nodes(data="routes"))
 
-    def reproject(self, new_epsg, processes=1):
-        """
-        Changes projection of the element to new_epsg
-        :param new_epsg: 'epsg:1234'
-        :return:
+    def reproject(self, new_epsg: str, processes: int = 1):
+        """Changes projection of the element to `new_epsg`.
+
+        Args:
+            new_epsg (str):
+                New projection, e.g., "epsg:1234".
+            processes (int, optional):
+                Number of parallel processes to use when reprojecting. Defaults to 1.
         """
         if not self.stops_have_this_projection(new_epsg):
             g = self.graph()
@@ -299,34 +344,91 @@ class ScheduleElement:
         return None
 
     @abstractmethod
-    def service_attribute_data(self, keys: Union[list, str], index_name: str = None):
-        pass
+    def service_attribute_data(
+        self, keys: Union[list, str], index_name: Optional[str] = None
+    ) -> pd.DataFrame:
+        """Generates a pandas.DataFrame object indexed by Service IDs, with attribute data stored for Services under `key`.
 
-    @abstractmethod
-    def route_attribute_data(self, keys: Union[list, str], index_name: str = None):
-        pass
-
-    @abstractmethod
-    def stop_attribute_data(self, keys: Union[list, str], index_name: str = None):
-        pass
-
-    @abstractmethod
-    def trips_with_stops_to_dataframe(self, gtfs_day="19700101") -> pd.DataFrame:
-        pass
-
-    def speed_geodataframe(self, network_factor=1.3, gdf_network_links=None) -> gpd.GeoDataFrame:
+        Args:
+            keys (Union[list, str]):
+                List of either a string e.g. 'name', or if accessing nested information, a dictionary.
+                E.g. `{'attributes': {'osm:way:name': 'text'}}`.
+            index_name (Optional[str], optional): gives the index_name to dataframes index. Defaults to None.
+        Returns:
+            pd.DataFrame: Service attribute data
         """
-        DataFrame of speed for PT routes, in metres/second for each stop pair.
-        Note well:
-         - The unit of metres is not guaranteed - this assumes the object is in local metre-based projection.
-         - If you pass a GeoDataFrame of genet.Network links you will get routed speeds as well as teleported with a
-         factor
-         - Assumes genet.Network links geometry if passed. If not, gives the stop-to-stop line geometry
 
-        :param network_factor: Network factor (default 1.3) to be applied to the Euclidean distance between stops
-        :param gdf_network_links: GeoDataFrame of genet.Network links, can be obtained using:
-            genet.Network.to_geodataframe()['links']
-        :return:
+    @abstractmethod
+    def route_attribute_data(self, keys: Union[list, str], index_name: Optional[str] = None):
+        """Generates a pandas.DataFrame object indexed by Route IDs, with attribute data stored for Routes under `key`.
+
+        Args:
+            keys (Union[list, str]):
+                List of either a string e.g. 'name', or if accessing nested information, a dictionary.
+                E.g. `{'attributes': {'osm:way:name': 'text'}}`.
+            index_name (Optional[str], optional): gives the index_name to dataframes index. Defaults to None.
+        Returns:
+            pd.DataFrame: Route attribute data
+        """
+
+    @abstractmethod
+    def stop_attribute_data(self, keys: Union[list, str], index_name: Optional[str] = None):
+        """Generates a pandas.DataFrame object indexed by Stop IDs, with attribute data stored for Stops under `key`.
+
+        Args:
+            keys (Union[list, str]):
+                List of either a string e.g. 'name', or if accessing nested information, a dictionary.
+                E.g. `{'attributes': {'osm:way:name': 'text'}}`.
+            index_name (Optional[str], optional): gives the index_name to dataframes index. Defaults to None.
+        Returns:
+            pd.DataFrame: Stop attribute data
+        """
+
+    @abstractmethod
+    def trips_with_stops_to_dataframe(self, gtfs_day: str = "19700101") -> pd.DataFrame:
+        """Generates a DataFrame holding all the trips,
+        their movements from stop to stop (in datetime with given GTFS day, if specified in `gtfs_day`) and vehicle IDs,
+        next to the route ID and service ID.
+
+        Args:
+            gtfs_day (str, optional): day used for GTFS when creating the network in YYYYMMDD format. Defaults to "19700101".
+
+        Returns:
+            pd.DataFrame: Trips.
+        """
+
+    def route_trips_with_stops_to_dataframe(self, gtfs_day: str = "19700101") -> pd.DataFrame:
+        logging.warning(
+            "`route_trips_with_stops_to_dataframe` method is deprecated and will be replaced by "
+            "`trips_to_dataframe` in later versions."
+        )
+        return self.trips_with_stops_to_dataframe(gtfs_day)
+
+    def route_trips_to_dataframe(self, gtfs_day="19700101"):
+        logging.warning(
+            "`route_trips_to_dataframe` method is deprecated and will be replaced by `trips_to_dataframe`"
+            "in later versions."
+        )
+        return self.trips_to_dataframe(gtfs_day)
+
+    def speed_geodataframe(
+        self, network_factor: float = 1.3, gdf_network_links: Optional[gpd.GeoDataFrame] = None
+    ) -> gpd.GeoDataFrame:
+        """DataFrame of speed for PT routes, in metres/second for each stop pair.
+
+        !!! note
+            - The unit of metres is not guaranteed - this assumes the object is in local metre-based projection.
+            - If you pass a GeoDataFrame of genet.Network links you will get routed speeds as well as teleported with a factor
+            - Assumes genet.Network links geometry if passed. If not, gives the stop-to-stop line geometry
+
+        Args:
+            network_factor (float, optional): Network factor to be applied to the Euclidean distance between stops. Defaults to 1.3.
+            gdf_network_links (Optional[gpd.GeoDataFrame], optional):
+                GeoDataFrame of genet.Network links, can be obtained using: `genet.Network.to_geodataframe()['links']`.
+                Defaults to None.
+
+        Returns:
+            gpd.GeoDataFrame: Speeds for public transport routes.
         """
         df = self.trips_with_stops_to_dataframe()
         df["time"] = (df["arrival_time"] - df["departure_time"]).dt.total_seconds()
@@ -381,12 +483,14 @@ class ScheduleElement:
             df.drop(["u", "v"], axis=1, inplace=True)
         return df.drop(["time", "distance", "network_distance"], axis=1)
 
-    def average_route_speeds(self, network_factor=1.3) -> dict:
-        """
-        Average speed for each route in object
-        :param network_factor: Does not consider network routes, network factor (default 1.3) is applied to Euclidean
-            distance.
-        :return: Dictionary {route_ID: average_speed_in_m_per_s}
+    def average_route_speeds(self, network_factor: float = 1.3) -> dict:
+        """Average speed for each route in object.
+
+        Args:
+            network_factor (float, optional): Does not consider network routes, network factor is applied to Euclidean distance. Defaults to 1.3.
+
+        Returns:
+            dict: Dictionary `{route_ID: average_speed_in_m_per_s}`
         """
         df = self.speed_geodataframe(network_factor=network_factor)
         # computing with all trips is redundant as the speeds for each trip for the same route are the same we can
@@ -395,20 +499,55 @@ class ScheduleElement:
         return df.groupby("route_id")["speed"].mean().to_dict()
 
     @abstractmethod
-    def trips_to_dataframe(self, gtfs_day="19700101"):
-        pass
+    def trips_to_dataframe(self, gtfs_day: str = "19700101") -> pd.DataFrame:
+        """Generates a DataFrame holding all the trips IDs,
+        their departure times (in datetime with given GTFS day, if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
 
-    def trips_headways(self, from_time=None, to_time=None, gtfs_day="19700101"):
+        Check out also `trips_with_stops_to_dataframe` for a more complex version.
+        All trips are expanded over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
+
+        Args:
+            gtfs_day (str, optional): day used for GTFS when creating the network in YYYYMMDD format. Defaults to "19700101".
+
+        Returns:
+            pd.DataFrame: Trips.
         """
-        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
-        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        Adds two columns: headway and headway_mins by calculating the time difference in ordered trip departures for
-        each unique route.
+
+    @abstractmethod
+    def route(self, route_id: Union[str, int]) -> "Route":
+        """Attempting to extract route from route given an id should yield itself unless index doesn't match.
+
+        Args:
+            route_id (Union[str, int]): ID to extract.
+
+        Raises:
+            IndexError: ID must match self ID.
+
+        Returns:
+            Route: This route.
+        """
+
+    def trips_headways(
+        self,
+        from_time: Optional[str] = None,
+        to_time: Optional[str] = None,
+        gtfs_day: str = "19700101",
+    ) -> pd.DataFrame:
+        """Generates a DataFrame holding all the trips IDs, their departure times and vehicle IDs, next to the route ID and service ID.
+
+        Departure times given in datetime format with given GTFS day, if specified in `gtfs_day`.
+
+        Adds two columns: `headway` and `headway_mins` by calculating the time difference in ordered trip departures for each unique route.
+
         This can also be done for a specific time frame by specifying from_time and to_time (or just one of them).
-        :param from_time: "HH:MM:SS" format, used as lower time bound for subsetting
-        :param to_time: "HH:MM:SS" format, used as upper time bound for subsetting
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
-        :return:
+
+        Args:
+            from_time (Optional[str], optional): "HH:MM:SS" format, used as lower time bound for subsetting. Defaults to None.
+            to_time (Optional[str], optional): "HH:MM:SS" format, used as upper time bound for subsetting. Defaults to None.
+            gtfs_day (str, optional): day used for GTFS when creating the network in YYYYMMDD format. Defaults to "19700101".
+
+        Returns:
+            pd.DataFrame: Departure and headway times.
         """
         df = (
             self.trips_to_dataframe(gtfs_day=gtfs_day)
@@ -432,14 +571,23 @@ class ScheduleElement:
 
         return df
 
-    def headway_stats(self, from_time=None, to_time=None, gtfs_day="19700101"):
+    def headway_stats(
+        self,
+        from_time: Optional[str] = None,
+        to_time: Optional[str] = None,
+        gtfs_day: str = "19700101",
+    ) -> pd.DataFrame:
         """
         Generates a DataFrame calculating mean headway in minutes for all routes, with their service ID.
         This can also be done for a specific time frame by specifying from_time and to_time (or just one of them).
-        :param from_time: "HH:MM:SS" format, used as lower time bound for subsetting
-        :param to_time: "HH:MM:SS" format, used as upper time bound for subsetting
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
-        :return:
+
+        Args:
+            from_time (Optional[str], optional): "HH:MM:SS" format, used as lower time bound for subsetting. Defaults to None.
+            to_time (Optional[str], optional): "HH:MM:SS" format, used as upper time bound for subsetting. Defaults to None.
+            gtfs_day (str, optional): day used for GTFS when creating the network in YYYYMMDD format. Defaults to "19700101".
+
+        Returns:
+            pd.DataFrame: Headway stats.
         """
         df = self.trips_headways(from_time=from_time, to_time=to_time, gtfs_day=gtfs_day)
 
@@ -465,10 +613,11 @@ class ScheduleElement:
             )
         return df
 
-    def to_geodataframe(self):
-        """
-        Generates GeoDataFrames of the Schedule graph in Schedule's crs
-        :return: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and edges
+    def to_geodataframe(self) -> dict[str, gpd.GeoDataFrame]:
+        """Generates GeoDataFrames of the Schedule graph in Schedule's crs.
+
+        Returns:
+            dict[str, gpd.GeoDataFrame]: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and edges
         """
         return gngeojson.generate_geodataframes(self.graph())
 
@@ -496,35 +645,32 @@ class ScheduleElement:
 
 
 class Stop:
-    """
-    A transit stop that features in a Route object
-
-    Required Parameters
-    ----------
-    :param id: unique identifier
-    :param x: x coordinate or lat if using 'epsg:4326'
-    :param y: y coordinate or lon if using 'epsg:4326'
-    :param epsg: 'epsg:12345'
-
-    Optional Parameters
-    ----------
-    :param transformer: pyproj.Transformer.from_crs(epsg, 'epsg:4326', always_xy=True) optional but makes things MUCH
-    faster if you're reading through a lot of stops in the same projection, all stops are mapped back to 'epsg:4326'
-    and indexed with s2sphere
-    :param name: human readable name for the stop
-    :param kwargs: additional attributes
-    """
-
     def __init__(
         self,
         id: Union[str, int],
         x: Union[str, int, float],
         y: Union[str, int, float],
         epsg: str,
-        transformer: Transformer = None,
+        transformer: Optional[Transformer] = None,
         name: str = "",
         **kwargs,
     ):
+        """A transit stop that features in a Route object.
+
+        Args:
+            id (Union[str, int]): Unique identifier.
+            x (Union[str, int, float]): x coordinate or lat if using 'epsg:4326'.
+            y (Union[str, int, float]): y coordinate or lon if using 'epsg:4326'.
+            epsg (str): Projection, e.g. "epsg:4326".
+            transformer (Optional[Transformer], optional):
+                E.g., result of pyproj.Transformer.from_crs(epsg, 'epsg:4326', always_xy=True).
+                Optional but makes things MUCH faster if you're reading through a lot of stops in the same projection,
+                 all stops are mapped back to 'epsg:4326' and indexed with s2sphere.
+                 Defaults to None.
+            name (str, optional): human readable name for the stop. Defaults to "".
+
+        Keyword Args: Additional attributes which will be attached to the class.
+        """
         self.id = id
         self.x = float(x)
         self.y = float(y)
@@ -586,12 +732,19 @@ class Stop:
                 self.__class__.__name__, self.id, self.epsg, self._round_lat(), self._round_lon()
             )
 
-    def reproject(self, new_epsg, transformer: Transformer = None):
-        """
-        Changes projection of a stop. If doing many stops, it's much quicker to pass the transformer as well as epsg.
-        :param new_epsg: 'epsg:12345'
-        :param transformer:
-        :return:
+    def reproject(self, new_epsg: str, transformer: Optional[Transformer] = None):
+        """Changes projection of a stop.
+
+        If doing many stops, it's much quicker to pass the transformer as well as epsg.
+
+        Args:
+            new_epsg (str):
+                New projection, e.g., "epsg:1234".
+            transformer (Optional[Transformer], optional):
+                E.g., result of pyproj.Transformer.from_crs(epsg, 'epsg:4326', always_xy=True).
+                Optional but makes things MUCH faster if you're reading through a lot of stops in the same projection,
+                 all stops are mapped back to 'epsg:4326' and indexed with s2sphere.
+                 Defaults to None.
         """
         if transformer is None:
             transformer = Transformer.from_crs(self.epsg, new_epsg, always_xy=True)
@@ -599,11 +752,12 @@ class Stop:
         self.epsg = new_epsg
 
     def add_additional_attributes(self, attribs: dict):
-        """
-        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
-        ignores keys: 'id', 'x', 'y'
-        :param attribs: the additional attributes {attrribute_name: attribute_value}
-        :return:
+        """Adds attributes defined by keys of the attribs dictionary with values of the corresponding values.
+
+        Ignores keys: 'id', 'x', 'y'.
+
+        Args:
+            attribs (dict): The additional attributes {attrribute_name: attribute_value}
         """
         for k, v in attribs.items():
             if k not in self.__dict__ or (not self.__dict__[k]):
@@ -635,52 +789,61 @@ class Stop:
 
 
 class Route(ScheduleElement):
-    """
-    A Route is an object which contains information about the trips, times and offsets, mode and name of the route which
-    forms a part of a Service.
-
-    Required Parameters
-    ----------
-    :param route_short_name: route's short name
-    :param mode: mode
-    :param arrival_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
-    :param departure_offsets: list of 'HH:MM:SS' temporal offsets for each of the stops_mapping
-
-    Optional Parameters (note, not providing some of the parameters may result in the object failing validation)
-    ----------
-    :param trips: Provide either detailed trip information of headway specification
-    dictionary with keys: 'trip_id', 'trip_departure_time', 'vehicle_id'. Each value is a list
-    e.g. : {'trip_id': ['trip_1', 'trip_2'],  - IDs of trips, unique within the Route
-            'trip_departure_time': ['HH:MM:SS', 'HH:MM:SS'],  - departure time from first stop for each trip_id
-            'vehicle_id': [veh_1, veh_2]} - vehicle IDs for each trip_id, don't need to be unique
-                (i.e. vehicles can be shared between trips, but it's up to you to make this physically possible)
-    :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
-         {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
-
-    :param stops: ordered list of Stop class objects or Stop IDs already present in a Schedule, if generating a Route
-        to add
-    :param route_long_name: optional, verbose name for the route if exists
-    :param route: optional, network link_ids traversed by the vehicles in this Route instance
-    :param id: optional, unique identifier for the route if available, if not given, will be generated
-    :param await_departure: optional, list of bools of length stops param, whether to await departure at each stop
-    :param kwargs: additional attributes
-    """
-
     def __init__(
         self,
         route_short_name: str,
         mode: str,
-        arrival_offsets: List[str],
-        departure_offsets: List[str],
-        trips: Dict[str, List[str]] = None,
-        headway_spec: Dict[tuple, int] = None,
+        arrival_offsets: list[str],
+        departure_offsets: list[str],
+        trips: Optional[dict[str, list[str]]] = None,
+        headway_spec: Optional[dict] = None,
         network_route: Optional[list] = None,
         route_long_name: str = "",
         id: str = "",
-        await_departure: list = None,
-        stops: List[Union[Stop, str]] = None,
+        await_departure: Optional[list] = None,
+        stops: Optional[list[Union[Stop, str]]] = None,
         **kwargs,
     ):
+        """A Route is an object which contains information about the trips, times and offsets, mode and name of the route which forms a part of a Service.
+
+        !!! note
+            Not providing some of the optional parameters may result in the object failing validation.
+
+        Args:
+            route_short_name (str): route's short name.
+            mode (str):  mode.
+            arrival_offsets (list[str]): list of 'HH:MM:SS' temporal offsets for each of the stops_mapping.
+            departure_offsets (list[str]): list of 'HH:MM:SS' temporal offsets for each of the stops_mapping.
+            trips (Optional[dict[str, list[str]]], optional):
+                Provide either detailed trip information of headway specification dictionary with keys: 'trip_id', 'trip_departure_time', 'vehicle_id'.
+                Each value is a list e.g. :
+                ```python
+                {
+                    'trip_id': ['trip_1', 'trip_2'],  # IDs of trips, unique within the Route
+                    'trip_departure_time': ['HH:MM:SS', 'HH:MM:SS'],  # departure time from first stop for each trip_id
+                    'vehicle_id': [veh_1, veh_2]} # vehicle IDs for each trip_id, don't need to be unique (i.e. vehicles can be shared between trips, but it's up to you to make this physically possible).
+                }
+                ```
+                Defaults to None.
+            headway_spec (Optional[dict], optional):
+                Dictionary with tuple keys: (from time, to time) and headway values in minutes:
+                `{('HH:MM:SS', 'HH:MM:SS'): headway_minutes}`.
+                Defaults to None.
+            route (Optional[list], optional):
+                Network link_ids traversed by the vehicles in this Route instance. Defaults to None.
+            route_long_name (str, optional):
+                Verbose name for the route if exists. Defaults to "".
+            id (str, optional):
+                Unique identifier for the route if available, if not given, will be generated. Defaults to "".
+            await_departure (Optional[list], optional):
+                List of bools of length stops param, whether to await departure at each stop. Defaults to None.
+            stops (Optional[list[Union[Stop, str]]], optional):
+                Ordered list of Stop class objects or Stop IDs already present in a Schedule, if generating a Route to add.
+                Defaults to None.
+
+        Keyword Args: Additional attributes which will be attached to the class.
+
+        """
         self.route_short_name = route_short_name
         self.mode = mode
         self.arrival_offsets = arrival_offsets
@@ -769,7 +932,7 @@ class Route(ScheduleElement):
     def __str__(self):
         return self.info()
 
-    def _build_graph(self, stops: List[Stop]):
+    def _build_graph(self, stops: list[Stop]):
         route_graph = nx.DiGraph(name="Route graph")
         try:
             route_nodes = [(stop.id, stop.__dict__) for stop in stops]
@@ -804,11 +967,14 @@ class Route(ScheduleElement):
     def _index_unique(self, idx):
         return idx not in self._graph.graph["routes"]
 
-    def reindex(self, new_id):
-        """
-        Changes the current index of the object to `new_id`
-        :param new_id: desired value of the new index
-        :return:
+    def reindex(self, new_id: Union[str, int]):
+        """Changes the current index of the object to `new_id`.
+
+        Args:
+            new_id (Union[str, int]): desired value of the new index
+
+        Raises:
+            RouteIndexError: New ID cannot already exist.
         """
         if not self._index_unique(new_id):
             raise RouteIndexError(f"Route of index {new_id} already exists")
@@ -857,32 +1023,18 @@ class Route(ScheduleElement):
             len(self.trips["trip_id"]),
         )
 
-    def plot(self, output_dir="", data=False):
-        """
-        Plots the route on kepler map.
-        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
-        :param output_dir: output directory for the image, if passed, will save plot to html
-        :param data: Defaults to False, only the geometry and ID will be visible.
-            True will visualise all data on the map (not suitable for large networks)
-            A set of keys e.g. {'name'}
-        :return:
-        """
+    def plot(self, output_dir: str = "", data: Union[bool, set] = False) -> KeplerGl:
         return self.kepler_map(output_dir, f"route_{self.id}_map", data=data)
 
-    def stops(self):
+    def stops(self) -> Iterator["Stop"]:
         """
-        Iterable returns Stop objects in the Route in order of travel
-        :return:
+        Yields:
+            Iterable returns Stop objects in the Route in order of travel
         """
         for s in self.ordered_stops:
             yield self.stop(s)
 
-    def route(self, route_id):
-        """
-        Attempting to extract route from route given an id should yield itself unless index doesnt match
-        :param route_id:
-        :return:
-        """
+    def route(self, route_id: Union[str, int]) -> "Route":
         if route_id == self.id:
             return self
         else:
@@ -894,59 +1046,26 @@ class Route(ScheduleElement):
         """
         yield self
 
-    def service_attribute_data(self, keys: Union[list, str], index_name: str = None):
-        """
-        Generates a pandas.DataFrame object indexed by Service IDs, with attribute data stored for Services under `key`
-        :param keys: list of either a string e.g. 'name', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :param index_name: optional, gives the index_name to dataframes index
-        :return: pandas.DataFrame
-        """
+    def service_attribute_data(
+        self, keys: Union[list, str], index_name: Optional[str] = None
+    ) -> pd.DataFrame:
         raise ServiceIndexError("A Route cannot generate a DataFrame with Services data")
 
-    def route_attribute_data(self, keys: Union[list, str], index_name: str = None):
-        """
-        Generates a pandas.DataFrame object indexed by Route IDs, with attribute data stored for Routes under `key`
-        :param keys: list of either a string e.g. 'mode', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :param index_name: optional, gives the index_name to dataframes index
-        :return: pandas.DataFrame
-        """
+    def route_attribute_data(
+        self, keys: Union[list, str], index_name: Optional[str] = None
+    ) -> pd.DataFrame:
         return graph_operations.build_attribute_dataframe(
             iterator=[(self.id, self.__dict__)], keys=keys, index_name=index_name
         )
 
-    def stop_attribute_data(self, keys: Union[list, str], index_name: str = None):
-        """
-        Generates a pandas.DataFrame object indexed by Stop IDs, with attribute data stored for Stops under `key`
-        :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :param index_name: optional, gives the index_name to dataframes index
-        :return: pandas.DataFrame
-        """
+    def stop_attribute_data(
+        self, keys: Union[list, str], index_name: Optional[str] = None
+    ) -> pd.DataFrame:
         return graph_operations.build_attribute_dataframe(
             iterator=[(s.id, s.__dict__) for s in self.stops()], keys=keys, index_name=index_name
         )
 
-    def route_trips_with_stops_to_dataframe(self, gtfs_day="19700101"):
-        """
-        This method exists for backwards compatibility only
-        Please use trips_with_stops_to_dataframe
-        :return:
-        """
-        logging.warning(
-            "`route_trips_with_stops_to_dataframe` method is deprecated and will be replaced by "
-            "`trips_to_dataframe` in later versions."
-        )
-        return self.trips_with_stops_to_dataframe(gtfs_day)
-
-    def trips_with_stops_to_dataframe(self, gtfs_day="19700101"):
-        """
-        Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
-        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
-        :return:
-        """
+    def trips_with_stops_to_dataframe(self, gtfs_day: str = "19700101") -> pd.DataFrame:
         df = None
         _df = DataFrame(
             {
@@ -988,14 +1107,6 @@ class Route(ScheduleElement):
         return df
 
     def trips_to_dataframe(self, gtfs_day="19700101"):
-        """
-        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
-        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        Check out also `trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
-        over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
-        :return:
-        """
         df = pd.DataFrame(self.trips)
 
         df["route_id"] = self.id
@@ -1006,12 +1117,14 @@ class Route(ScheduleElement):
         return df
 
     def generate_trips_from_headway(self, headway_spec: dict):
-        """
-        Generates new trips for the route.
+        """Generates new trips for the route.
+
         All newly generated trips get unique vehicles with this method.
-        :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
-         {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
-        :return:
+
+        Args:
+            headway_spec (dict):
+                dictionary with tuple keys: (from time, to time) and headway values in minutes:
+                `{('HH:MM:SS', 'HH:MM:SS'): headway_minutes}`.
         """
         new_trip_departures = list(generate_trip_departures_from_headway(headway_spec))
         new_trip_departures.sort()
@@ -1071,10 +1184,11 @@ class Route(ScheduleElement):
             return True
         return False
 
-    def has_self_loops(self):
-        """
-        means that there are two consecutive stops that are the same
-        :return:
+    def has_self_loops(self) -> list:
+        """Means that there are two consecutive stops that are the same
+
+        Returns:
+            list: All self-loops.
         """
         return list(nx.nodes_with_selfloops(self.graph()))
 
@@ -1172,21 +1286,22 @@ class Route(ScheduleElement):
 
 
 class Service(ScheduleElement):
-    """
-    A Service is an object containing unique routes pertaining to the same public transit service
+    def __init__(self, id: str, routes: Optional[list[Route]] = None, name: str = "", **kwargs):
+        """A Service is an object containing unique routes pertaining to the same public transit service.
 
-    Required Parameters
-    ----------
-    :param id: unique identifier for the service
+        !!! note
+            Not providing some of the optional parameters may result in the object failing validation.
 
-    Optional Parameters (note, not providing some of the parameters may result in the object failing validation)
-    ----------
-    :param routes: list of Route objects, if the Routes are not uniquely indexed, they will be re-indexed
-    :param name: string, name for the service, if not provided, will inherit the first non-trivial name from routes
-    :param kwargs: additional attributes
-    """
+        Args:
+            id (str): Unique identifier for the service
+            routes (Optional[list[Route]], optional): List of Route objects, if the Routes are not uniquely indexed, they will be re-indexed. Defaults to None.
+            name (str, optional): Name for the service, if not provided, will inherit the first non-trivial name from routes. Defaults to "".
 
-    def __init__(self, id: str, routes: List[Route] = None, name: str = "", **kwargs):
+        Keyword Args: Additional attributes which will be attached to the class.
+
+        Raises:
+            ServiceInitialisationError: `routes` must be a valid graph or a list of Route objects.
+        """
         self.id = id
         # a service inherits a name from the first route in the list (all route names are still accessible via each
         # route object
@@ -1211,7 +1326,7 @@ class Service(ScheduleElement):
             self._graph = self._build_graph(self._ensure_unique_routes(routes))
         else:
             raise ServiceInitialisationError(
-                "You need to pass either a valid `_graph` or a list of Route objects to " "`routes`"
+                "You need to pass either a valid `_graph` or a list of Route objects to `routes`"
             )
         super().__init__()
 
@@ -1260,7 +1375,7 @@ class Service(ScheduleElement):
     def _add_additional_attribute_to_graph(self, k, v):
         self._graph.graph["services"][self.id][k] = v
 
-    def _ensure_unique_routes(self, routes: List[Route]):
+    def _ensure_unique_routes(self, routes: list[Route]):
         unique_routes = []
         route_ids = []
         for route in routes:
@@ -1282,16 +1397,21 @@ class Service(ScheduleElement):
     def reference_edges(self):
         return self.service_reference_edges(self.id)
 
-    def split_by_direction(self):
-        """
-        Divide the routes of the Service by direction e.g. North- and Southbound. Depending on the mode,
-        typically a Service will have either 1 or 2 directions. Some Services will have more, especially ones that
-        are loops.
-        :return: Dictionary with directions as keys and lists of routes which head in that direction as values. E.g.:
-        {
-            North-East Bound: ['route_1', 'route_2'],
-            South-West Bound: ['route_3', 'route_4']
-        }
+    def split_by_direction(self) -> dict:
+        """Divide the routes of the Service by direction e.g. North- and South-bound.
+
+        Depending on the mode, typically a Service will have either 1 or 2 directions.
+        Some Services will have more, especially ones that are loops.
+
+        Returns:
+            dict:
+                Dictionary with directions as keys and lists of routes which head in that direction as values. E.g.:
+                ```python
+                {
+                    "North-East Bound": ['route_1', 'route_2'],
+                    "South-West Bound": ['route_3', 'route_4']
+                }
+                ```
         """
         geodesic = Geod(ellps="WGS84")
         route_direction_map = {}
@@ -1311,17 +1431,21 @@ class Service(ScheduleElement):
             res[val].append(key)
         return dict(res)
 
-    def split_graph(self):
-        """
-        Divide the routes and the graph of the Service by share of Service's graph. Most services with have one or two
-        outputs, but some will have more. The results of this method may vary from `split_by_direction`. The output
-        graph edges in the list will be independent of each other (the edges will be independent, but they may share
-        nodes), sometimes producing more than two sets.
-        The method is not symmetric, if the Routes in a Service are listed in a different order this may lead to some
-        graph groups merging (in a desired way).
-        :return: tuple (routes, graph_groups) where routes is a list of sets with grouped route IDs and graph_groups
-            is a list of the same length as routes, each item is a set of graph edges and corresponds to the item in
-            routes list in that same index
+    def split_graph(self) -> tuple[list, list]:
+        """Divide the routes and the graph of the Service by share of Service's graph.
+
+        Most services with have one or two outputs, but some will have more.
+        The results of this method may vary from `split_by_direction`.
+        The output graph edges in the list will be independent of each other (the edges will be independent, but they may share nodes), sometimes producing more than two sets.
+
+        The method is not symmetric, if the Routes in a Service are listed in a different order this may lead to some graph groups merging (in a desired way).
+
+        Returns:
+            tuple[list, list]:
+                (routes, graph_groups) where:
+                - routes is a list of sets with grouped route IDs
+                - graph_groups is a list of the same length as routes.
+                Each item is a set of graph edges and corresponds to the item in routes list in that same index.
         """
 
         def route_overlap_condition(graph_edge_group):
@@ -1387,11 +1511,14 @@ class Service(ScheduleElement):
     def _index_unique(self, idx):
         return idx not in self._graph.graph["services"]
 
-    def reindex(self, new_id):
-        """
-        Changes the current index of the object to `new_id`
-        :param new_id: desired value of the new index
-        :return:
+    def reindex(self, new_id: Union[str, int]):
+        """Changes the current index of the object to `new_id`.
+
+        Args:
+            new_id (Union[str, int]): Desired value of the new index
+
+        Raises:
+            ServiceIndexError: Cannot reindex to an existing ID.
         """
         if not self._index_unique(new_id):
             raise ServiceIndexError(f"Service of index {new_id} already exists")
@@ -1433,75 +1560,29 @@ class Service(ScheduleElement):
             self.__class__.__name__, self.id, self.name, len(self), len(self.reference_nodes())
         )
 
-    def plot(self, output_dir="", data=False):
-        """
-        Plots the service on kepler map.
-        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
-        :param output_dir: output directory for the image, if passed, will save plot to html
-        :param data: Defaults to False, only the geometry and ID will be visible.
-            True will visualise all data on the map (not suitable for large networks)
-            A set of keys e.g. {'name'}
-        :return:
-        """
+    def plot(self, output_dir: str = "", data: Union[bool, set] = False) -> KeplerGl:
         return self.kepler_map(output_dir, f"service_{self.id}_map", data=data)
 
-    def service_attribute_data(self, keys: Union[list, str], index_name: str = None):
-        """
-        Generates a pandas.DataFrame object indexed by Service IDs, with attribute data stored for Services under `key`
-        :param keys: list of either a string e.g. 'name', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :param index_name: optional, gives the index_name to dataframes index
-        :return: pandas.DataFrame
-        """
+    def service_attribute_data(
+        self, keys: Union[list, str], index_name: Optional[str] = None
+    ) -> pd.DataFrame:
         return graph_operations.build_attribute_dataframe(
             iterator=[(self.id, self.__dict__)], keys=keys, index_name=index_name
         )
 
-    def route_attribute_data(self, keys: Union[list, str], index_name: str = None):
-        """
-        Generates a pandas.DataFrame object indexed by Route IDs, with attribute data stored for Routes under `key`
-        :param keys: list of either a string e.g. 'mode', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :param index_name: optional, gives the index_name to dataframes index
-        :return: pandas.DataFrame
-        """
+    def route_attribute_data(self, keys: Union[list, str], index_name: Optional[str] = None):
         return graph_operations.build_attribute_dataframe(
             iterator=[(rid, self._graph.graph["routes"][rid]) for rid in self.route_ids()],
             keys=keys,
             index_name=index_name,
         )
 
-    def stop_attribute_data(self, keys: Union[list, str], index_name: str = None):
-        """
-        Generates a pandas.DataFrame object indexed by Stop IDs, with attribute data stored for Stops under `key`
-        :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :param index_name: optional, gives the index_name to dataframes index
-        :return: pandas.DataFrame
-        """
+    def stop_attribute_data(self, keys: Union[list, str], index_name: Optional[str] = None):
         return graph_operations.build_attribute_dataframe(
             iterator=[(s.id, s.__dict__) for s in self.stops()], keys=keys, index_name=index_name
         )
 
-    def route_trips_with_stops_to_dataframe(self, gtfs_day="19700101"):
-        """
-        This method exists for backwards compatibility only
-        Please use trips_with_stops_to_dataframe
-        :return:
-        """
-        logging.warning(
-            "`route_trips_with_stops_to_dataframe` method is deprecated and will be replaced by "
-            "`trips_to_dataframe` in later versions."
-        )
-        return self.trips_with_stops_to_dataframe(gtfs_day)
-
-    def trips_with_stops_to_dataframe(self, gtfs_day="19700101"):
-        """
-        Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
-        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
-        :return:
-        """
+    def trips_with_stops_to_dataframe(self, gtfs_day: str = "19700101") -> pd.DataFrame:
         df = None
         for route in self.routes():
             _df = route.trips_with_stops_to_dataframe(gtfs_day=gtfs_day)
@@ -1514,15 +1595,7 @@ class Service(ScheduleElement):
         df = df.reset_index(drop=True)
         return df
 
-    def trips_to_dataframe(self, gtfs_day="19700101"):
-        """
-        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
-        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        Check out also `trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
-        over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
-        :return:
-        """
+    def trips_to_dataframe(self, gtfs_day: str = "19700101") -> pd.DataFrame:
         df = None
         for route in self.routes():
             _df = route.trips_to_dataframe(gtfs_day=gtfs_day)
@@ -1534,12 +1607,7 @@ class Service(ScheduleElement):
         df = df.reset_index(drop=True)
         return df
 
-    def route(self, route_id):
-        """
-        Extract particular route from a Service given index
-        :param route_id:
-        :return:
-        """
+    def route(self, route_id: Union[str, int]) -> "Route":
         return self._get_route_from_graph(route_id)
 
     def route_ids(self):
@@ -1599,46 +1667,50 @@ class Service(ScheduleElement):
 
 
 class Schedule(ScheduleElement):
-    """
-    Class to provide methods and structure for transit schedules
-
-    Optional Parameters
-    ----------
-    :param epsg: 'epsg:12345', projection for the schedule (each stop has its own epsg)
-    :param services: list of Service class objects
-    :param _graph: Schedule graph, used for re-instantiating the object, passed without `services`
-    :param minimal_transfer_times: {'stop_id_1': {'stop_id_2': 0.0}} seconds_to_transfer between stop_id_1 and
-        stop_id_2
-    :param vehicles: dictionary of vehicle IDs from Route objects, mapping them to vehicle types in vehicle_types.
-        Looks like this: {veh_id : {'type': 'bus'}}
-        Defaults to None and generates itself from the vehicles IDs in Routes, maps to the mode of the Route.
-        Checks if those modes are defined in the vehicle_types.
-    :param vehicle_types: yml file based on `genet/configs/vehicles/vehicle_definitions.yml` or dictionary of vehicle
-        types and their specification. Indexed by the vehicle type that vehicles in the `vehicles` attribute are
-         referring to.
-            {'bus' : {
-                'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}},
-                'length': {'meter': '18.0'},
-                'width': {'meter': '2.5'},
-                'accessTime': {'secondsPerPerson': '0.5'},
-                'egressTime': {'secondsPerPerson': '0.5'},
-                'doorOperation': {'mode': 'serial'},
-                'passengerCarEquivalents': {'pce': '2.8'}}}
-        Defaults to reading `genet/configs/vehicles/vehicle_definitions.yml`
-    """
-
     def __init__(
         self,
         epsg: str = "",
-        services: List[Service] = None,
-        _graph: nx.DiGraph = None,
-        minimal_transfer_times: Dict[str, Dict[str, float]] = None,
-        vehicles=None,
+        services: Optional[list[Service]] = None,
+        _graph: Optional[nx.DiGraph] = None,
+        minimal_transfer_times: Optional[dict[str, dict[str, float]]] = None,
+        vehicles: Optional[dict] = None,
         vehicle_types: Union[str, dict] = (
             importlib_resources.files("genet") / "configs" / "vehicles" / "vehicle_definitions.yml"
         ).as_posix(),
         **kwargs,
     ):
+        """Class to provide methods and structure for transit schedules.
+
+        Args:
+            epsg (str, optional): Projection for the schedule (each stop has its own epsg), e.g. 'epsg:4326'. Defaults to "".
+            services (Optional[list[Service]], optional): list of Service class objects. Defaults to None.
+            _graph (Optional[nx.DiGraph], optional): Schedule graph, used for re-instantiating the object, passed without `services`. Defaults to None.
+            minimal_transfer_times (Optional[dict[str, dict[str, float]]], optional):
+                Seconds to transfer between `stop_id_1` and `stop_id_2`, e.g.: `{'stop_id_1': {'stop_id_2': 0.0}}`.
+                Defaults to None.
+            vehicles (Optional[dict], optional):
+                Dictionary of vehicle IDs from Route objects, mapping them to vehicle types in vehicle_types.
+                Looks like this: `{veh_id : {'type': 'bus'}}`.
+                Defaults to None and generates itself from the vehicles IDs in Routes, maps to the mode of the Route.
+                Checks if those modes are defined in the vehicle_types.
+            vehicle_types (Union[str, dict], optional):
+                YAML file based on `genet/configs/vehicles/vehicle_definitions.yml` or dictionary of vehicle types and their specification.
+                Indexed by the vehicle type that vehicles in the `vehicles` attribute are referring to.
+                ```python
+                {'bus' : {
+                    'capacity': {'seats': {'persons': '70'}, 'standingRoom': {'persons': '0'}},
+                    'length': {'meter': '18.0'},
+                    'width': {'meter': '2.5'},
+                    'accessTime': {'secondsPerPerson': '0.5'},
+                    'egressTime': {'secondsPerPerson': '0.5'},
+                    'doorOperation': {'mode': 'serial'},
+                    'passengerCarEquivalents': {'pce': '2.8'}}}
+                ```
+                Defaults to reading `genet/configs/vehicles/vehicle_definitions.yml`.
+
+        Raises:
+            UndefinedCoordinateSystemError: A coordinate reference system must be defined by `epsg` or within `_graph`.
+        """
         if isinstance(vehicle_types, dict):
             self.vehicle_types = vehicle_types
         else:
@@ -1769,15 +1841,21 @@ class Schedule(ScheduleElement):
         schedule_graph.graph["services"] = graph_services
         return schedule_graph
 
-    def generate_vehicles(self, overwrite=False):
-        """
-        Generate vehicles for the Schedule. Returns dictionary of vehicle IDs from Route objects, mapping them to
-        vehicle types in vehicle_types. Looks like this:
-            {veh_id : {'type': 'bus'}}
+    def generate_vehicles(self, overwrite: bool = False):
+        """Generate vehicles for the Schedule.
+
+        Returns dictionary of vehicle IDs from Route objects, mapping them to vehicle types in vehicle_types.
+        Looks like this: `{veh_id : {'type': 'bus'}}`.
         Generates itself from the vehicles IDs which exist in Routes, maps to the mode of the Route.
-        :param overwrite: False by default. If False, does not overwrite the types of vehicles currently in the schedule
-            If True, generates completely new vehicle types for all vehicles in the schedule based on Route modes
-        :return:
+
+        Args:
+            overwrite (bool, optional):
+                If False, does not overwrite the types of vehicles currently in the schedule.
+                If True, generates completely new vehicle types for all vehicles in the schedule based on Route modes.
+                Defaults to False.
+
+        Raises:
+            InconsistentVehicleModeError: There should be no modal inconsistencies between vehicles and schedules.
         """
         if self:
             # generate vehicles using Services and Routes upon init
@@ -1802,13 +1880,16 @@ class Schedule(ScheduleElement):
             else:
                 self.vehicles = {**df.T.to_dict(), **self.vehicles}
 
-    def scale_vehicle_capacity(self, capacity_scale, pce_scale, output_dir):
-        """
-        This method scales the vehicle capacities and pce to user defined scales and writes a new vehicle.xml.
-        :param capacity_scale: vehicle capacity scale (float)
-        :param pce_scale: passenger car equivalents scale (float)
-        :return:
-        :example invocation for 5%: scale_vehicle_capacity(0.05, 0.05,"")
+    def scale_vehicle_capacity(self, capacity_scale: float, pce_scale: float, output_dir: str):
+        """This method scales the vehicle capacities and pce to user defined scales and writes a new vehicle.xml.
+
+        Args:
+            capacity_scale (float): vehicle capacity scale
+            pce_scale (float):  passenger car equivalents scale
+            output_dir (str): Directory to save `vehicle.xml`
+
+        Example:
+            For 5%: `!#python scale_vehicle_capacity(0.05, 0.05,"")`
         """
         # save copy of existing vehicle data
         vehicle_types_dict = deepcopy(self.vehicle_types)
@@ -1841,27 +1922,7 @@ class Schedule(ScheduleElement):
             f"{int(pce_scale * 100)}% pce."
         )
 
-    def route_trips_to_dataframe(self, gtfs_day="19700101"):
-        """
-        This method exists for backwards compatibility only
-        Please use trips_to_dataframe
-        :return:
-        """
-        logging.warning(
-            "`route_trips_to_dataframe` method is deprecated and will be replaced by `trips_to_dataframe`"
-            "in later versions."
-        )
-        return self.trips_to_dataframe(gtfs_day)
-
-    def trips_to_dataframe(self, gtfs_day="19700101"):
-        """
-        Generates a DataFrame holding all the trips IDs, their departure times (in datetime with given GTFS day,
-        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        Check out also `trips_with_stops_to_dataframe` for a more complex version - all trips are expanded
-        over all of their stops, giving scheduled timestamps of each trips expected to arrive and leave the stop.
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
-        :return:
-        """
+    def trips_to_dataframe(self, gtfs_day: str = "19700101") -> pd.DataFrame:
         df = self.route_attribute_data(
             keys=[{"trips": "trip_id"}, {"trips": "trip_departure_time"}, {"trips": "vehicle_id"}],
             index_name="route_id",
@@ -1893,16 +1954,24 @@ class Schedule(ScheduleElement):
         )
         return df
 
-    def generate_trips_dataframe_from_headway(self, route_id, headway_spec: dict):
-        """
-        Generates new trips and vehicles for the specified route.
-        Inherits one of the existing vehicle types - if the vehicle types vary for a route, you will
-        need to generate your own trips dataframe and add those vehicles yourself.
+    def generate_trips_dataframe_from_headway(
+        self, route_id: Union[str, int], headway_spec: dict
+    ) -> pd.DataFrame:
+        """Generates new trips and vehicles for the specified route.
+
+        Inherits one of the existing vehicle types.
+        If the vehicle types vary for a route, you will need to generate your own trips dataframe and add those vehicles yourself.
+
         All newly generated trips get unique vehicles with this method.
-        :param route_id: existing route
-        :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
-         {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
-        :return:
+
+        Args:
+            route_id (Union[str, int]): existing route
+            headway_spec (dict):
+                dictionary with tuple keys: (from time, to time) and headway values in minutes:
+                `{('HH:MM:SS', 'HH:MM:SS'): headway_minutes}`.
+
+        Returns:
+            pd.DataFrame: Trips.
         """
         veh_type = self.vehicles[self.route(route_id).trips["vehicle_id"][0]]
         new_trip_departures = list(generate_trip_departures_from_headway(headway_spec))
@@ -1922,16 +1991,19 @@ class Schedule(ScheduleElement):
         new_trips["service_id"] = self._graph.graph["route_to_service_map"][route_id]
         return new_trips
 
-    def generate_trips_from_headway(self, route_id, headway_spec: dict):
-        """
-        Generates new trips and vehicles for the specified route.
-        Inherits one of the existing vehicle types - if the vehicle types vary for a route, you will
-        need to generate your own trips dataframe and add those vehicles yourself.
+    def generate_trips_from_headway(self, route_id: Union[str, int], headway_spec: dict):
+        """Generates new trips and vehicles for the specified route.
+
+        Inherits one of the existing vehicle type.
+        If the vehicle types vary for a route, you will need to generate your own trips dataframe and add those vehicles yourself.
+
         All newly generated trips get unique vehicles with this method.
-        :param route_id: existing route
-        :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
-         {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
-        :return:
+
+        Args:
+            route_id (Union[str, int]): existing route
+            headway_spec (dict):
+                dictionary with tuple keys: (from time, to time) and headway values in minutes:
+                `{('HH:MM:SS', 'HH:MM:SS'): headway_minutes}`.
         """
         veh_type = self.vehicles[self.route(route_id).trips["vehicle_id"][0]]
         old_vehicles = set(self.route(route_id).trips["vehicle_id"])
@@ -2018,14 +2090,15 @@ class Schedule(ScheduleElement):
         )
         return self.set_trips_dataframe(df)
 
-    def set_trips_dataframe(self, df):
-        """
-        Option to replace trips data currently stored under routes by an updated `trips_to_dataframe`.
+    def set_trips_dataframe(self, df: pd.DataFrame):
+        """Option to replace trips data currently stored under routes by an updated `trips_to_dataframe`.
+
         Need not be exhaustive in terms of routes. I.e. trips for some of the routes can be omitted if no changes are
         required. Needs to be exhaustive in terms of trips. I.e. if there are changes to a route, all of the trips
         required to be in that trip need to be present, it overwrites route.trips attribute.
-        :param df: DataFrame generated by `trips_to_dataframe` (or of the same format)
-        :return:
+
+        Args:
+            df (pd.DataFrame): generated by `trips_to_dataframe` (or of the same format)
         """
         # convert route trips dataframe to apply dictionary shape and give to apply to routes method
         df["trip_departure_time"] = df["trip_departure_time"].dt.strftime("%H:%M:%S")
@@ -2040,22 +2113,28 @@ class Schedule(ScheduleElement):
         )
         self.apply_attributes_to_routes(df.T.to_dict())
 
-    def overlapping_vehicle_ids(self, vehicles):
+    def overlapping_vehicle_ids(self, vehicles: dict) -> set:
         return set(self.vehicles.keys()) & set(vehicles.keys())
 
-    def overlapping_vehicle_types(self, vehicle_types):
+    def overlapping_vehicle_types(self, vehicle_types: dict) -> set:
         return set(self.vehicle_types.keys()) & set(vehicle_types.keys())
 
-    def update_vehicles(self, vehicles, vehicle_types, overwrite=True):
-        """
-        Updates vehicles and vehicle types
-        :param vehicles: vehicles to add
-        :param vehicle_types: vehicle types to add
-        :param overwrite: defaults to True
-            If True: overwrites overlapping vehicle types data currently in the Schedule, adds vehicles as they are,
-                overwriting in case of clash
-            If False: adds vehicles and vehicle types that do not clash with those already stored in the Schedule
-        :return:
+    def update_vehicles(
+        self, vehicles: dict, vehicle_types: dict, overwrite: bool = True
+    ) -> tuple[set, set]:
+        """Updates vehicles and vehicle types.
+
+        Args:
+            vehicles (dict): vehicles to add.
+            vehicle_types (dict): vehicle types to add.
+            overwrite (bool, optional):
+                If True: overwrites overlapping vehicle types data currently in the Schedule, adds vehicles as they are,
+                    overwriting in case of clash
+                If False: adds vehicles and vehicle types that do not clash with those already stored in the Schedule.
+                Defaults to True.
+
+        Returns:
+            tuple[set, set]: Any clashing 1. vehicles and 2. vehicle types.
         """
         # check for vehicle ID overlap
         clashing_vehicles = self.overlapping_vehicle_ids(vehicles=vehicles)
@@ -2090,11 +2169,13 @@ class Schedule(ScheduleElement):
         self.validate_vehicle_definitions()
         return clashing_vehicles, clashing_vehicle_types
 
-    def validate_vehicle_definitions(self):
-        """
-        Checks if modes mapped to vehicle IDs in vehicles attribute of Schedule are defined in the vehicle_types.
-        :return: returns True if the vehicle types in the `vehicles` attribute exist in the `vehicle_types` attribute.
-            But useful even just for the logging messages.
+    def validate_vehicle_definitions(self) -> bool:
+        """Checks if modes mapped to vehicle IDs in vehicles attribute of Schedule are defined in the vehicle_types.
+
+        Returns:
+            bool:
+                Returns True if the vehicle types in the `vehicles` attribute exist in the `vehicle_types` attribute.
+                But useful even just for the logging messages.
         """
 
         missing_vehicle_information = self.get_missing_vehicle_information()
@@ -2156,17 +2237,23 @@ class Schedule(ScheduleElement):
         if isinstance(self, Schedule):
             raise NotImplementedError("Schedule is not currently an indexed object")
 
-    def add(self, other, overwrite=True):
-        """
-        Adds another Schedule. They have to be separable! I.e. the keys in services cannot overlap with the ones
-        already present (TODO: add merging complicated schedules, parallels to the merging gtfs work)
-        :param other: the other Schedule object to add
-        :param overwrite: defaults to True
-            If True: overwrites overlapping vehicle types data currently in the Schedule, adds vehicles as they are,
-                overwriting in case of clash
-            If False: adds vehicles and vehicle types from other that do not clash with those already stored in the
-            Schedule
-        :return:
+    def add(self, other: "Schedule", overwrite: bool = True):
+        """Adds another Schedule in-place.
+
+        They have to be separable! I.e. the keys in services cannot overlap with the ones already present.
+
+        TODO: add merging complicated schedules, parallels to the merging gtfs work.
+
+        Args:
+            other (Schedule): the other Schedule object to add
+            overwrite (bool, optional):
+                If True: overwrites overlapping vehicle types data currently in the Schedule, adds vehicles as they are,
+                    overwriting in case of clash
+                If False: adds vehicles and vehicle types from other that do not clash with those already stored in the Schedule.
+                Defaults to True.
+
+        Raises:
+            NotImplementedError: Schedules must not have overlapping services.
         """
         if not self.is_separable_from(other):
             # have left and right indicies
@@ -2222,12 +2309,14 @@ class Schedule(ScheduleElement):
     def graph(self):
         return self._graph
 
-    def reproject(self, new_epsg, processes=1):
-        """
-        Changes projection of the element to new_epsg
-        :param new_epsg: 'epsg:1234'
-        :param processes: integer number of processes to split stops data to be processed in parallel
-        :return:
+    def reproject(self, new_epsg: str, processes: int = 1):
+        """Changes projection of the element to `new_epsg`.
+
+        Args:
+            new_epsg (str):
+                New projection, e.g., "epsg:1234".
+            processes (int, optional):
+                Number of parallel processes to use when reprojecting. Defaults to 1.
         """
         ScheduleElement.reproject(self, new_epsg, processes=processes)
         self._graph.graph["crs"] = new_epsg
@@ -2235,39 +2324,10 @@ class Schedule(ScheduleElement):
     def find_epsg(self):
         return self.init_epsg
 
-    def plot(self, output_dir="", data=False):
-        """
-        Plots the schedule on kepler map.
-        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
-        :param output_dir: output directory for the image, if passed, will save plot to html
-        :param data: Defaults to False, only the geometry and ID will be visible.
-            True will visualise all data on the map (not suitable for large networks)
-            A set of keys e.g. {'name'}
-        :return:
-        """
+    def plot(self, output_dir: str = "", data: Union[bool, set] = False) -> KeplerGl:
         return self.kepler_map(output_dir, "schedule_map", data=data)
 
-    def route_trips_with_stops_to_dataframe(self, gtfs_day="19700101"):
-        """
-        This method exists for backwards compatibility only
-        Please use trips_with_stops_to_dataframe
-        :return:
-        """
-        logging.warning(
-            "`route_trips_with_stops_to_dataframe` method is deprecated and will be replaced by "
-            "`trips_to_dataframe` in later versions."
-        )
-        return self.trips_with_stops_to_dataframe(gtfs_day)
-
-    def trips_with_stops_to_dataframe(self, gtfs_day="19700101"):
-        """
-        Generates a DataFrame holding all the trips, their movements from stop to stop (in datetime with given GTFS day,
-        if specified in `gtfs_day`) and vehicle IDs, next to the route ID and service ID.
-        Check out also `trips_to_dataframe` for a simplified version (trips, their departure times and vehicles
-        only)
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
-        :return:
-        """
+    def trips_with_stops_to_dataframe(self, gtfs_day: str = "19700101") -> pd.DataFrame:
         df = self.route_attribute_data(
             keys=[
                 "route_short_name",
@@ -2374,12 +2434,7 @@ class Schedule(ScheduleElement):
         for service_id in self.service_ids():
             yield self._get_service_from_graph(service_id)
 
-    def route(self, route_id):
-        """
-        Gives the Route objects under route_id
-        :param route_id: string
-        :return:
-        """
+    def route(self, route_id: Union[str, int]) -> "Route":
         return self._get_route_from_graph(route_id)
 
     def route_ids(self):
@@ -2410,116 +2465,102 @@ class Schedule(ScheduleElement):
         """
         return self._graph.has_node(stop_id)
 
-    def service_attribute_summary(self, data=False):
-        """
-        Parses through data stored for Services in the Schedule and gives a summary tree.
-        If data is True, shows also up to 5 unique values stored under such keys.
-        :param data: bool, False by default
-        :return:
+    def service_attribute_summary(self, data: bool = False):
+        """Parses through data stored for Services in the Schedule and prints a summary tree.
+
+        Args:
+            data (bool, optional): If True, shows also up to 5 unique values stored under such keys. Defaults to False.
         """
         root = graph_operations.get_attribute_schema(
             self._graph.graph["services"].items(), data=data
         )
         graph_operations.render_tree(root, data)
 
-    def route_attribute_summary(self, data=False):
-        """
-        Parses through data stored for Routes in the Schedule and gives a summary tree.
-        If data is True, shows also up to 5 unique values stored under such keys.
-        :param data: bool, False by default
-        :return:
+    def route_attribute_summary(self, data: bool = False):
+        """Parses through data stored for Routes in the Schedule and gives a summary tree.
+
+        Args:
+            data (bool, optional): If True, shows also up to 5 unique values stored under such keys. Defaults to False.
         """
         root = graph_operations.get_attribute_schema(self._graph.graph["routes"].items(), data=data)
         graph_operations.render_tree(root, data)
 
-    def stop_attribute_summary(self, data=False):
-        """
-        Parses through data stored for Stops in the Schedule and gives a summary tree.
-        If data is True, shows also up to 5 unique values stored under such keys.
-        :param data: bool, False by default
-        :return:
+    def stop_attribute_summary(self, data: bool = False):
+        """Parses through data stored for Stops in the Schedule and gives a summary tree.
+
+        Args:
+            data (bool, optional): If True, shows also up to 5 unique values stored under such keys. Defaults to False.
         """
         root = graph_operations.get_attribute_schema(self._graph.nodes(data=True), data=data)
         graph_operations.render_tree(root, data)
 
-    def service_attribute_data(self, keys: Union[list, str], index_name: str = None):
-        """
-        Generates a pandas.DataFrame object indexed by Service IDs, with attribute data stored for Services under `key`
-        :param keys: list of either a string e.g. 'name', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :param index_name: optional, gives the index_name to dataframes index
-        :return: pandas.DataFrame
-        """
+    def service_attribute_data(
+        self, keys: Union[list, str], index_name: Optional[str] = None
+    ) -> pd.DataFrame:
         return graph_operations.build_attribute_dataframe(
             iterator=self._graph.graph["services"].items(), keys=keys, index_name=index_name
         )
 
-    def route_attribute_data(self, keys: Union[list, str], index_name: str = None):
-        """
-        Generates a pandas.DataFrame object indexed by Route IDs, with attribute data stored for Routes under `key`
-        :param keys: list of either a string e.g. 'mode', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :param index_name: optional, gives the index_name to dataframes index
-        :return: pandas.DataFrame
-        """
+    def route_attribute_data(self, keys: Union[list, str], index_name: Optional[str] = None):
         return graph_operations.build_attribute_dataframe(
             iterator=self._graph.graph["routes"].items(), keys=keys, index_name=index_name
         )
 
-    def stop_attribute_data(self, keys: Union[list, str], index_name: str = None):
-        """
-        Generates a pandas.DataFrame object indexed by Stop IDs, with attribute data stored for Stops under `key`
-        :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :param index_name: optional, gives the index_name to dataframes index
-        :return: pandas.DataFrame
-        """
+    def stop_attribute_data(self, keys: Union[list, str], index_name: Optional[str] = None):
         return graph_operations.build_attribute_dataframe(
             iterator=self._graph.nodes(data=True), keys=keys, index_name=index_name
         )
 
     def extract_service_ids_on_attributes(
-        self, conditions: Union[list, dict], how=any, mixed_dtypes=True
-    ):
-        """
-        Extracts IDs of Services stored in the Schedule based on values of their attributes.
-        Fails silently, assumes not all Services have those attributes. In the case were the attributes stored are
-        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
-        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
-        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
-        :param conditions: {'attribute_key': 'target_value'} or nested
-        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+        self, conditions: Union[list, dict], how: Callable = any, mixed_dtypes: bool = True
+    ) -> list[str]:
+        """Extracts IDs of Services stored in the Schedule based on values of their attributes.
 
-            - single value, string, int, float, where the edge_data[key] == value
+        Fails silently, assumes not all Services have those attributes.
+
+        In the case were the attributes stored are a list or set,
+        like in the case of a simplified network (there will be a mix of objects that are sets and not),
+        an intersection of values satisfying condition(s) is considered in case of iterable value,
+        if not empty, it is deemed successful by default.
+        To disable this behaviour set mixed_dtypes to False.
+
+        Args:
+            conditions (Union[list, dict]):
+                {'attribute_key': 'target_value'} or nested {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}},
+                where 'target_value' could be:
+
+                - single value, string, int, float, where the edge_data[key] == value
                 (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
 
-            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                - list or set of single values as above, where edge_data[key] in [value1, value2]
                 (if mixed_dtypes==True and in case of set/list edge_data[key],
                 set(edge_data[key]) & set([value1, value2]) is non-empty)
 
-            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
-              lower_bound <= edge_data[key] <= upper_bound
+                - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+                lower_bound <= edge_data[key] <= upper_bound
                 (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
                 edge_data[key] satisfies lower_bound <= item <= upper_bound)
 
-            - function that returns a boolean given the value e.g.
-
-            def below_exclusive_upper_bound(value):
-                return value < 100
-
+                - function that returns a boolean given the value e.g.
+                ```python
+                def below_exclusive_upper_bound(value):
+                    return value < 100
+                ```
                 (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
                 edge_data[key] returns True after applying function)
 
-        :param how : {all, any}, default any
+            how (Callable, optional):
+                The level of rigour used to match conditions. Defaults to any.
+                - all: means all conditions need to be met
+                - any: means at least one condition needs to be met
 
-        The level of rigour used to match conditions
+            mixed_dtypes (bool, optional):
+                If True, will consider the intersection of single values or lists of values in queried dictionary keys, e.g. as in simplified networks.
+                Defaults to True.
 
-            * all: means all conditions need to be met
-            * any: means at least one condition needs to be met
+        Returns:
+            list[str]: list of ids in the schedule satisfying conditions.
 
-        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
-        values e.g. as in simplified networks.
-        :return: list of ids in the schedule satisfying conditions
         """
         return graph_operations.extract_on_attributes(
             self._graph.graph["services"].items(),
@@ -2529,47 +2570,54 @@ class Schedule(ScheduleElement):
         )
 
     def extract_route_ids_on_attributes(
-        self, conditions: Union[list, dict], how=any, mixed_dtypes=True
-    ):
-        """
-        Extracts IDs of Routes stored in the Schedule based on values of their attributes.
-        Fails silently, assumes not all Routes have those attributes. In the case were the attributes stored are
-        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
-        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
-        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
-        :param conditions: {'attribute_key': 'target_value'} or nested
-        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+        self, conditions: Union[list, dict], how: Callable = any, mixed_dtypes: bool = True
+    ) -> list[str]:
+        """Extracts IDs of Routes stored in the Schedule based on values of their attributes.
 
-            - single value, string, int, float, where the edge_data[key] == value
+        Fails silently, assumes not all Routes have those attributes.
+
+        In the case were the attributes stored are a list or set,
+        like in the case of a simplified network (there will be a mix of objects that are sets and not),
+        an intersection of values satisfying condition(s) is considered in case of iterable value,
+        if not empty, it is deemed successful by default.
+        To disable this behaviour set mixed_dtypes to False.
+
+        Args:
+            conditions (Union[list, dict]):
+                {'attribute_key': 'target_value'} or nested {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}},
+                where 'target_value' could be:
+
+                - single value, string, int, float, where the edge_data[key] == value
                 (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
 
-            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                - list or set of single values as above, where edge_data[key] in [value1, value2]
                 (if mixed_dtypes==True and in case of set/list edge_data[key],
                 set(edge_data[key]) & set([value1, value2]) is non-empty)
 
-            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
-              lower_bound <= edge_data[key] <= upper_bound
+                - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+                lower_bound <= edge_data[key] <= upper_bound
                 (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
                 edge_data[key] satisfies lower_bound <= item <= upper_bound)
 
-            - function that returns a boolean given the value e.g.
-
-            def below_exclusive_upper_bound(value):
-                return value < 100
-
+                - function that returns a boolean given the value e.g.
+                ```python
+                def below_exclusive_upper_bound(value):
+                    return value < 100
+                ```
                 (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
                 edge_data[key] returns True after applying function)
 
-        :param how : {all, any}, default any
+            how (Callable, optional):
+                The level of rigour used to match conditions. Defaults to any.
+                - all: means all conditions need to be met
+                - any: means at least one condition needs to be met
 
-        The level of rigour used to match conditions
+            mixed_dtypes (bool, optional):
+                If True, will consider the intersection of single values or lists of values in queried dictionary keys, e.g. as in simplified networks.
+                Defaults to True.
 
-            * all: means all conditions need to be met
-            * any: means at least one condition needs to be met
-
-        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
-        values e.g. as in simplified networks.
-        :return: list of ids in the schedule satisfying conditions
+        Returns:
+            list[str]: list of ids in the schedule satisfying conditions.
         """
         return graph_operations.extract_on_attributes(
             self._graph.graph["routes"].items(),
@@ -2579,85 +2627,106 @@ class Schedule(ScheduleElement):
         )
 
     def extract_stop_ids_on_attributes(
-        self, conditions: Union[list, dict], how=any, mixed_dtypes=True
-    ):
-        """
-        Extracts IDs of Stops stored in the Schedule based on values of their attributes.
-        Fails silently, assumes not all Routes have those attributes. In the case were the attributes stored are
-        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
-        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
-        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
-        :param conditions: {'attribute_key': 'target_value'} or nested
-        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+        self, conditions: Union[list, dict], how: Callable = any, mixed_dtypes: bool = True
+    ) -> list[str]:
+        """Extracts IDs of Stops stored in the Schedule based on values of their attributes.
 
-            - single value, string, int, float, where the edge_data[key] == value
+        Fails silently, assumes not all Routes have those attributes.
+
+        In the case were the attributes stored are a list or set,
+        like in the case of a simplified network (there will be a mix of objects that are sets and not),
+        an intersection of values satisfying condition(s) is considered in case of iterable value,
+        if not empty, it is deemed successful by default.
+        To disable this behaviour set mixed_dtypes to False.
+
+        Args:
+            conditions (Union[list, dict]):
+                {'attribute_key': 'target_value'} or nested {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}},
+                where 'target_value' could be:
+
+                - single value, string, int, float, where the edge_data[key] == value
                 (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
 
-            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                - list or set of single values as above, where edge_data[key] in [value1, value2]
                 (if mixed_dtypes==True and in case of set/list edge_data[key],
                 set(edge_data[key]) & set([value1, value2]) is non-empty)
 
-            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
-              lower_bound <= edge_data[key] <= upper_bound
+                - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+                lower_bound <= edge_data[key] <= upper_bound
                 (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
                 edge_data[key] satisfies lower_bound <= item <= upper_bound)
 
-            - function that returns a boolean given the value e.g.
-
-            def below_exclusive_upper_bound(value):
-                return value < 100
-
+                - function that returns a boolean given the value e.g.
+                ```python
+                def below_exclusive_upper_bound(value):
+                    return value < 100
+                ```
                 (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
                 edge_data[key] returns True after applying function)
 
-        :param how : {all, any}, default any
+            how (Callable, optional):
+                The level of rigour used to match conditions. Defaults to any.
+                - all: means all conditions need to be met
+                - any: means at least one condition needs to be met
 
-        The level of rigour used to match conditions
+            mixed_dtypes (bool, optional):
+                If True, will consider the intersection of single values or lists of values in queried dictionary keys, e.g. as in simplified networks.
+                Defaults to True.
 
-            * all: means all conditions need to be met
-            * any: means at least one condition needs to be met
-
-        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
-        values e.g. as in simplified networks.
-        :return: list of ids in the schedule satisfying conditions
+        Returns:
+            list[str]: list of ids in the schedule satisfying conditions.
         """
         return graph_operations.extract_on_attributes(
             self._graph.nodes(data=True), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes
         )
 
-    def services_on_modal_condition(self, modes: Union[str, list]):
+    def services_on_modal_condition(self, modes: Union[str, list]) -> list:
         """
         Finds Service IDs which hold Routes with modes or singular mode given in `modes`.
         Note that a Service can have Routes with different modes.
-        :param modes: string mode e.g. 'bus' or a list of such modes e.g. ['bus', 'rail']
-        :return: list of Service IDs
+
+        Args:
+            modes (Union[str, list]):  string mode e.g. 'bus' or a list of such modes e.g. ['bus', 'rail'].
+
+        Returns:
+            list: list of Service IDs
         """
         route_ids = self.routes_on_modal_condition(modes=modes)
         return list({self._graph.graph["route_to_service_map"][r_id] for r_id in route_ids})
 
-    def routes_on_modal_condition(self, modes: Union[str, list]):
+    def routes_on_modal_condition(self, modes: Union[str, list]) -> list:
         """
         Finds Route IDs with modes or singular mode given in `modes`
-        :param modes: string mode e.g. 'bus' or a list of such modes e.g. ['bus', 'rail']
-        :return: list of Route IDs
+
+        Args:
+            modes (Union[str, list]):  string mode e.g. 'bus' or a list of such modes e.g. ['bus', 'rail'].
+
+        Returns:
+            list: list of Route IDs
         """
         conditions = {"mode": modes}
         return self.extract_route_ids_on_attributes(conditions=conditions)
 
-    def stops_on_modal_condition(self, modes: Union[str, list]):
+    def stops_on_modal_condition(self, modes: Union[str, list]) -> list:
         """
         Finds Stop IDs used by Routes with modes or singular mode given in `modes`
-        :param modes: string mode e.g. 'bus' or a list of such modes e.g. ['bus', 'rail']
-        :return: list of Stop IDs
+
+        Args:
+            modes (Union[str, list]):  string mode e.g. 'bus' or a list of such modes e.g. ['bus', 'rail'].
+
+        Returns:
+            list: list of Stop IDs
         """
         route_ids = self.routes_on_modal_condition(modes=modes)
         return self.extract_stop_ids_on_attributes(conditions={"routes": route_ids})
 
-    def subschedule(self, service_ids):
-        """
-        Subset a Schedule object using a spatial bound
-        :param service_ids: collection of service IDs in the Schedule for subsetting.
-        :return: A new Schedule object that is a subset of the original
+    def subschedule(self, service_ids: list) -> "Schedule":
+        """Subset a Schedule object using a spatial bound.
+        Args:
+            service_ids (list): Collection of service IDs in the Schedule for subsetting.
+
+        Returns:
+            Schedule: A new Schedule object that is a subset of the original.
         """
         subschedule = self.__copy__()
         for s in subschedule.service_ids():
@@ -2666,39 +2735,39 @@ class Schedule(ScheduleElement):
         subschedule.remove_unused_stops()
         return subschedule
 
-    def subschedule_on_spatial_condition(self, region_input, how="intersect"):
-        """
-        Subset a Schedule object using a spatial bound
-        :param region_input:
-            - path to a geojson file, can have multiple features
-            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
-             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
-             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
-            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
-        :param how:
-            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
-            region_input
-            - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
-        :return: A new Schedule object that is a subset of the original
+    def subschedule_on_spatial_condition(
+        self,
+        region_input: Union[str, BaseGeometry],
+        how: Literal["interact", "within"] = "intersect",
+    ) -> "Schedule":
+        """Subset a Schedule object using a spatial
+
+        Schedule: A new Schedule object that is a subset of the original
         """
         services_to_keep = self.services_on_spatial_condition(region_input=region_input, how=how)
         return self.subschedule(service_ids=services_to_keep)
 
-    def services_on_spatial_condition(self, region_input, how="intersect"):
-        """
-        Returns Service IDs which intersect region_input, by default, or are contained within region_input if
-        how='within'
-        :param region_input:
-            - path to a geojson file, can have multiple features
-            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
-             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
-             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
-            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
-        :param how:
-            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
-            region_input
-            - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
-        :return: Service IDs
+    def services_on_spatial_condition(
+        self,
+        region_input: Union[str, BaseGeometry],
+        how: Literal["interact", "within"] = "intersect",
+    ) -> list:
+        """Returns Service IDs which intersect region_input, by default, or are contained within region_input if how='within'.
+
+        Args:
+            region_input (Union[str, BaseGeometry]):
+                - path to a geojson file, can have multiple features.
+                - string with comma separated hex tokens of Google's S2 geometry.
+                A region can be covered with cells and the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/.
+                E.g., '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'.
+                - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects.
+            how (Literal[intersect, within], optional):
+                Defaults to "intersect".
+                - 'intersect' will return IDs of the Services whose at least one Stop intersects the `region_input`.
+                - 'within' will return IDs of the Services whose all of the Stops are contained within the `region_input`.
+
+        Returns:
+            list: Service IDs
         """
         if how == "intersect":
             stops_intersecting = self.stops_on_spatial_condition(region_input)
@@ -2719,21 +2788,28 @@ class Schedule(ScheduleElement):
         else:
             raise NotImplementedError("Only `intersect` and `within` options for `how` param.")
 
-    def routes_on_spatial_condition(self, region_input, how="intersect"):
+    def routes_on_spatial_condition(
+        self,
+        region_input: Union[str, BaseGeometry],
+        how: Literal["interact", "within"] = "intersect",
+    ) -> list:
         """
-        Returns Route IDs which intersect region_input, by default, or are contained within region_input if
-        how='within'
-        :param region_input:
-            - path to a geojson file, can have multiple features
-            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
-             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
-             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
-            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
-        :param how:
-            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
-            region_input
-            - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
-        :return: Route IDs
+        Returns Route IDs which intersect region_input, by default, or are contained within region_input if how='within'.
+
+        Args:
+            region_input (Union[str, BaseGeometry]):
+                - path to a geojson file, can have multiple features.
+                - string with comma separated hex tokens of Google's S2 geometry.
+                A region can be covered with cells and the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/.
+                E.g., '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'.
+                - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects.
+            how (Literal[intersect, within], optional):
+                Defaults to "intersect".
+                - 'intersect' will return IDs of the Services whose at least one Stop intersects the `region_input`.
+                - 'within' will return IDs of the Services whose all of the Stops are contained within the `region_input`.
+
+        Returns:
+            list: Route IDs
         """
         stops_intersecting = set(self.stops_on_spatial_condition(region_input))
         if how == "intersect":
@@ -2752,16 +2828,19 @@ class Schedule(ScheduleElement):
         else:
             raise NotImplementedError("Only `intersect` and `within` options for `how` param.")
 
-    def stops_on_spatial_condition(self, region_input):
-        """
-        Returns Stop IDs which intersect region_input
-        :param region_input:
-            - path to a geojson file, can have multiple features
-            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
-             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
-             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
-            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
-        :return: Stop IDs
+    def stops_on_spatial_condition(self, region_input: Union[str, BaseGeometry]) -> list:
+        """Returns Stop IDs which intersect region_input.
+
+        Args:
+            region_input (Union[str, BaseGeometry]):
+                - path to a geojson file, can have multiple features.
+                - string with comma separated hex tokens of Google's S2 geometry.
+                A region can be covered with cells and the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/.
+                E.g., '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'.
+                - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects.
+
+        Returns:
+            list: Stop IDs
         """
         if isinstance(region_input, str):
             if persistence.is_geojson(region_input):
@@ -2772,6 +2851,9 @@ class Schedule(ScheduleElement):
         else:
             # assumed to be a shapely.geometry input
             return self._find_stops_on_shapely_geometry(region_input)
+
+    def _add_additional_attribute_to_graph(self, k, v):
+        raise NotImplementedError
 
     def _find_stops_on_geojson(self, geojson_input):
         shapely_input = spatial.read_geojson_to_shapely(geojson_input)
@@ -2799,12 +2881,14 @@ class Schedule(ScheduleElement):
             raise NotImplementedError("Changing id can only be done via the `reindex` method")
 
     def apply_attributes_to_services(self, new_attributes: dict):
-        """
-        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
-        stored for the Services presently, so no data is lost, unless it is being overwritten. Changing IDs this way
-        with result in an error. Use Service's `reindex` method instead.
-        :param new_attributes: keys are Service IDs and values are dictionaries of data to add/replace if present
-        :return:
+        """Adds, or changes if already present, the attributes in new_attributes.
+
+        Doesn't replace the dictionary stored for the Services presently, so no data is lost, unless it is being overwritten.
+        Changing IDs this way with result in an error.
+        Use Service's `reindex` method instead.
+
+        Args:
+            new_attributes (dict): keys are Service IDs and values are dictionaries of data to add/replace if present.
         """
         self._verify_no_id_change(new_attributes)
         services = list(new_attributes.keys())
@@ -2825,12 +2909,14 @@ class Schedule(ScheduleElement):
         logging.info(f"Changed Service attributes for {len(services)} services")
 
     def apply_attributes_to_routes(self, new_attributes: dict):
-        """
-        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
-        stored for the Routes presently, so no data is lost, unless it is being overwritten. Changing IDs this way
-        with result in an error. Use Route's `reindex` method instead.
-        :param new_attributes: keys are Route IDs and values are dictionaries of data to add/replace if present
-        :return:
+        """Adds, or changes if already present, the attributes in new_attributes.
+
+        Doesn't replace the dictionary stored for the Routes presently, so no data is lost, unless it is being overwritten.
+        Changing IDs this way with result in an error.
+        Use Route's `reindex` method instead.
+
+        Args:
+            new_attributes (dict): keys are Service IDs and values are dictionaries of data to add/replace if present.
         """
         self._verify_no_id_change(new_attributes)
         # check for stop changes
@@ -2880,12 +2966,14 @@ class Schedule(ScheduleElement):
         logging.info(f"Changed Route attributes for {len(routes)} routes")
 
     def apply_attributes_to_stops(self, new_attributes: dict):
-        """
-        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
-        stored for the Stops presently, so no data is lost, unless it is being overwritten. Changing IDs this way
-        with result in an error. Use Stop's `reindex` method instead.
-        :param new_attributes: keys are Stop IDs and values are dictionaries of data to add/replace if present
-        :return:
+        """Adds, or changes if already present, the attributes in new_attributes.
+
+        Doesn't replace the dictionary stored for the Stops presently, so no data is lost, unless it is being overwritten.
+        Changing IDs this way with result in an error.
+        Use Stop's `reindex` method instead.
+
+        Args:
+            new_attributes (dict): keys are Service IDs and values are dictionaries of data to add/replace if present.
         """
         self._verify_no_id_change(new_attributes)
         stops = list(new_attributes.keys())
@@ -2902,45 +2990,54 @@ class Schedule(ScheduleElement):
         nx.set_node_attributes(self._graph, dict(zip(stops, new_attribs)))
         logging.info(f"Changed Stop attributes for {len(stops)} stops")
 
-    def apply_function_to_services(self, function, location: str):
-        """
-        Applies a function or mapping to Services within the Schedule. Fails silently, if the keys referred to by the
-        function are not present, they will not be considered. The function will only be applied where it is possible.
-        :param function: function, a callable, of Service attributes dictionary returning a value that should be stored
-            under `location` or a dictionary mapping - in the case of a dictionary all values stored under `location`
-            will be mapped to new values given by the mapping, if they are present.
-        :param location: where to save the results: string defining the key in the Service attributes dictionary
-        :return:
+    def apply_function_to_services(self, function: Callable, location: str):
+        """Applies a function or mapping to Services within the Schedule.
+
+        Fails silently, if the keys referred to by the function are not present, they will not be considered.
+        The function will only be applied where it is possible.
+
+        Args:
+            function (Callable):
+                Function of Service attributes dictionary returning a value that should be stored under `location` or a dictionary mapping.
+                In the case of a dictionary all values stored under `location` will be mapped to new values given by the mapping, if they are present.
+
+            location (str): where to save the results: string defining the key in the Service attributes dictionary
         """
         new_attributes = graph_operations.apply_to_attributes(
             self._graph.graph["services"].items(), function, location
         )
         self.apply_attributes_to_services(new_attributes)
 
-    def apply_function_to_routes(self, function, location: str):
-        """
-        Applies a function or mapping to Routes within the Schedule. Fails silently, if the keys referred to by the
-        function are not present, they will not be considered. The function will only be applied where it is possible.
-        :param function: function, a callable, of Route attributes dictionary returning a value that should be stored
-            under `location` or a dictionary mapping - in the case of a dictionary all values stored under `location`
-            will be mapped to new values given by the mapping, if they are present.
-        :param location: where to save the results: string defining the key in the Route attributes dictionary
-        :return:
+    def apply_function_to_routes(self, function: Callable, location: str):
+        """Applies a function or mapping to Routes within the Schedule.
+
+        Fails silently, if the keys referred to by the function are not present, they will not be considered.
+        The function will only be applied where it is possible.
+
+        Args:
+            function (Callable):
+                Function of Service attributes dictionary returning a value that should be stored under `location` or a dictionary mapping.
+                In the case of a dictionary all values stored under `location` will be mapped to new values given by the mapping, if they are present.
+
+            location (str): where to save the results: string defining the key in the Service attributes dictionary
         """
         new_attributes = graph_operations.apply_to_attributes(
             self._graph.graph["routes"].items(), function, location
         )
         self.apply_attributes_to_routes(new_attributes)
 
-    def apply_function_to_stops(self, function, location: str):
-        """
-        Applies a function or mapping to Stops within the Schedule. Fails silently, if the keys referred to by the
-        function are not present, they will not be considered. The function will only be applied where it is possible.
-        :param function: function, a callable, of Stop attributes dictionary returning a value that should be stored
-            under `location` or a dictionary mapping - in the case of a dictionary all values stored under `location`
-            will be mapped to new values given by the mapping, if they are present.
-        :param location: where to save the results: string defining the key in the Stop attributes dictionary
-        :return:
+    def apply_function_to_stops(self, function: Callable, location: str):
+        """Applies a function or mapping to Stops within the Schedule.
+
+        Fails silently, if the keys referred to by the function are not present, they will not be considered.
+        The function will only be applied where it is possible.
+
+        Args:
+            function (Callable):
+                Function of Service attributes dictionary returning a value that should be stored under `location` or a dictionary mapping.
+                In the case of a dictionary all values stored under `location` will be mapped to new values given by the mapping, if they are present.
+
+            location (str): where to save the results: string defining the key in the Service attributes dictionary
         """
         new_attributes = graph_operations.apply_to_attributes(
             self._graph.nodes(data=True), function, location
@@ -2973,27 +3070,31 @@ class Schedule(ScheduleElement):
                 stops_without_data.append(stop)
         return stops_without_data, stops_with_conflicting_data
 
-    def add_service(self, service: Service, force=False):
-        """
-        Adds a service to Schedule.
-        :param service: genet.Service object, must have index unique w.r.t. Services already in the Schedule
-        :param force: force the add, even if the stops in the Service have data conflicting with the stops of the same
-            IDs that are already in the Schedule. This will force the Service to be added, the stops data of currently
-            in the Schedule will persist. If you want to change the data for stops use `apply_attributes_to_stops` or
-            `apply_function_to_stops`.
-        :return:
+    def add_service(self, service: Service, force: bool = False):
+        """Adds a service to Schedule.
+
+        Args:
+            service (Service): genet.Service object, must have index unique w.r.t. Services already in the Schedule.
+            force (bool, optional):
+                force the add, even if the stops in the Service have data conflicting with the stops of the same IDs that are already in the Schedule.
+                This will force the Service to be added, the stops data of currently in the Schedule will persist.
+                If you want to change the data for stops use `apply_attributes_to_stops` or `apply_function_to_stops`.
+                Defaults to False.
         """
         self.add_services(services=[service], force=force)
 
-    def add_services(self, services: List[Service], force=False):
-        """
-        Adds multiple services to Schedule.
-        :param service: genet.Service object, must have index unique w.r.t. Services already in the Schedule
-        :param force: force the add, even if the stops in the Service have data conflicting with the stops of the same
-            IDs that are already in the Schedule. This will force the Service to be added, the stops data of currently
-            in the Schedule will persist. If you want to change the data for stops use `apply_attributes_to_stops` or
-            `apply_function_to_stops`.
-        :return:
+    def add_services(self, services: list[Service], force: bool = False) -> list[Service]:
+        """Adds multiple services to Schedule.
+
+        Args:
+            services (list[Service]): genet.Service objects, must have index unique w.r.t. Services already in the Schedule.
+            force (bool, optional):
+                force the add, even if the stops in the Service have data conflicting with the stops of the same IDs that are already in the Schedule.
+                This will force the Service to be added, the stops data of currently in the Schedule will persist.
+                If you want to change the data for stops use `apply_attributes_to_stops` or `apply_function_to_stops`.
+                Defaults to False.
+        Returns:
+            list[Service]: `service` with graph updates.
         """
         clashing_ids = []
         for service in services:
@@ -3065,18 +3166,18 @@ class Schedule(ScheduleElement):
         return services
 
     def remove_service(self, service_id: str):
-        """
-        Removes Service under given index `service_id`
-        :param service_id: Service ID to remove
-        :return:
+        """Removes Service under given index `service_id`.
+
+        Args:
+            service_id (str): Service ID to remove.
         """
         self.remove_services(service_ids=[service_id])
 
-    def remove_services(self, service_ids: List[str]):
-        """
-        Removes Services with given indices
-        :param service_ids: List of service IDs to remove
-        :return:
+    def remove_services(self, service_ids: list[str]):
+        """Removes Services with given indices.
+
+        Args:
+            service_ids (list[str]): List of service IDs to remove.
         """
         service_ids = persistence.listify(service_ids)
         missing_ids = []
@@ -3124,28 +3225,30 @@ class Schedule(ScheduleElement):
         }
         logging.info(f"Removed Services with IDs `{service_id}`, and Routes: {route_ids}")
 
-    def add_route(self, service_id, route: Route, force=False):
-        """
-        Adds route to a service already in the Schedule.
-        :param service_id: service id in the Schedule to add the route to
-        :param route: Route object to add
-        :param force: force the add, even if the stops in the Route have data conflicting with the stops of the same
-            IDs that are already in the Schedule. This will force the Route to be added, the stops data of currently
-            in the Schedule will persist. If you want to change the data for stops use `apply_attributes_to_stops` or
-            `apply_function_to_stops`.
-        :return:
+    def add_route(self, service_id: Union[str, int], route: Route, force: bool = False):
+        """Adds route to a service already in the Schedule.
+
+        Args:
+            service_id (Union[str, int]): service id in the Schedule to add the route to.
+            route (Route): Route object to add.
+            force (bool, optional):
+                force the add, even if the stops in the Service have data conflicting with the stops of the same IDs that are already in the Schedule.
+                This will force the Service to be added, the stops data of currently in the Schedule will persist.
+                If you want to change the data for stops use `apply_attributes_to_stops` or `apply_function_to_stops`.
+                Defaults to False.
         """
         self.add_routes(routes_dict={service_id: [route]}, force=force)
 
-    def add_routes(self, routes_dict: Dict[str, List[Route]], force=False):
-        """
-        Adds routes to services already present in the Schedule.
-        :param routes_dict: dictionary specifying service IDs and list of routes (Route objects) to add to them
-        :param force: force the add, even if the stops in the Route have data conflicting with the stops of the same
-            IDs that are already in the Schedule. This will force the Route to be added, the stops data of currently
-            in the Schedule will persist. If you want to change the data for stops use `apply_attributes_to_stops` or
-            `apply_function_to_stops`.
-        :return:
+    def add_routes(self, routes_dict: dict[str, list[Route]], force: bool = False):
+        """Adds routes to services already present in the Schedule.
+
+        Args:
+            routes_dict (dict[str, list[Route]]): dictionary specifying service IDs and list of routes (Route objects) to add to them.
+            force (bool, optional):
+                force the add, even if the stops in the Service have data conflicting with the stops of the same IDs that are already in the Schedule.
+                This will force the Service to be added, the stops data of currently in the Schedule will persist.
+                If you want to change the data for stops use `apply_attributes_to_stops` or `apply_function_to_stops`.
+                Defaults to False.
         """
         missing_services = []
         route_ids = []
@@ -3226,19 +3329,20 @@ class Schedule(ScheduleElement):
         self.generate_vehicles(overwrite=False)
         return routes_dict
 
-    def remove_route(self, route_id):
-        """
-        Removes Route under index `route_id`
-        :param route_id: route ID to remove
-        :return:
+    def remove_route(self, route_id: str):
+        """Removes Route under index `route_id`.
+
+        Args:
+            route_id (str): route ID to remove
+
         """
         self.remove_routes(route_ids=[route_id])
 
-    def remove_routes(self, route_ids: List[str]):
-        """
-        Removes Route under index `route_id`
-        :param route_ids: list of route IDs to remove
-        :return:
+    def remove_routes(self, route_ids: list[str]):
+        """Removes Route under index `route_id`.
+
+        Args:
+            route_ids (list[str]): route IDs to remove.
         """
         route_ids = persistence.listify(route_ids)
         missing_ids = []
@@ -3310,10 +3414,10 @@ class Schedule(ScheduleElement):
         logging.info(f"Removed Routes with IDs {route_ids}, to Services `{service_id}`.")
 
     def remove_stop(self, stop_id: str):
-        """
-        Removes Stop under index `stop_id`
-        :param stop_id:
-        :return:
+        """Removes Stop under index `stop_id`.
+
+        Args:
+            stop_id (str): Stop ID to remove.
         """
         self.remove_stops([stop_id])
 
@@ -3375,10 +3479,11 @@ class Schedule(ScheduleElement):
         if stops_to_remove:
             self.remove_stops(stops_to_remove)
 
-    def has_trips_with_zero_headways(self):
-        """
-        Deletes trips that have zero headways and thus deemed duplicates
-        :return:
+    def has_trips_with_zero_headways(self) -> bool:
+        """Deletes trips that have zero headways and thus deemed duplicates.
+
+        Returns:
+            bool: True if any trips have zero headway.
         """
         trip_headways_df = self.trips_headways()
         zero_headways = trip_headways_df[(trip_headways_df["headway_mins"] == 0)]
@@ -3387,7 +3492,6 @@ class Schedule(ScheduleElement):
     def fix_trips_with_zero_headways(self):
         """
         Deletes trips that have zero headways and thus deemed duplicates
-        :return:
         """
         trip_headways_df = self.trips_headways()
         zero_headways = trip_headways_df[(trip_headways_df["headway_mins"] == 0)]
@@ -3522,15 +3626,19 @@ class Schedule(ScheduleElement):
     def generate_validation_report(self):
         return schedule_validation.generate_validation_report(schedule=self)
 
-    def generate_standard_outputs(self, output_dir, gtfs_day="19700101", include_shp_files=False):
-        """
-        Generates geojsons that can be used for generating standard kepler visualisations.
-        These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
-        the shape of modal subgraphs.
-        :param output_dir: path to folder where to save resulting geojsons
-        :param gtfs_day: day in format YYYYMMDD for the network's schedule for consistency in visualisations,
-        defaults to 1970/01/01 otherwise
-        :return: None
+    def generate_standard_outputs(
+        self, output_dir: str, gtfs_day: str = "19700101", include_shp_files: bool = False
+    ):
+        """Generates geojsons that can be used for generating standard kepler visualisations.
+
+        These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes, the shape of modal subgraphs.
+
+        Args:
+            output_dir (str): path to folder where to save resulting geojsons.
+            gtfs_day (str, optional):
+                Day in format YYYYMMDD for the network's schedule for consistency in visualisations,
+                Defaults to "19700101" (1970-01-01).
+            include_shp_files (bool, optional): If True, also store shapefiles. Defaults to False.
         """
         gngeojson.generate_standard_outputs_for_schedule(
             self, output_dir, gtfs_day, include_shp_files
@@ -3538,13 +3646,15 @@ class Schedule(ScheduleElement):
         logging.info("Finished generating standard outputs. Zipping folder.")
         persistence.zip_folder(output_dir)
 
-    def write_to_matsim(self, output_dir, reproj_processes=1):
-        """
-        Save to MATSim XML format.
-        :param output_dir: path to output directory
-        :param reproj_processes: you can set this in case you have a lot of stops and your stops need to be reprojected
-            it splits the process across given number of processes.
-        :return:
+    def write_to_matsim(self, output_dir: str, reproj_processes: int = 1):
+        """Save to MATSim XML format.
+
+        Args:
+            output_dir (str): path to output directory.
+            reproj_processes (int, optional):
+                You can set this in case you have a lot of stops and your stops need to be reprojected.
+                It splits the process across given number of processes.
+                Defaults to 1.
         """
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_matsim_schedule(output_dir, self, reproj_processes=reproj_processes)
@@ -3575,11 +3685,11 @@ class Schedule(ScheduleElement):
             "vehicles": {"vehicle_types": self.vehicle_types, "vehicles": self.vehicles},
         }
 
-    def write_to_json(self, output_dir):
-        """
-        Writes Schedule to a single JSON file with stops, services, vehicles and minimum transfer times (if applicable)
-        :param output_dir: output directory
-        :return:
+    def write_to_json(self, output_dir: str):
+        """Writes Schedule to a single JSON file with stops, services, vehicles and minimum transfer times (if applicable)
+
+        Args:
+            output_dir (str): output directory.
         """
         persistence.ensure_dir(output_dir)
         logging.info(f"Saving Schedule to JSON in {output_dir}")
@@ -3587,12 +3697,13 @@ class Schedule(ScheduleElement):
             json.dump(self.to_json(), outfile)
         self.write_extras(output_dir)
 
-    def write_to_geojson(self, output_dir, epsg):
-        """
-        Writes Schedule graph to nodes and edges geojson files.
-        :param output_dir: output directory
-        :param epsg: projection if the geometry is to be reprojected, defaults to own projection
-        :return:
+    def write_to_geojson(self, output_dir: str, epsg: str):
+        """Writes Schedule graph to nodes and edges geojson files.
+
+        Args:
+            output_dir (str): output directory.
+            epsg (str): projection if the geometry is to be reprojected, defaults to own projection.
+
         """
         persistence.ensure_dir(output_dir)
         _gdfs = self.to_geodataframe()
@@ -3610,22 +3721,27 @@ class Schedule(ScheduleElement):
         )
         self.write_extras(output_dir)
 
-    def to_gtfs(self, gtfs_day, mode_to_route_type: dict = None):
-        """
-        Transforms Schedule in to GTFS-like format. It's not full GTFS as it only represents one day, misses a lot
-         of optional data and does not include `agency.txt` required file. Produces 'stops', 'routes', 'trips',
-         'stop_times', 'calendar' tables.
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format
-        :param mode_to_route_type: PT modes in Route objects to route type code by default uses
-        https://developers.google.com/transit/gtfs/reference#routestxt
-        {
-            "tram": 0, "subway": 1, "rail": 2, "bus": 3, "ferry": 4, "cablecar": 5, "gondola": 6, "funicular": 7
-        }
-        Reference for extended mode types:
-        https://developers.google.com/transit/gtfs/reference/extended-route-types
+    def to_gtfs(self, gtfs_day: str, mode_to_route_type: Optional[dict] = None) -> dict:
+        """Transforms Schedule in to GTFS-like format.
 
-        :return: Dictionary, keys are the names of the tables e.g. `stops` for the `stops.txt` file, values are
-            pandas.DataFrame tables.
+        It's not full GTFS as it only represents one day, misses a lot of optional data and does not include `agency.txt` required file.
+        Produces 'stops', 'routes', 'trips', 'stop_times', 'calendar' tables.
+
+        Args:
+            gtfs_day (str): day used for GTFS when creating the network in YYYYMMDD format
+            mode_to_route_type (Optional[dict], optional):
+                PT modes in Route objects to route type code by default uses https://developers.google.com/transit/gtfs/reference#routestxt
+                Example:
+                ```python
+                {
+                    "tram": 0, "subway": 1, "rail": 2, "bus": 3, "ferry": 4, "cablecar": 5, "gondola": 6, "funicular": 7
+                }
+                ```
+                Reference for extended mode types:
+                https://developers.google.com/transit/gtfs/reference/extended-route-types.
+
+        Returns:
+            dict: keys are the names of the tables e.g. `stops` for the `stops.txt` file, values are pandas.DataFrame tables.
         """
         stops = self.stop_attribute_data(
             keys=[
@@ -3753,13 +3869,18 @@ class Schedule(ScheduleElement):
             "calendar": calendar,
         }
 
-    def write_to_csv(self, output_dir, gtfs_day="19700101", file_extention="csv"):
-        """
-        Writes 'stops', 'routes', 'trips', 'stop_times', 'calendar' tables to CSV files
-        :param output_dir: folder to output csv or txt files
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
-        :param file_extention: csv by default, or txt
-        :return: None
+    def write_to_csv(
+        self,
+        output_dir: str,
+        gtfs_day: str = "19700101",
+        file_extention: Literal["csv", "txt"] = "csv",
+    ):
+        """Writes 'stops', 'routes', 'trips', 'stop_times', 'calendar' tables to CSV files.
+
+        Args:
+            output_dir (str): folder to output csv or txt files.
+            gtfs_day (str, optional): day used for GTFS when creating the network in YYYYMMDD format. Defaults to "19700101".
+            file_extention (Literal[csv, txt], optional): File extension to save to. Defaults to "csv".
         """
         persistence.ensure_dir(output_dir)
         logging.info(f"Saving Schedule to GTFS {file_extention} in {output_dir}")
@@ -3769,12 +3890,12 @@ class Schedule(ScheduleElement):
             df.to_csv(file_path)
         self.write_extras(output_dir)
 
-    def write_to_gtfs(self, output_dir, gtfs_day="19700101"):
-        """
-        Writes 'stops', 'routes', 'trips', 'stop_times', 'calendar' tables to CSV files
-        :param output_dir: folder to output txt files
-        :param gtfs_day: day used for GTFS when creating the network in YYYYMMDD format defaults to 19700101
-        :return: None
+    def write_to_gtfs(self, output_dir: str, gtfs_day: str = "19700101"):
+        """Writes 'stops', 'routes', 'trips', 'stop_times', 'calendar' tables to CSV files.
+
+        Args:
+            output_dir (str): folder to output csv or txt files.
+            gtfs_day (str, optional): day used for GTFS when creating the network in YYYYMMDD format. Defaults to "19700101".
         """
         self.write_to_csv(output_dir, gtfs_day=gtfs_day, file_extention="txt")
 
@@ -3872,11 +3993,13 @@ def verify_graph_schema(graph):
                 )
 
 
-def read_vehicle_types(yml):
+def read_vehicle_types(yml: str) -> dict:
     """
-    :param yml: path to .yml file based on example vehicles config in `genet/configs/vehicles/vehicle_definitions.yml`
-        or a bytes stream of that file
-    :return:
+    Args:
+        yml (str): path to .yml file based on example vehicles config in `genet/configs/vehicles/vehicle_definitions.yml`.
+
+    Returns:
+        dict: Vehicle type dictionary.
     """
     if persistence.is_yml(yml):
         yml = io.open(yml, mode="r")
@@ -3889,11 +4012,12 @@ def get_headway(group):
 
 
 def generate_trip_departures_from_headway(headway_spec: dict):
-    """
-    Generates new trip departure times
-    :param headway_spec: dictionary with tuple keys: (from time, to time) and headway values in minutes
-     {('HH:MM:SS', 'HH:MM:SS'): headway_minutes}.
-    :return:
+    """Generates new trip departure times.
+
+    Args:
+        headway_spec (dict):
+            Dictionary with tuple keys: (from time, to time) and headway values in minutes:
+            `{('HH:MM:SS', 'HH:MM:SS'): headway_minutes}`.
     """
     trip_departures = set()
     for (from_time, to_time), headway_mins in headway_spec.items():

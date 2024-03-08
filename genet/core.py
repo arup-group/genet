@@ -5,15 +5,17 @@ import os
 import traceback
 import uuid
 from copy import deepcopy
-from typing import Dict, List, Union
+from typing import Any, Callable, Iterator, Literal, Optional, Union
 
 import geopandas as gpd
 import networkx as nx
 import numpy as np
 import pandas as pd
+from keplergl import KeplerGl
 from pyproj import Transformer
 from s2sphere import CellId
 from shapely.geometry import LineString, Point
+from shapely.geometry.base import BaseGeometry
 
 import genet.auxiliary_files as auxiliary_files
 import genet.exceptions as exceptions
@@ -39,7 +41,14 @@ logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 
 
 class Network:
-    def __init__(self, epsg, **kwargs):
+    def __init__(self, epsg: str, **kwargs):
+        """GeNet network class.
+
+        Args:
+            epsg (str): Coordinate reference system, e.g. "EPSG:4326".
+
+        Keyword Args: will be added as attributes of the class.
+        """
         self.epsg = epsg
         self.transformer = Transformer.from_crs(epsg, "epsg:4326", always_xy=True)
         self.graph = nx.MultiDiGraph(name="Network graph", crs=epsg)
@@ -63,10 +72,10 @@ class Network:
         return self.info()
 
     def add_additional_attributes(self, attribs: dict):
-        """
-        adds attributes defined by keys of the attribs dictionary with values of the corresponding values
-        :param attribs: the additional attributes {attribute_name: attribute_value}
-        :return:
+        """Adds attributes defined by keys of the attribs dictionary with values of the corresponding values.
+
+        Args:
+            attribs (dict): The additional attributes {attribute_name: attribute_value}
         """
         for k, v in attribs.items():
             if k not in self.__dict__:
@@ -80,13 +89,17 @@ class Network:
     def has_attrib(self, attrib_name):
         return attrib_name in self.__dict__
 
-    def add(self, other):
-        """
-        This lets you add on `other` genet.Network to the network this method is called on.
-        This is deliberately not a magic function to discourage `new_network = network_1 + network_2` (and memory
-        goes out the window)
-        :param other:
-        :return:
+    def add(self, other: "Network"):
+        """This lets you add on `other` genet.Network to the network this method is called on.
+
+        This is deliberately not a magic function to discourage `new_network = network_1 + network_2`,
+        where memory goes out the window.
+
+        Args:
+            other (Network): Network to add.
+
+        Raises:
+            RuntimeError: Cannot add simplified and non-simplified networks together.
         """
         if self.is_simplified() != other.is_simplified():
             raise RuntimeError("You cannot add simplified and non-simplified networks together")
@@ -121,15 +134,21 @@ class Network:
     def info(self):
         return f"Graph info: {str(self.graph)} \nSchedule info: {self.schedule.info()}"
 
-    def plot(self, output_dir="", data=False):
-        """
-        Plots the network graph and schedule on kepler map.
-        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
-        :param output_dir: output directory for the image, if passed, will save plot to html
-        :param data: Defaults to False, only the geometry and ID will be visible.
-            True will visualise all data on the map (not suitable for large networks)
-            A set of keys e.g. {'freespeed', 'capacity'}
-        :return:
+    def plot(self, output_dir: str = "", data: Union[bool, set] = False) -> KeplerGl:
+        """Plots the network graph and schedule on kepler map.
+
+        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install.
+
+        Args:
+            output_dir (str, optional): Output directory for the image, if passed, will save plot to html. Defaults to "".
+            data (bool | set, optional):
+                If False, only the geometry and ID will be visible.
+                If True, all data will be visible on the map (not suitable for large networks)
+                If a set of keys, e.g. {'freespeed', 'capacity'}, only that data will be visible.
+                Defaults to False.
+
+        Returns:
+            KeplerGl: Kepler plot object.
         """
         if not self.schedule:
             logging.warning(
@@ -159,15 +178,21 @@ class Network:
             m.save_to_html(file_name=os.path.join(output_dir, "network_with_pt_routes.html"))
         return m
 
-    def plot_graph(self, output_dir="", data=False):
-        """
-        Plots the network graph only on kepler map.
-        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
-        :param output_dir: output directory for the image, if passed, will save plot to html
-        :param data: Defaults to False, only the geometry and ID will be visible.
-            True will visualise all data on the map (not suitable for large networks)
-            A set of keys e.g. {'freespeed', 'capacity'}
-        :return:
+    def plot_graph(self, output_dir: str = "", data: Union[bool, set] = False) -> KeplerGl:
+        """Plots the network graph only on kepler map.
+
+        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install.
+
+        Args:
+            output_dir (str, optional): Output directory for the image, if passed, will save plot to html. Defaults to "".
+            data (bool | set, optional):
+                If False, only the geometry and ID will be visible.
+                If True, all data will be visible on the map (not suitable for large networks)
+                If a set of keys, e.g. {'freespeed', 'capacity'}, only that data will be visible.
+                Defaults to False.
+
+        Returns:
+            KeplerGl:  Kepler plot object.
         """
         network_links = self.to_geodataframe()["links"]
 
@@ -185,15 +210,21 @@ class Network:
             m.save_to_html(file_name=os.path.join(output_dir, "network_graph.html"))
         return m
 
-    def plot_schedule(self, output_dir="", data=False):
-        """
-        Plots original stop connections in the network's schedule over the network graph on kepler map.
-        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install
-        :param output_dir: output directory for the image, if passed, will save plot to html
-        :param data: Defaults to False, only the geometry and ID will be visible.
-            True will visualise all data on the map (not suitable for large networks)
-            A set of keys e.g. {'freespeed', 'capacity'}
-        :return:
+    def plot_schedule(self, output_dir: str = "", data: Union[bool, set] = False) -> KeplerGl:
+        """Plots original stop connections in the network's schedule over the network graph on kepler map.
+
+        Ensure all prerequisites are installed https://docs.kepler.gl/docs/keplergl-jupyter#install.
+
+        Args:
+            output_dir (str, optional): Output directory for the image, if passed, will save plot to html. Defaults to "".
+            data (bool | set, optional):
+                If False, only the geometry and ID will be visible.
+                If True, all data will be visible on the map (not suitable for large networks)
+                If a set of keys, e.g. {'freespeed', 'capacity'}, only that data will be visible.
+                Defaults to False.
+
+        Returns:
+            KeplerGl:  Kepler plot object.
         """
         network_links = self.to_geodataframe()["links"]
         schedule_gdf = self.schedule.to_geodataframe()
@@ -222,12 +253,12 @@ class Network:
             m.save_to_html(file_name=os.path.join(output_dir, "network_and_schedule.html"))
         return m
 
-    def reproject(self, new_epsg, processes=1):
-        """
-        Changes projection of the network to new_epsg
-        :param new_epsg: 'epsg:1234'
-        :param processes: max number of process to split computation across
-        :return:
+    def reproject(self, new_epsg: str, processes: int = 1):
+        """Changes projection of the network to `new_epsg`.
+
+        Args:
+            new_epsg (str): New network projection, e.g., 'epsg:1234'.
+            processes (int, optional): max number of process to split computation across. Defaults to 1.
         """
         # reproject nodes
         nodes_attribs = dict(self.nodes())
@@ -255,21 +286,33 @@ class Network:
         self.initiate_crs_transformer(new_epsg)
         self.graph.graph["crs"] = self.epsg
 
-    def initiate_crs_transformer(self, epsg):
+    def initiate_crs_transformer(self, epsg: str):
+        """Set the networks projection transformer to `epsg`.
+
+        Args:
+            epsg (str): Projection, e.g., 'epsg:1234'.
+        """
         self.epsg = epsg
         if epsg != "epsg:4326":
             self.transformer = Transformer.from_crs(epsg, "epsg:4326", always_xy=True)
         else:
             self.transformer = None
 
-    def simplify(self, no_processes=1, keep_loops=False):
-        """
-        Simplifies network graph, retaining only nodes that are junctions
-        :param no_processes: Number of processes to split some computation across. The method is pretty fast though
-            and 1 process is often preferable --- there is overhead for splitting and joining the data.
-        :param keep_loops: bool, defaults to False. Simplification often leads to self-loops, these will be removed
-            unless keep_loops=True
-        :return: None, updates Network object
+    def simplify(self, no_processes: int = 1, keep_loops: bool = False):
+        """Simplifies network graph in-place, retaining only nodes that are junctions.
+
+        Args:
+            no_processes (int, optional):
+                Number of processes to split some computation across.
+                The method is pretty fast though and 1 process is often preferable --- there is overhead for splitting and joining the data.
+                Defaults to 1.
+            keep_loops (bool, optional):
+                Simplification often leads to self-loops.
+                These will be removed unless keep_loops=`True`.
+                Defaults to False.
+
+        Raises:
+            RuntimeError: Can only simply the network once.
         """
         if self.is_simplified():
             raise RuntimeError(
@@ -314,176 +357,206 @@ class Network:
             return self.attributes["simplified"] in {"true", "True", True}
         return False
 
-    def node_attribute_summary(self, data=False):
-        """
-        Parses through data stored on nodes and gives a summary tree of the data stored on the nodes.
-        If data is True, shows also up to 5 unique values stored under such keys.
-        :param data: bool, False by default
-        :return:
+    def node_attribute_summary(self, data: bool = False):
+        """Parses through data stored on nodes and gives a summary tree of the data stored on the nodes.
+
+        Args:
+            data (bool, optional):
+                If True, shows also up to 5 unique values stored under such keys.
+                Defaults to False.
         """
         root = graph_operations.get_attribute_schema(self.nodes(), data=data)
         graph_operations.render_tree(root, data)
 
-    def node_attribute_data_under_key(self, key):
-        """
-        Generates a pandas.Series object indexed by node ids, with data stored on the nodes under `key`
-        :param key: either a string e.g. 'x', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :return: pandas.Series
+    def node_attribute_data_under_key(self, key: Union[str, dict]) -> pd.Series:
+        """Generates a pandas.Series object indexed by node ids, with data stored on the nodes under `key`.
+
+        Args:
+            key (Union[str, dict]):
+                Either a string e.g. 'x', or if accessing nested information, a dictionary e.g. {'attributes': {'osm:way:name': 'text'}}.
+
+        Returns:
+            pd.Series: Node attribute data as a pandas Series.
         """
         data = graph_operations.get_attribute_data_under_key(self.nodes(), key)
         return pd.Series(data, dtype=pd_helpers.get_pandas_dtype(data))
 
-    def node_attribute_data_under_keys(self, keys: Union[list, set], index_name=None):
-        """
-        Generates a pandas.DataFrame object indexed by link ids, with data stored on the nodes under `key`
-        :param keys: list of either a string e.g. 'x', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :param index_name: optional, gives the index_name to dataframes index
-        :return: pandas.DataFrame
+    def node_attribute_data_under_keys(
+        self, keys: Union[list, set], index_name: Optional[str] = None
+    ) -> pd.DataFrame:
+        """Generates a pandas.DataFrame object indexed by node ids, with columns containing data stored on the nodes under each of `keys`.
+
+        Args:
+            keys (Union[list, set]): An iterable of either a string e.g. 'x', or if accessing nested information, a dictionary e.g. {'attributes': {'osm:way:name': 'text'}}.
+            index_name (Optional[str], optional): If given, is used to set the dataframe index name. Defaults to None.
+
+        Returns:
+            pd.DataFrame: Node attributes.
         """
         return graph_operations.build_attribute_dataframe(
             self.nodes(), keys=keys, index_name=index_name
         )
 
-    def link_attribute_summary(self, data=False):
-        """
-        Parses through data stored on links and gives a summary tree of the data stored on the links.
-        If data is True, shows also up to 5 unique values stored under such keys.
-        :param data: bool, False by default
-        :return:
+    def link_attribute_summary(self, data: bool = False):
+        """Parses through data stored on links and prints a summary tree of the data stored on the links.
+
+        Args:
+            data (bool, optional): If True, shows also up to 5 unique values stored under such keys. Defaults to False.
         """
         root = graph_operations.get_attribute_schema(self.links(), data=data)
         graph_operations.render_tree(root, data)
 
-    def link_attribute_data_under_key(self, key: Union[str, dict]):
-        """
-        Generates a pandas.Series object indexed by link ids, with data stored on the links under `key`
-        :param key: either a string e.g. 'modes', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :return: pandas.Series
+    def link_attribute_data_under_key(self, key: Union[str, dict]) -> pd.Series:
+        """Generates a pandas.Series object indexed by link ids, with data stored on the nodes under `key`.
+
+        Args:
+            key (Union[str, dict]):
+                Either a string e.g. 'x', or if accessing nested information, a dictionary e.g. {'attributes': {'osm:way:name': 'text'}}.
+
+        Returns:
+            pd.Series: Link ID attribute data as a pandas Series.
         """
         return pd.Series(graph_operations.get_attribute_data_under_key(self.links(), key))
 
-    def link_attribute_data_under_keys(self, keys: Union[list, set], index_name=None):
-        """
-        Generates a pandas.DataFrame object indexed by link ids, with data stored on the links under `key`
-        :param keys: list of either a string e.g. 'modes', or if accessing nested information, a dictionary
-            e.g. {'attributes': {'osm:way:name': 'text'}}
-        :param index_name: optional, gives the index_name to dataframes index
-        :return: pandas.DataFrame
+    def link_attribute_data_under_keys(
+        self, keys: Union[list, set], index_name: Optional[str] = None
+    ) -> pd.DataFrame:
+        """Generates a pandas.DataFrame object indexed by link ids, with columns containing data stored on the links under each of `keys`.
+
+        Args:
+            keys (Union[list, set]): An iterable of either a string e.g. 'x', or if accessing nested information, a dictionary e.g. {'attributes': {'osm:way:name': 'text'}}.
+            index_name (Optional[str], optional): If given, is used to set the dataframe index name. Defaults to None.
+
+        Returns:
+            pd.DataFrame: Link ID attributes.
         """
         return graph_operations.build_attribute_dataframe(
             self.links(), keys=keys, index_name=index_name
         )
 
     def extract_nodes_on_node_attributes(
-        self, conditions: Union[list, dict], how=any, mixed_dtypes=True
-    ):
-        """
-        Extracts graph node IDs based on values of attributes saved on the nodes. Fails silently,
-        assumes not all nodes have all of the attributes. In the case were the attributes stored are
-        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
-        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
-        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
-        :param conditions: {'attribute_key': 'target_value'} or nested
-        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+        self, conditions: Union[list, dict], how: Callable = any, mixed_dtypes: bool = True
+    ) -> list[str]:
+        """Extracts graph node IDs based on values of attributes saved on the nodes.
 
-            - single value, string, int, float, where the edge_data[key] == value
+        Fails silently, assumes not all nodes have all of the attributes.
+
+        In the case where the attributes stored are a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not), an intersection of values satisfying condition(s) is considered.
+        It is deemed successful by default.
+        To disable this behaviour set `mixed_dtypes` to False.
+
+        Args:
+            conditions (Union[list, dict]):
+                {'attribute_key': 'target_value'} or nested {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}},
+                where 'target_value' could be:
+
+                - single value, string, int, float, where the edge_data[key] == value
                 (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
 
-            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                - list or set of single values as above, where edge_data[key] in [value1, value2]
                 (if mixed_dtypes==True and in case of set/list edge_data[key],
                 set(edge_data[key]) & set([value1, value2]) is non-empty)
 
-            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
-              lower_bound <= edge_data[key] <= upper_bound
+                - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+                lower_bound <= edge_data[key] <= upper_bound
                 (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
                 edge_data[key] satisfies lower_bound <= item <= upper_bound)
 
-            - function that returns a boolean given the value e.g.
-
-            def below_exclusive_upper_bound(value):
-                return value < 100
-
+                - function that returns a boolean given the value e.g.
+                ```python
+                def below_exclusive_upper_bound(value):
+                    return value < 100
+                ```
                 (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
                 edge_data[key] returns True after applying function)
 
-        :param how : {all, any}, default any
+            how (Callable, optional):
+                The level of rigour used to match conditions. Defaults to any.
+                - all: means all conditions need to be met
+                - any: means at least one condition needs to be met
 
-        The level of rigour used to match conditions
+            mixed_dtypes (bool, optional):
+                If True, will consider the intersection of single values or lists of values in queried dictionary keys, e.g. as in simplified networks.
+                Defaults to True.
 
-            * all: means all conditions need to be met
-            * any: means at least one condition needs to be met
-
-        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
-        values e.g. as in simplified networks.
-        :return: list of node ids in the network satisfying conditions
+        Returns:
+            list[str]: Graph node IDs where attribute values match `conditions`.
         """
         return graph_operations.extract_on_attributes(
             self.nodes(), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes
         )
 
     def extract_links_on_edge_attributes(
-        self, conditions: Union[list, dict], how=any, mixed_dtypes=True
-    ):
-        """
-        Extracts graph link IDs based on values of attributes saved on the edges. Fails silently,
-        assumes not all links have those attributes. In the case were the attributes stored are
-        a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
-        an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
-        deemed successful by default. To disable this behaviour set mixed_dtypes to False.
-        :param conditions: {'attribute_key': 'target_value'} or nested
-        {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+        self, conditions: Union[list, dict], how: Callable = any, mixed_dtypes: bool = True
+    ) -> list[str]:
+        """Extracts graph link IDs based on values of attributes saved on the links.
 
-            - single value, string, int, float, where the edge_data[key] == value
+        Fails silently, assumes not all links have all of the attributes.
+
+        In the case where the attributes stored are a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not), an intersection of values satisfying condition(s) is considered.
+        It is deemed successful by default.
+        To disable this behaviour set `mixed_dtypes` to False.
+
+        Args:
+            conditions (Union[list, dict]):
+                {'attribute_key': 'target_value'} or nested {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}},
+                where 'target_value' could be:
+
+                - single value, string, int, float, where the edge_data[key] == value
                 (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
 
-            - list or set of single values as above, where edge_data[key] in [value1, value2]
+                - list or set of single values as above, where edge_data[key] in [value1, value2]
                 (if mixed_dtypes==True and in case of set/list edge_data[key],
                 set(edge_data[key]) & set([value1, value2]) is non-empty)
 
-            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
-              lower_bound <= edge_data[key] <= upper_bound
+                - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+                lower_bound <= edge_data[key] <= upper_bound
                 (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
                 edge_data[key] satisfies lower_bound <= item <= upper_bound)
 
-            - function that returns a boolean given the value e.g.
-
-            def below_exclusive_upper_bound(value):
-                return value < 100
-
+                - function that returns a boolean given the value e.g.
+                ```python
+                def below_exclusive_upper_bound(value):
+                    return value < 100
+                ```
                 (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
                 edge_data[key] returns True after applying function)
 
-        :param how : {all, any}, default any
+            how (Callable, optional):
+                The level of rigour used to match conditions. Defaults to any.
+                - all: means all conditions need to be met
+                - any: means at least one condition needs to be met
 
-        The level of rigour used to match conditions
+            mixed_dtypes (bool, optional):
+                If True, will consider the intersection of single values or lists of values in queried dictionary keys, e.g. as in simplified networks.
+                Defaults to True.
 
-            * all: means all conditions need to be met
-            * any: means at least one condition needs to be met
-
-        :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
-        values e.g. as in simplified networks.
-        :return: list of link ids in the network satisfying conditions
+        Returns:
+            list[str]: Graph link IDs where attribute values match `conditions`.
         """
         return graph_operations.extract_on_attributes(
             self.links(), conditions=conditions, how=how, mixed_dtypes=mixed_dtypes
         )
 
-    def links_on_modal_condition(self, modes: Union[str, list]):
-        """
-        Finds link IDs with modes or singular mode given in `modes`
-        :param modes: string mode e.g. 'car' or a list of such modes e.g. ['car', 'walk']
-        :return: list of link IDs
+    def links_on_modal_condition(self, modes: Union[str, list]) -> list[str]:
+        """Finds link IDs with modes or singular mode given in `modes`.
+
+        Args:
+            modes (Union[str, list]): string mode e.g. 'car' or a list of such modes e.g. ['car', 'walk'].
+
+        Returns:
+            list[str]: list of link IDs.
         """
         return self.extract_links_on_edge_attributes(conditions={"modes": modes}, mixed_dtypes=True)
 
-    def nodes_on_modal_condition(self, modes: Union[str, list]):
-        """
-        Finds node IDs with modes or singular mode given in `modes`
-        :param modes: string mode e.g. 'car' or a list of such modes e.g. ['car', 'walk']
-        :return: list of link IDs
+    def nodes_on_modal_condition(self, modes: Union[str, list]) -> list[str]:
+        """Finds node IDs with modes or singular mode given in `modes`.
+
+        Args:
+            modes (Union[str, list]): string mode e.g. 'car' or a list of such modes e.g. ['car', 'walk'].
+
+        Returns:
+            list[str]: list of node IDs.
         """
         links = self.links_on_modal_condition(modes)
         nodes = {self.link(link)["from"] for link in links} | {
@@ -491,19 +564,22 @@ class Network:
         }
         return list(nodes)
 
-    def modal_subgraph(self, modes: Union[str, set, list]):
+    def modal_subgraph(self, modes: Union[str, set, list]) -> nx.MultiDiGraph:
         return self.subgraph_on_link_conditions(conditions={"modes": modes}, mixed_dtypes=True)
 
-    def nodes_on_spatial_condition(self, region_input):
-        """
-        Returns node IDs which intersect region_input
-        :param region_input:
-            - path to a geojson file, can have multiple features
-            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
-             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
-             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
-            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
-        :return: node IDs
+    def nodes_on_spatial_condition(self, region_input: Union[str, BaseGeometry]) -> list[str]:
+        """Returns node IDs which intersect `region_input`.
+
+        Args:
+            region_input (Union[str, BaseGeometry]):
+                - path to a geojson file, can have multiple features.
+                - string with comma separated hex tokens of Google's S2 geometry.
+                A region can be covered with cells and the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/.
+                E.g., '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'.
+                - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects.
+
+        Returns:
+            list[str]: Node IDs
         """
         if not isinstance(region_input, str):
             # assumed to be a shapely.geometry input
@@ -518,20 +594,26 @@ class Network:
             # is assumed to be hex
             return self._find_node_ids_on_s2_geometry(region_input)
 
-    def links_on_spatial_condition(self, region_input, how="intersect"):
-        """
-        Returns link IDs which intersect region_input
-        :param region_input:
-            - path to a geojson file, can have multiple features
-            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
-             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
-             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
-            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
-        :param how:
-            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
-            region_input
-            - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
-        :return: link IDs
+    def links_on_spatial_condition(
+        self,
+        region_input: Union[str, BaseGeometry],
+        how: Literal["intersect", "within"] = "intersect",
+    ) -> list[str]:
+        """Returns link IDs which intersect `region_input`.
+
+        Args:
+            region_input (Union[str, BaseGeometry]):
+                - path to a geojson file, can have multiple features.
+                - string with comma separated hex tokens of Google's S2 geometry.
+                A region can be covered with cells and the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/.
+                E.g., '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'.
+                - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects.
+            how (Literal[intersect, within], optional):
+                Defaults to "intersect".
+                - 'intersect' will return IDs of the Services whose at least one Stop intersects the `region_input`.
+                - 'within' will return IDs of the Services whose all of the Stops are contained within the `region_input`.
+        Returns:
+            list[str]: Link IDs.
         """
         gdf = self.to_geodataframe()["links"].to_crs("epsg:4326")
         if not isinstance(region_input, str):
@@ -546,20 +628,26 @@ class Network:
     def subnetwork(
         self,
         links: Union[list, set],
-        services: Union[list, set] = None,
-        strongly_connected_modes: Union[list, set] = None,
+        services: Optional[Union[list, set]] = None,
+        strongly_connected_modes: Optional[Union[list, set]] = None,
         n_connected_components: int = 1,
-    ):
-        """
-        Subset a Network object using a collection of link IDs and (optionally) service IDs
-        :param links: Link IDs to be retained in the new Network
-        :param services: optional, collection of service IDs in the Schedule for subsetting.
-        :param strongly_connected_modes: modes in the network that need to be strongly connected. For MATSim those
-            are modes that agents are allowed to route on. Defaults to {'car', 'walk', 'bike'}
-        :param n_connected_components: number of expected strongly connected components for
-            `the strongly_connected_modes`. Defaults to 1, as that is what MATSim expects. Other number may be used
-            if disconnected islands are expected, and then connected up using the `connect_components` method.
-        :return: A new Network object that is a subset of the original
+    ) -> "Network":
+        """Subset a Network object using a collection of link IDs and (optionally) service IDs.
+
+        Args:
+            links (Union[list, set]): Link IDs to be retained in the new Network.
+            services (Optional[Union[list, set]], optional): Collection of service IDs in the Schedule for subsetting. Defaults to None.
+            strongly_connected_modes (Optional[Union[list, set]], optional):
+                Modes in the network that need to be strongly connected.
+                For MATSim those  are modes that agents are allowed to route on. Defaults to {'car', 'walk', 'bike'}.
+                Defaults to None.
+            n_connected_components (int, optional):
+                Number of expected strongly connected components for `the strongly_connected_modes`.
+                Defaults to 1, as that is what MATSim expects.
+                Other number may be used if disconnected islands are expected, and then connected up using the `connect_components` method.
+
+        Returns:
+            Network: A new Network object that is a subset of the original
         """
         logging.info(
             "Subsetting a Network will likely result in a disconnected network graph. A cleaner will be ran "
@@ -609,29 +697,35 @@ class Network:
 
     def subnetwork_on_spatial_condition(
         self,
-        region_input,
-        how="intersect",
-        strongly_connected_modes: Union[list, set] = None,
+        region_input: Union[str, BaseGeometry],
+        how: Literal["intersect", "within"] = "intersect",
+        strongly_connected_modes: Optional[Union[list, set]] = None,
         n_connected_components: int = 1,
-    ):
-        """
-        Subset a Network object using a spatial bound
-        :param region_input:
-            - path to a geojson file, can have multiple features
-            - string with comma separated hex tokens of Google's S2 geometry, a region can be covered with cells and
-             the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/
-             e.g. '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'
-            - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects
-        :param how:
-            - 'intersect' default, will return IDs of the Services whose at least one Stop intersects the
-            region_input
-            - 'within' will return IDs of the Services whose all of the Stops are contained within the region_input
-        :param strongly_connected_modes: modes in the network that need to be strongly connected. For MATSim those
-            are modes that agents are allowed to route on. Defaults to {'car', 'walk', 'bike'}
-        :param n_connected_components: number of expected strongly connected components for
-            `the strongly_connected_modes`. Defaults to 1, as that is what MATSim expects. Other number may be used
-            if disconnected islands are expected, and then connected up using the `connect_components` method.
-        :return: A new Network object that is a subset of the original
+    ) -> "Network":
+        """Subset a Network object using a spatial bound.
+
+        Args:
+            region_input (Union[str, BaseGeometry]):
+                - path to a geojson file, can have multiple features.
+                - string with comma separated hex tokens of Google's S2 geometry.
+                A region can be covered with cells and the tokens string copied using http://s2.sidewalklabs.com/regioncoverer/.
+                E.g., '89c25985,89c25987,89c2598c,89c25994,89c25999ffc,89c2599b,89c259ec,89c259f4,89c25a1c,89c25a24'.
+                - shapely.geometry object, e.g. Polygon or a shapely.geometry.GeometryCollection of such objects.
+            how (Literal[intersect, within], optional):
+                Defaults to "intersect".
+                - 'intersect' will return IDs of the Services whose at least one Stop intersects the `region_input`.
+                - 'within' will return IDs of the Services whose all of the Stops are contained within the `region_input`.
+            strongly_connected_modes (Optional[Union[list, set]], optional):
+                Modes in the network that need to be strongly connected.
+                For MATSim those  are modes that agents are allowed to route on. Defaults to {'car', 'walk', 'bike'}.
+                Defaults to None.
+            n_connected_components (int, optional):
+                Number of expected strongly connected components for `the strongly_connected_modes`.
+                Defaults to 1, as that is what MATSim expects.
+                Other number may be used if disconnected islands are expected, and then connected up using the `connect_components` method.
+
+        Returns:
+            Network: A new Network object that is a subset of the original
         """
         if self.schedule:
             services_to_keep = self.schedule.services_on_spatial_condition(
@@ -649,11 +743,11 @@ class Network:
         )
 
     def remove_mode_from_links(self, links: Union[set, list], mode: Union[set, list, str]):
-        """
-        Method to remove modes from links. Deletes links which have no mode left after the process.
-        :param links: collection of link IDs to remove the mode from
-        :param mode: which mode to remove
-        :return: updates graph
+        """Method to remove modes from links in-place.
+
+        Args:
+            links (Union[set, list]): Collection of link IDs to remove the mode from.
+            mode (Union[set, list, str]): Which mode to remove.
         """
 
         def empty_modes(mode_attrib):
@@ -682,12 +776,13 @@ class Network:
         self.remove_links(no_mode_links)
 
     def retain_n_connected_subgraphs(self, n: int, mode: str):
-        """
-        Method to remove modes from link which do not belong to largest connected n components. Deletes links which
-        have no mode left after the process.
-        :param n: number of components to retain
-        :param mode: which mode to consider
-        :return: updates graph
+        """Method to remove modes in-place from link which do not belong to largest connected n components.
+
+        Deletes links which have no mode left after the process.
+
+        Args:
+            n (int): Number of components to retain.
+            mode (str): Which mode to consider.
         """
         modal_subgraph = self.modal_subgraph(mode)
         # calculate how many connected subgraphs there are
@@ -749,29 +844,44 @@ class Network:
         else:
             raise NotImplementedError("Only `intersect` and `within` options for `how` param.")
 
-    def add_node(self, node: Union[str, int], attribs: dict, silent: bool = False):
-        """
-        Adds a node.
-        :param node:
-        :param attribs: must include spatial information x,y in epsg consistent with the network,
-        or lat lon in epsg:4326
-        :param silent: whether to mute stdout logging messages
-        :return:
+    def add_node(self, node: Union[str, int], attribs: dict, silent: bool = False) -> dict:
+        """Adds a node.
+
+        Args:
+            node (Union[str, int]): Node ID to add.
+            attribs (dict):
+                Node attributes.
+                Must include spatial information x,y in epsg consistent with the network, or lat lon in "epsg:4326".
+            silent (bool, optional): Whether to mute stdout logging messages. Defaults to False.
+
+        Returns:
+            dict: If node ID clashes with existing ID, the mapping of input node ID with renamed node ID.
         """
         return self.add_nodes({node: attribs}, silent=silent)[0]
 
     def add_nodes(
         self, nodes_and_attribs: dict, silent: bool = False, ignore_change_log: bool = False
-    ):
+    ) -> tuple[dict, dict]:
+        """Adds nodes, reindexes if indices are clashing with nodes already in the network.
+
+        Args:
+            nodes_and_attribs (dict): `{index_for_node: {attribute dictionary for that node}}`.
+            silent (bool, optional): Whether to mute stdout logging messages. Defaults to False.
+            ignore_change_log (bool, optional):
+                Whether to ignore logging changes to the network in the changelog.
+                Not recommended.
+                Only used when an alternative changelog event is being produced (e.g. simplification) to reduce changelog bloat.
+                Defaults to False.
+
+        Raises:
+            RuntimeError: Must include spatial information in node attribute dictionary.
+
+        Returns:
+            tuple[dict, dict]:
+                First dict is a mapping from input node IDs to internal node IDs (IDs reindexed if there is any name clashes with existing nodes).
+                Second dict is `nodes_and_attribs` with node IDs updated according to the mapping of the first dict.
         """
-        Adds nodes, reindexes if indices are clashing with nodes already in the network
-        :param nodes_and_attribs: {index_for_node: {attribute dictionary for that node}}
-        :param silent: whether to mute stdout logging messages
-        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
-        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
-        reduce changelog bloat.
-        :return:
-        """
+
         # check for spatial info
         for node_id, attribs in nodes_and_attribs.items():
             keys = set(attribs.keys())
@@ -860,20 +970,28 @@ class Network:
         self,
         u: Union[str, int],
         v: Union[str, int],
-        multi_edge_idx: int = None,
-        attribs: dict = None,
+        multi_edge_idx: Optional[int] = None,
+        attribs: Optional[dict] = None,
         silent: bool = False,
-    ):
-        """
-        Adds an edge between u and v. If an edge between u and v already exists, adds an additional one. Generates
-        link id. If you already have a link id, use the method to add_link.
-        :param u: node in the graph
-        :param v: node in the graph
-        :param multi_edge_idx: you can specify which multi index to use if there are other edges between u and v.
-        Will generate new index if already used.
-        :param attribs:
-        :param silent: whether to mute stdout logging messages
-        :return:
+    ) -> str:
+        """Adds an edge between u and v.
+
+        If an edge between u and v already exists, adds an additional one.
+        Generates a new link id.
+        If you already have a link id, use the method to add_link.
+
+        Args:
+            u (Union[str, int]): node in the graph.
+            v (Union[str, int]): node in the graph.
+            multi_edge_idx (Optional[int], optional):
+                You can specify which multi index to use if there are other edges between u and v.
+                Will generate new index if already used.
+                Defaults to None.
+            attribs (Optional[dict], optional): Attributes to add to generated link. Defaults to None.
+            silent (bool, optional): Whether to mute stdout logging messages. Defaults to False.
+
+        Returns:
+            str: Generated link ID
         """
         link_id = self.generate_index_for_edge(silent=silent)
         self.add_link(link_id, u, v, multi_edge_idx, attribs, silent)
@@ -882,17 +1000,28 @@ class Network:
         return link_id
 
     def add_edges(
-        self, edges_attributes: List[dict], silent: bool = False, ignore_change_log: bool = False
-    ):
-        """
-        Adds multiple edges, generates their unique link ids
-        :param edges_attributes: List of edges, each item in list is a dictionary defining the edge attributes,
-        contains at least 'from': node_id and 'to': node_id entries,
-        :param silent: whether to mute stdout logging messages
-        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
-        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
-        reduce changelog bloat.
-        :return:
+        self, edges_attributes: list[dict], silent: bool = False, ignore_change_log: bool = False
+    ) -> tuple[dict, dict]:
+        """Adds multiple edges, generates unique link ids for each.
+
+        Args:
+            edges_attributes (list[dict]):
+                List of edges, each item in list is a dictionary defining the edge attributes.
+                Contains at least `'from': node_id` and `'to': node_id` entries.
+            silent (bool, optional):  whether to mute stdout logging messages. Defaults to False.
+            ignore_change_log (bool, optional):
+                Whether to ignore logging changes to the network in the changelog.
+                Not recommended.
+                Only used when an alternative changelog event is being produced (e.g. simplification) to reduce changelog bloat.
+                Defaults to False.
+
+        Raises:
+            RuntimeError: Edge `from` and `to` nodes must exist in the network.
+
+        Returns:
+            tuple[dict, dict]:
+                First dict is a mapping from input link IDs to internal link IDs (IDs reindexed if there is any name clashes with existing links).
+                Second dict is `edge_attributes` with link IDs updated according to the mapping of the first dict.
         """
         # check for compulsory attribs
         df_edges = pd.DataFrame(edges_attributes)
@@ -917,21 +1046,27 @@ class Network:
         link_id: Union[str, int],
         u: Union[str, int],
         v: Union[str, int],
-        multi_edge_idx: int = None,
-        attribs: dict = None,
+        multi_edge_idx: Optional[int] = None,
+        attribs: Optional[dict] = None,
         silent: bool = False,
-    ):
-        """
-        Adds an link between u and v with id link_id, if available. If a link between u and v already exists,
-        adds an additional one.
-        :param link_id:
-        :param u: node in the graph
-        :param v: node in the graph
-        :param multi_edge_idx: you can specify which multi index to use if there are other edges between u and v.
-        Will generate new index if already used.
-        :param attribs:
-        :param silent: whether to mute stdout logging messages
-        :return:
+    ) -> str:
+        """Adds a link between u and v with id link_id, if available.
+
+        If a link between u and v already exists, adds an additional one.
+
+        Args:
+            link_id Union[str, int]:
+            u (Union[str, int]): node in the graph.
+            v (Union[str, int]): node in the graph.
+            multi_edge_idx (Optional[int], optional):
+                You can specify which multi index to use if there are other edges between u and v.
+                Will generate new index if already used.
+                Defaults to None.
+            attribs (Optional[dict], optional): Attributes to add to generated link. Defaults to None.
+            silent (bool, optional): Whether to mute stdout logging messages. Defaults to False.
+
+        Returns:
+            str: Generated link ID.
         """
         if link_id in self.link_id_mapping:
             new_link_id = self.generate_index_for_edge(silent=silent)
@@ -999,19 +1134,30 @@ class Network:
 
     def add_links(
         self,
-        links_and_attributes: Dict[str, dict],
+        links_and_attributes: dict[str, dict],
         silent: bool = False,
         ignore_change_log: bool = False,
-    ):
-        """
-        Adds multiple edges, generates their unique link ids
-        :param links_and_attributes: Dictionary of link ids and corresponding edge attributes, each edge attributes
-        contains at least 'from': node_id and 'to': node_id entries,
-        :param silent: whether to mute stdout logging messages
-        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
-        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
-        reduce changelog bloat.
-        :return:
+    ) -> tuple[dict, dict]:
+        """Adds multiple links.
+
+        Args:
+            links_and_attributes (list[dict]):
+                List of links, each item in list is a dictionary defining the link ID and its attributes.
+                Contains at least `'from': node_id` and `'to': node_id` entries.
+            silent (bool, optional):  whether to mute stdout logging messages. Defaults to False.
+            ignore_change_log (bool, optional):
+                Whether to ignore logging changes to the network in the changelog.
+                Not recommended.
+                Only used when an alternative changelog event is being produced (e.g. simplification) to reduce changelog bloat.
+                Defaults to False.
+
+        Raises:
+            RuntimeError: Link `from` and `to` nodes must exist in the network.
+
+        Returns:
+            tuple[dict, dict]:
+                First dict is a mapping from input link IDs to internal link IDs (IDs reindexed if there is any name clashes with existing links).
+                Second dict is `links_and_attributes` with link IDs updated according to the mapping of the first dict.
         """
         # check for compulsory attribs
         df_links = pd.DataFrame(links_and_attributes).T
@@ -1200,13 +1346,46 @@ class Network:
         if not silent:
             logging.info(f"Changed Link index from {link_id} to {new_link_id}")
 
-    def subgraph_on_link_conditions(self, conditions, how=any, mixed_dtypes=True):
-        """
-        Gives a subgraph of network.graph based on matching conditions defined in conditions
-        :param conditions as described in graph_operations.extract_links_on_edge_attributes
-        :param how as described in graph_operations.extract_links_on_edge_attributes
-        :param mixed_dtypes as described in graph_operations.extract_links_on_edge_attributes
-        :return:
+    def subgraph_on_link_conditions(
+        self, conditions: Union[list, dict], how: Callable = any, mixed_dtypes: bool = True
+    ) -> nx.MultiDiGraph:
+        """Gives a subgraph of network.graph based on matching conditions defined in conditions.
+
+        Args:
+            conditions (Union[list, dict]):
+                {'attribute_key': 'target_value'} or nested {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}},
+                where 'target_value' could be:
+
+                - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+                - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+                - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+                lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+                - function that returns a boolean given the value e.g.
+                ```python
+                def below_exclusive_upper_bound(value):
+                    return value < 100
+                ```
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+            how (Callable, optional):
+                The level of rigour used to match conditions. Defaults to any.
+                - all: means all conditions need to be met
+                - any: means at least one condition needs to be met
+
+            mixed_dtypes (bool, optional):
+                If True, will consider the intersection of single values or lists of values in queried dictionary keys, e.g. as in simplified networks.
+                Defaults to True.
+        Returns:
+            nx.MultiDiGraph: Sub-graph of edges where attribute values match `conditions`.
         """
         links = self.extract_links_on_edge_attributes(
             conditions=conditions, how=how, mixed_dtypes=mixed_dtypes
@@ -1221,10 +1400,11 @@ class Network:
         ]
         return nx.MultiDiGraph(nx.edge_subgraph(self.graph, edges_for_sub))
 
-    def modes(self):
-        """
-        Scans network for 'modes' attribute and returns list of all modes present in the network
-        :return:
+    def modes(self) -> set:
+        """Scans network for 'modes' attribute and returns list of all modes present in the network.
+
+        Returns:
+            set: Modes present in the network.
         """
         modes = set()
         for link, link_attribs in self.links():
@@ -1236,24 +1416,29 @@ class Network:
 
     def find_shortest_path(
         self,
-        from_node,
-        to_node,
-        modes: Union[str, list, set] = None,
-        subgraph: nx.MultiDiGraph = None,
-        return_nodes=False,
-    ):
-        """
-        Finds shortest path between from and to nodes in the graph. If modes specified, finds shortest path in the
-        modal subgraph (using links which have given modes stored under 'modes' key in link attributes). If computing
-        a large number of routes on the same modal subgraph, it is best to find the subgraph using the `modal_subgraph`
-        method and pass it under subgraph to avoid re-computing the subgraph every time.
-        :param from_node: node id in the graph
-        :param to_node: node id in the graph
-        :param modes: string e.g. 'car' or list ['car', 'bike']
-        :param subgraph: nx.MultiDiGraph, preferably the result of `modal_subgraph`
-        :param return_nodes: If True, returns list of node ids defining a route (reminder: there can be more than one
-        link between two nodes, by default this method will return a list of link ids that results in shortest journey)
-        :return: list of link ids defining a route
+        from_node: Union[str, int],
+        to_node: Union[str, int],
+        modes: Optional[Union[str, list, set]] = None,
+        subgraph: Optional[nx.MultiDiGraph] = None,
+        return_nodes: bool = False,
+    ) -> list[Union[str, int]]:
+        """Finds shortest path between from and to nodes in the graph.
+
+        If modes specified, finds shortest path in the modal subgraph (using links which have given modes stored under 'modes' key in link attributes).
+        If computing a large number of routes on the same modal subgraph, it is best to find the subgraph using the `modal_subgraph` method and pass it under subgraph to avoid re-computing the subgraph every time.
+
+        Args:
+            from_node (Union[str, int]):  node id in the graph.
+            to_node (Union[str, int]): node id in the graph.
+            modes (Optional[Union[str, list, set]], optional): String e.g. 'car' or list ['car', 'bike']. Defaults to None.
+            subgraph (Optional[nx.MultiDiGraph], optional): Preferably the result of `Network.modal_subgraph`. Defaults to None.
+            return_nodes (bool, optional):
+                If True, returns list of node ids defining a route
+                (reminder: there can be more than one link between two nodes, by default this method will return a list of link ids that results in shortest journey).
+                Defaults to False.
+
+        Returns:
+            list[Union[str, int]]: List of link IDs defining a route.
         """
         if subgraph is not None:
             g = subgraph
@@ -1271,14 +1456,17 @@ class Network:
                 for u, v in zip(route[:-1], route[1:])
             ]
 
-    def apply_attributes_to_node(self, node_id, new_attributes, silent: bool = False):
-        """
-        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
-        stored at the node currently so no data is lost, unless it is being overwritten.
-        :param node_id: node id to perform the change to
-        :param new_attributes: dictionary of data to add/replace if present
-        :param silent: whether to mute stdout logging messages
-        :return:
+    def apply_attributes_to_node(
+        self, node_id: Union[str, int], new_attributes: dict, silent: bool = False
+    ):
+        """Adds, or changes if already present, the attributes in `new_attributes` in-place.
+
+        Doesn't replace the dictionary stored at the node currently so no data is lost, unless it is being overwritten.
+
+        Args:
+            node_id (Union[str, int]): node id to perform the change to.
+            new_attributes (dict): dictionary of data to add/replace if present.
+            silent (bool, optional): whether to mute stdout logging messages. Defaults to False.
         """
         old_attributes = deepcopy(self.node(node_id))
 
@@ -1300,11 +1488,12 @@ class Network:
             logging.info(f"Changed Node attributes under index: {node_id}")
 
     def apply_attributes_to_nodes(self, new_attributes: dict):
-        """
-        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
-        stored at the node currently so no data is lost, unless it is being overwritten.
-        :param new_attributes: keys are node ids and values are dictionaries of data to add/replace if present
-        :return:
+        """Adds, or changes if already present, the attributes in `new_attributes` in-place.
+
+        Doesn't replace the dictionary stored at the node currently so no data is lost, unless it is being overwritten.
+
+        Args:
+            new_attributes (dict): keys are node ids and values are dictionaries of data to add/replace if present.
         """
         nodes = list(new_attributes.keys())
         old_attribs = [deepcopy(self.node(node)) for node in nodes]
@@ -1317,13 +1506,12 @@ class Network:
         nx.set_node_attributes(self.graph, dict(zip(nodes, new_attribs)))
         logging.info(f"Changed Node attributes for {len(nodes)} nodes")
 
-    def apply_function_to_nodes(self, function, location: str):
-        """
-        Applies function to node attributes dictionary
-        :param function: function of node attributes dictionary returning a value that should be stored
-        under `location`
-        :param location: where to save the results: string defining the key in the nodes attributes dictionary
-        :return:
+    def apply_function_to_nodes(self, function: Callable, location: str):
+        """Applies function to node attributes dictionary.
+
+        Args:
+            function (Callable): Function of node attributes dictionary returning a value that should be stored under `location`.
+            location (str): Where to save the results: string defining the key in the nodes attributes dictionary.
         """
         new_node_attribs = {}
         for node, node_attribs in self.nodes():
@@ -1336,17 +1524,23 @@ class Network:
         self.apply_attributes_to_nodes(new_node_attribs)
 
     def apply_attributes_to_edge(
-        self, u, v, new_attributes, conditions=None, how=any, silent: bool = False
+        self,
+        u: Union[str, int],
+        v: Union[str, int],
+        new_attributes: dict,
+        conditions: Optional[Union[dict, list]] = None,
+        how: Callable = any,
+        silent: bool = False,
     ):
-        """
-        Applies attributes to edges (which optionally match certain criteria)
-        :param u: from node
-        :param v: to node
-        :param new_attributes: attributes data to be applied
-        :param conditions: graph_operations.Filter conditions
-        :param how: graph_operations.Filter how
-        :param silent: whether to mute stdout logging messages
-        :return:
+        """Applies attributes to edges (which optionally match certain criteria).
+
+        Args:
+            u (Union[str, int]): from node.
+            v (Union[str, int]): to node.
+            new_attributes (dict): attributes data to be applied.
+            conditions (Optional[Union[dict, list]], optional): `graph_operations.Filter` conditions. Defaults to None.
+            how (Callable, optional): `graph_operations.Filter` how. Defaults to any.
+            silent (bool, optional): whether to mute stdout logging messages. Defaults to False.
         """
         filter = graph_operations.Filter(conditions=conditions, how=how)
 
@@ -1374,14 +1568,20 @@ class Network:
                 if not silent:
                     logging.info(f"Changed Edge attributes under index: {edge}")
 
-    def apply_attributes_to_edges(self, new_attributes: dict, conditions=None, how=any):
-        """
-        Applies new attributes for edges (optionally satisfying certain criteria)
-        :param new_attributes: dictionary where keys are two tuples (u, v) where u is the from node and v is the to
-        node. The value at the key are the new attributes to be applied to links on edge (u,v)
-        :param conditions: graph_operations.Filter conditions
-        :param how: graph_operations.Filter how
-        :return:
+    def apply_attributes_to_edges(
+        self,
+        new_attributes: dict,
+        conditions: Optional[Union[dict, list]] = None,
+        how: Callable = any,
+    ):
+        """Applies new attributes for edges (optionally satisfying certain criteria).
+
+        Args:
+            new_attributes (dict):
+                Dictionary where keys are two tuples (u, v) where u is the from node and v is the to node.
+                The value at the key are the new attributes to be applied to links on edge (u,v).
+            conditions (Optional[Union[dict, list]], optional): `graph_operations.Filter` conditions. Defaults to None.
+            how (Callable, optional): `graph_operations.Filter` how. Defaults to any.
         """
         filter = graph_operations.Filter(conditions=conditions, how=how)
 
@@ -1408,14 +1608,17 @@ class Network:
 
         logging.info(f"Changed Edge attributes for {len(edge_tuples)} edges")
 
-    def apply_attributes_to_link(self, link_id, new_attributes, silent: bool = False):
-        """
-        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
-        stored at the link currently so no data is lost, unless it is being overwritten.
-        :param link_id: link id to perform the change to
-        :param new_attributes: dictionary of data to add/replace if present
-        :param silent: whether to mute stdout logging messages
-        :return:
+    def apply_attributes_to_link(
+        self, link_id: Union[str, int], new_attributes: dict, silent: bool = False
+    ):
+        """Adds, or changes if already present, the attributes in `new_attributes` in-place.
+
+        Doesn't replace the dictionary stored at the link currently so no data is lost, unless it is being overwritten.
+
+        Args:
+            link_id (Union[str, int]): link id to perform the change to.
+            new_attributes (dict): dictionary of data to add/replace if present.
+            silent (bool, optional): whether to mute stdout logging messages. Defaults to False.
         """
         u, v = self.link_id_mapping[link_id]["from"], self.link_id_mapping[link_id]["to"]
         multi_idx = self.link_id_mapping[link_id]["multi_edge_idx"]
@@ -1440,11 +1643,12 @@ class Network:
             logging.info(f"Changed Link attributes under index: {link_id}")
 
     def apply_attributes_to_links(self, new_attributes: dict):
-        """
-        Adds, or changes if already present, the attributes in new_attributes. Doesn't replace the dictionary
-        stored at the link currently so no data is lost, unless it is being overwritten.
-        :param new_attributes: keys are link ids and values are dictionaries of data to add/replace if present
-        :return:
+        """Adds, or changes if already present, the attributes in `new_attributes` in-place.
+
+        Doesn't replace the dictionary stored at the link currently so no data is lost, unless it is being overwritten.
+
+        Args:
+            new_attributes (dict): keys are link ids and values are dictionaries of data to add/replace if present.
         """
         links = list(new_attributes.keys())
         old_attribs = [deepcopy(self.link(link)) for link in links]
@@ -1459,13 +1663,12 @@ class Network:
         nx.set_edge_attributes(self.graph, dict(zip(edge_tuples, new_attribs)))
         logging.info(f"Changed Link attributes for {len(links)} links")
 
-    def apply_function_to_links(self, function, location: str):
-        """
-        Applies function to link attributes dictionary
-        :param function: function of link attributes dictionary returning a value that should be stored
-        under `location`
-        :param location: where to save the results: string defining the key in the nodes attributes dictionary
-        :return:
+    def apply_function_to_links(self, function: Callable, location: str):
+        """Applies function to link attributes dictionary.
+
+        Args:
+            function (Callable): Function of link attributes dictionary returning a value that should be stored under `location`.
+            location (str): Where to save the results: string defining the key in the nodes attributes dictionary.
         """
         new_link_attribs = {}
         for link_id, link_attribs in self.links():
@@ -1483,12 +1686,12 @@ class Network:
             )
         self.apply_attributes_to_links(new_link_attribs)
 
-    def remove_node(self, node_id, silent: bool = False):
-        """
-        Removes the node n and all adjacent edges
-        :param node_id:
-        :param silent: whether to mute stdout logging messages
-        :return:
+    def remove_node(self, node_id: Union[str, int], silent: bool = False):
+        """Removes the node n and all adjacent edges
+
+        Args:
+            node_id (Union[str, int]): Node ID to remove
+            silent (bool, optional): whether to mute stdout logging messages. Defaults to False.
         """
         self.change_log.remove(
             object_type="node", object_id=node_id, object_attributes=self.node(node_id)
@@ -1498,15 +1701,19 @@ class Network:
         if not silent:
             logging.info(f"Removed Node under index: {node_id}")
 
-    def remove_nodes(self, nodes, ignore_change_log=False, silent=False):
-        """
-        Removes several nodes and all adjacent edges
-        :param nodes: list or set
-        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
-        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
-        reduce changelog bloat.
-        :param silent: whether to mute stdout logging messages
-        :return:
+    def remove_nodes(
+        self, nodes: list[Union[str, int]], ignore_change_log: bool = False, silent: bool = False
+    ):
+        """Removes several nodes and all adjacent edges.
+
+        Args:
+            nodes (list[Union[str, int]]): list of nodes to remove.
+            ignore_change_log (bool, optional):
+                Whether to ignore logging changes to the network in the changelog.
+                Not recommended.
+                Only used when an alternative changelog event is being produced (e.g. simplification) to reduce changelog bloat.
+                Defaults to False.
+            silent (bool, optional): Whether to mute stdout logging messages. Defaults to False.
         """
         if not ignore_change_log:
             self.change_log = self.change_log.remove_bunch(
@@ -1519,12 +1726,12 @@ class Network:
         if not silent:
             logging.info(f"Removed {len(nodes)} nodes.")
 
-    def remove_link(self, link_id, silent: bool = False):
-        """
-        Removes the multi edge pertaining to link given
-        :param link_id:
-        :param silent: whether to mute stdout logging messages
-        :return:
+    def remove_link(self, link_id: Union[str, int], silent: bool = False):
+        """Removes the multi edge pertaining to link given.
+
+        Args:
+            link_id (Union[str, int]): Edge to remove.
+            silent (bool, optional): Whether to mute stdout logging messages. Defaults to False.
         """
         self.change_log.remove(
             object_type="link", object_id=link_id, object_attributes=self.link(link_id)
@@ -1536,15 +1743,19 @@ class Network:
         if not silent:
             logging.info(f"Removed link under index: {link_id}")
 
-    def remove_links(self, links, ignore_change_log=False, silent=False):
-        """
-        Removes the multi edges pertaining to links given
-        :param links: set or list
-        :param ignore_change_log: whether to ignore logging changes to the network in the changelog. False by default
-        and not recommended. Only used when an alternative changelog event is being produced (e.g. simplification) to
-        reduce changelog bloat.
-        :param silent: whether to mute stdout logging messages
-        :return:
+    def remove_links(
+        self, links: list[Union[str, int]], ignore_change_log: bool = False, silent: bool = False
+    ):
+        """Removes several edges according to their link IDs
+
+        Args:
+            links (list[Union[str, int]]): list of links to remove.
+            ignore_change_log (bool, optional):
+                Whether to ignore logging changes to the network in the changelog.
+                Not recommended.
+                Only used when an alternative changelog event is being produced (e.g. simplification) to reduce changelog bloat.
+                Defaults to False.
+            silent (bool, optional): Whether to mute stdout logging messages. Defaults to False.
         """
         links = list(links)
         if not ignore_change_log:
@@ -1560,7 +1771,7 @@ class Network:
         if not silent:
             logging.info(f"Removed {len(links)} links")
 
-    def is_strongly_connected(self, modes: Union[list, str, set] = None):
+    def is_strongly_connected(self, modes: Optional[Union[list, str, set]] = None):
         if modes is None:
             g = self.graph
         else:
@@ -1580,13 +1791,20 @@ class Network:
         else:
             return False
 
-    def connect_components(self, modes: Union[list, str, set] = None, weight: float = 1.0):
-        """
-        Connect disconnected subgraphs in the Network graph. Use modes variable to consider a modal subgraph.
+    def connect_components(
+        self, modes: Optional[Union[list, str, set]] = None, weight: float = 1.0
+    ) -> Optional[dict]:
+        """Connect disconnected subgraphs in the Network graph.
+
+        Use modes variable to consider a modal subgraph.
         For a strongly connected MATSim network use only a single (routable) mode at a time.
-        :param modes: str, list or set or network modes to use for computing strongly connected subgraphs
-        :param weight: weight to apply to `frespeed` and `capacity` for scaling, defaults to 1.
-        :return: None, or links and their details if they were added to the Network.
+
+        Args:
+            modes (Optional[Union[list, str, set]], optional): Single mode or iterable of modes to use for computing strongly connected subgraphs. Defaults to None.
+            weight (float, optional): weight to apply to `freespeed` and `capacity` for scaling. Defaults to 1.0.
+
+        Returns:
+            Optional[dict]: None, or links and their details if they were added to the Network.
         """
         if modes is None:
             g = self.graph
@@ -1657,50 +1875,62 @@ class Network:
                 return links_to_add
             else:
                 logging.warning("No links are being added")
+        return None
 
-    def number_of_multi_edges(self, u, v):
-        """
-        number of multi edges on edge from u to v
-        :param u: from node
-        :param v: to node
-        :return:
+    def number_of_multi_edges(self, u: Union[str, int], v: Union[str, int]) -> int:
+        """Number of multi edges on edge from u to v.
+
+        Args:
+            u (Union[str, int]): From node.
+            v (Union[str, int]): To node.
+
+        Returns:
+            int: Number of edges between `u` and `v`.
         """
         if self.graph.has_edge(u, v):
             return len(self.graph.edges(u, v))
         else:
             return 0
 
-    def nodes(self):
+    def nodes(self) -> Iterator[tuple[Union[str, int], Any]]:
         """
-        :return:  Iterator through each node and its attrib (two-tuple)
+        Yields:
+            Iterator through each node and its attrib (two-tuple)
         """
         for id, attrib in self.graph.nodes(data=True):
             yield id, attrib
 
-    def node(self, node_id):
+    def node(self, node_id: Union[str, int]) -> dict:
         """
-        :return:  attribs of the 'node_id'
+        Returns:
+            Attributes of the 'node_id'
         """
         return self.graph.nodes[node_id]
 
-    def edges(self):
+    def edges(self) -> Iterator[tuple[Union[str, int], Union[str, int], Any]]:
         """
-        :return: Iterator through each edge's from, to nodes and its attrib (three-tuple)
+        Yields:
+            Iterator through each edge's from, to nodes and its attrib (three-tuple).
         """
         for u, v in self.graph.edges():
             yield u, v, self.edge(u, v)
 
-    def edge(self, u, v):
-        """
-        :param u: from node of self.graph
-        :param v: to node of self.graph
-        :return:  attribs of the edge from u to  v
+    def edge(self, u: Union[str, int], v: Union[str, int]) -> dict:
+        """Get edge attributes.
+
+        Args:
+            u (Union[str, int]): From node of `self.graph`.
+            v (Union[str, int]): To node of `self.graph`.
+
+        Returns:
+            dict: Attributes of the edge from u to  v.
         """
         return dict(self.graph[u][v])
 
-    def links(self):
+    def links(self) -> Iterator[tuple[Union[str, int], Any]]:
         """
-        :return: Iterator through each link id its attrib (two-tuple)
+        Yields:
+            Iterator through each link id its attrib (two-tuple).
         """
         for link_id in self.link_id_mapping.keys():
             yield link_id, self.link(link_id)
@@ -1710,60 +1940,77 @@ class Network:
         multi_idx = self.link_id_mapping[link]["multi_edge_idx"]
         return u, v, multi_idx
 
-    def link(self, link_id):
-        """
-        :param link_id:
-        :return:
+    def link(self, link_id: Union[str, int]) -> dict:
+        """Get Link attributes.
+
+        Args:
+            link_id (Union[str, int]): Link ID.
+
+        Returns:
+            dict: Link attributes.
         """
         u, v, multi_idx = self.edge_tuple_from_link_id(link_id)
         return dict(self.graph[u][v][multi_idx])
 
     def route_schedule(
         self,
-        services: Union[list, set] = None,
-        solver="cbc",
-        allow_partial=True,
-        distance_threshold=30,
-        step_size=10,
-        additional_modes=None,
-        allow_directional_split=False,
-    ):
-        """
-        Method to find relationship between all Services in Schedule and the Network. It finds closest
-        links in the Network for all stops and finds a network route (ordered list of links in the network) for all
-        Route objects within each Service.
+        services: Optional[Union[list, set]] = None,
+        solver: str = "cbc",
+        allow_partial: bool = True,
+        distance_threshold: int = 30,
+        step_size: int = 10,
+        additional_modes: Optional[dict] = None,
+        allow_directional_split: bool = False,
+    ) -> Optional[set]:
+        """Method to find relationship between all Services in Schedule and the Network.
 
-        It creates new stops: 'old_id:link:link_id' for an 'old_stop' which snapped to 'link_id'. It does not delete
-        old stops.
+        It finds closest links in the Network for all stops and finds a network route (ordered list of links in the network) for all Route objects within each Service.
 
-        If there isn't a link available for snapping within threshold and under modal conditions, an artificial
-        self-loop link will be created as well as any connecting links to that unsnapped stop. This can be switched off
-        by setting allow_partial=False. It will raise PartialMaxStableSetProblem error instead.
+        It creates new stops: 'old_id:link:link_id' for an 'old_stop' which snapped to 'link_id'.
+        It does not delete old stops.
 
-        :param services: you can specify a list of services within the schedule to be snapped, defaults to all services
-        :param solver: you can specify different mathematical solvers. Defaults to CBC, open source solver which can
-        be found here: https://projects.coin-or.org/Cbc . Another good open source choice is GLPK:
-        https://www.gnu.org/software/glpk/. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'.
-        The solver needs to support MILP - mixed integer linear programming.
-        :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and,
-        under modal conditions, an artificial self-loop link will be created as well as any connecting links to that
-        unsnapped stop. If set to False and the problem is partial, it will raise PartialMaxStableSetProblem error
-        instead.
-        :param distance_threshold: in metres, upper bound for how far too look for links to snap to stops.
-        Defaults to 30
-        :param step_size: in metres, how much to increase search area for links (making this smaller than the distance
-        threshold makes the problem less computationally heavy)
-        :param additional_modes: By default the network subgraph considered for snapping and routing will be matching
-        the service modes exactly e.g. just 'bus' mode. You can relax it by adding extra modes
-        e.g. {'tram': {'car', 'rail'}, 'bus': 'car'} - either a set, list of just a single additional mode for a mode
-        in the Schedule. This dictionary need not be exhaustive. Any other modes will be handled in the default way.
-        Referencing modes present under 'modes' attribute of Network links.
-        :param allow_directional_split: Defaults to False i.e. one link will be related to a stop in each Service.
-        For some modes, e.g. rail, it may be beneficial to split this problem based on direction of travel. This usually
-        results in stops snapping to multiple links. Routes' stops and their network routes are updated based on
-        direction too. You may like to investigate directional split for different services using a Service object
-        method: `split_graph`.
-        :return: set of unsnapped services, empty if all snapped, updates Network object and the Schedule object within.
+        If there isn't a link available for snapping within threshold and under modal conditions,
+        an artificial self-loop link will be created as well as any connecting links to that unsnapped stop.
+        This can be switched off by setting allow_partial=False.
+        It will raise PartialMaxStableSetProblem error instead.
+
+        Args:
+            services (Optional[Union[list, set]], optional):
+                You can specify a list of services within the schedule to be snapped.
+                Defaults to None (i.e., all services).
+            solver (str, optional):
+                You can specify different mathematical solvers.
+                Defaults to CBC, open source solver which can be found here: https://projects.coin-or.org/Cbc.
+                Another good open source choice is GLPK: https://www.gnu.org/software/glpk/.
+                You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'.
+                The solver needs to support MILP - mixed integer linear programming.
+            allow_partial (bool, optional):
+                If there isn't a link available for snapping within threshold and, under modal conditions,
+                an artificial self-loop link will be created as well as any connecting links to that unsnapped stop.
+                If set to False and the problem is partial, it will raise PartialMaxStableSetProblem error instead.
+                Defaults to True.
+            distance_threshold (int, optional):
+                In metres, upper bound for how far too look for links to snap to stops. Defaults to 30.
+            step_size (int, optional):
+                In metres, how much to increase search area for links
+                (making this smaller than the distance threshold makes the problem less computationally heavy).
+                Defaults to 10.
+            additional_modes (Optional[dict], optional):
+                By default the network subgraph considered for snapping and routing will be matching the service modes exactly e.g. just 'bus' mode.
+                You can relax it by adding extra modes e.g. {'tram': {'car', 'rail'}, 'bus': 'car'} - either a set, list of just a single additional mode for a mode in the Schedule.
+                This dictionary need not be exhaustive.
+                Any other modes will be handled in the default way.
+                Referencing modes present under 'modes' attribute of Network links.
+                Defaults to None.
+            allow_directional_split (bool, optional):
+                Defaults to False i.e. one link will be related to a stop in each Service.
+                For some modes, e.g. rail, it may be beneficial to split this problem based on direction of travel.
+                This usually results in stops snapping to multiple links.
+                Routes' stops and their network routes are updated based on direction too.
+                You may like to investigate directional split for different services using a Service object method: `split_graph`.
+
+        Returns:
+            Optional[set]: Set of unsnapped services, empty if all snapped, updates Network object and the Schedule object within.
         """
         if self.schedule:
             logging.info("Building Spatial Tree")
@@ -1848,56 +2095,73 @@ class Network:
             return unsnapped_services
         else:
             logging.warning("Schedule object not found")
+            return None
 
     def route_service(
         self,
-        service_id,
-        spatial_tree=None,
-        solver="cbc",
-        allow_partial=True,
-        distance_threshold=30,
-        step_size=10,
-        additional_modes=None,
-        allow_directional_split=False,
-    ):
-        """
-        Method to find relationship between the Service with ID 'service_id' in the Schedule and the Network.
+        service_id: Union[str, int],
+        spatial_tree: Optional[spatial.SpatialTree] = None,
+        solver: str = "cbc",
+        allow_partial: bool = True,
+        distance_threshold: int = 30,
+        step_size: int = 10,
+        additional_modes: Optional[dict] = None,
+        allow_directional_split: bool = False,
+    ) -> Optional[Union[str, int]]:
+        """Method to find relationship between the Service with ID 'service_id' in the Schedule and the Network.
+
         It finds closest links in the Network for all stops and finds a network route (ordered list of links in the
         network) for all Route objects within this Service.
 
-        It creates new stops: 'old_id:link:link_id' for an 'old_stop' which snapped to 'link_id'. It does not delete
-        old stops.
+        It creates new stops: 'old_id:link:link_id' for an 'old_stop' which snapped to 'link_id'.
+        It does not delete old stops.
 
         If there isn't a link available for snapping within threshold and under modal conditions, an artificial
         self-loop link will be created as well as any connecting links to that unsnapped stop. This can be switched off
         by setting allow_partial=False. It will raise PartialMaxStableSetProblem error instead.
 
-        :param service_id: ID of the Service object to snap and route
-        :param spatial_tree: optional, if snapping more than one Service, it may be beneficcial to build the spatial
-        tree which is used for snapping separately and pass it here. This is done simply by importing genet and passing
-        the network object in the following way: genet.utils.spatial.SpatialTree(network_object)
-        :param solver: you can specify different mathematical solvers. Defaults to CBC, open source solver which can
-        be found here: https://projects.coin-or.org/Cbc . Another good open source choice is GLPK:
-        https://www.gnu.org/software/glpk/. You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'.
-        The solver needs to support MILP - mixed integer linear programming.
-        :param allow_partial: Defaults to True. If there isn't a link available for snapping within threshold and
-        under modal conditions, an artificial self-loop link will be created as well as any connecting links to that
-        unsnapped stop. If set to False and the problem is partial, it will raise PartialMaxStableSetProblem error
-        instead.
-        :param distance_threshold: in metres, upper bound for how far too look for links to snap to stops.
-        Defaults to 30
-        :param step_size: in metres, how much to increase search area for links (making this smaller than the distance
-        threshold makes the problem less computationally heavy)
-        :param additional_modes: string, set or list. By default the network subgraph considered for snapping and
-        routing will be matching the service modes exactly e.g. just 'bus' mode. You can relax it by adding extra modes
-        e.g. 'car' or {'car', 'rail'}. Referencing modes present under 'modes' attribute of Network links.
-        :param allow_directional_split: Defaults to False i.e. one link will be related to a stop in each Service.
-        For some modes, e.g. rail, it may be beneficial to split this problem based on direction of travel. This usually
-        results in stops snapping to multiple links. Routes' stops and their network routes are updated based on
-        direction too. You may like to investigate directional split for different services using a Service object
-        method: `split_graph`.
-        :return: None if successful, updates Network object and the Schedule object within. Returns service ID if
-        unsuccesful.
+        Args:
+            service_id (Union[str, int]): ID of the Service object to snap and route
+            spatial_tree (Optional[spatial.SpatialTree], optional):
+                If snapping more than one Service, it may be beneficcial to build the spatial tree which is used for snapping separately and pass it here.
+                This is done simply by importing genet and passing the network object in the following way: genet.utils.spatial.SpatialTree(network_object).
+                Defaults to None.
+            solver (str, optional):
+                You can specify different mathematical solvers.
+                Defaults to CBC, open source solver which can be found here: https://projects.coin-or.org/Cbc.
+                Another good open source choice is GLPK: https://www.gnu.org/software/glpk/.
+                You specify it as a string e.g. 'glpk', 'cbc', 'gurobi'.
+                The solver needs to support MILP - mixed integer linear programming.
+            allow_partial (bool, optional):
+                If there isn't a link available for snapping within threshold and, under modal conditions,
+                an artificial self-loop link will be created as well as any connecting links to that unsnapped stop.
+                If set to False and the problem is partial, it will raise PartialMaxStableSetProblem error instead.
+                Defaults to True.
+            distance_threshold (int, optional):
+                In metres, upper bound for how far too look for links to snap to stops. Defaults to 30.
+            step_size (int, optional):
+                In metres, how much to increase search area for links
+                (making this smaller than the distance threshold makes the problem less computationally heavy).
+                Defaults to 10.
+            additional_modes (Optional[dict], optional):
+                By default the network subgraph considered for snapping and routing will be matching the service modes exactly e.g. just 'bus' mode.
+                You can relax it by adding extra modes e.g. {'tram': {'car', 'rail'}, 'bus': 'car'} - either a set, list of just a single additional mode for a mode in the Schedule.
+                This dictionary need not be exhaustive.
+                Any other modes will be handled in the default way.
+                Referencing modes present under 'modes' attribute of Network links.
+                Defaults to None.
+            allow_directional_split (bool, optional):
+                Defaults to False i.e. one link will be related to a stop in each Service.
+                For some modes, e.g. rail, it may be beneficial to split this problem based on direction of travel.
+                This usually results in stops snapping to multiple links.
+                Routes' stops and their network routes are updated based on direction too.
+                You may like to investigate directional split for different services using a Service object method: `split_graph`.
+
+
+        Returns:
+            Optional[Union[str, int]]:
+                None if successful, updates Network object and the Schedule object within.
+                Returns service ID if unsuccessful.
         """
         if spatial_tree is None:
             spatial_tree = spatial.SpatialTree(self)
@@ -1940,12 +2204,14 @@ class Network:
                 f"modal graph is empty for those modes. Consider teleporting."
             )
             return service.id
+        else:
+            return None
 
     def teleport_service(self, service_ids: Union[str, list, set]):
-        """
-        Teleports service(s) of ID(s) given in `service_ids`
-        :param service_ids: a Service ID or collection of them
-        :return: None, updates Network and Schedule objects
+        """Teleports service(s) of ID(s) given in `service_ids` in-place
+
+        Args:
+            service_ids (Union[str, list, set]): a Service ID or collection of them.
         """
 
         def route_path(ordered_stops):
@@ -2063,17 +2329,27 @@ class Network:
             self.add_links(max_stable_set_changeset.new_links)
         self.apply_attributes_to_links(max_stable_set_changeset.additional_links_modes)
 
-    def reroute(self, _id, additional_modes=None):
-        """
-        Finds network route for a Service of ID=_id or Route of ID=_id, if the Stops for that Route or Service are
-        already snapped to the network (have linkRefId attributes). Checks that those linkRefIds are still in the
-        network, logs a warning if not.
-        :param _id: ID of Route or Service object. If Service, updated route attribute of all Routes contained within
-        the Service object
-        :param additional_modes: string, set or list. By default the network subgraph considered for snapping and
-        routing will be matching the service modes exactly e.g. just 'bus' mode. You can relax it by adding extra modes
-        e.g. 'car' or {'car', 'rail'}. Referencing modes present under 'modes' attribute of Network links.
-        :return: None, updates the `route` attribute of `Route` object(s)
+    def reroute(
+        self, _id: Union[str, int], additional_modes: Optional[Union[str, set, list]] = None
+    ):
+        """Finds network route for a Service of ID=_id or Route of ID=_id, if the Stops for that Route or Service are already snapped to the network (have linkRefId attributes).
+
+        Checks that those linkRefIds are still in the network, logs a warning if not.
+
+        Updates Route/Service object in-place.
+
+        Args:
+            _id (Union[str, int]):
+                ID of Route or Service object.
+                If Service, updated route attribute of all Routes contained within the Service object.
+            additional_modes (Optional[Union[str, set, list]], optional):
+                By default the network subgraph considered for snapping and routing will be matching the service modes exactly e.g. just 'bus' mode.
+                You can relax it by adding extra modes e.g. 'car' or {'car', 'rail'}.
+                Referencing modes present under 'modes' attribute of Network links.
+                Defaults to None.
+
+        Raises:
+            IndexError: ID must be a route or service.
         """
         try:
             self._reroute_service(_id, additional_modes)
@@ -2137,18 +2413,18 @@ class Network:
                 "use a different method to snap and route the Service object containing this Route."
             )
 
-    def services(self):
+    def services(self) -> Iterator[schedule_elements.Service]:
         """
-        Iterator returning Service objects
-        :return:
+        Yields:
+            Iterator returning Service objects
         """
         for service in self.schedule.services():
             yield service
 
-    def schedule_routes(self):
+    def schedule_routes(self) -> Iterator[schedule_elements.Route]:
         """
-        Iterator returning Route objects within the Schedule
-        :return:
+        Yields:
+            Iterator returning Route objects within the Schedule
         """
         for route in self.schedule.routes():
             yield route
@@ -2261,13 +2537,23 @@ class Network:
             logging.info(f"Link with id {link_id} is not in the network.")
             return False
 
-    def has_links(self, link_ids: list, conditions: Union[list, dict] = None, mixed_dtypes=True):
-        """
-        Whether the Network contains the links given in the link_ids list. If conditions is specified, checks whether
-        the Network contains the links specified and those links match the attributes in the conditions dict.
-        :param link_ids: list of link ids e.g. ['1', '102']
-        :param conditions: confer graph_operations.Filter conditions
-        :return:
+    def has_links(
+        self,
+        link_ids: list[Union[str, int]],
+        conditions: Optional[Union[list, dict]] = None,
+        mixed_dtypes: bool = True,
+    ) -> bool:
+        """Whether the Network contains the links given in the link_ids list.
+
+        If conditions is specified, checks whether the Network contains the links specified and those links match the attributes in the conditions dict.
+
+        Args:
+            link_ids (list[Union[str, int]]): List of link ids e.g. ['1', '102'].
+            conditions (Optional[Union[list, dict]], optional): Confer `graph_operations.Filter` conditions. Defaults to None.
+            mixed_dtypes (bool, optional): Confer `graph_operations.Filter` mixed_dtypes. Defaults to True.
+
+        Returns:
+            bool: If True, network contains links given in link_ids list.
         """
         has_all_links = all([self.has_link(link_id) for link_id in link_ids])
         if not conditions:
@@ -2281,7 +2567,7 @@ class Network:
         else:
             return False
 
-    def has_valid_link_chain(self, link_ids: List[str]):
+    def has_valid_link_chain(self, link_ids: list[str]) -> bool:
         for prev_link_id, next_link_id in zip(link_ids[:-1], link_ids[1:]):
             prev_link_id_to_node = self.link_id_mapping[prev_link_id]["to"]
             next_link_id_from_node = self.link_id_mapping[next_link_id]["from"]
@@ -2293,7 +2579,7 @@ class Network:
             return False
         return True
 
-    def route_distance(self, link_ids):
+    def route_distance(self, link_ids: Union[set, list]) -> int:
         if self.has_valid_link_chain(link_ids):
             distance = 0
             for link_id in link_ids:
@@ -2313,7 +2599,9 @@ class Network:
             logging.warning(f"This route is invalid: {link_ids}")
             return 0
 
-    def generate_index_for_node(self, avoid_keys: Union[list, set] = None, silent: bool = False):
+    def generate_index_for_node(
+        self, avoid_keys: Optional[Union[list, set]] = None, silent: bool = False
+    ) -> str:
         existing_keys = set([i for i, attribs in self.nodes()])
         if avoid_keys:
             existing_keys = existing_keys | set(avoid_keys)
@@ -2327,7 +2615,9 @@ class Network:
             logging.info(f"Generated node id {id}.")
         return str(id)
 
-    def generate_indices_for_n_nodes(self, n, avoid_keys: Union[list, set] = None):
+    def generate_indices_for_n_nodes(
+        self, n: int, avoid_keys: Optional[Union[list, set]] = None
+    ) -> set:
         existing_keys = set([i for i, attribs in self.nodes()])
         if avoid_keys:
             existing_keys = existing_keys | set(avoid_keys)
@@ -2341,19 +2631,23 @@ class Network:
         logging.info(f"Generated {len(id_set)} node ids.")
         return id_set
 
-    def link_id_exists(self, link_id):
+    def link_id_exists(self, link_id: Union[str, int]) -> bool:
         if link_id in self.link_id_mapping:
             logging.warning(f"{link_id} already exists.")
             return True
         return False
 
-    def generate_index_for_edge(self, avoid_keys: Union[list, set] = None, silent: bool = False):
+    def generate_index_for_edge(
+        self, avoid_keys: Optional[Union[list, set]] = None, silent: bool = False
+    ) -> str:
         _id = list(self.generate_indices_for_n_edges(n=1, avoid_keys=avoid_keys))[0]
         if not silent:
             logging.info(f"Generated link id {_id}.")
         return str(_id)
 
-    def generate_indices_for_n_edges(self, n, avoid_keys: Union[list, set] = None):
+    def generate_indices_for_n_edges(
+        self, n: int, avoid_keys: Optional[Union[list, set]] = None
+    ) -> set:
         existing_keys = set(self.link_id_mapping.keys())
         if avoid_keys:
             existing_keys = existing_keys | set(avoid_keys)
@@ -2464,16 +2758,24 @@ class Network:
         ]
 
     def generate_validation_report(
-        self, modes_for_strong_connectivity=None, link_metre_length_threshold=1000
-    ):
-        """
+        self,
+        modes_for_strong_connectivity: Optional[list] = None,
+        link_metre_length_threshold: int = 1000,
+    ) -> dict:
+        """Generates validation report.
+
         Generates a dictionary with keys: 'graph', 'schedule' and 'routing' describing validity of the Network's
         underlying graph, the schedule services and then the intersection of the two which is the routing of schedule
         services onto the graph.
-        :param modes_for_strong_connectivity: list of modes in the network that need to be checked for strong
-            connectivity. Defaults to 'car', 'walk' and 'bike'
-        :param link_metre_length_threshold: in meters defaults to 1000, i.e. 1km
-        :return:
+
+        Args:
+            modes_for_strong_connectivity (Optional[list], optional):
+                List of modes in the network that need to be checked for strong connectivity.
+                Defaults to None (['car', 'walk', 'bike']).
+            link_metre_length_threshold (int, optional): In meters defaults to 1000, i.e. 1km. Defaults to 1000.
+
+        Returns:
+            dict: Validation report
         """
         logging.info("Checking validity of the Network")
         logging.info("Checking validity of the Network graph")
@@ -2574,11 +2876,14 @@ class Network:
         report["is_valid_network"] = is_valid_network
         return report
 
-    def report_on_link_attribute_condition(self, attribute, condition):
+    def report_on_link_attribute_condition(self, attribute: str, condition: Callable) -> dict:
         """
-        :param attribute: one of the link attributes, e.g. 'length'
-        :param condition: callable, condition for link[attribute] to satisfy
-        :return:
+        Args:
+            attribute (str): One of the link attributes, e.g. 'length'.
+            condition (Callable): Condition for link[attribute] to satisfy.
+
+        Returns:
+            dict: Report.
         """
         if isinstance(attribute, dict):
             conditions = dict_support.nest_at_leaf(deepcopy(attribute), condition)
@@ -2611,15 +2916,19 @@ class Network:
             )
         return con_desc
 
-    def generate_standard_outputs(self, output_dir, gtfs_day="19700101", include_shp_files=False):
-        """
-        Generates geojsons that can be used for generating standard kepler visualisations.
-        These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes,
-        the shape of modal subgraphs.
-        :param output_dir: path to folder where to save resulting geojsons
-        :param gtfs_day: day in format YYYYMMDD for the network's schedule for consistency in visualisations,
-        defaults to 1970/01/01 otherwise
-        :return: None
+    def generate_standard_outputs(
+        self, output_dir: str, gtfs_day: str = "19700101", include_shp_files: bool = False
+    ):
+        """Generates geojsons that can be used for generating standard kepler visualisations.
+
+        These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes, the shape of modal subgraphs.
+
+        Args:
+            output_dir (str): path to folder where to save resulting geojsons.
+            gtfs_day (str, optional):
+                Day in format YYYYMMDD for the network's schedule for consistency in visualisations,
+                Defaults to "19700101" (1970-01-01).
+            include_shp_files (bool, optional): If True, also store shapefiles. Defaults to False.
         """
         geojson.generate_standard_outputs(self, output_dir, gtfs_day, include_shp_files)
         logging.info("Finished generating standard outputs. Zipping folder.")
@@ -2643,16 +2952,18 @@ class Network:
 
     def update_link_auxiliary_files(self, id_map: dict):
         """
-        :param id_map: dict map between old link ID and new link ID
-        :return:
+
+        Args:
+            id_map (dict): dict map between old link ID and new link ID.
         """
         for name, aux_file in self.auxiliary_files["link"].items():
             aux_file.apply_map(id_map)
 
     def update_node_auxiliary_files(self, id_map: dict):
         """
-        :param id_map: dict map between old node ID and new node ID
-        :return:
+
+        Args:
+            id_map (dict): dict map between old node ID and new node ID
         """
         for name, aux_file in self.auxiliary_files["node"].items():
             aux_file.apply_map(id_map)
@@ -2666,11 +2977,11 @@ class Network:
         self.change_log.export(os.path.join(output_dir, "network_change_log.csv"))
         self.write_auxiliary_files(os.path.join(output_dir, "auxiliary_files"))
 
-    def write_to_matsim(self, output_dir):
-        """
-        Writes Network and Schedule (if applicable) to MATSim xml format
-        :param output_dir: output directory
-        :return:
+    def write_to_matsim(self, output_dir: str):
+        """Writes Network and Schedule (if applicable) to MATSim xml format.
+
+        Args:
+            output_dir (str): Output directory.
         """
         persistence.ensure_dir(output_dir)
         matsim_xml_writer.write_matsim_network(output_dir, self)
@@ -2685,11 +2996,11 @@ class Network:
             "links": dict_support.dataframe_to_dict(_network["links"].T),
         }
 
-    def write_to_json(self, output_dir):
-        """
-        Writes Network and Schedule (if applicable) to a single JSON file with nodes and links
-        :param output_dir: output directory
-        :return:
+    def write_to_json(self, output_dir: str):
+        """Writes Network and Schedule (if applicable) to a single JSON file with nodes and links.
+
+        Args:
+            output_dir (str): Output directory.
         """
         persistence.ensure_dir(output_dir)
         logging.info(f"Saving Network to JSON in {output_dir}")
@@ -2699,12 +3010,13 @@ class Network:
             self.schedule.write_to_json(output_dir)
         self.write_extras(output_dir)
 
-    def write_to_geojson(self, output_dir, epsg: str = None):
-        """
-        Writes Network graph and Schedule (if applicable) to nodes and links geojson files.
-        :param output_dir: output directory
-        :param epsg: projection if the geometry is to be reprojected, defaults to own projection
-        :return:
+    def write_to_geojson(self, output_dir: str, epsg: Optional[str] = None):
+        """Writes Network graph and Schedule (if applicable) to nodes and links geojson files.
+
+        Args:
+            output_dir (str): Output directory.
+            epsg (Optional[str], optional):
+                Projection if the geometry is to be reprojected. Defaults to None (no reprojection).
         """
         persistence.ensure_dir(output_dir)
         _network = self.to_geodataframe()
@@ -2724,10 +3036,11 @@ class Network:
             self.schedule.write_to_geojson(output_dir, epsg)
         self.write_extras(output_dir)
 
-    def to_geodataframe(self):
-        """
-        Generates GeoDataFrames of the Network graph in Network's crs
-        :return: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and links
+    def to_geodataframe(self) -> dict:
+        """Generates GeoDataFrames of the Network graph in Network's crs.
+
+        Returns:
+            dict: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and links.
         """
         return geojson.generate_geodataframes(self.graph)
 
@@ -2743,12 +3056,14 @@ class Network:
         )
         return _network
 
-    def write_to_csv(self, output_dir, gtfs_day="19700101"):
-        """
-        Writes nodes and links tables for the Network and if there is a Schedule, exports it to a GTFS-like format.
-        :param output_dir: output directory
-        :param gtfs_day: defaults to 19700101, day which is represented in the Schedule
-        :return:
+    def write_to_csv(self, output_dir: str, gtfs_day: str = "19700101"):
+        """Writes nodes and links tables for the Network and if there is a Schedule, exports it to a GTFS-like format.
+
+        Args:
+            output_dir (str): path to folder where to save resulting CSVs.
+            gtfs_day (str, optional):
+                Day in format YYYYMMDD which is represented in the network's schedule.
+                Defaults to "19700101" (1970-01-01).
         """
         network_csv_folder = os.path.join(output_dir, "network")
         schedule_csv_folder = os.path.join(output_dir, "schedule")
@@ -2763,14 +3078,19 @@ class Network:
         self.write_extras(network_csv_folder)
 
     def get_node_elevation_dictionary(
-        self, elevation_tif_file_path, null_value: float, run_validation=False
-    ):
-        """
-        Takes an elevation raster file in .tif format, and creates a dictionary with z-value for each network node;
-        can then use self.apply_attributes_to_nodes() function to add elevation as a node attribute to the network
-        :param elevation_tif_file_path: path to the elevation raster file in .tif format
-        :param null_value: value that represents null in the elevation raster file
-        :return: dict in format {node_id : {'z': z}}
+        self, elevation_tif_file_path: str, null_value: float, run_validation: bool = False
+    ) -> dict:
+        """Takes an elevation raster file in .tif format, and creates a dictionary with z-value for each network node.
+
+        Can then use self.apply_attributes_to_nodes() function to add elevation as a node attribute to the network.
+
+        Args:
+            elevation_tif_file_path (str): path to the elevation raster file in .tif format.
+            null_value (float): value that represents null in the elevation raster file
+            run_validation (bool, optional): If True, create a validation report and send to logging INFO level. Defaults to False.
+
+        Returns:
+            dict: Elevation dictionary in format `{node_id : {'z': z}}`.
         """
         img = elevation.get_elevation_image(elevation_tif_file_path)
         elevation_dict = {}
@@ -2789,13 +3109,17 @@ class Network:
 
         return elevation_dict
 
-    def get_link_slope_dictionary(self, elevation_dict):
-        """
-        Takes a dictionary of z-value for each network node (as created by get_node_elevation_dictionary() function,
-        calculates link slope and returns a dictionary of link IDs and their slopes; can then use
-        self.apply_attributes_to_links() function to add slope as a link attribute to the network.
-        :param elevation_dict: dict in format {node_id : {'z': z}}
-        :return: dict in format {link_id : {'slope': slope}}, where slope is a float
+    def get_link_slope_dictionary(self, elevation_dict: dict) -> dict:
+        """Takes a dictionary of z-value for each network node (as created by get_node_elevation_dictionary() function,
+        calculates link slope and returns a dictionary of link IDs and their slopes.
+
+        Can then use self.apply_attributes_to_links() function to add slope as a link attribute to the network.
+
+        Args:
+            elevation_dict (dict): dict in format `{node_id : {'z': z}}`
+
+        Returns:
+            dict: dict in format `{link_id : {'slope': slope}}`, where slope is a float.
         """
         slope_dict = {}
 
@@ -2819,18 +3143,27 @@ class Network:
 
         return slope_dict
 
-    def split_link_at_node(self, link_id, node_id, distance_threshold=1):
-        """
-        Takes a link and node, and splits the link at the point to create 2 new links;
-        the old link is then deleted.
-        Unlike `split_link_at_point` this allows multiple links being split using the same mode - meaning they are
-        connected and using the same junction, e.g. two links going in opposite directions. However, the node has to
-        be situated on the geometry of the links involved so it's recommended you use
-        `genet.spatial.snap_point_to_line` to align the node before adding it.
-        :param link_id: ID of the link to split
-        :param node_id: ID of the node in the graph to split at.
-        :param distance_threshold: how close the node needs to be to the link to be allowed to split it
-        :return: None
+    def split_link_at_node(
+        self, link_id: Union[str, int], node_id: Union[str, int], distance_threshold: int = 1
+    ) -> dict:
+        """Takes a link and node, and splits the link at the point to create 2 new links.
+
+        The old link is then deleted.
+
+        Unlike `split_link_at_point` this allows multiple links being split using the same mode -
+        meaning they are connected and using the same junction, e.g. two links going in opposite directions.
+        However, the node has to be situated on the geometry of the links involved so it's recommended you use `genet.spatial.snap_point_to_line` to align the node before adding it.
+
+        Args:
+            link_id (Union[str, int]): ID of the link to split.
+            node_id (Union[str, int]): ID of the node in the graph to split at.
+            distance_threshold (int, optional): How close the node needs to be to the link to be allowed to split it. Defaults to 1.
+
+        Raises:
+            exceptions.MisalignedNodeError: node must be close enough to the link to split it.
+
+        Returns:
+            dict: updated node attributes and links.
         """
         # check if point is on the link LineString
         node_attribs = self.node(node_id)
@@ -2921,15 +3254,26 @@ class Network:
 
         return {"node_attributes": node_attribs, "links": links}
 
-    def split_link_at_point(self, link_id, x=None, y=None, node_id=None):
-        """
-        Takes a link and point coordinates, and splits the link at the point to create 2 new links;
-        the old link is then deleted. A new node is added too
-        :param link_id: ID of the link to split
-        :param x: x-coordinates of the point to split at
-        :param y: y-coordinates of the point to split at
-        :param node_id: Suggested ID for the resulting node in the graph
-        :return: updates the graph, returns data for node and links that were added
+    def split_link_at_point(
+        self,
+        link_id: Union[str, int],
+        x: Union[str, int],
+        y: Union[str, int],
+        node_id: Optional[Union[str, int]] = None,
+    ) -> dict:
+        """Takes a link and point coordinates, and splits the link at the point to create 2 new links.
+
+        the old link is then deleted.
+        A new node is added too.
+
+        Args:
+            link_id (Union[str, int]): ID of the link to split
+            x (Union[str, int]): x-coordinates of the point to split at.
+            y (Union[str, int]): y-coordinates of the point to split at.
+            node_id (Optional[Union[str, int]], optional): Suggested ID for the resulting node in the graph. Defaults to None.
+
+        Returns:
+            dict: updates the graph, returns data for node and links that were added.
         """
         if node_id is None:
             node_id = self.generate_index_for_node()
@@ -3021,7 +3365,7 @@ class Network:
         return report
 
 
-def replace_link_on_pt_route(route: List[str], mapping: Dict[str, Union[str, list]]):
+def replace_link_on_pt_route(route: list[str], mapping: dict[str, Union[str, list]]):
     new_route: list = []
     for link in route:
         mapped_link = mapping.get(link, link)
