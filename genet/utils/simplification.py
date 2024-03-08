@@ -116,13 +116,21 @@ def _assemble_path_data(n, indexed_paths_to_simplify):
     return return_d
 
 
-def _is_endpoint(node_neighbours):
+def _is_endpoint(node_neighbours: dict) -> list[str]:
     """
-    :param node_neighbours: dict {node: {
-     successors: {set of nodes that you can reach from node},
-     predecessors: {set of nodes that lead to node}
-    }}
-    :return:
+
+    Args:
+        node_neighbours (dict):
+            E.g.,
+            ```python
+            {node: {
+                successors: {set of nodes that you can reach from node},
+                predecessors: {set of nodes that lead to node}
+            }}
+            ```
+
+    Returns:
+        list[str]: Nodes that are endpoints.
     """
     return [
         node

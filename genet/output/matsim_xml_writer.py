@@ -9,6 +9,7 @@ import genet.utils.java_dtypes as java_dtypes
 import genet.variables as variables
 from genet.exceptions import MalformedAdditionalAttributeError
 from genet.output import sanitiser
+from genet.schedule_elements import Schedule
 from genet.utils.spatial import encode_shapely_linestring_to_polyline
 from genet.validate.network import validate_attribute_data
 
@@ -187,14 +188,16 @@ def write_matsim_network(output_dir, network):
                     save_attributes(link_attributes, xf, elem_type="link")
 
 
-def write_matsim_schedule(output_dir, schedule, reproj_processes=1):
-    """
-        Save to MATSim XML format.
-    :param output_dir: path to output directory
-    :param schedule: genet.Schedule object
-    :param reproj_processes: you can set this in case you have a lot of stops and your stops need to be reprojected
-        it splits the process across given number of processes.
-    :return:
+def write_matsim_schedule(output_dir: str, schedule: Schedule, reproj_processes: int = 1):
+    """Save to MATSim XML format.
+
+    Args:
+        output_dir (str): path to output directory.
+        schedule (Schedule): Schedule object to write.
+        reproj_processes (int, optional):
+            You can set this in case you have a lot of stops and your stops need to be reprojected.
+            It splits the process across given number of processes.
+            Defaults to 1.
     """
     fname = os.path.join(output_dir, "schedule.xml")
     logging.info("Writing {}".format(fname))

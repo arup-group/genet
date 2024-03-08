@@ -6,21 +6,17 @@ import genet.utils.spatial as spatial
 # rip and monkey patch of a few functions from osmnx.core to customise the tags being saved to the graph
 
 
-def parse_osm_nodes_paths(osm_data, config):
-    """
-    function from osmnx, adding our own spin on this - need extra tags
+def parse_osm_nodes_paths(osm_data: dict, config: osm_reader.Config) -> tuple[dict, dict]:
+    """Construct dicts of nodes and paths with key=osmid and value=dict of attributes.
 
-    Construct dicts of nodes and paths with key=osmid and value=dict of
-    attributes.
+    Function from osmnx. Adding our own spin on this - need extra tags
 
-    Parameters
-    ----------
-    osm_data : dict
-        JSON response from from the Overpass API
+    Args:
+        osm_data (dict): JSON response from from the Overpass API
+        config (osm_reader.Config): OSM reader configuration.
 
-    Returns
-    -------
-    nodes, paths : tuple
+    Returns:
+        tuple[dict, dict]: Nodes; Paths.
     """
 
     nodes = {}
@@ -40,18 +36,15 @@ def parse_osm_nodes_paths(osm_data, config):
     return nodes, paths
 
 
-def get_node(element, config):
-    """
-    Convert an OSM node element into the format for a networkx node.
+def get_node(element: dict, config: osm_reader.Config) -> dict:
+    """Convert an OSM node element into the format for a networkx node.
 
-    Parameters
-    ----------
-    element : dict
-        an OSM node element
+    Args:
+        element (dict): An OSM node element.
+        config (osm_reader.Config): OSM reader configuration.
 
-    Returns
-    -------
-    dict
+    Returns:
+        dict: OSM node element converted to the networkx node format.
     """
 
     node = {}
@@ -66,19 +59,16 @@ def get_node(element, config):
 
 
 def get_path(element, config):
-    """
-    function from osmnx, adding our own spin on this - need extra tags
+    """Convert an OSM way element into the format for a networkx graph path.
 
-    Convert an OSM way element into the format for a networkx graph path.
+    Function from osmnx, adding our own spin on this - need extra tags
 
-    Parameters
-    ----------
-    element : dict
-        an OSM way element
+    Args:
+        element (dict): An OSM way element.
+        config (osm_reader.Config): OSM reader configuration.
 
-    Returns
-    -------
-    dict
+    Returns:
+        dict: OSM way element converted to the networkx graph path format.
     """
 
     path = {}
@@ -97,13 +87,13 @@ def get_path(element, config):
     return path
 
 
-def return_edges(paths, config, bidirectional=False):
-    """
-    Makes graph edges from osm paths
-    :param paths: dictionary {osm_way_id: {osmid: x, nodes:[a,b], osmtags: vals}}
-    :param config: genet.input.osm_reader.Config object
-    :param bidirectional: bool value if True, reads all paths as both ways
-    :return:
+def return_edges(paths: dict, config: osm_reader.Config, bidirectional: bool = False):
+    """Makes graph edges from osm paths.
+
+    Args:
+        paths (dict): OSM paths, e.g. `{osm_way_id: {osmid: x, nodes:[a,b], osmtags: vals}}`
+        config (osm_reader.Config): OSM reader configuration object.
+        bidirectional (bool, optional): If True, reads all paths as both ways. Defaults to False.
     """
 
     def extract_osm_data(data, es):

@@ -5,8 +5,10 @@ import os
 import numpy as np
 import pandas as pd
 from lxml import etree as et
-from lxml.etree import Comment, Element, SubElement
+from lxml.etree import Comment, Element, SubElement, _Element
 from tqdm import tqdm
+
+from genet.core import Network
 
 
 class Toll:
@@ -27,30 +29,38 @@ class Toll:
         else:
             self.df_tolls = df_tolls
 
-    def write_to_csv(self, output_dir, filename="road_pricing.csv"):
-        """
-        Exports all tolls to csv file
-        :param output_dir: path to folder to receive the file
-        :return: None
+    def write_to_csv(self, output_dir: str, filename: str = "road_pricing.csv"):
+        """Exports all tolls to csv file.
+
+        Args:
+            output_dir (str): Path to folder in which to save `filename`.
+            filename (str, optional): CSV filename. Defaults to "road_pricing.csv".
         """
         self.df_tolls.to_csv(os.path.join(output_dir, filename), index=False)
 
     def write_to_xml(
         self,
-        output_dir,
-        filename="roadpricing-file.xml",
-        toll_type="link",
-        toll_scheme_name="simple-toll",
-        toll_description="A simple toll scheme",
+        output_dir: str,
+        filename: str = "roadpricing-file.xml",
+        toll_type: str = "link",
+        toll_scheme_name: str = "simple-toll",
+        toll_description: str = "A simple toll scheme",
     ):
-        """
-        Write toll to MATSim xml file
-        :param output_dir: path to folder to receive the file
-        :param toll_type: default 'link', other supported MATSim toll types: 'distance', 'cordon', 'area',
-            more info: https://www.matsim.org/apidocs/core/0.3.0/org/matsim/roadpricing/package-summary.html
-        :param toll_scheme_name: name to pass to xml file, useful for identifying multiple toll schemes
-        :param toll_description: additional description of the toll to pass to the xml file
-        :return: None
+        """Write toll to MATSim xml file.
+
+        Args:
+            output_dir (str): Path to folder in which to save `filename`.
+            filename (str, optional): Matsim XML filename. Defaults to "roadpricing-file.xml".
+            toll_type (str, optional):
+                Supported MATSim toll types: 'distance', 'cordon', 'area', 'link'.
+                More info: https://www.matsim.org/apidocs/core/0.3.0/org/matsim/roadpricing/package-summary.html.
+                Defaults to "link".
+            toll_scheme_name (str, optional):
+                Name to pass to xml file, useful for identifying multiple toll schemes.
+                Defaults to "simple-toll".
+            toll_description (str, optional):
+                Additional description of the toll to pass to the xml file.
+                Defaults to "A simple toll scheme".
         """
         xml_tree = build_tree(
             self.df_tolls,
@@ -61,19 +71,21 @@ class Toll:
         write_xml(xml_tree, output_dir, filename=filename)
 
 
-def road_pricing_from_osm(network, attribute_name, osm_csv_path, outpath):
-    """
-    Instantiates a Toll object from OSM csv config and network inputs
+def road_pricing_from_osm(
+    network: Network, attribute_name: str, osm_csv_path: str, outpath: str
+) -> Toll:
+    """Instantiates a Toll object from OSM csv config and network inputs.
 
-    Parse a genet.Network object and find edges whose
-    ['attributes'][attribute_name]['text'] is present in a list of OSM way ids
-    :param network: a genet.Network object with attribute_name tags
-    :param attribute_name: a string corresponding to the name of the link attribute of interest
-    :param osm_csv_path: path to a .csv config file where OSM way ids are stored in column `osm_ids`
-    :param outpath: path to an outputs folder
-    :return: osm_df which is also written to .csv and a mapping between OSM IDs and network link IDs osm_to_network_dict
-     which is also saved to .json in the `outpath` location
-    :return:
+    Parse a genet.Network object and find edges whose ['attributes'][attribute_name]['text'] is present in a list of OSM way ids.
+
+    Args:
+        network (Network): a genet.Network object with attribute_name tags.
+        attribute_name (str): a string corresponding to the name of the link attribute of interest
+        osm_csv_path (str): path to a .csv config file where OSM way ids are stored in column `osm_ids`
+        outpath (str): path to an outputs folder
+
+    Returns:
+        Toll: Contains OSM dataframe (which is also written to CSV file), and a mapping between OSM IDs and network link IDs osm_to_network_dict (which is also saved to JSON file in the `outpath` location).
     """
     osm_df, osm_to_network_dict = extract_network_id_from_osm_csv(
         network, attribute_name, osm_csv_path, outpath
@@ -98,18 +110,25 @@ def merge_osm_tolls_and_network_snapping(osm_df, osm_to_network_dict):
     return df
 
 
-def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpath, osm_dtype=str):
-    """
-    Parse a genet.Network object and find edges whose ['attributes'][attribute_name] is present in a list
-    of OSM way ids
-    :param network: a genet.Network object with attribute_name tags
-    :param attribute_name: a string corresponding to the name of the link attribute of interest
-    :param osm_csv_path: path to a .csv config file where OSM way ids are stored in column `osm_ids`
-    :param outpath: path to a folder
-    :param osm_dtype: data type to pass to pandas.read_csv method. Should match the python dtype for OSM data tags
-        stored in the network as they are being matched
-    :return: osm_df which is also written to .csv and a mapping between OSM IDs and network link IDs
-    osm_to_network_dict which is also saved to .json in the `outpath` location
+def extract_network_id_from_osm_csv(
+    network: Network, attribute_name: str, osm_csv_path: str, outpath: str, osm_dtype: type = str
+) -> tuple[pd.DataFrame, dict]:
+    """Parse a genet.Network object and find edges whose ['attributes'][attribute_name] is present in a list of OSM way ids.
+
+    Args:
+        network (Network): a genet.Network object with `attribute_name` tags,
+        attribute_name (str): a string corresponding to the name of the link attribute of interest
+        osm_csv_path (str): path to a .csv config file where OSM way ids are stored in column `osm_ids`
+        outpath (str): path to a folder
+        osm_dtype (type, optional):
+            Data type to pass to pandas.read_csv method.
+            Should match the python dtype for OSM data tags stored in the network as they are being matched.
+            Defaults to str.
+
+    Returns:
+        tuple[pd.DataFrame, dict]:
+            `osm_df` which is also written to .csv and a mapping between OSM IDs and network link IDs;
+            `osm_to_network_dict` which is also saved to .json in the `outpath` location.
     """
 
     osm_df = pd.read_csv(osm_csv_path, dtype={"osm_id": osm_dtype})
@@ -154,12 +173,13 @@ def extract_network_id_from_osm_csv(network, attribute_name, osm_csv_path, outpa
     return osm_df, osm_to_network_dict
 
 
-def write_xml(root, path, filename="roadpricing-file.xml"):
-    """
-    Write XML config for MATSim Road Pricing a given folder location.
-    :param root: an 'lxml.etree._Element' object corresponding to the root of an XML tree
-    :param path: location of destination folder for Road Pricing config
-    :return: None
+def write_xml(root: _Element, path: str, filename: str = "roadpricing-file.xml"):
+    """Write XML config for MATSim Road Pricing a given folder location.
+
+    Args:
+        root (_Element): root of an XML tree.
+        path (str): location of destination folder for Road Pricing config.
+        filename (str, optional): Road pricing XML filename. Defaults to "roadpricing-file.xml".
     """
     tree = et.tostring(root, pretty_print=True, xml_declaration=False, encoding="UTF-8")
     with open(os.path.join(path, filename), "wb") as file:
@@ -171,19 +191,33 @@ def write_xml(root, path, filename="roadpricing-file.xml"):
 
 
 def build_tree_from_csv_json(
-    csv_input,
-    json_input,
-    toll_type="link",
-    toll_scheme_name="simple-toll",
-    toll_description="A simple toll scheme",
-):
+    csv_input: str,
+    json_input: str,
+    toll_type: str = "link",
+    toll_scheme_name: str = "simple-toll",
+    toll_description: str = "A simple toll scheme",
+) -> _Element:
+    """Build XML config for MATSim Road Pricing from .csv and .json input.
+
+    Args:
+        csv_input (str):
+            csv output from `extract_network_id_from_osm_csv` with additional columns: `vehicle_type`, `toll_amount`, `start_time` and `end_time` for each of the tolls required.
+        json_input (str): json output from `extract_network_id_from_osm_csv`.
+        toll_type (str, optional):
+            Supported MATSim toll types: 'distance', 'cordon', 'area', 'link'.
+            More info: https://www.matsim.org/apidocs/core/0.3.0/org/matsim/roadpricing/package-summary.html.
+            Defaults to "link".
+        toll_scheme_name (str, optional):
+            Name to pass to xml file, useful for identifying multiple toll schemes.
+            Defaults to "simple-toll".
+        toll_description (str, optional):
+            Additional description of the toll to pass to the xml file.
+            Defaults to "A simple toll scheme".
+
+    Returns:
+        _Element: XML root element.
     """
-    Build XML config for MATSim Road Pricing from .csv and .json input
-    :param csv_input: csv output from `extract_network_id_from_osm_csv` with additional columns: `vehicle_type`,
-    `toll_amount`, `start_time` and `end_time` for each of the tolls required.
-    :param json_input: json output from `extract_network_id_from_osm_csv`
-    :return: an 'lxml.etree._Element' object
-    """
+
     # CSV input
     osm_df = pd.read_csv(csv_input, dtype={"osm_id": str})
     # JSON input
@@ -198,14 +232,17 @@ def build_tree_from_csv_json(
 
 
 def build_tree(
-    df_tolls,
-    toll_type="link",
-    toll_scheme_name="simple-toll",
-    toll_description="A simple toll scheme",
-):
-    """
-    Build XML config for MATSim Road Pricing from tolls DataFrame input
-    :param df_tolls: pd.DataFrame(
+    df_tolls: pd.DataFrame,
+    toll_type: str = "link",
+    toll_scheme_name: str = "simple-toll",
+    toll_description: str = "A simple toll scheme",
+) -> _Element:
+    """Build XML config for MATSim Road Pricing from tolls DataFrame input
+
+    Args:
+        df_tolls (pd.DataFrame): Of the form:
+            ```python
+            pd.DataFrame(
                 columns=[
                     'toll_id',  # optional, unique ID of the toll, based off OSM ref if applicable
                     'network_link_id',  # network link ID to be charged
@@ -216,11 +253,21 @@ def build_tree(
                     'osm_name',  # optional, if derived from OSM, human readable name of the road
                     'notes'  # optional, user notes
                 ]
-    :param toll_type: default 'link', other supported MATSim toll types: 'distance', 'cordon', 'area',
-        more info: https://www.matsim.org/apidocs/core/0.3.0/org/matsim/roadpricing/package-summary.html
-    :param toll_scheme_name: name to pass to xml file, useful for identifying multiple toll schemes
-    :param toll_description: additional description of the toll to pass to the xml file
-    :return: an 'lxml.etree._Element' object
+            )
+            ```
+        toll_type (str, optional):
+            Supported MATSim toll types: 'distance', 'cordon', 'area', 'link'.
+            More info: https://www.matsim.org/apidocs/core/0.3.0/org/matsim/roadpricing/package-summary.html.
+            Defaults to "link".
+        toll_scheme_name (str, optional):
+            Name to pass to xml file, useful for identifying multiple toll schemes.
+            Defaults to "simple-toll".
+        toll_description (str, optional):
+            Additional description of the toll to pass to the xml file.
+            Defaults to "A simple toll scheme".
+
+    Returns:
+        _Element: XML root element.
     """
 
     roadpricing = Element("roadpricing", type=toll_type, name=toll_scheme_name)

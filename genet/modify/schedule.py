@@ -8,11 +8,15 @@ from genet import exceptions
 from genet.max_stable_set import MaxStableSet
 
 
-def reproj_stops(schedule_element_nodes: dict, new_epsg):
+def reproj_stops(schedule_element_nodes: dict, new_epsg: str) -> dict:
     """
-    :param schedule_element_nodes: dict stop ids : stop data including x, y, epsg
-    :param new_epsg: 'epsg:1234', the epsg stops are being projected to
-    :return: dict: stop ids from schedule_element_nodes: changed stop data in dict format new x, y and epsg
+
+    Args:
+        schedule_element_nodes (dict): stop IDs : stop data including `x`, `y`, `epsg`.
+        new_epsg (str): the epsg stops are being projected to, e.g. 'epsg:4326'.
+
+    Returns:
+        dict: Stop IDs from `schedule_element_nodes`: changed stop data in dict format new `x`, `y` and `epsg`.
     """
     transformers = {
         epsg: Transformer.from_crs(epsg, new_epsg, always_xy=True)
