@@ -69,7 +69,6 @@ plugins:
           import:
             - https://docs.python.org/3/objects.inv
             - https://pandas.pydata.org/docs/objects.inv
-            - https://docs.python.org/3/objects.inv
             - https://shapely.readthedocs.io/en/stable/objects.inv
             - https://geopandas.org/en/stable/objects.inv
             - https://networkx.org/documentation/stable/objects.inv
