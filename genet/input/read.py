@@ -7,6 +7,7 @@ import geopandas as gpd
 import networkx as nx
 import pandas as pd
 
+import genet
 import genet.core as core
 import genet.input.gtfs_reader as gtfs_reader
 import genet.input.matsim_reader as matsim_reader
@@ -136,13 +137,12 @@ def read_matsim_schedule(
     epsg: str,
     path_to_vehicles: Optional[str] = None,
     force_long_form_attributes: bool = False,
-):
+) -> schedule_elements.Schedule:
     """Reads MATSim's schedule.xml (and possibly vehicles.xml) to genet.Schedule object.
 
     Args:
-        path_to_network (str): Path to MATSim's `network.xml` file.
+        path_to_schedule (str): Path to MATSim's `schedule.xml` file.
         epsg (str): Projection for the network, e.g. 'epsg:27700'.
-        path_to_schedule (Optional[str], optional): Path to MATSim's `schedule.xml` file. Defaults to None.
         path_to_vehicles (Optional[str], optional): Path to MATSim's `vehicles.xml` file,. Defaults to None.
         force_long_form_attributes (bool, optional):
             If True the additional attributes will be read into verbose format:
@@ -163,7 +163,7 @@ def read_matsim_schedule(
             Defaults to False.
 
     Returns:
-        core.Network: GeNet Schedule object.
+        schedule_elements.Schedule: GeNet Schedule object.
     """
     (
         services,
@@ -289,7 +289,7 @@ def read_json_schedule(schedule_path: str, epsg: str) -> schedule_elements.Sched
     """Reads Schedule from a JSON file.
 
     Args:
-        network_path (str): path to JSON or GeoJSON schedule file.
+        schedule_path (str): path to JSON or GeoJSON schedule file.
         epsg (str): Projection for the network, e.g. 'epsg:27700'.
 
     Returns:
@@ -498,7 +498,7 @@ def read_osm(
     return n
 
 
-def read_matsim_road_pricing(path_to_file: str):
+def read_matsim_road_pricing(path_to_file: str) -> "genet.use.road_pricing.Toll":
     """TODO: implement
 
     Args:

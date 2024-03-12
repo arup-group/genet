@@ -47,9 +47,9 @@ def get_nested_value(d: dict, path: Union[dict, str]) -> dict:
 
     if isinstance(path, dict):
         for k, v in path.items():
-            try:
+            if k in d:
                 val = get_nested_value(d[k], v)
-            except KeyError:
+            else:
                 raise KeyError(f"Dictionary {d} does not have key {k}")
     else:
         val = d[path]

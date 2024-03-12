@@ -6,14 +6,14 @@ import genet.utils.spatial as spatial
 # rip and monkey patch of a few functions from osmnx.core to customise the tags being saved to the graph
 
 
-def parse_osm_nodes_paths(osm_data: dict, config: osm_reader.Config) -> tuple[dict, dict]:
+def parse_osm_nodes_paths(osm_data: dict, config: "osm_reader.Config") -> tuple[dict, dict]:
     """Construct dicts of nodes and paths with key=osmid and value=dict of attributes.
 
     Function from osmnx. Adding our own spin on this - need extra tags
 
     Args:
         osm_data (dict): JSON response from from the Overpass API
-        config (osm_reader.Config): OSM reader configuration.
+        config (genet.input.osm_reader.Config): OSM reader configuration.
 
     Returns:
         tuple[dict, dict]: Nodes; Paths.
@@ -36,12 +36,12 @@ def parse_osm_nodes_paths(osm_data: dict, config: osm_reader.Config) -> tuple[di
     return nodes, paths
 
 
-def get_node(element: dict, config: osm_reader.Config) -> dict:
+def get_node(element: dict, config: "osm_reader.Config") -> dict:
     """Convert an OSM node element into the format for a networkx node.
 
     Args:
         element (dict): An OSM node element.
-        config (osm_reader.Config): OSM reader configuration.
+        config (genet.input.osm_reader.Config): OSM reader configuration.
 
     Returns:
         dict: OSM node element converted to the networkx node format.
@@ -58,14 +58,14 @@ def get_node(element: dict, config: osm_reader.Config) -> dict:
     return node
 
 
-def get_path(element, config):
+def get_path(element: dict, config: "osm_reader.Config") -> dict:
     """Convert an OSM way element into the format for a networkx graph path.
 
     Function from osmnx, adding our own spin on this - need extra tags
 
     Args:
         element (dict): An OSM way element.
-        config (osm_reader.Config): OSM reader configuration.
+        config (genet.input.osm_reader.Config): OSM reader configuration.
 
     Returns:
         dict: OSM way element converted to the networkx graph path format.
@@ -87,12 +87,12 @@ def get_path(element, config):
     return path
 
 
-def return_edges(paths: dict, config: osm_reader.Config, bidirectional: bool = False):
+def return_edges(paths: dict, config: "osm_reader.Config", bidirectional: bool = False):
     """Makes graph edges from osm paths.
 
     Args:
         paths (dict): OSM paths, e.g. `{osm_way_id: {osmid: x, nodes:[a,b], osmtags: vals}}`
-        config (osm_reader.Config): OSM reader configuration object.
+        config (genet.input.osm_reader.Config): OSM reader configuration object.
         bidirectional (bool, optional): If True, reads all paths as both ways. Defaults to False.
     """
 

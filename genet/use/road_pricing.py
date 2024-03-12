@@ -76,7 +76,7 @@ def road_pricing_from_osm(
 ) -> Toll:
     """Instantiates a Toll object from OSM csv config and network inputs.
 
-    Parse a genet.Network object and find edges whose ['attributes'][attribute_name]['text'] is present in a list of OSM way ids.
+    Parse a genet.Network object and find edges whose `['attributes'][attribute_name]['text']` is present in a list of OSM way ids.
 
     Args:
         network (Network): a genet.Network object with attribute_name tags.
@@ -113,7 +113,7 @@ def merge_osm_tolls_and_network_snapping(osm_df, osm_to_network_dict):
 def extract_network_id_from_osm_csv(
     network: Network, attribute_name: str, osm_csv_path: str, outpath: str, osm_dtype: type = str
 ) -> tuple[pd.DataFrame, dict]:
-    """Parse a genet.Network object and find edges whose ['attributes'][attribute_name] is present in a list of OSM way ids.
+    """Parse a genet.Network object and find edges whose `['attributes'][attribute_name]` is present in a list of OSM way ids.
 
     Args:
         network (Network): a genet.Network object with `attribute_name` tags,

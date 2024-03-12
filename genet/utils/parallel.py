@@ -1,15 +1,18 @@
 import logging
 import multiprocessing as mp
 from math import ceil
+from typing import Callable, Union, overload
 
 
-def split_list(_list, processes=1):
-    """
-    Split type function. Partitions list into list of subsets of _list
-    :param _list: any list
-    :param processes: number of processes to split data across, takes precedence over k to split data evenly over
-    exactly the number of processes being used but is optional
-    :return: list of lists
+def split_list(_list: list, processes: int = 1) -> list[list]:
+    """Partitions list into list of subsets of _list.
+
+    Args:
+        _list (list): Input list
+        processes (int, optional): Number of processes to split data across. Defaults to 1.
+
+    Returns:
+        list: List of lists
     """
     k = ceil(len(_list) / processes)
     if len(_list) <= k:
@@ -24,11 +27,14 @@ def split_list(_list, processes=1):
         return l_partitioned
 
 
-def combine_list(list_list):
-    """
-    Combine type function. Combines list of lists into a single list
-    :param list_list: list of lists
-    :return: single list
+def combine_list(list_list: list[list]) -> list:
+    """Flattens list of lists into a single list.
+
+    Args:
+        list_list (list[list]): list of lists to flatten.
+
+    Returns:
+        list: Flattened list.
     """
     return_list = []
     for res in list_list:
@@ -36,13 +42,15 @@ def combine_list(list_list):
     return return_list
 
 
-def split_dict(_dict, processes=1):
-    """
-    Split type function. Partitions dict into list of subset dicts of _dict
-    :param _dict: any dict
-    :param processes: number of processes to split data across, takes precedence over k to split data evenly over
-    exactly the number of processes being used but is optional
-    :return: list of dicts
+def split_dict(_dict: dict, processes: int = 1) -> list[dict]:
+    """Partitions dict into list of subset dicts of _dict
+
+    Args:
+        _dict (dict): Input dictionary to split.
+        processes (int, optional): _description. Defaults to 1.
+
+    Returns:
+        list[dict]: List of dictionaries.
     """
     k = ceil(len(_dict) / processes)
     if len(_dict) <= k:
@@ -53,11 +61,14 @@ def split_dict(_dict, processes=1):
         return [{key: _dict[key] for key in keys_bunch} for keys_bunch in keys_partitioned]
 
 
-def combine_dict(list_dict):
-    """
-    Combine type function. Combines list of dicts into a single dict. Assumes keys don't clash
-    :param list_dict: list of lists
-    :return: single list
+def combine_dict(list_dict: list[dict]) -> dict:
+    """Flattens list of dicts into a single dict.
+
+    Args:
+        list_dict (list[dict]): list of dicts to flatten.
+
+    Returns:
+        dict: Flattened dict.
     """
     return_dict = {}
     for res in list_dict:
@@ -65,20 +76,46 @@ def combine_dict(list_dict):
     return return_dict
 
 
-def multiprocess_wrap(data, split, apply, combine, processes=1, **kwargs):
-    """
-    Split up data into batches using `split` function and process in parallel using `apply(data, kwargs)` function,
-    kwargs is a dictionary of arguments. Results of all parallel processes are consolidated using the given `combine`
-    function.
-    :param data: data the function expects, which should be partitioned by split function to be processed in parallel
-    :param split: function which partitions `data` into list of bunches of same type as `data` to be processed in
-    parallel. Include `processes` variable in this function if you want to use this variable for splitting data
-    :param apply: function that expects `data`, process to be applied to `data` in parallel
-    :param combine: function which expects a list of the returns of function `apply` and combines it back into
-    what `apply` would have returned if it had been ran in a single process
-    :param processes: max number of processes to use for computations
-    :param kwargs: that need to be passed to the function `apply` which remain constant across all data
-    :return: output of the combine function
+@overload
+def multiprocess_wrap(
+    data: dict, split: Callable, apply: Callable, combine: Callable, processes: int = 1, **kwargs
+) -> dict:
+    "Dict in -> dict out"
+
+
+@overload
+def multiprocess_wrap(
+    data: list, split: Callable, apply: Callable, combine: Callable, processes: int = 1, **kwargs
+) -> list:
+    "List in -> list out"
+
+
+def multiprocess_wrap(
+    data: Union[dict, list],
+    split: Callable,
+    apply: Callable,
+    combine: Callable,
+    processes: int = 1,
+    **kwargs,
+) -> Union[dict, list]:
+    """Batch process data using a `split-apply-combine` approach.
+
+    Results of all parallel processes are consolidated using the given `combine` function.
+
+    Args:
+        data (Union[dict, list]): Data the `apply` function expects, which will be partitioned by `split` function if the number of parallel `processes` > 1.
+        split (Callable):
+            Function which partitions `data` into list of batches of same type as `data` to be processed in parallel.
+            `processes` argument must be greater than 1 if you want data to be split.
+        apply (Callable): Function that expects `data` or a subset of it (if `data` has been split).
+        combine (Callable):
+            Function which expects a list of the returns of function `apply` and combines it back into what `apply` would have returned if it had been run in a single process.
+        processes (int, optional): Max number of processes to use for computations. Defaults to 1.
+
+    Keyword Args: will be passed to the `apply` function.
+
+    Returns:
+        Union[dict, list]: output of the `apply` (+ optionally `combine`) function.
     """
     if processes == 1:
         return apply(data, **kwargs)
