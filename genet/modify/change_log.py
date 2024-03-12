@@ -1,8 +1,9 @@
 from datetime import datetime
-from typing import List, Optional, Self, Union
+from typing import Optional, Union
 
 import dictdiffer
 import pandas as pd
+from typing_extensions import Self
 
 
 class ChangeLog(pd.DataFrame):
@@ -57,13 +58,13 @@ class ChangeLog(pd.DataFrame):
         )
 
     def add_bunch(
-        self, object_type: str, id_bunch: List[Union[int, str]], attributes_bunch: List[dict]
+        self, object_type: str, id_bunch: list[Union[int, str]], attributes_bunch: list[dict]
     ) -> Self:
         """
         Args:
             object_type (str): GeNet object type.
-            id_bunch (List[Union[int, str]]): same len as `attributes_bunch`.
-            attributes_bunch (List[dict]): same len as `id_bunch`.
+            id_bunch (list[Union[int, str]]): same len as `attributes_bunch`.
+            attributes_bunch (list[dict]): same len as `id_bunch`.
 
         Returns:
             Self: Existing config concatenated with input bunch.
@@ -117,18 +118,18 @@ class ChangeLog(pd.DataFrame):
     def modify_bunch(
         self,
         object_type: str,
-        old_id_bunch: List[Union[int, str]],
-        old_attributes: List[dict],
-        new_id_bunch: List[Union[int, str]],
-        new_attributes: List[dict],
+        old_id_bunch: list[Union[int, str]],
+        old_attributes: list[dict],
+        new_id_bunch: list[Union[int, str]],
+        new_attributes: list[dict],
     ) -> Self:
         """
         Args:
             object_type (str): GeNet object type.
-            old_id_bunch (List[Union[int, str]]): Same len as `attributes_bunch`.
-            old_attributes (List[dict]): Same len as `id_bunch.`
-            new_id_bunch (List[Union[int, str]]): Same len as `attributes_bunch`.
-            new_attributes (List[dict]): Same len as `id_bunch.`
+            old_id_bunch (list[Union[int, str]]): Same len as `attributes_bunch`.
+            old_attributes (list[dict]): Same len as `id_bunch.`
+            new_id_bunch (list[Union[int, str]]): Same len as `attributes_bunch`.
+            new_attributes (list[dict]): Same len as `id_bunch.`
 
         Returns:
             Self: Existing config concatenated with modified bunch.
@@ -224,14 +225,14 @@ class ChangeLog(pd.DataFrame):
         )
 
     def remove_bunch(
-        self, object_type: str, id_bunch: List[Union[int, str]], attributes_bunch: List[dict]
+        self, object_type: str, id_bunch: list[Union[int, str]], attributes_bunch: list[dict]
     ) -> Self:
         """
 
         Args:
             object_type (str): GeNet object type.
-            id_bunch (List[Union[int, str]]):  same len as `attributes_bunch`.
-            attributes_bunch (List[dict]): same len as `id_bunch`.
+            id_bunch (list[Union[int, str]]):  same len as `attributes_bunch`.
+            attributes_bunch (list[dict]): same len as `id_bunch`.
 
         Returns:
             Self: Existing config concatenated with removed bunch.
