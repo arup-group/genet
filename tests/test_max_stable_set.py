@@ -1073,7 +1073,7 @@ def test_partial_mss_problem_generates_correct_network_routes(
                     "stop_1.link:artificial_link===from:stop_1===to:stop_1",
                 ],
             },
-            "network_route": {
+            "network_links": {
                 "service_1_route_1": [
                     "artificial_link===from:stop_1===to:stop_1",
                     "artificial_link===from:stop_1===to:node_5",
@@ -1360,7 +1360,7 @@ def test_combining_two_changesets_with_overlap(assert_semantically_equal, partia
                     "stop_3.link:link_7_8_car",
                 ],
             },
-            "network_route": {
+            "network_links": {
                 "service_1_route_2": [
                     "link_7_8_car",
                     "link_8_7_car",

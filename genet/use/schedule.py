@@ -203,7 +203,7 @@ def network_routed_distance_gdf(schedule, gdf_network_links):
         "output as well."
     )
 
-    routes_df = schedule.route_attribute_data(keys=["id", "network_route", "ordered_stops"])
+    routes_df = schedule.route_attribute_data(keys=["id", "network_links", "ordered_stops"])
     routes_df["linkrefids"] = routes_df.apply(
         lambda x: [
             schedule._graph.nodes[i]["linkRefId"]
@@ -211,35 +211,35 @@ def network_routed_distance_gdf(schedule, gdf_network_links):
         ],
         axis=1,
     )
-    routes_df["network_route"] = routes_df.apply(
-        lambda x: divide_network_route(x["network_route"], x["linkrefids"]), axis=1
+    routes_df["network_links"] = routes_df.apply(
+        lambda x: divide_network_route(x["network_links"], x["linkrefids"]), axis=1
     )
     routes_df.drop("linkrefids", axis=1, inplace=True)
     routes_df["ordered_stops"] = routes_df["ordered_stops"].apply(
         lambda x: list(zip(x[:-1], x[1:]))
     )
     stop_cols = np.concatenate(routes_df["ordered_stops"].values)
-    route_cols = sum(routes_df["network_route"].values, [])
+    route_cols = sum(routes_df["network_links"].values, [])
     # expand across stop pairs
     routes_df = pd.DataFrame(
         {
             col: np.repeat(routes_df[col].values, routes_df["ordered_stops"].str.len())
-            for col in set(routes_df.columns) - {"ordered_stops", "network_route"}
+            for col in set(routes_df.columns) - {"ordered_stops", "network_links"}
         }
-    ).assign(from_stop=stop_cols[:, 0], to_stop=stop_cols[:, 1], network_route=route_cols)
+    ).assign(from_stop=stop_cols[:, 0], to_stop=stop_cols[:, 1], network_links=route_cols)
     # expand across route
-    routes_df["sequence"] = routes_df["network_route"].apply(lambda x: list(range(len(x))))
+    routes_df["sequence"] = routes_df["network_links"].apply(lambda x: list(range(len(x))))
     routes_df = pd.DataFrame(
         {
-            col: np.repeat(routes_df[col].values, routes_df["network_route"].str.len())
-            for col in set(routes_df.columns) - {"network_route", "sequence"}
+            col: np.repeat(routes_df[col].values, routes_df["network_links"].str.len())
+            for col in set(routes_df.columns) - {"network_links", "sequence"}
         }
     ).assign(
-        network_route=np.concatenate(routes_df["network_route"].values),
+        network_links=np.concatenate(routes_df["network_links"].values),
         sequence=np.concatenate(routes_df["sequence"].values),
     )
     routes_gdf = gdf_network_links[["length", "geometry"]].merge(
-        routes_df, right_on="network_route", left_index=True
+        routes_df, right_on="network_links", left_index=True
     )
 
     new_route = routes_gdf.groupby(["id", "from_stop", "to_stop"], as_index=False).apply(

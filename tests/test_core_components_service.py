@@ -192,7 +192,7 @@ def test_initiating_service(assert_semantically_equal, service):
                     "departure_offsets": ["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
                     "route_long_name": "",
                     "id": "2",
-                    "network_route": ["5", "6", "7", "8"],
+                    "network_links": ["5", "6", "7", "8"],
                     "await_departure": [],
                     "ordered_stops": ["5", "6", "7", "8"],
                 },
@@ -208,7 +208,7 @@ def test_initiating_service(assert_semantically_equal, service):
                     "departure_offsets": ["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
                     "route_long_name": "",
                     "id": "1",
-                    "network_route": ["1", "2", "3", "4"],
+                    "network_links": ["1", "2", "3", "4"],
                     "await_departure": [],
                     "ordered_stops": ["1", "2", "3", "4"],
                 },
@@ -618,7 +618,7 @@ def test_has_valid_routes_with_only_valid_routes(route):
         },
         arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
         departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
-        network_route=["1", "2", "3", "4"],
+        network_links=["1", "2", "3", "4"],
         id="2",
     )
     s = Service(id="1", routes=[route, r])
@@ -644,8 +644,8 @@ def test_is_valid_with_looping_route(self_looping_route, route):
 
 
 def test_is_valid_with_non_network_route(service):
-    service._graph.graph["routes"]["1"]["network_route"] = []
-    service._graph.graph["routes"]["2"]["network_route"] = []
+    service._graph.graph["routes"]["1"]["network_links"] = []
+    service._graph.graph["routes"]["2"]["network_links"] = []
     assert not service.is_valid_service()
 
 

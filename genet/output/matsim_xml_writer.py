@@ -278,7 +278,7 @@ def write_matsim_schedule(output_dir, schedule, reproj_processes=1):
                                             ).lower()
                                     xf.write(etree.Element("stop", stop_attribs))
 
-                            if not route.network_route:
+                            if not route.network_links:
                                 logging.warning(
                                     "Route needs to have a network route composed of a list of network links that "
                                     "the vehicle on this route traverses. If read the Schedule from GTFS, the "
@@ -286,7 +286,7 @@ def write_matsim_schedule(output_dir, schedule, reproj_processes=1):
                                 )
                             else:
                                 with xf.element("route"):
-                                    for link_id in route.network_route:
+                                    for link_id in route.network_links:
                                         route_attribs = {"refId": str(link_id)}
                                         xf.write(etree.Element("link", route_attribs))
 

@@ -495,7 +495,7 @@ class ChangeSet:
 
     def update_df_route_data(self, df_route_data, max_stable_set):
         # update stops and generate routed paths
-        df_route_data.loc[:, "network_route"] = df_route_data.loc[:, "ordered_stops"].apply(
+        df_route_data.loc[:, "network_links"] = df_route_data.loc[:, "ordered_stops"].apply(
             lambda x: max_stable_set.routed_path(x)
         )
         _map = max_stable_set.stops_to_artificial_stops_map()
@@ -507,7 +507,7 @@ class ChangeSet:
     def generate_additional_links_modes(self, max_stable_set):
         link_ids = {
             link_id
-            for route_list in self.df_route_data["network_route"].values
+            for route_list in self.df_route_data["network_links"].values
             for link_id in route_list
         }
         links = max_stable_set.network_spatial_tree.links.copy()

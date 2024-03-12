@@ -797,7 +797,7 @@ class Route(ScheduleElement):
         departure_offsets: list[str],
         trips: Optional[dict[str, list[str]]] = None,
         headway_spec: Optional[dict] = None,
-        network_route: Optional[list] = None,
+        network_links: Optional[list] = None,
         route_long_name: str = "",
         id: str = "",
         await_departure: Optional[list] = None,
@@ -829,7 +829,7 @@ class Route(ScheduleElement):
                 Dictionary with tuple keys: (from time, to time) and headway values in minutes:
                 `{('HH:MM:SS', 'HH:MM:SS'): headway_minutes}`.
                 Defaults to None.
-            route (Optional[list], optional):
+            network_links (Optional[list], optional):
                 Network link_ids traversed by the vehicles in this Route instance. Defaults to None.
             route_long_name (str, optional):
                 Verbose name for the route if exists. Defaults to "".
@@ -861,10 +861,10 @@ class Route(ScheduleElement):
                 "Please provide trip or headway information to initialise Route object"
             )
 
-        if network_route is None:
-            self.network_route = []
+        if network_links is None:
+            self.network_links = []
         else:
-            self.network_route = network_route
+            self.network_links = network_links
         if await_departure is None:
             self.await_departure = []
         else:
@@ -1197,22 +1197,22 @@ class Route(ScheduleElement):
             return True
         return False
 
-    def has_network_route(self):
-        return self.network_route
+    def has_network_links(self) -> bool:
+        return bool(self.network_links)
 
-    def divide_network_route_between_stops(self):
-        if self.has_network_route():
+    def divide_network_links_between_stops(self):
+        if self.has_network_links():
             stops_linkrefids = [self._graph.nodes[i]["linkRefId"] for i in self.ordered_stops]
             if not stops_linkrefids:
                 raise RuntimeError(
                     "This Stops in this Route are not snapped to the network via `linkRefId` attribute"
                 )
-            return use_schedule.divide_network_route(self.network_route, stops_linkrefids)
+            return use_schedule.divide_network_route(self.network_links, stops_linkrefids)
         else:
             raise RuntimeError("This Route does not have a network route to divide")
 
     def has_correctly_ordered_route(self):
-        if self.has_network_route():
+        if self.has_network_links():
             stops_linkrefids = [
                 self._graph.nodes[i]["linkRefId"]
                 for i in self.ordered_stops
@@ -1221,7 +1221,7 @@ class Route(ScheduleElement):
             if len(stops_linkrefids) != len(self.ordered_stops):
                 logging.warning("Not all stops reference network link ids.")
                 return False
-            divided_route = self.divide_network_route_between_stops()
+            divided_route = self.divide_network_links_between_stops()
             if not divided_route:
                 return False
             reassembled_route = sum(divided_route, [])
@@ -1231,7 +1231,7 @@ class Route(ScheduleElement):
                 if reassembled_route[i - 1] != reassembled_route[i]
             ]
             if (len(stops_linkrefids) - 1) == len(divided_route) and (
-                reassembled_route == self.network_route
+                reassembled_route == self.network_links
             ):
                 return True
         return False

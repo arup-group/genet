@@ -53,7 +53,7 @@ def schedule():
                         },
                         arrival_offsets=["00:00:00", "00:02:00"],
                         departure_offsets=["00:00:00", "00:02:00"],
-                        network_route=["0", "1"],
+                        network_links=["0", "1"],
                     ),
                     Route(
                         id="2",
@@ -82,7 +82,7 @@ def schedule():
                         },
                         arrival_offsets=["00:00:00", "00:03:00"],
                         departure_offsets=["00:00:00", "00:05:00"],
-                        network_route=["1", "2"],
+                        network_links=["1", "2"],
                     ),
                 ],
             ),
@@ -116,7 +116,7 @@ def schedule():
                         },
                         arrival_offsets=["00:00:00", "00:02:00"],
                         departure_offsets=["00:00:00", "00:02:00"],
-                        network_route=["3", "4"],
+                        network_links=["3", "4"],
                     ),
                     Route(
                         id="4",
@@ -145,7 +145,7 @@ def schedule():
                         },
                         arrival_offsets=["00:00:00", "00:03:00"],
                         departure_offsets=["00:00:00", "00:05:00"],
-                        network_route=["4", "5"],
+                        network_links=["4", "5"],
                     ),
                 ],
             ),
@@ -319,7 +319,7 @@ def basic_service():
                 },
                 arrival_offsets=["00:00:00", "00:02:00"],
                 departure_offsets=["00:00:00", "00:02:00"],
-                network_route=[],
+                network_links=[],
             ),
             Route(
                 id="2",
@@ -336,7 +336,7 @@ def basic_service():
                 },
                 arrival_offsets=["00:00:00", "00:03:00"],
                 departure_offsets=["00:00:00", "00:05:00"],
-                network_route=[],
+                network_links=[],
             ),
             Route(
                 id="3",
@@ -353,7 +353,7 @@ def basic_service():
                 },
                 arrival_offsets=["00:00:00", "00:02:00"],
                 departure_offsets=["00:00:00", "00:02:00"],
-                network_route=[],
+                network_links=[],
             ),
             Route(
                 id="4",
@@ -371,7 +371,7 @@ def basic_service():
                 },
                 arrival_offsets=["00:00:00", "00:03:00"],
                 departure_offsets=["00:00:00", "00:05:00"],
-                network_route=[],
+                network_links=[],
             ),
         ],
     )
@@ -412,7 +412,7 @@ def service_with_separated_routes():
                 },
                 arrival_offsets=["00:00:00", "00:02:00"],
                 departure_offsets=["00:00:00", "00:02:00"],
-                network_route=[],
+                network_links=[],
             ),
             Route(
                 id="2",
@@ -429,7 +429,7 @@ def service_with_separated_routes():
                 },
                 arrival_offsets=["00:00:00", "00:03:00"],
                 departure_offsets=["00:00:00", "00:05:00"],
-                network_route=[],
+                network_links=[],
             ),
             Route(
                 id="3",
@@ -448,7 +448,7 @@ def service_with_separated_routes():
                 },
                 arrival_offsets=["00:00:00", "00:02:00"],
                 departure_offsets=["00:00:00", "00:02:00"],
-                network_route=["0", "1", "2", "3"],
+                network_links=["0", "1", "2", "3"],
             ),
         ],
     )
@@ -848,7 +848,7 @@ def test_adding_schedules_retains_shared_graph(schedule):
                         },
                         arrival_offsets=["00:00:00", "00:02:00"],
                         departure_offsets=["00:00:00", "00:02:00"],
-                        network_route=["0", "1"],
+                        network_links=["0", "1"],
                     ),
                     Route(
                         id="32",
@@ -877,7 +877,7 @@ def test_adding_schedules_retains_shared_graph(schedule):
                         },
                         arrival_offsets=["00:00:00", "00:03:00"],
                         departure_offsets=["00:00:00", "00:05:00"],
-                        network_route=["1", "2"],
+                        network_links=["1", "2"],
                     ),
                 ],
             )

@@ -276,7 +276,7 @@ def test_initiating_schedule(assert_semantically_equal, schedule):
                     "departure_offsets": ["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
                     "route_long_name": "",
                     "id": "2",
-                    "network_route": [],
+                    "network_links": [],
                     "await_departure": [],
                     "ordered_stops": ["5", "6", "7", "8"],
                 },
@@ -292,7 +292,7 @@ def test_initiating_schedule(assert_semantically_equal, schedule):
                     "departure_offsets": ["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
                     "route_long_name": "",
                     "id": "1",
-                    "network_route": [],
+                    "network_links": [],
                     "await_departure": [],
                     "ordered_stops": ["1", "2", "3", "4"],
                 },
@@ -554,7 +554,7 @@ def test_reproject_changes_projection_for_all_stops_in_route(assert_semantically
                                 epsg="epsg:27700",
                             ),
                         ],
-                        network_route=["1"],
+                        network_links=["1"],
                         trips={
                             "trip_id": ["VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00"],
                             "trip_departure_time": ["04:40:00"],
@@ -602,7 +602,7 @@ def test_adding_merges_separable_schedules(route):
                         },
                         arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
                         departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
-                        network_route=["1", "2", "3", "4"],
+                        network_links=["1", "2", "3", "4"],
                         id="2",
                     )
                 ],
@@ -837,7 +837,7 @@ def schedule_with_two_services():
             "trip_departure_time": ["13:00:00", "13:30:00"],
             "vehicle_id": ["veh_1_bus", "veh_2_bus"],
         },
-        network_route=["1", "2", "3", "4"],
+        network_links=["1", "2", "3", "4"],
         arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
         departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
     )
@@ -856,7 +856,7 @@ def schedule_with_two_services():
             "trip_departure_time": ["11:00:00", "13:00:00"],
             "vehicle_id": ["veh_3_bus", "veh_4_bus"],
         },
-        network_route=["4", "5", "6", "7"],
+        network_links=["4", "5", "6", "7"],
         arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
         departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
     )
@@ -2303,7 +2303,7 @@ def test_read_matsim_schedule_returns_expected_schedule(assert_semantically_equa
                         epsg="epsg:27700",
                     ),
                 ],
-                network_route=["1"],
+                network_links=["1"],
                 trips={
                     "trip_id": ["VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00"],
                     "trip_departure_time": ["04:40:00"],
@@ -2615,7 +2615,7 @@ def test_has_valid_services_with_only_valid_services(service):
 
 def test_invalid_services_shows_invalid_services(service):
     for route_id in service.route_ids():
-        service._graph.graph["routes"][route_id]["network_route"] = ["1"]
+        service._graph.graph["routes"][route_id]["network_links"] = ["1"]
     s = Schedule("epsg:27700", [service])
     assert s.invalid_services() == [service]
 
@@ -4233,7 +4233,7 @@ def json_schedule():
                             "departure_offsets": ["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
                             "route_long_name": "",
                             "id": "1",
-                            "network_route": [],
+                            "network_links": [],
                             "await_departure": [],
                             "ordered_stops": ["1", "2", "3", "4"],
                         },
@@ -4249,7 +4249,7 @@ def json_schedule():
                             "departure_offsets": ["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
                             "route_long_name": "",
                             "id": "2",
-                            "network_route": [],
+                            "network_links": [],
                             "await_departure": [],
                             "ordered_stops": ["5", "6", "7", "8"],
                         },
