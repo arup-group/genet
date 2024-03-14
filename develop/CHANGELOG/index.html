@@ -2505,6 +2505,7 @@
 <ul>
 <li>GeNet's pre-baked python scripts have been retired in favour of CLI <a href="https://github.com/arup-group/genet/pull/194">#194</a></li>
 <li><strong>[Breaking change]</strong> Support for python v3.11, updated to more accurate pyproj version <a href="https://github.com/arup-group/genet/pull/192">#192</a></li>
+<li><strong>[Breaking change]</strong> Update <code>Route.route</code> <em>attribute</em> to <code>Route.network_links</code> to differentiate it from the <code>Route.route</code> <em>method</em>. <code>Route</code> instantiation argument <code>route</code> is also now <code>network_links</code> <a href="https://github.com/arup-group/genet/pull/231">#231</a></li>
 </ul>
 <h2 id="v400-2023-08-22">[v4.0.0] - 2023-08-22<a class="headerlink" href="#v400-2023-08-22" title="Permanent link">#</a></h2>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">#</a></h3>
@@ -2512,7 +2513,7 @@
 <li>Validation for <a href="https://github.com/matsim-org/matsim-libs/tree/master/contribs/sbb-extensions#intermodal-access-and-egress">intermodal access/egress for MATSim</a></li>
 <li>GeNet Scripts for: <a href="https://github.com/arup-group/genet/pull/179">#179</a></li>
 <li>automated PT Schedule fixing (zero headways and infinite speeds)</li>
-<li>'squeezing' (or reducing attribute values) speed and capacity on links defined by spatial boundaries </li>
+<li>'squeezing' (or reducing attribute values) speed and capacity on links defined by spatial boundaries</li>
 <li>scaling vehicles (separately from any other operation, so it can be performed independently)</li>
 <li>Script to split modal subgraphs (so they have dedicated links) <a href="https://github.com/arup-group/genet/pull/153">#153</a></li>
 <li>Validation checks for zero and infinite speeds PT speeds + many convenience methods <a href="https://github.com/arup-group/genet/pull/147">#147</a></li>
@@ -2545,17 +2546,17 @@
 <li>Vehicle capacity and pce scaling</li>
 <li>Conveniently save multiple <code>vehicle.xml</code> files for use with simulations at different scales: 1%, 5%, 10%, etc.</li>
 <li>Ability to read and write additional attributes for different network and schedule elements</li>
-<li>Allows you to pass any data to network links and nodes, PT schedule stops, routes and services and have it be 
+<li>Allows you to pass any data to network links and nodes, PT schedule stops, routes and services and have it be
   saved to the MATSim network</li>
-<li>Multimodal access/egress for PT stops </li>
-<li>Script to add attributes to PT stops of various PT modes that allow agents to 
+<li>Multimodal access/egress for PT stops</li>
+<li>Script to add attributes to PT stops of various PT modes that allow agents to
   access via network or teleported modes</li>
 </ul>
 <h3 id="changed_2">Changed<a class="headerlink" href="#changed_2" title="Permanent link">#</a></h3>
 <ul>
 <li><strong>[Breaking change]</strong> New, <strong>default</strong>, representation of additional attributes
   <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="s1">&#39;attributes&#39;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  <span class="s1">&#39;osm:way:highway&#39;</span><span class="p">:</span> <span class="s1">&#39;primary&#39;</span> 
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  <span class="s1">&#39;osm:way:highway&#39;</span><span class="p">:</span> <span class="s1">&#39;primary&#39;</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">}</span>
 </span></code></pre></div>
   Instead of:
@@ -2563,15 +2564,15 @@
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  <span class="s1">&#39;osm:way:highway&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;osm:way:highway&#39;</span><span class="p">,</span> <span class="s1">&#39;class&#39;</span><span class="p">:</span> <span class="s1">&#39;java.lang.String&#39;</span><span class="p">,</span> <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="s1">&#39;primary&#39;</span><span class="p">}</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="p">}</span>
 </span></code></pre></div><ul>
-<li>Crucially, this will affect methods that search for different values of OSM data, for example: find all links 
-  of <code>highway</code> type <code>primary</code>, or links with particular OSM IDs. </li>
-<li>For backwards compatibility, use: <code>force_long_form_attributes=True</code> when reading the network and/or schedule 
+<li>Crucially, this will affect methods that search for different values of OSM data, for example: find all links
+  of <code>highway</code> type <code>primary</code>, or links with particular OSM IDs.</li>
+<li>For backwards compatibility, use: <code>force_long_form_attributes=True</code> when reading the network and/or schedule
   objects</li>
 </ul>
 </li>
 <li><strong>[Breaking change]</strong> folders renamed:<ul>
 <li><code>inputs_handler</code> -&gt; <code>input</code></li>
-<li><code>outputs_handler</code> -&gt; <code>output</code> </li>
+<li><code>outputs_handler</code> -&gt; <code>output</code></li>
 </ul>
 </li>
 </ul>

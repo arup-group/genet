@@ -13,6 +13,7 @@
 ### Changed
 * GeNet's pre-baked python scripts have been retired in favour of CLI [#194](https://github.com/arup-group/genet/pull/194)
 * **[Breaking change]** Support for python v3.11, updated to more accurate pyproj version [#192](https://github.com/arup-group/genet/pull/192)
+* **[Breaking change]** Update `Route.route` _attribute_ to `Route.network_links` to differentiate it from the `Route.route` _method_. `Route` instantiation argument `route` is also now `network_links` [#231](https://github.com/arup-group/genet/pull/231)
 
 ## [v4.0.0] - 2023-08-22
 
@@ -20,7 +21,7 @@
 * Validation for [intermodal access/egress for MATSim](https://github.com/matsim-org/matsim-libs/tree/master/contribs/sbb-extensions#intermodal-access-and-egress)
 * GeNet Scripts for: [#179](https://github.com/arup-group/genet/pull/179)
   * automated PT Schedule fixing (zero headways and infinite speeds)
-  * 'squeezing' (or reducing attribute values) speed and capacity on links defined by spatial boundaries 
+  * 'squeezing' (or reducing attribute values) speed and capacity on links defined by spatial boundaries
   * scaling vehicles (separately from any other operation, so it can be performed independently)
 * Script to split modal subgraphs (so they have dedicated links) [#153](https://github.com/arup-group/genet/pull/153)
 * Validation checks for zero and infinite speeds PT speeds + many convenience methods [#147](https://github.com/arup-group/genet/pull/147)
@@ -53,17 +54,17 @@
 * Vehicle capacity and pce scaling
   * Conveniently save multiple `vehicle.xml` files for use with simulations at different scales: 1%, 5%, 10%, etc.
 * Ability to read and write additional attributes for different network and schedule elements
-  * Allows you to pass any data to network links and nodes, PT schedule stops, routes and services and have it be 
+  * Allows you to pass any data to network links and nodes, PT schedule stops, routes and services and have it be
   saved to the MATSim network
-* Multimodal access/egress for PT stops 
-  * Script to add attributes to PT stops of various PT modes that allow agents to 
+* Multimodal access/egress for PT stops
+  * Script to add attributes to PT stops of various PT modes that allow agents to
   access via network or teleported modes
 
 ### Changed
 * **[Breaking change]** New, **default**, representation of additional attributes
   ```python
   'attributes': {
-    'osm:way:highway': 'primary' 
+    'osm:way:highway': 'primary'
   }
   ```
   Instead of:
@@ -72,13 +73,13 @@
     'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}
   }
   ```
-    * Crucially, this will affect methods that search for different values of OSM data, for example: find all links 
-  of `highway` type `primary`, or links with particular OSM IDs. 
-    * For backwards compatibility, use: `force_long_form_attributes=True` when reading the network and/or schedule 
+    * Crucially, this will affect methods that search for different values of OSM data, for example: find all links
+  of `highway` type `primary`, or links with particular OSM IDs.
+    * For backwards compatibility, use: `force_long_form_attributes=True` when reading the network and/or schedule
   objects
 * **[Breaking change]** folders renamed:
     * `inputs_handler` -> `input`
-    * `outputs_handler` -> `output` 
+    * `outputs_handler` -> `output`
 
 ## [v2.0.1-snapshot] - 2022-04-08
 
