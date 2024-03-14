@@ -218,7 +218,7 @@ def test_generating_standard_outputs(network, tmpdir):
                         },
                         arrival_offsets=["00:00:00", "00:02:00"],
                         departure_offsets=["00:00:00", "00:02:00"],
-                        route=["link_1", "link_2"],
+                        network_links=["link_1", "link_2"],
                     ),
                     Route(
                         id="2",
@@ -265,7 +265,7 @@ def test_generating_standard_outputs(network, tmpdir):
                         },
                         arrival_offsets=["00:00:00", "00:03:00"],
                         departure_offsets=["00:00:00", "00:05:00"],
-                        route=["link_1", "link_2"],
+                        network_links=["link_1", "link_2"],
                     ),
                 ],
             ),
@@ -299,7 +299,7 @@ def test_generating_standard_outputs(network, tmpdir):
                         },
                         arrival_offsets=["0:00:00", "0:02:00"],
                         departure_offsets=["0:00:00", "0:02:00"],
-                        route=["link_0", "link_1", "link_2"],
+                        network_links=["link_0", "link_1", "link_2"],
                     )
                 ],
             ),

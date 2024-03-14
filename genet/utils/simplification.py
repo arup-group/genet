@@ -286,8 +286,8 @@ def simplify_graph(n, no_processes=1):
         logging.info("Updated Stop Link Reference Ids")
 
         # update schedule routes
-        df_routes = n.schedule.route_attribute_data(keys=["route"])
-        df_routes["route"] = df_routes["route"].apply(
+        df_routes = n.schedule.route_attribute_data(keys=["network_links"])
+        df_routes["network_links"] = df_routes["network_links"].apply(
             lambda x: update_link_ids(x, n.link_simplification_map)
         )
         n.schedule.apply_attributes_to_routes(df_routes.T.to_dict())

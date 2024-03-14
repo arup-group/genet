@@ -114,7 +114,7 @@ def test_initiating_route(assert_semantically_equal, route):
                     "departure_offsets": ["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
                     "route_long_name": "",
                     "id": "1",
-                    "route": ["1", "2", "3", "4"],
+                    "network_links": ["1", "2", "3", "4"],
                     "await_departure": [],
                     "ordered_stops": ["1", "2", "3", "4"],
                 }
@@ -447,13 +447,13 @@ def test_has_more_than_one_stop_with_route_with_single_stop():
     assert not route.has_more_than_one_stop()
 
 
-def test_has_network_route_with_route_that_has_a_network_route(route):
-    assert route.has_network_route()
+def test_has_network_links_with_route_that_has_links(route):
+    assert route.has_network_links()
 
 
-def test_has_network_route_with_route_without_a_network_route(route):
-    route.route = []
-    assert not route.has_network_route()
+def test_has_network_links_with_route_without_links(route):
+    route.network_links = []
+    assert not route.has_network_links()
 
 
 def test_dividing_typical_network_route():
@@ -467,10 +467,10 @@ def test_dividing_typical_network_route():
         headway_spec={("00:07:00", "08:00:00"): 30},
         arrival_offsets=["00:00:00", "00:03:00", "00:07:00"],
         departure_offsets=["00:00:00", "00:05:00", "00:09:00"],
-        route=["a-a", "a-b", "b-b", "b-c", "c-c"],
+        network_links=["a-a", "a-b", "b-b", "b-c", "c-c"],
         id="1",
     )
-    assert r.divide_network_route_between_stops() == [["a-a", "a-b", "b-b"], ["b-b", "b-c", "c-c"]]
+    assert r.divide_network_links_between_stops() == [["a-a", "a-b", "b-b"], ["b-b", "b-c", "c-c"]]
 
 
 def test_dividing_network_route_with_a_shared_linkrefid():
@@ -485,10 +485,10 @@ def test_dividing_network_route_with_a_shared_linkrefid():
         headway_spec={("00:07:00", "08:00:00"): 30},
         arrival_offsets=["00:00:00", "00:03:00", "00:07:00"],
         departure_offsets=["00:00:00", "00:05:00", "00:09:00"],
-        route=["a-a", "a-b", "b-b", "b-c", "c-c"],
+        network_links=["a-a", "a-b", "b-b", "b-c", "c-c"],
         id="1",
     )
-    assert r.divide_network_route_between_stops() == [
+    assert r.divide_network_links_between_stops() == [
         ["a-a", "a-b", "b-b"],
         ["b-b"],
         ["b-b", "b-c", "c-c"],
@@ -506,10 +506,10 @@ def test_dividing_network_route_with_a_longer_invalid_route_cuts_off_the_route()
         headway_spec={("00:07:00", "08:00:00"): 30},
         arrival_offsets=["00:00:00", "00:03:00", "00:07:00"],
         departure_offsets=["00:00:00", "00:05:00", "00:09:00"],
-        route=["a-a", "a-b", "b-b", "b-c", "c-c", "c-d"],
+        network_links=["a-a", "a-b", "b-b", "b-c", "c-c", "c-d"],
         id="1",
     )
-    assert r.divide_network_route_between_stops() == [["a-a", "a-b", "b-b"], ["b-b", "b-c", "c-c"]]
+    assert r.divide_network_links_between_stops() == [["a-a", "a-b", "b-b"], ["b-b", "b-c", "c-c"]]
 
 
 def test_has_correctly_ordered_route_with_a_correct_route():
@@ -531,7 +531,7 @@ def test_has_correctly_ordered_route_with_a_correct_route():
         },
         arrival_offsets=["1", "2"],
         departure_offsets=["1", "2"],
-        route=["10", "15", "20", "25", "30"],
+        network_links=["10", "15", "20", "25", "30"],
         id="1",
     )
     assert r.has_correctly_ordered_route()
@@ -556,7 +556,7 @@ def test_does_not_have_a_correctly_ordered_route_with_disordered_route():
         },
         arrival_offsets=["1", "2"],
         departure_offsets=["1", "2"],
-        route=["10", "15", "30", "25", "20"],
+        network_links=["10", "15", "30", "25", "20"],
         id="1",
     )
     assert not r.has_correctly_ordered_route()
@@ -580,7 +580,7 @@ def test_does_not_have_a_correctly_ordered_route_with_stop_missing_linkrefid():
         },
         arrival_offsets=["1", "2"],
         departure_offsets=["1", "2"],
-        route=["10", "15", "30", "25", "20"],
+        network_links=["10", "15", "30", "25", "20"],
         id="1",
     )
     assert not r.has_correctly_ordered_route()
@@ -605,7 +605,7 @@ def test_does_not_have_a_correctly_ordered_route_with_no_route():
         },
         arrival_offsets=["1", "2"],
         departure_offsets=["1", "2"],
-        route=[],
+        network_links=[],
         id="1",
     )
     assert not r.has_correctly_ordered_route()
@@ -646,7 +646,7 @@ def test_is_valid_with_looping_route(self_looping_route):
 
 
 def test_is_valid_with_non_network_route(route):
-    route.route = []
+    route.network_links = []
     assert not route.is_valid_route()
 
 
