@@ -1,13 +1,12 @@
 import shutil
 
+import genet.utils.spatial as spatial
 import networkx as nx
 import pyomo.environ as pe
 import pytest
-from pandas import DataFrame
-
-import genet.utils.spatial as spatial
 from genet import MaxStableSet, Network, Route, Schedule, Service, Stop
 from genet.max_stable_set import get_indices_of_chosen_problem_graph_nodes
+from pandas import DataFrame
 
 
 @pytest.fixture()

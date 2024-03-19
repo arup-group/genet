@@ -1,8 +1,7 @@
+import genet.utils.simplification as simplification
 import networkx as nx
 import pytest
 from shapely.geometry import LineString
-
-import genet.utils.simplification as simplification
 
 
 @pytest.fixture

@@ -1,5 +1,4 @@
 import pytest
-
 from genet import Route, Schedule, Service, Stop
 from genet.validate import schedule as schedule_validation
 
