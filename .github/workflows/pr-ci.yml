@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
-        py3version: ["9", "11"]
+        py3version: ["10", "12"]
         include:
           - os: windows-latest
             add_args: ""
@@ -40,7 +40,7 @@ jobs:
     uses: arup-group/actions-city-modelling-lab/.github/workflows/python-install-lint-test.yml@main
     with:
       os: ubuntu-latest
-      py3version: "11"
+      py3version: "12"
       notebook_kernel: genet
       lint: false
       pytest_args: 'tests/'  # ignore example notebooks

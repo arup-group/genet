@@ -2817,9 +2817,9 @@ class Network:
         def links_over_threshold_length(value):
             return value >= link_metre_length_threshold
 
-        report["graph"]["link_attributes"][
-            "links_over_1000_length"
-        ] = self.report_on_link_attribute_condition("length", links_over_threshold_length)
+        report["graph"]["link_attributes"]["links_over_1000_length"] = (
+            self.report_on_link_attribute_condition("length", links_over_threshold_length)
+        )
 
         # more general attribute value checks
         non_testable = ["id", "from", "to", "s2_to", "s2_from", "geometry"]
@@ -2852,9 +2852,9 @@ class Network:
             for service_id, route_ids in self.schedule.service_to_route_map().items():
                 route_to_crow_fly_ratio[service_id] = {}
                 for route_id in route_ids:
-                    route_to_crow_fly_ratio[service_id][
-                        route_id
-                    ] = self.calculate_route_to_crow_fly_ratio(self.schedule.route(route_id))
+                    route_to_crow_fly_ratio[service_id][route_id] = (
+                        self.calculate_route_to_crow_fly_ratio(self.schedule.route(route_id))
+                    )
 
             report["routing"] = {
                 "services_have_routes_in_the_graph": self.has_schedule_with_valid_network_routes(),
