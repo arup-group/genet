@@ -46,3 +46,6 @@ jobs:
       pytest_args: 'tests/'  # ignore example notebooks
       upload_to_codecov: true
       additional_mamba_args: coin-or-cbc
+
+  cruft-check:
+    uses: arup-group/actions-city-modelling-lab/.github/workflows/template-check.yml@main
