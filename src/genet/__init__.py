@@ -24,6 +24,6 @@ from genet.utils import elevation, google_directions, graph_operations
 
 __author__ = """Kasia Kozlowska"""  # triple quotes in case the name has quotes in it.
 __email__ = "36536946+KasiaKoz@users.noreply.github.com"
-__version__ = "0.4.0"
+__version__ = "4.0.0"
 
 pyproj.network.set_network_enabled(False)
