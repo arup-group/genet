@@ -1,7 +1,9 @@
 import logging
 import multiprocessing as mp
 from math import ceil
-from typing import Callable, Union, overload
+from typing import Callable, Iterable, TypeVar
+
+T = TypeVar("T", bound=Iterable)
 
 
 def split_list(_list: list, processes: int = 1) -> list[list]:
@@ -70,40 +72,21 @@ def combine_dict(list_dict: list[dict]) -> dict:
     Returns:
         dict: Flattened dict.
     """
-    return_dict = {}
+    return_dict: dict = {}
     for res in list_dict:
         return_dict = {**return_dict, **res}
     return return_dict
 
 
-@overload
 def multiprocess_wrap(
-    data: dict, split: Callable, apply: Callable, combine: Callable, processes: int = 1, **kwargs
-) -> dict:
-    "Dict in -> dict out"
-
-
-@overload
-def multiprocess_wrap(
-    data: list, split: Callable, apply: Callable, combine: Callable, processes: int = 1, **kwargs
-) -> list:
-    "List in -> list out"
-
-
-def multiprocess_wrap(
-    data: Union[dict, list],
-    split: Callable,
-    apply: Callable,
-    combine: Callable,
-    processes: int = 1,
-    **kwargs,
-) -> Union[dict, list]:
+    data: T, split: Callable, apply: Callable, combine: Callable, processes: int = 1, **kwargs
+) -> T:
     """Batch process data using a `split-apply-combine` approach.
 
     Results of all parallel processes are consolidated using the given `combine` function.
 
     Args:
-        data (Union[dict, list]): Data the `apply` function expects, which will be partitioned by `split` function if the number of parallel `processes` > 1.
+        data (Iterable): Data the `apply` function expects, which will be partitioned by `split` function if the number of parallel `processes` > 1.
         split (Callable):
             Function which partitions `data` into list of batches of same type as `data` to be processed in parallel.
             `processes` argument must be greater than 1 if you want data to be split.
@@ -115,7 +98,7 @@ def multiprocess_wrap(
     Keyword Args: will be passed to the `apply` function.
 
     Returns:
-        Union[dict, list]: output of the `apply` (+ optionally `combine`) function.
+        Iterable: output of (in order of application) `split`, `apply`, then `combine` functions.
     """
     if processes == 1:
         return apply(data, **kwargs)

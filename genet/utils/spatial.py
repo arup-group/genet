@@ -38,7 +38,7 @@ def encode_shapely_linestring_to_polyline(linestring: LineString) -> str:
     """
 
     Args:
-        linestring (LineString): _description_
+        linestring (LineString): Shapely LineString to encode.
 
     Returns:
         str: Google encoded polyline.
@@ -366,9 +366,11 @@ class SpatialTree(nx.DiGraph):
             self.add_links(n)
 
     def add_links(self, n: "genet.core.Network"):
-        """Generates a spatial tree from nodes in a network.
+        """Generates a spatial tree from links in a network.
 
-        Links (a.k.a. edges) are generated where the network nodes define the same `to` and `from` links; i.e. the two links are connected at a node.
+        Nodes of the spatial tree are generated to represent the links of the network.
+        Edges of the spatial tree are generated between the network links which share `to` and `from` nodes;
+        i.e. the two links are connected at a node.
 
         Args:
             n (genet.core.Network): GeNet network.

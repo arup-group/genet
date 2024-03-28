@@ -443,7 +443,7 @@ def read_gtfs(path: str, day: str, epsg: Optional[str] = None) -> schedule_eleme
 
 
 def read_osm(
-    osm_file_path: str, osm_read_config: str, num_processes: int = 1, epsg: Optional[str] = None
+    osm_file_path: str, osm_read_config: str, num_processes: int = 1, epsg: str = "epsg:4326"
 ) -> core.Network:
     """Reads OSM data into a graph of the Network object.
 
@@ -455,14 +455,12 @@ def read_osm(
         num_processes (int, optional): Number of processes to split parallelisable operations across. Defaults to 1.
         epsg (Optional[str], optional):
             Projection for the output Network, e.g. 'epsg:27700'.
-            If not provided, defaults to epsg:4326.
-            Defaults to None.
+            Defaults to "epsg:4326".
 
     Returns:
         core.Network: GeNet network object.
     """
-    if epsg is None:
-        epsg = "epsg:4326"
+
     config = osm_reader.Config(osm_read_config)
     n = core.Network(epsg)
     nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
