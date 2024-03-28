@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.13">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.15">
     
     
       
@@ -898,6 +898,15 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#updating-the-project-when-the-template-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      Updating the project when the template updates
+    </span>
+  </a>
   
 </li>
       
@@ -2260,6 +2269,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#updating-the-project-when-the-template-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      Updating the project when the template updates
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#submitting-changes" class="md-nav__link">
     <span class="md-ellipsis">
       Submitting changes
@@ -2387,7 +2405,7 @@
 <li>Change into the <code>genet</code> directory: <code>cd genet</code></li>
 <li>Create the genet mamba environment: <code>mamba create -n genet -c conda-forge --file requirements/base.txt --file requirements/dev.txt</code></li>
 <li>Activate the genet mamba environment: <code>mamba activate genet</code></li>
-<li>Install the genet package into the environment, in editable mode and ignoring dependencies (we have dealt with those when creating the mamba environment): <code>pip install --no-deps -e .</code></li>
+<li>Install the cml-genet package into the environment, in editable mode and ignoring dependencies (we have dealt with those when creating the mamba environment): <code>pip install --no-deps -e .</code></li>
 </ol>
 <p>All together:</p>
 <div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:arup-group/genet.git
@@ -2426,6 +2444,10 @@ The integration tests can be slow, so if you want to avoid them during developme
 <p>If you are debugging failing tests using the <code>--pdb</code> flag, tests will only run on one thread instead of the default (which is the maximum number of threads your machine has available).
 This will slow down your tests, so do not use <code>--pdb</code> unless you are actively debugging.</p>
 </div>
+<h2 id="updating-the-project-when-the-template-updates">Updating the project when the template updates<a class="headerlink" href="#updating-the-project-when-the-template-updates" title="Permanent link">#</a></h2>
+<p>This project has been built with <a href="https://cruft.github.io/cruft/">cruft</a> based on the <a href="https://github.com/arup-group/cookiecutter-pypackage">Arup Cookiecutter template</a>.
+When changes are made to the base template, they can be merged into this project by running <code>cruft update</code> from the  <code>genet</code> mamba environment.</p>
+<p>You may be prompted to do this when you open a Pull Request, if our automated checks identify that the template is newer than that used in the project.</p>
 <h2 id="submitting-changes">Submitting changes<a class="headerlink" href="#submitting-changes" title="Permanent link">#</a></h2>
 <p>To contribute changes:</p>
 <ol>
@@ -2473,8 +2495,8 @@ When adding docstrings, we request you use the <a href="https://google.github.io
 </ul>
 <h3 id="create-release">Create release<a class="headerlink" href="#create-release" title="Permanent link">#</a></h3>
 <ul class="task-list">
-<li class="task-list-item"><input type="checkbox"/> Bump the version number in <code>genet/__init__.py</code></li>
-<li class="task-list-item"><input type="checkbox"/> Update the <a class="autorefs autorefs-internal" href="../CHANGELOG/#changelog">changelog</a> with final version number of the form <code>vX.Y.Z</code>, release date, and github <code>compare</code> link (at the bottom of the page).</li>
+<li class="task-list-item"><input type="checkbox"/> Bump the version number in <code>src/genet/__init__.py</code></li>
+<li class="task-list-item"><input type="checkbox"/> Update the <a class="autorefs autorefs-internal" href="../CHANGELOG/#changelog">changelog</a> with final version number of the form <code>vX.Y.Z</code>, release date, and <a href="https://docs.github.com/en/pull-requests/committing-changes-to-your-project/viewing-and-comparing-commits/comparing-commits">github <code>compare</code> link</a> (at the bottom of the page).</li>
 <li class="task-list-item"><input type="checkbox"/> Commit with message <code>Release vX.Y.Z</code>, then add a <code>vX.Y.Z</code> tag.</li>
 <li class="task-list-item"><input type="checkbox"/> Create a release pull request to verify that the conda package builds successfully.</li>
 <li class="task-list-item"><input type="checkbox"/> Once the PR is approved and merged, create a release through the GitHub web interface, using the same tag, titling it <code>Release vX.Y.Z</code> and include all the changelog elements that are <em>not</em> flagged as <strong>internal</strong>.</li>
@@ -2482,7 +2504,7 @@ When adding docstrings, we request you use the <a href="https://google.github.io
 <h3 id="post-release">Post-release<a class="headerlink" href="#post-release" title="Permanent link">#</a></h3>
 <ul class="task-list">
 <li class="task-list-item"><input type="checkbox"/> Update the changelog, adding a new <code>[Unreleased]</code> heading.</li>
-<li class="task-list-item"><input type="checkbox"/> Update <code>genet/__init__.py</code> to the next version appended with <code>.dev0</code>, in preparation for the next main commit.</li>
+<li class="task-list-item"><input type="checkbox"/> Update <code>src/genet/__init__.py</code> to the next version appended with <code>.dev0</code>, in preparation for the next main commit.</li>
 </ul>
 
 
@@ -2540,7 +2562,7 @@ When adding docstrings, we request you use the <a href="https://google.github.io
     <script id="__config" type="application/json">{"base": "..", "features": ["navigation.indexes", "navigation.top", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.c8d2eff1.min.js"></script>
+      <script src="../assets/javascripts/bundle.bd41221c.min.js"></script>
       
     
   </body>

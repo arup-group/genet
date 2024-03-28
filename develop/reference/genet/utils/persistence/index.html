@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.13">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.15">
     
     
       
@@ -2309,7 +2309,7 @@
   <div class="doc doc-contents ">
 
           <details class="quote">
-            <summary>Source code in <code>genet/utils/persistence.py</code></summary>
+            <summary>Source code in <code>src/genet/utils/persistence.py</code></summary>
             <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-8"> 8</a></span>
 <span class="normal"><a href="#__codelineno-0-9"> 9</a></span>
 <span class="normal"><a href="#__codelineno-0-10">10</a></span>
@@ -2341,7 +2341,7 @@
   <div class="doc doc-contents ">
 
           <details class="quote">
-            <summary>Source code in <code>genet/utils/persistence.py</code></summary>
+            <summary>Source code in <code>src/genet/utils/persistence.py</code></summary>
             <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-52">52</a></span>
 <span class="normal"><a href="#__codelineno-0-53">53</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="k">def</span> <span class="nf">is_csv</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
 </span><span id="__span-0-53"><a id="__codelineno-0-53" name="__codelineno-0-53"></a>    <span class="k">return</span> <span class="n">_check_type_and_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;.csv&quot;</span><span class="p">)</span>
@@ -2365,7 +2365,7 @@
   <div class="doc doc-contents ">
 
           <details class="quote">
-            <summary>Source code in <code>genet/utils/persistence.py</code></summary>
+            <summary>Source code in <code>src/genet/utils/persistence.py</code></summary>
             <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-48">48</a></span>
 <span class="normal"><a href="#__codelineno-0-49">49</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="k">def</span> <span class="nf">is_geojson</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
 </span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49"></a>    <span class="k">return</span> <span class="n">_check_type_and_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;.geojson&quot;</span><span class="p">)</span>
@@ -2389,7 +2389,7 @@
   <div class="doc doc-contents ">
 
           <details class="quote">
-            <summary>Source code in <code>genet/utils/persistence.py</code></summary>
+            <summary>Source code in <code>src/genet/utils/persistence.py</code></summary>
             <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-56">56</a></span>
 <span class="normal"><a href="#__codelineno-0-57">57</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-56"><a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="k">def</span> <span class="nf">is_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
 </span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57"></a>    <span class="k">return</span> <span class="n">_check_type_and_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;.json&quot;</span><span class="p">)</span>
@@ -2413,7 +2413,7 @@
   <div class="doc doc-contents ">
 
           <details class="quote">
-            <summary>Source code in <code>genet/utils/persistence.py</code></summary>
+            <summary>Source code in <code>src/genet/utils/persistence.py</code></summary>
             <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-44">44</a></span>
 <span class="normal"><a href="#__codelineno-0-45">45</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="k">def</span> <span class="nf">is_yml</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
 </span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45"></a>    <span class="k">return</span> <span class="n">_check_type_and_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;.yml&quot;</span><span class="p">,</span> <span class="s2">&quot;.yaml&quot;</span><span class="p">])</span>
@@ -2437,7 +2437,7 @@
   <div class="doc doc-contents ">
 
           <details class="quote">
-            <summary>Source code in <code>genet/utils/persistence.py</code></summary>
+            <summary>Source code in <code>src/genet/utils/persistence.py</code></summary>
             <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-60">60</a></span>
 <span class="normal"><a href="#__codelineno-0-61">61</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-60"><a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="k">def</span> <span class="nf">is_zip</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
 </span><span id="__span-0-61"><a id="__codelineno-0-61" name="__codelineno-0-61"></a>    <span class="k">return</span> <span class="n">_check_type_and_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;.zip&quot;</span><span class="p">)</span>
@@ -2461,7 +2461,7 @@
   <div class="doc doc-contents ">
 
           <details class="quote">
-            <summary>Source code in <code>genet/utils/persistence.py</code></summary>
+            <summary>Source code in <code>src/genet/utils/persistence.py</code></summary>
             <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-27">27</a></span>
 <span class="normal"><a href="#__codelineno-0-28">28</a></span>
 <span class="normal"><a href="#__codelineno-0-29">29</a></span>
@@ -2495,7 +2495,7 @@
   <div class="doc doc-contents ">
 
           <details class="quote">
-            <summary>Source code in <code>genet/utils/persistence.py</code></summary>
+            <summary>Source code in <code>src/genet/utils/persistence.py</code></summary>
             <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-16">16</a></span>
 <span class="normal"><a href="#__codelineno-0-17">17</a></span>
 <span class="normal"><a href="#__codelineno-0-18">18</a></span>
@@ -2533,7 +2533,7 @@
   <div class="doc doc-contents ">
 
           <details class="quote">
-            <summary>Source code in <code>genet/utils/persistence.py</code></summary>
+            <summary>Source code in <code>src/genet/utils/persistence.py</code></summary>
             <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-64">64</a></span>
 <span class="normal"><a href="#__codelineno-0-65">65</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-64"><a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="k">def</span> <span class="nf">zip_folder</span><span class="p">(</span><span class="n">folder_path</span><span class="p">):</span>
 </span><span id="__span-0-65"><a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="n">shutil</span><span class="o">.</span><span class="n">make_archive</span><span class="p">(</span><span class="n">folder_path</span><span class="p">,</span> <span class="s2">&quot;zip&quot;</span><span class="p">,</span> <span class="n">folder_path</span><span class="p">)</span>
@@ -2606,7 +2606,7 @@
     <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.indexes", "navigation.top", "content.code.copy", "content.code.annotate"], "search": "../../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.c8d2eff1.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.bd41221c.min.js"></script>
       
     
   </body>
