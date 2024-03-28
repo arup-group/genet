@@ -1,6 +1,7 @@
 import logging
 import re
 import xml.etree.cElementTree as ET
+from typing import Optional
 
 import networkx as nx
 from pyproj import Proj, Transformer
@@ -9,14 +10,24 @@ from genet.schedule_elements import Route, Service, Stop
 from genet.utils import dict_support, java_dtypes, spatial
 
 
-def read_node(elem, g, node_id_mapping, node_attribs, transformer):
-    """
-    Adds node elem of the stream to the network
-    :param elem:
-    :param g: nx.MultiDiGraph
-    :param node_id_mapping:
-    :param transformer:
-    :return:
+def read_node(
+    elem: ET.Element,
+    g: nx.MultiDiGraph,
+    node_id_mapping: dict,
+    node_attribs: dict,
+    transformer: Transformer,
+) -> tuple[nx.MultiDiGraph, dict]:
+    """Adds node elem of the stream to the network.
+
+    Args:
+        elem (ET.Element): Element of the stream.
+        g (nx.MultiDiGraph): Network.
+        node_id_mapping (dict): Mapping from node IDs to S2 IDs.
+        node_attribs (dict): Node attributes to attach to the node in the network object.
+        transformer (Transformer): PyProj CRS Transformer to update the `elem` `x`/`y` coordinates to `lat`/`lon`.
+
+    Returns:
+        tuple[nx.MultiDiGraph, dict]: Network with added node; found duplicated node IDs.
     """
     duplicated_node_id = {}
     attribs = elem.attrib
@@ -49,18 +60,35 @@ def read_node(elem, g, node_id_mapping, node_attribs, transformer):
     return g, duplicated_node_id
 
 
-def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
+def read_link(
+    elem: ET.Element,
+    g: nx.MultiDiGraph,
+    u: str,
+    v: str,
+    node_id_mapping: dict,
+    link_id_mapping: dict,
+    link_attribs: dict,
+) -> tuple[nx.MultiDiGraph, str, str, dict, dict]:
+    """Adds link elem of the stream to the network
+
+    Args:
+        elem (ET.Element): Element of the stream.
+        g (nx.MultiDiGraph): Network.
+        u (str): `from` node of the previous link.
+        v (str): `to` node of the previous link.
+        node_id_mapping (dict): Mapping from node IDs to S2 IDs.
+        link_id_mapping (dict): Mapping from link ID to node to and from IDs.
+        link_attribs (dict): link attributes of the previous link.
+
+    Returns:
+        tuple[nx.MultiDiGraph, str, str, dict, dict]:
+            Network with added link;
+            `from` node ID of link;
+            `to` node ID of link;
+            `link_id_mapping` with mapping for the newly added link;
+            found duplicated link IDs.
     """
-    Reads link elem of the stream to the network
-    :param elem:
-    :param g: nx.MultiDiGraph
-    :param u: from node of the previous link
-    :param v: to node of the previous link
-    :param node_id_mapping:
-    :param link_id_mapping:
-    :param link_attribs: link attributes of the previous link
-    :return:
-    """
+
     duplicated_link_id = {}
 
     attribs = elem.attrib
@@ -105,13 +133,19 @@ def read_link(elem, g, u, v, node_id_mapping, link_id_mapping, link_attribs):
     return g, u, v, link_id_mapping, duplicated_link_id
 
 
-def update_additional_attrib(elem, attribs, force_long_form_attributes=False):
-    """
-    Reads additional attributes
-    :param elem:
-    :param attribs: current additional attributes
-    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into long form
-    :return:
+def update_additional_attrib(
+    elem: ET.Element, attribs: dict, force_long_form_attributes: bool = False
+) -> dict:
+    """Updates additional attributes dictionary with data read from stream.
+
+    Args:
+        elem (ET.Element): Stream element for which additional attributes are to be read and updated.
+        attribs (dict): Current additional attributes.
+        force_long_form_attributes (bool, optional):
+            If True the additional attributes will be read into long form. Defaults to False.
+
+    Returns:
+        dict: Updated `attribs` dictionary with `elem` additional attributes.
     """
     attribs[elem.attrib["name"]] = read_additional_attrib(
         elem, force_long_form_attributes=force_long_form_attributes
@@ -119,11 +153,16 @@ def update_additional_attrib(elem, attribs, force_long_form_attributes=False):
     return attribs
 
 
-def read_additional_attrib(elem, force_long_form_attributes=False):
-    """
-    :param elem:
-    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into long form
-    :return:
+def read_additional_attrib(elem: ET.Element, force_long_form_attributes: bool = False) -> dict:
+    """Reads additional attributes dictionary from stream.
+
+    Args:
+        elem (ET.Element): Stream element for which additional attributes are to be read and updated.
+        force_long_form_attributes (bool, optional):
+            If True the additional attributes will be read into long form. Defaults to False.
+
+    Returns:
+        dict: `elem` additional attributes.
     """
     if force_long_form_attributes:
         return _read_additional_attrib_to_long_form(elem)
@@ -165,7 +204,7 @@ def _read_additional_attrib_to_short_form(elem):
         return t
 
 
-def _read_additional_attrib_to_long_form(elem):
+def _read_additional_attrib_to_long_form(elem: ET.Element) -> dict:
     return {
         "text": _read_additional_attrib_text(elem),
         "class": _read_additional_attrib_class(elem),
@@ -188,37 +227,50 @@ def unique_link_id(link_id, link_id_mapping):
     return link_id, duplicated_link_id
 
 
-def read_network(network_path, transformer: Transformer, force_long_form_attributes=False):
-    """
-    Read MATSim network
-    :param network_path: path to the network.xml file
-    :param transformer: pyproj crs transformer
-    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into verbose
-        format:
-            {
-                'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': 'attrib_value'}
-            }
-        where 'attrib_value' is always a python string; instead of the default short form:
-            {
-                'additional_attrib': 'attrib_value'
-            }
-        where the type of attrib_value is mapped to a python type using the declared java class.
-        NOTE! Network level attributes cannot be forced to be read into long form.
-    :return: g (nx.MultiDiGraph representing the multimodal network),
-        node_id_mapping (dict {matsim network node ids : s2 spatial ids}),
-        link_id_mapping (dict {matsim network link ids : {'from': matsim id from node, ,'to': matsim id to
-        node, 's2_from' : s2 spatial ids from node, 's2_to': s2 spatial ids to node}})
+def read_network(
+    network_path: str, transformer: Transformer, force_long_form_attributes: bool = False
+) -> tuple[nx.MultiDiGraph, dict, dict, dict, dict]:
+    """Read MATSim network.
+
+    Args:
+        network_path (str): path to the network.xml file.
+        transformer (Transformer): PyProj CRS Transformer to update the `elem` `x`/`y` coordinates to `lat`/`lon`.
+        force_long_form_attributes (bool, optional):
+            If True the additional attributes will be read into verbose format:
+            ```dict
+                {'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': attrib_value}}
+            ```
+            where `attrib_value` is always a python string.
+
+            If False, defaults to short-form:
+            ```python
+                {'additional_attrib': attrib_value}
+            ```
+            where the type of `attrib_value` is mapped to a python type using the declared java class.
+
+            !!! note
+                Network level attributes cannot be forced to be read into long form.
+
+            Defaults to False.
+
+    Returns:
+        tuple[nx.MultiDiGraph, dict, dict, dict, dict]:
+            Representation of the multimodal network;
+            MATSim node ID mapping: `{network node ID : s2 spatial ID}`;
+            MATSIM link ID to node ID mapping: `{network link ID : {'from': from node ID, 'to': to node ID, 's2_from' : from node S2 spatial ID, 's2_to': to node S2 spatial ID}}`
+            Network additional attribute dictionary.
     """
     g = nx.MultiDiGraph()
 
-    network_attributes = {}
-    node_id_mapping = {}
-    node_attribs = {}
-    link_id_mapping = {}
-    link_attribs = {}
-    duplicated_link_ids = {}
-    duplicated_node_ids = {}
-    u, v = None, None
+    network_attributes: dict = {}
+    node_id_mapping: dict = {}
+    node_attribs: dict = {}
+    link_id_mapping: dict = {}
+    link_attribs: dict = {}
+    duplicated_link_ids: dict = {}
+    duplicated_node_ids: dict = {}
+    u: Optional[str] = None
+    v: Optional[str] = None
 
     elem_themes_for_additional_attributes = {"network", "nodes", "links"}
     elem_type_for_additional_attributes = None
@@ -272,23 +324,39 @@ def read_network(network_path, transformer: Transformer, force_long_form_attribu
     return g, link_id_mapping, duplicated_node_ids, duplicated_link_ids, network_attributes
 
 
-def read_schedule(schedule_path, epsg, force_long_form_attributes=False):
-    """
-    Read MATSim schedule
-    :param schedule_path: path to the schedule.xml file
-    :param epsg: 'epsg:12345'
-    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into verbose
-        format:
-            {
-                'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': 'attrib_value'}
-            }
-        where 'attrib_value' is always a python string; instead of the default short form:
-            {
-                'additional_attrib': 'attrib_value'
-            }
-        where the type of attrib_value is mapped to a python type using the declared java class.
-        NOTE! Schedule level attributes cannot be forced to be read into long form.
-    :return: list of Service objects
+def read_schedule(
+    schedule_path: str, epsg: str, force_long_form_attributes: bool = False
+) -> tuple[list, dict, dict, dict]:
+    """Read MATSim schedule.
+
+    Args:
+        schedule_path (str): Path to the `schedule.xml` file.
+        epsg (str): Schedule projection CRS, e.g. `epsg:4326`.
+        force_long_form_attributes (bool, optional):
+            If True the additional attributes will be read into verbose format:
+            ```dict
+                {'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': attrib_value}}
+            ```
+            where `attrib_value` is always a python string.
+
+            If False, defaults to short-form:
+            ```python
+                {'additional_attrib': attrib_value}
+            ```
+            where the type of `attrib_value` is mapped to a python type using the declared java class.
+
+            !!! note
+                Schedule level attributes cannot be forced to be read into long form.
+
+            Defaults to False.
+
+    Returns:
+        tuple[list, dict, dict, dict]:
+            list of Service objects;
+            Minimal transfer times between stops;
+            Transit stop ID mapping;
+            Schedule additional attributes.
+
     """
     services = []
     transformer = Transformer.from_proj(Proj(epsg), Proj("epsg:4326"), always_xy=True)
@@ -359,14 +427,14 @@ def read_schedule(schedule_path, epsg, force_long_form_attributes=False):
             _service.add_additional_attributes({"attributes": transitLine["attributes"]})
         services.append(_service)
 
-    transitLine = {}
-    transitRoutes = {}
-    transportMode = {}
-    transit_stop_id_mapping = {}
+    transitLine: dict = {}
+    transitRoutes: dict = {}
+    transportMode: dict = {}
+    transit_stop_id_mapping: dict = {}
     is_minimalTransferTimes = False
-    minimalTransferTimes = (
-        {}
-    )  # {'stop_id_1': {'stop_id_2': 0.0}} seconds_to_transfer between stop_id_1 and stop_id_2
+
+    # {'stop_id_1': {'stop_id_2': 0.0}} seconds_to_transfer between stop_id_1 and stop_id_2
+    minimalTransferTimes: dict = {}
 
     elem_themes_for_additional_attributes = {
         "transitSchedule",
@@ -375,7 +443,7 @@ def read_schedule(schedule_path, epsg, force_long_form_attributes=False):
         "transitRoute",
     }
     elem_type_for_additional_attributes = None
-    schedule_attribs = {}
+    schedule_attribs: dict = {}
     # Track IDs through the stream
     current_stop_id = None
     current_route_id = None

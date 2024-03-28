@@ -29,11 +29,14 @@ def find_connected_subgraphs(G):
     ]
 
 
-def describe_graph_connectivity(G):
-    """
-    Computes dead ends and unreachable nodes in G. Computes strongly connected components of G
-    :param G:
-    :return:
+def describe_graph_connectivity(G: nx.Graph) -> dict:
+    """Computes dead ends, unreachable nodes, and strongly connected components of G.
+
+    Args:
+        G (nx.Graph): Network graph.
+
+    Returns:
+        dict: Summary of problem nodes and strongly connected components of G.
     """
     dict_to_return = {}
     # find dead ends or unreachable nodes

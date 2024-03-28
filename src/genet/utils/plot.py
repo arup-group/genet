@@ -1,21 +1,26 @@
 from copy import deepcopy
-from typing import Dict
+from typing import Optional, Union
 
 import geopandas as gpd
 import keplergl
 
 
 def plot_geodataframes_on_kepler_map(
-    gdfs: Dict[str, gpd.GeoDataFrame], height=750, kepler_config=None
-):
+    gdfs: dict[str, gpd.GeoDataFrame],
+    height: int = 750,
+    kepler_config: Optional[Union[dict, str]] = None,
+) -> keplergl.KeplerGl:
+    """Plots geodataframes on a kepler map.
+
+    Args:
+        gdfs (dict[str, gpd.GeoDataFrame]): {'gdf name': gdf} dictionary of geodataframes.
+        height (int, optional): height for the kepler map. Defaults to 750.
+        kepler_config (Optional[dict | str], optional): If given, kepler config or one of the keys in the predefined configs in KEPLER_CONFIGS. Defaults to None.
+
+    Returns:
+        keplergl.KeplerGl: Kepler plot object
     """
-    Plots geodataframes on a kepler map.
-    :param gdfs: {'gdf name': gdf} dictionary of geodataframes
-    :param height: optional, height for the kepler map
-    :param kepler_config: optional, dict kepler config or one of the keys in the predefined configs in KEPLER_CONFIGS
-    :return:
-    """
-    if kepler_config in KEPLER_CONFIGS:
+    if isinstance(kepler_config, str) and kepler_config in KEPLER_CONFIGS:
         kepler_config = KEPLER_CONFIGS[kepler_config]
     elif isinstance(kepler_config, dict):
         kepler_config = kepler_config

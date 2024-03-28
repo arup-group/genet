@@ -1,71 +1,64 @@
 import logging
 from itertools import count, filterfalse
-from typing import Callable, Dict, Iterable, Optional, Union
+from typing import Callable, Iterable, Iterator, Optional, Union
 
 import pandas as pd
 from anytree import Node, RenderTree
 
 import genet.utils.dict_support as dict_support
+from genet.core import Network
 from genet.utils import pandas_helpers as pd_helpers
 
 
 class Filter:
-    """
-    Helps filtering on specified attributes
-
-    Parameters
-    ----------
-    :param conditions e.g. {'attributes': {'osm:way:osmid': {'text': 12345}}}
-
-    Dictionary of (or list of such dictionaries)
-        key = edge attribute key
-        value = either another key, if the edge data is nested or the target condition for what the value should be.
-        That is:
-            - single value, string, int, float, where the edge_data[key] == value
-                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
-
-            - list or set of single values as above, where edge_data[key] in [value1, value2]
-                (if mixed_dtypes==True and in case of set/list edge_data[key],
-                set(edge_data[key]) & set([value1, value2]) is non-empty)
-
-            - for int or float values, two-tuple bound (lower_bound, upper_bound) where
-              lower_bound <= edge_data[key] <= upper_bound
-                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
-                edge_data[key] satisfies lower_bound <= item <= upper_bound)
-
-            - function that returns a boolean given the value e.g.
-
-            def below_exclusive_upper_bound(value):
-                return value < 100
-
-                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
-                edge_data[key] returns True after applying function)
-
-    :param how : {all, any}, default any
-
-    The level of rigour used to match conditions
-
-        * all: means all conditions need to be met
-        * any: means at least one condition needs to be met
-
-    :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
-    values e.g. as in simplified networks.
-    """
-
     def __init__(
         self,
         conditions: Optional[
             Union[
                 list,
-                Dict[
-                    str,
-                    Union[dict, Union[str, int, float], list, Callable[[str, int, float], bool]],
-                ],
+                dict[str, Union[dict, str, int, float, list, Callable[[str, int, float], bool]]],
             ]
         ] = None,
-        how=any,
-        mixed_dtypes=True,
+        how: Callable = any,
+        mixed_dtypes: bool = True,
     ):
+        """Helps filtering on specified attributes.
+
+        Args:
+            conditions (Union[list, dict]):
+                {'attribute_key': 'target_value'} or nested {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}},
+                where 'target_value' could be:
+
+                - single value, string, int, float, where the edge_data[key] == value
+                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+
+                - list or set of single values as above, where edge_data[key] in [value1, value2]
+                (if mixed_dtypes==True and in case of set/list edge_data[key],
+                set(edge_data[key]) & set([value1, value2]) is non-empty)
+
+                - for int or float values, two-tuple bound (lower_bound, upper_bound) where
+                lower_bound <= edge_data[key] <= upper_bound
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+
+                - function that returns a boolean given the value e.g.
+                ```python
+                def below_exclusive_upper_bound(value):
+                    return value < 100
+                ```
+                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+                edge_data[key] returns True after applying function)
+
+            how (Callable, optional):
+                The level of rigour used to match conditions. Defaults to any.
+                - all: means all conditions need to be met
+                - any: means at least one condition needs to be met
+
+            mixed_dtypes (bool, optional):
+                If True, will consider the intersection of single values or lists of values in queried dictionary keys, e.g. as in simplified networks.
+                Defaults to True.
+        """
+
         self.conditions = conditions
         self.how = how
         self.mixed_dtypes = mixed_dtypes
@@ -124,47 +117,57 @@ class Filter:
         return satisfies
 
 
-def extract_on_attributes(iterator, conditions: Union[list, dict], how=any, mixed_dtypes=True):
-    """
-    Extracts ids in iterator based on values of attributes attached to the items. Fails silently,
-    assumes not all items have those attributes. In the case were the attributes stored are
-    a list or set, like in the case of a simplified network (there will be a mix of objects that are sets and not)
-    an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is
-    deemed successful by default. To disable this behaviour set mixed_dtypes to False.
-    :param iterator: generator, list or set of two-tuples: (id of the item, attributes of the item)
-    :param conditions: {'attribute_key': 'target_value'} or nested
-    {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}}, where 'target_value' could be
+def extract_on_attributes(
+    iterator: Iterator[tuple[str, dict]],
+    conditions: Union[list, dict],
+    how: Callable = any,
+    mixed_dtypes: bool = True,
+) -> list:
+    """Extracts ids in iterator based on values of attributes attached to the items.
+
+    Fails silently, assumes not all items have those attributes.
+    In the case were the attributes stored are a list or set,
+    like in the case of a simplified network (there will be a mix of objects that are sets and not),
+    an intersection of values satisfying condition(s) is considered in case of iterable value, if not empty, it is deemed successful by default.
+    To disable this behaviour set mixed_dtypes to False.
+
+    Args:
+        iterator (Iterator[tuple[str, dict]]): list or set of two-tuples: (id of the item, attributes of the item)
+        conditions (Union[list, dict]):
+            {'attribute_key': 'target_value'} or nested {'attribute_key': {'another_key': {'yet_another_key': 'target_value'}}},
+            where 'target_value' could be:
 
             - single value, string, int, float, where the edge_data[key] == value
-                (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
+            (if mixed_dtypes==True and in case of set/list edge_data[key], value is in edge_data[key])
 
             - list or set of single values as above, where edge_data[key] in [value1, value2]
-                (if mixed_dtypes==True and in case of set/list edge_data[key],
-                set(edge_data[key]) & set([value1, value2]) is non-empty)
+            (if mixed_dtypes==True and in case of set/list edge_data[key],
+            set(edge_data[key]) & set([value1, value2]) is non-empty)
 
             - for int or float values, two-tuple bound (lower_bound, upper_bound) where
-              lower_bound <= edge_data[key] <= upper_bound
-                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
-                edge_data[key] satisfies lower_bound <= item <= upper_bound)
+            lower_bound <= edge_data[key] <= upper_bound
+            (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+            edge_data[key] satisfies lower_bound <= item <= upper_bound)
 
             - function that returns a boolean given the value e.g.
-
+            ```python
             def below_exclusive_upper_bound(value):
                 return value < 100
+            ```
+            (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
+            edge_data[key] returns True after applying function)
 
-                (if mixed_dtypes==True and in case of set/list edge_data[key], at least one item in
-                edge_data[key] returns True after applying function)
+        how (Callable, optional):
+            The level of rigour used to match conditions. Defaults to any.
+            - all: means all conditions need to be met
+            - any: means at least one condition needs to be met
 
-    :param how : {all, any}, default any
+        mixed_dtypes (bool, optional):
+            If True, will consider the intersection of single values or lists of values in queried dictionary keys, e.g. as in simplified networks.
+            Defaults to True.
 
-    The level of rigour used to match conditions
-
-        * all: means all conditions need to be met
-        * any: means at least one condition needs to be met
-
-    :param mixed_dtypes: True by default, used if values under dictionary keys queried are single values or lists of
-    values e.g. as in simplified networks.
-    :return: list of ids in input iterator satisfying conditions
+    Returns:
+        list: list of ids in input iterator satisfying conditions
     """
     filter = Filter(conditions, how, mixed_dtypes)
     return [_id for _id, attribs in iterator if filter.satisfies_conditions(attribs)]
@@ -217,10 +220,14 @@ def render_tree(root, data=False):
             print("%s%s" % (pre, node.name))
 
 
-def parse_leaf(leaf):
+def parse_leaf(leaf: Node) -> Union[str, dict]:
     """
-    :param leaf: anytree.node.node.Node
-    :return: str or dictionary with string key value pairs, for use as keys to extraction methods
+
+    Args:
+        leaf (Node): Leaf node.
+
+    Returns:
+        Union[str, dict]: str or dictionary with string key value pairs, for use as keys to extraction methods.
     """
     if leaf.depth > 1:
         dict_path = {leaf.path[1].name: leaf.path[2].name}
@@ -232,14 +239,19 @@ def parse_leaf(leaf):
         return leaf.name
 
 
-def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
-    """
-    Returns all data stored under key in attribute dictionaries for iterators yielding (index, attribute_dictionary),
-    inherits index from the iterator.
-    :param iterator: list or iterator yielding (index, attribute_dictionary)
-    :param key: either a string e.g. 'modes', or if accessing nested information, a dictionary
-        e.g. {'attributes': 'osm:way:name'} or {'attributes': {'osm:way:name': 'text'}}
-    :return: dictionary where keys are indices and values are data stored under the key
+def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]) -> dict:
+    """Returns all data stored under key in attribute dictionaries for iterators yielding (index, attribute_dictionary).
+
+    Inherits index from the iterator.
+
+    Args:
+        iterator (Iterable): list or iterator yielding (index, attribute_dictionary)
+        key (Union[str, dict]):
+            A string, e.g. 'modes'.
+            A dictionary, if accessing nested information, e.g. `{'attributes': 'osm:way:name'}` or `{'attributes': {'osm:way:name': 'text'}}`.
+
+    Returns:
+        dict: dictionary where keys are indices and values are data stored under the key
     """
 
     def get_the_data(attributes, key):
@@ -254,7 +266,7 @@ def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
             if key in attributes:
                 data[_id] = attributes[key]
 
-    data = {}
+    data: dict = {}
 
     for _id, _attribs in iterator:
         get_the_data(_attribs, key)
@@ -263,17 +275,21 @@ def get_attribute_data_under_key(iterator: Iterable, key: Union[str, dict]):
 
 
 def build_attribute_dataframe(
-    iterator, keys: Union[Iterable, str], index_name: Optional[str] = None
-):
+    iterator: Iterable, keys: Union[list, dict, str], index_name: Optional[str] = None
+) -> pd.DataFrame:
+    """Builds a pandas.DataFrame from data in iterator.
+
+    Args:
+        iterator (Iterable): iterator or list of tuples (id, dictionary data with keys of interest).
+        keys (Union[list, dict, str]):
+            keys to extract data from.
+            Can be a string, list or dictionary/list of dictionaries if accessing nested dictionaries, for example on using dictionaries see `get_attribute_data_under_key` docstring.
+        index_name (Optional[str], optional): Name of returned dataframe index. Defaults to None.
+
+    Returns:
+        pd.DataFrame: Attribute dataframe.
     """
-    Builds a pandas.DataFrame from data in iterator.
-    :param iterator: iterator or list of tuples (id, dictionary data with keys of interest)
-    :param keys: keys to extract data from. Can be a string, list or dictionary/list of dictionaries if accessing
-    nested dictionaries, for example on using dictionaries see `get_attribute_data_under_key` docstring.
-    :param index_name:
-    :return:
-    """
-    df = None
+    df = pd.DataFrame()
     if isinstance(keys, str):
         keys = [keys]
     if len(keys) > 1:
@@ -289,11 +305,8 @@ def build_attribute_dataframe(
         col_series = pd.Series(attribute_data, dtype=pd_helpers.get_pandas_dtype(attribute_data))
         col_series.name = name
 
-        if df is not None:
-            df = df.merge(pd.DataFrame(col_series), left_index=True, right_index=True, how="outer")
-        else:
-            df = pd.DataFrame(col_series)
-    if index_name:
+        df = df.merge(pd.DataFrame(col_series), left_index=True, right_index=True, how="outer")
+    if index_name is not None:
         df.index = df.index.set_names([index_name])
     return df
 
@@ -336,13 +349,20 @@ def apply_function_to_attributes(iterator, function, location):
     return new_attributes
 
 
-def consolidate_node_indices(left, right):
-    """
-    Changes the node indexing in right to match left spatially and resolves clashing node ids if they don't match
-    spatially. The two networks need to be in matching coordinate systems.
-    :param left: genet.core.Network
-    :param right: genet.core.Network that needs to be updated to match left network
-    :return: updated right
+def consolidate_node_indices(left: Network, right: Network) -> Network:
+    """Changes the node indexing in right to match left spatially and resolves clashing node ids if they don't match spatially.
+
+    The two networks need to be in matching coordinate systems.
+
+    Args:
+        left (Network): GeNet network.
+        right (Network): GeNet network that needs to be updated to match left network.
+
+    Raises:
+        RuntimeError: Nodes must be spatially unique.
+
+    Returns:
+        Network: Updated `right` network.
     """
     # find spatially overlapping nodes by extracting all of the s2 spatial ids from right
     s2_ids_right = right.node_attribute_data_under_key("s2_id")
@@ -388,14 +408,17 @@ def consolidate_node_indices(left, right):
     return right
 
 
-def consolidate_link_indices(left, right):
-    """
-    Changes the link indexing in right to match left on modes stored on the links and resolves clashing link ids if
-    they don't match. This method assumes that the node ids of left vs right have already been consolidated (see
-    the method above with consolidates node ids)
-    :param left: genet.core.Network
-    :param right: genet.core.Network that needs to be updated to match left network
-    :return: updated right
+def consolidate_link_indices(left: Network, right: Network) -> Network:
+    """Changes the link indexing in right to match left on modes stored on the links and resolves clashing link ids if they don't match.
+
+    This method assumes that the node ids of left vs right have already been consolidated (see `consolidate_node_indices`, which consolidates node ids).
+
+    Args:
+        left (Network): GeNet network.
+        right (Network): GeNet network that needs to be updated to match left network.
+
+    Returns:
+        Network: Updated `right` network.
     """
 
     def sort_and_hash(modes_list):
@@ -468,8 +491,8 @@ def consolidate_link_indices(left, right):
         df.groupby(["from", "to"]).apply(get_edges_with_clashing_ids).reset_index(drop=True)
     )
     # store the edge data from right
-    overlapping_links_data = {}
-    unique_clashing_links_data = {}
+    overlapping_links_data: dict = {}
+    unique_clashing_links_data: dict = {}
     if not clashing_overlapping_edges.empty:
         clashing_overlapping_edges[
             clashing_overlapping_edges["link_id_right"].notna()
@@ -523,15 +546,20 @@ def consolidate_link_indices(left, right):
     return right
 
 
-def convert_list_of_link_ids_to_network_nodes(network, link_ids: list):
+def convert_list_of_link_ids_to_network_nodes(network: Network, link_ids: list) -> list:
+    """Extracts nodes corresponding to link ids in the order of given link_ids list.
+
+    Useful for extracting network routes.
+
+    Args:
+        network (Network): GeNet network.
+        link_ids (list): Link IDs whose nodes are to be extracted.
+
+    Returns:
+        list: Node IDs.
     """
-    Extracts nodes corresponding to link ids in the order of given link_ids list. Useful for extracting network routes.
-    :param network:
-    :param link_ids:
-    :return:
-    """
-    paths = []
-    connected_path = []
+    paths: list = []
+    connected_path: list = []
     for link_id in link_ids:
         x, y = network.link_id_mapping[link_id]["from"], network.link_id_mapping[link_id]["to"]
         if not connected_path:
@@ -545,15 +573,25 @@ def convert_list_of_link_ids_to_network_nodes(network, link_ids: list):
     return paths
 
 
-def find_shortest_path_link(link_attribute_dictionary, modes=None):
-    """
-    Finds link that is deemed quickest if freespeed present. Relies on (link) id being stored on edge data (default
-    if using genet Network's `add_link` or `add_edge` methods or reading data using genet's Network methods.)
+def find_shortest_path_link(
+    link_attribute_dictionary: dict, modes: Optional[Union[list, str]] = None
+) -> str:
+    """Finds link that is deemed quickest if freespeed present.
+
+    Relies on (link) id being stored on edge data (default if using genet Network's `add_link` or `add_edge` methods or reading data using genet's Network methods.)
     Throws a `RuntimeError` if a link id is not found.
-    :param link_attribute_dictionary: {multi_index_id: {'length': 10}}
-    :param modes: optional, if passed and there are more than one possible edge that has the same length and speed,
-    will also check if there is a link with modes that match exactly with `modes`.
-    :return:
+
+    Args:
+        link_attribute_dictionary (dict): Link attribute dictionary, e.g. `{multi_index_id: {'length': 10}}`.
+        modes (Optional[Union[list, str]], optional):
+            If passed and there is more than one possible edge that has the same length and speed, will also check if there is a link with modes that match exactly with `modes`.
+            Defaults to None.
+
+    Raises:
+        RuntimeError: Link ID must exist.
+
+    Returns:
+        str: Shortest path link ID
     """
     selected_link = None
     if len(link_attribute_dictionary) > 1:

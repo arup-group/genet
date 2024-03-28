@@ -1,34 +1,49 @@
 import json
 import os
+from typing import Optional
 
 import boto3
 
 
-def get_google_directions_api_key(secret_name: str = None, region_name: str = None):
+def get_google_directions_api_key(
+    secret_name: Optional[str] = None, region_name: Optional[str] = None
+) -> Optional[str]:
+    """Extracts google directions api key from environmental variable or secrets manager.
+
+    Args:
+        secret_name (Optional[str], optional):
+            If given and API key is not an environment variable, will search for the secret in the AWS secrets manager.
+            Defaults to None.
+        region_name (Optional[str], optional):
+            If given and API key is not an environment variable, will search for the secret in the given AWS region account.
+            Defaults to None.
+
+    Returns:
+        Optional[str]: Google API key, if there is one to find.
     """
-    Extracts google directions api key from environmental variable or secrets manager
-    :param secret_name:
-    :param region_name:
-    :return:
-    """
-    key = None
-    if os.getenv("GOOGLE_DIR_API_KEY"):
-        key = os.getenv("GOOGLE_DIR_API_KEY")
-    elif secret_name and region_name:
-        key = get_secret_as_dict(secret_name, region_name)
-        if "key" in key:
-            key = key["key"]
-        elif "api_key" in key:
-            key = key["api_key"]
+    key: Optional[str] = os.getenv("GOOGLE_DIR_API_KEY")
+
+    if key is None and (secret_name is not None and region_name is not None):
+        key_dict = get_secret_as_dict(secret_name, region_name)
+        if "key" in key_dict:
+            key = key_dict["key"]
+        elif "api_key" in key_dict:
+            key = key_dict["api_key"]
     return key
 
 
-def get_secret(secret_name, region_name):
-    """
-    Extracts api key from aws secrets manager
-    :param secret_name:
-    :param region_name:
-    :return:
+def get_secret(secret_name: str, region_name: str) -> str:
+    """Extracts api key from aws secrets manager.
+
+    Args:
+        secret_name (str):
+            Will search for the secret in the AWS secrets manager.
+        region_name (str):
+            Will search for the secret in the given AWS region account.
+
+    Returns:
+        str: JSON response string.
+
     """
     client = boto3.client("secretsmanager", region_name=region_name)
 
@@ -46,7 +61,7 @@ def get_secret(secret_name, region_name):
         return response["SecretBinary"]
 
 
-def get_secret_as_dict(secret_name, region_name):
+def get_secret_as_dict(secret_name: str, region_name: str) -> dict:
     string_secret = get_secret(secret_name, region_name)
     if string_secret is not None:
         return json.loads(string_secret)

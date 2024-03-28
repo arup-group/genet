@@ -1,11 +1,13 @@
 import ast
 import json
 import logging
+from typing import Optional
 
 import geopandas as gpd
 import networkx as nx
 import pandas as pd
 
+import genet
 import genet.core as core
 import genet.input.gtfs_reader as gtfs_reader
 import genet.input.matsim_reader as matsim_reader
@@ -21,29 +23,40 @@ from genet.exceptions import NetworkSchemaError
 def read_matsim(
     path_to_network: str,
     epsg: str,
-    path_to_schedule: str = None,
-    path_to_vehicles: str = None,
-    force_long_form_attributes=False,
-):
-    """
-    Reads MATSim's network.xml to genet.Network object and if give, also the schedule.xml and vehicles.xml into
-    genet.Schedule object, part of the genet.Network object.
-    :param path_to_network: path to MATSim's network.xml file
-    :param path_to_schedule: path to MATSim's schedule.xml file, optional
-    :param path_to_vehicles: path to MATSim's vehicles.xml file, optional, expected to be passed with a schedule
-    :param epsg: projection for the network, e.g. 'epsg:27700'
-    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into verbose
-        format:
-            {
-                'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': 'attrib_value'}
-            }
-        where 'attrib_value' is always a python string; instead of the default short form:
-            {
-                'additional_attrib': 'attrib_value'
-            }
-        where the type of attrib_value is mapped to a python type using the declared java class.
-        NOTE! Network and Schedule level attributes cannot be forced to be read into long form.
-    :return: genet.Network object
+    path_to_schedule: Optional[str] = None,
+    path_to_vehicles: Optional[str] = None,
+    force_long_form_attributes: bool = False,
+) -> core.Network:
+    """Creates a GeNet Network from MATSim's network.xml and (optionally) schedule.xml and vehicles.xml files.
+
+    If given, schedule and vehicles files will be used to create a `genet.Schedule` object, which will be added to the generated `genet.Network` object.
+    the schedule file needs to be given if the vehicles file is given.
+
+    Args:
+        path_to_network (str): Path to MATSim's `network.xml` file.
+        epsg (str): Projection for the network, e.g. 'epsg:27700'.
+        path_to_schedule (Optional[str], optional): Path to MATSim's `schedule.xml` file. Defaults to None.
+        path_to_vehicles (Optional[str], optional): Path to MATSim's `vehicles.xml` file,. Defaults to None.
+        force_long_form_attributes (bool, optional):
+            If True the additional attributes will be read into verbose format:
+            ```dict
+                {'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': attrib_value}}
+            ```
+            where `attrib_value` is always a python string.
+
+            If False, defaults to short-form:
+            ```python
+                {'additional_attrib': attrib_value}
+            ```
+            where the type of `attrib_value` is mapped to a python type using the declared java class.
+
+            !!! note
+                Network level attributes cannot be forced to be read into long form.
+
+            Defaults to False.
+
+    Returns:
+        core.Network: GeNet Network object.
     """
     n = read_matsim_network(
         path_to_network=path_to_network,
@@ -60,23 +73,34 @@ def read_matsim(
     return n
 
 
-def read_matsim_network(path_to_network: str, epsg: str, force_long_form_attributes=False):
-    """
-    Reads MATSim's network.xml to genet.Network object
-    :param path_to_network: path to MATSim's network.xml file
-    :param epsg: projection for the network, e.g. 'epsg:27700'
-    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into verbose
-        format:
-            {
-                'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': 'attrib_value'}
-            }
-        where 'attrib_value' is always a python string; instead of the default short form:
-            {
-                'additional_attrib': 'attrib_value'
-            }
-        where the type of attrib_value is mapped to a python type using the declared java class.
-        NOTE! Network level attributes cannot be forced to be read into long form.
-    :return: genet.Network object
+def read_matsim_network(
+    path_to_network: str, epsg: str, force_long_form_attributes: bool = False
+) -> core.Network:
+    """Reads MATSim's network.xml to genet.Network object.
+
+    Args:
+        path_to_network (str): Path to MATSim's `network.xml` file.
+        epsg (str): Projection for the network, e.g. 'epsg:27700'.
+        force_long_form_attributes (bool, optional):
+            If True the additional attributes will be read into verbose format:
+            ```dict
+                {'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': attrib_value}}
+            ```
+            where `attrib_value` is always a python string.
+
+            If False, defaults to short-form:
+            ```python
+                {'additional_attrib': attrib_value}
+            ```
+            where the type of `attrib_value` is mapped to a python type using the declared java class.
+
+            !!! note
+                Network level attributes cannot be forced to be read into long form.
+
+            Defaults to False.
+
+    Returns:
+        core.Network: GeNet Network object.
     """
     n = core.Network(epsg=epsg)
     (n.graph, n.link_id_mapping, duplicated_nodes, duplicated_links, network_attributes) = (
@@ -105,25 +129,37 @@ def read_matsim_network(path_to_network: str, epsg: str, force_long_form_attribu
 
 
 def read_matsim_schedule(
-    path_to_schedule: str, epsg: str, path_to_vehicles: str = None, force_long_form_attributes=False
-):
-    """
-    Reads MATSim's schedule.xml (and possibly vehicles.xml) to genet.Schedule object
-    :param path_to_schedule: path to MATSim's schedule.xml file,
-    :param path_to_vehicles: path to MATSim's vehicles.xml file, optional but encouraged
-    :param epsg: projection for the schedule, e.g. 'epsg:27700'
-    :param force_long_form_attributes: Defaults to False, if True the additional attributes will be read into verbose
-        format:
-            {
-                'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': 'attrib_value'}
-            }
-        where 'attrib_value' is always a python string; instead of the default short form:
-            {
-                'additional_attrib': 'attrib_value'
-            }
-        where the type of attrib_value is mapped to a python type using the declared java class.
-        NOTE! Schedule level attributes cannot be forced to be read into long form.
-    :return: genet.Schedule object
+    path_to_schedule: str,
+    epsg: str,
+    path_to_vehicles: Optional[str] = None,
+    force_long_form_attributes: bool = False,
+) -> schedule_elements.Schedule:
+    """Reads MATSim's schedule.xml (and possibly vehicles.xml) to genet.Schedule object.
+
+    Args:
+        path_to_schedule (str): Path to MATSim's `schedule.xml` file.
+        epsg (str): Projection for the network, e.g. 'epsg:27700'.
+        path_to_vehicles (Optional[str], optional): Path to MATSim's `vehicles.xml` file,. Defaults to None.
+        force_long_form_attributes (bool, optional):
+            If True the additional attributes will be read into verbose format:
+            ```dict
+                {'additional_attrib': {'name': 'additional_attrib', 'class': 'java.lang.String', 'text': attrib_value}}
+            ```
+            where `attrib_value` is always a python string.
+
+            If False, defaults to short-form:
+            ```python
+                {'additional_attrib': attrib_value}
+            ```
+            where the type of `attrib_value` is mapped to a python type using the declared java class.
+
+            !!! note
+                Network level attributes cannot be forced to be read into long form.
+
+            Defaults to False.
+
+    Returns:
+        schedule_elements.Schedule: GeNet Schedule object.
     """
     (services, minimal_transfer_times, transit_stop_id_mapping, schedule_attributes) = (
         matsim_reader.read_schedule(
@@ -155,27 +191,33 @@ def read_matsim_schedule(
     return matsim_schedule
 
 
-def read_json(network_path: str, epsg: str, schedule_path: str = ""):
-    """
-    Reads Network and, if passed, Schedule JSON files in to a genet.Network
-    :param network_path: path to json network file
-    :param schedule_path: path to json schedule file
-    :param epsg: projection for the network, e.g. 'epsg:27700'
-    :return: genet.Network object
+def read_json(network_path: str, epsg: str, schedule_path: Optional[str] = None) -> core.Network:
+    """Reads Network and, if passed, Schedule JSON files in to a genet.Network.
+
+    Args:
+        network_path (str): path to JSON network file.
+        epsg (str): Projection for the network, e.g. 'epsg:27700'.
+        schedule_path (Optional[str], optional): Path to json schedule file. Defaults to None.
+
+    Returns:
+        core.Network: GeNet network object.
     """
     n = read_json_network(network_path, epsg)
-    if schedule_path:
+    if schedule_path is not None:
         n.schedule = read_json_schedule(schedule_path, epsg)
     return n
 
 
-def read_geojson_network(nodes_path: str, links_path: str, epsg: str):
-    """
-    Reads Network graph from JSON file.
-    :param nodes_path: path to geojson network nodes file
-    :param links_path: path to geojson network links file
-    :param epsg: projection for the network, e.g. 'epsg:27700'
-    :return: genet.Network object
+def read_geojson_network(nodes_path: str, links_path: str, epsg: str) -> core.Network:
+    """Reads Network graph from JSON file.
+
+    Args:
+        nodes_path (str): Path to geojson network nodes file.
+        links_path (str): Path to geojson network links file.
+        epsg (str): Projection for the network, e.g. 'epsg:27700'.
+
+    Returns:
+        core.Network: GeNet network object.
     """
     logging.info(f"Reading Network nodes from {nodes_path}")
     nodes = gpd.read_file(nodes_path)
@@ -200,23 +242,26 @@ def read_geojson_network(nodes_path: str, links_path: str, epsg: str):
     return n
 
 
-def read_json_network(network_path: str, epsg: str):
-    """
-    Reads Network graph from JSON file.
-    :param network_path: path to json or geojson network file
-    :param epsg: projection for the network, e.g. 'epsg:27700'
-    :return: genet.Network object
+def read_json_network(network_path: str, epsg: str) -> core.Network:
+    """Reads network JSON file in to a genet.Network.
+
+    Args:
+        network_path (str): path to JSON or GeoJSON network file.
+        epsg (str): Projection for the network, e.g. 'epsg:27700'.
+
+    Returns:
+        core.Network: GeNet network object.
     """
     logging.info(f"Reading Network from {network_path}")
     with open(network_path) as json_file:
         json_data = json.load(json_file)
-    for node, data in json_data["nodes"].items():
+    for _, data in json_data["nodes"].items():
         try:
             del data["geometry"]
         except KeyError:
             pass
 
-    for link, data in json_data["links"].items():
+    for _, data in json_data["links"].items():
         try:
             data["geometry"] = spatial.decode_polyline_to_shapely_linestring(data["geometry"])
         except KeyError:
@@ -233,12 +278,15 @@ def read_json_network(network_path: str, epsg: str):
     return n
 
 
-def read_json_schedule(schedule_path: str, epsg: str):
-    """
-    Reads Schedule from a JSON file.
-    :param schedule_path: path to json or geojson schedule file
-    :param epsg: projection for the network, e.g. 'epsg:27700'
-    :return: genet.Schedule object
+def read_json_schedule(schedule_path: str, epsg: str) -> schedule_elements.Schedule:
+    """Reads Schedule from a JSON file.
+
+    Args:
+        schedule_path (str): path to JSON or GeoJSON schedule file.
+        epsg (str): Projection for the network, e.g. 'epsg:27700'.
+
+    Returns:
+        schedule_elements.Schedule: GeNet schedule object.
     """
     logging.info(f"Reading Schedule from {schedule_path}")
     with open(schedule_path) as json_file:
@@ -279,26 +327,38 @@ def _literal_eval_col(df_col):
     return df_col
 
 
-def read_csv(path_to_network_nodes: str, path_to_network_links: str, epsg: str):
-    """
-    Reads CSV data into a genet.Network object
-    :param path_to_network_nodes: CSV file describing nodes. Should at least include columns:
-    - id: unique ID for the node
-    - x: spatial coordinate in given epsg
-    - y: spatial coordinate in given epsg
-    :param path_to_network_links: CSV file describing links.
-    Should at least include columns:
-    - from - source Node ID
-    - to - target Node ID
-    Optional columns, but strongly encouraged
-    - id - unique ID for link
-    - length - link length in metres
-    - freespeed - meter/seconds speed
-    - capacity - vehicles/hour
-    - permlanes - number of lanes
-    - modes - set of modes
-    :param epsg: projection for the network, e.g. 'epsg:27700'
-    :return: genet.Network object
+def read_csv(path_to_network_nodes: str, path_to_network_links: str, epsg: str) -> core.Network:
+    """Reads CSV data into a genet.Network object
+
+    Args:
+        path_to_network_nodes (str):
+            CSV file describing nodes.
+            Should at least include columns:
+            - id: unique ID for the node
+            - x: spatial coordinate in given epsg
+            - y: spatial coordinate in given epsg
+
+        path_to_network_links (str):
+            CSV file describing links.
+            Should at least include columns:
+            - from - source Node ID
+            - to - target Node ID
+
+            Optional columns, but strongly encouraged:
+            - id - unique ID for link
+            - length - link length in metres
+            - freespeed - meter/seconds speed
+            - capacity - vehicles/hour
+            - permlanes - number of lanes
+            - modes - set of modes
+
+        epsg (str): Projection for the network, e.g. 'epsg:27700'.
+
+    Raises:
+        NetworkSchemaError: Network nodes must have at least the columns specified above.
+
+    Returns:
+        core.Network: GeNet network object.
     """
     logging.info(f"Reading nodes from {path_to_network_nodes}")
     df_nodes = pd.read_csv(path_to_network_nodes)
@@ -350,14 +410,22 @@ def read_csv(path_to_network_nodes: str, path_to_network_links: str, epsg: str):
     return n
 
 
-def read_gtfs(path, day, epsg=None):
-    """
-    Reads from GTFS. The resulting services will not have network routes. Assumed to be in lat lon epsg:4326.
-    :param path: to GTFS folder or a zip file
-    :param day: 'YYYYMMDD' to use from the gtfs
-    :param epsg: projection for the output Schedule, e.g. 'epsg:27700'. If not provided, the Schedule remains in
-        epsg:4326
-    :return:
+def read_gtfs(path: str, day: str, epsg: Optional[str] = None) -> schedule_elements.Schedule:
+    """Reads schedule from GTFS.
+
+    The resulting services will not have network routes.
+    Input GTFS is assumed to be using the 'epsg:4326' projection.
+
+    Args:
+        path (str): Path to GTFS folder or a zip file.
+        day (str): 'YYYYMMDD' to use from the GTFS.
+        epsg (Optional[str], optional):
+            Projection for the output Schedule, e.g. 'epsg:27700'.
+            If not provided, defaults to 'epsg:4326'.
+            Defaults to None.
+
+    Returns:
+        schedule_elements.Schedule: GeNet schedule.
     """
     logging.info(f"Reading GTFS from {path}")
     schedule_graph = gtfs_reader.read_gtfs_to_schedule_graph(path, day)
@@ -367,18 +435,25 @@ def read_gtfs(path, day, epsg=None):
     return s
 
 
-def read_osm(osm_file_path, osm_read_config, num_processes: int = 1, epsg=None):
+def read_osm(
+    osm_file_path: str, osm_read_config: str, num_processes: int = 1, epsg: str = "epsg:4326"
+) -> core.Network:
+    """Reads OSM data into a graph of the Network object.
+
+    Args:
+        osm_file_path (str): path to .osm or .osm.pbf file
+        osm_read_config (str):
+            Path to config file, which informs e.g., which highway types to read (in case of road network) and what modes to assign to them.
+            See configs folder in genet for examples.
+        num_processes (int, optional): Number of processes to split parallelisable operations across. Defaults to 1.
+        epsg (Optional[str], optional):
+            Projection for the output Network, e.g. 'epsg:27700'.
+            Defaults to "epsg:4326".
+
+    Returns:
+        core.Network: GeNet network object.
     """
-    Reads OSM data into a graph of the Network object
-    :param osm_file_path: path to .osm or .osm.pbf file
-    :param osm_read_config: config file (see configs folder in genet for examples) which informs for example which
-    highway types to read (in case of road network) and what modes to assign to them
-    :param num_processes: number of processes to split parallelisable operations across
-    :param epsg: projection for the output Network, e.g. 'epsg:27700'. If not provided, defaults to epsg:4326
-    :return: genet.Network object
-    """
-    if epsg is None:
-        epsg = "epsg:4326"
+
     config = osm_reader.Config(osm_read_config)
     n = core.Network(epsg)
     nodes, edges = osm_reader.generate_osm_graph_edges_from_file(
@@ -414,10 +489,13 @@ def read_osm(osm_file_path, osm_read_config, num_processes: int = 1, epsg=None):
     return n
 
 
-def read_matsim_road_pricing(path_to_file):
+def read_matsim_road_pricing(path_to_file: str) -> "genet.use.road_pricing.Toll":
+    """TODO: implement
+
+    Args:
+        path_to_file (str): path to MATSim's road_pricing.xml file
+
+    Returns:
+        genet.Toll: or other if applicable though not yet implemented (eg distance or area tolling)
     """
-    TODO: implement
-    :param path_to_file: path to MATSim's road_pricing.xml file
-    :return: genet.Toll.. or other if applicable though not yet implemented (eg distance or area tolling)
-    """
-    pass
+    raise NotImplementedError()

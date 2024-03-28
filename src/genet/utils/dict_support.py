@@ -7,12 +7,15 @@ from numpy import ndarray
 import genet.utils.graph_operations as graph_operations
 
 
-def set_nested_value(d: dict, value: dict):
-    """
-    Changes or, if not present injects, `different_value` into nested dictionary d at key `key: key_2`
-    :param d: {key: {key_2: value, key_1: 1234}
-    :param value: {key: {key_2: different_value}}
-    :return:
+def set_nested_value(d: dict, value: dict) -> dict:
+    """Changes or, if not present injects, `different_value` into nested dictionary d at key `key: key_2`.
+
+    Args:
+        d (dict): `{key: {key_2: value, key_1: 1234}`
+        value (dict): `{key: {key_2: different_value}}`
+
+    Returns:
+        dict: `d` with nested dictionary value updated.
     """
     if isinstance(value, dict):
         for k, v in value.items():
@@ -28,21 +31,29 @@ def set_nested_value(d: dict, value: dict):
     return d
 
 
-def get_nested_value(d: dict, path: dict):
+def get_nested_value(d: dict, path: Union[dict, str]) -> dict:
+    """Retrieves value from nested dictionary.
+
+    Args:
+        d (dict): `{key: {key_2: {key_2_1: hey}, key_1: 1234}`.
+        path (Union[dict, str]): `{key: {key_2: key_2_1}} path to take through the dictionary d`.
+
+    Raises:
+        KeyError: All nested keys in the path must exist.
+
+    Returns:
+        dict: `d[key][key_2][key_2_1]`
     """
-    Retrieves value from nested dictionary
-    :param d: {key: {key_2: {key_2_1: hey}, key_1: 1234}
-    :param path: {key: {key_2: key_2_1}} path to take through the dictionary d
-    :return: d[key][key_2][key_2_1]
-    """
+
     if isinstance(path, dict):
         for k, v in path.items():
             if k in d:
-                return get_nested_value(d[k], v)
+                val = get_nested_value(d[k], v)
             else:
                 raise KeyError(f"Dictionary {d} does not have key {k}")
     else:
-        return d[path]
+        val = d[path]
+    return val
 
 
 def find_nested_paths_to_value(d: dict, value: Union[str, int, float, set, list]):
@@ -81,17 +92,25 @@ def nest_at_leaf(d: dict, value):
     return d
 
 
-def merge_complex_dictionaries(d1, d2):
+def merge_complex_dictionaries(d1: dict, d2: dict) -> dict:
     """
     Merges two dictionaries where the values can be lists, sets or other dictionaries with the same behaviour.
+
     If values are not list, set or dict then d2 values prevail.
-    If the values are lists, the two merge, retaining all elements of both lists and preserving their order
-        the result is: d1_list + d2_list.
+
+    If the values are lists, the two merge, retaining all elements of both lists and preserving their order.
+    The result is: `d1_list` + `d2_list`.
+
     If the values are sets, the two combine with the OR operator.
+
     If the values are dicts, the two merge using this method.
-    :param d1:
-    :param d2:
-    :return:
+
+    Args:
+        d1 (dict): First dictionary in the merge
+        d2 (dict): Second dictionary in the merge
+
+    Returns:
+        dict: Merged dictionary.
     """
     d = deepcopy(d1)
     clashing_keys = set(d1) & set(d2)
@@ -109,12 +128,15 @@ def merge_complex_dictionaries(d1, d2):
     return d
 
 
-def combine_edge_data_lists(l1, l2):
-    """
-    Merges two lists where each elem is of the form (from_node, to_node, list)
-    :param l1:
-    :param l2:
-    :return:
+def combine_edge_data_lists(l1: list, l2: list) -> list:
+    """Merges two lists where each elem is of the form (from_node, to_node, list).
+
+    Args:
+        l1 (list): First list in merge.
+        l2 (list): Second list in merge.
+
+    Returns:
+        list: List of merged dictionaries.
     """
     edges = merge_complex_dictionaries(
         {(u, v): dat for u, v, dat in l1}, {(u, v): dat for u, v, dat in l2}

@@ -2,7 +2,7 @@ import itertools
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import List
+from typing import Optional
 
 import geopandas as gpd
 import numpy as np
@@ -34,12 +34,17 @@ def get_offset(time):
     )
 
 
-def generate_edge_vph_geodataframe(df, gdf_links):
-    """
-    Generates vehicles per hour for a trips dataframe
-    :param df: trips dataframe
-    :param gdf_links: geodataframe containing links of the schedule (element) graph
-    :return:
+def generate_edge_vph_geodataframe(
+    df: pd.DataFrame, gdf_links: gpd.GeoDataFrame
+) -> gpd.GeoDataFrame:
+    """Generates vehicles per hour for a trips dataframe.
+
+    Args:
+        df (pd.DataFrame): trips dataframe.
+        gdf_links (gpd.GeoDataFrame): geodataframe containing links of the schedule (element) graph.
+
+    Returns:
+        gpd.GeoDataFrame: Geodataframe which merges the two input arguments and keeps the `vph` column.
     """
     df.loc[:, "hour"] = df["departure_time"].dt.round("H")
     groupby_cols = ["hour", "trip_id", "from_stop", "from_stop_name", "to_stop", "to_stop_name"]
@@ -54,13 +59,20 @@ def generate_edge_vph_geodataframe(df, gdf_links):
     return gdf
 
 
-def vehicles_per_hour(df, aggregate_by: list, output_path=""):
-    """
-    Generates vehicles per hour for a trips dataframe
-    :param df: trips dataframe
-    :param aggregate_by:
-    :param output_path: path for the frame with .csv extension
-    :return:
+def vehicles_per_hour(
+    df: pd.DataFrame, aggregate_by: list, output_path: Optional[str] = None
+) -> pd.DataFrame:
+    """Generates vehicles per hour for a trips dataframe
+
+    Args:
+        df (pd.DataFrame): trips dataframe.
+        aggregate_by (list): trip metadata to aggregate trips by.
+        output_path (Optional[str], optional):
+            If given, path for the frame with .csv extension.
+            Defaults to None.
+
+    Returns:
+        pd.DataFrame: Vehicles per hour.
     """
     df.loc[:, "hour"] = df["departure_time"].dt.round("H")
     df.loc[:, "hour"] = df["hour"].dt.hour
@@ -75,12 +87,17 @@ def vehicles_per_hour(df, aggregate_by: list, output_path=""):
     return df
 
 
-def trips_per_day_per_service(df, output_dir=""):
-    """
-    Generates trips per day per service for a trips dataframe
-    :param df: trips dataframe
-    :param output_dir: directory to save `trips_per_day_per_service.csv`
-    :return:
+def trips_per_day_per_service(df: pd.DataFrame, output_dir: Optional[str] = None) -> pd.DataFrame:
+    """Generates trips per day per service for a trips dataframe.
+
+    Args:
+        df (pd.DataFrame): trips dataframe.
+        output_dir (Optional[str], optional):
+            If given, directory to save `trips_per_day_per_service.csv`.
+            Defaults to None.
+
+    Returns:
+        pd.DataFrame: Trips per day.
     """
     trips_per_day = (
         df.groupby(["service_id", "service_name", "route_id", "mode"])
@@ -96,12 +113,17 @@ def trips_per_day_per_service(df, output_dir=""):
     return trips_per_day
 
 
-def trips_per_day_per_route(df, output_dir=""):
-    """
-    Generates trips per day per route for a trips dataframe
-    :param df: trips dataframe
-    :param output_dir: directory to save `trips_per_day_per_service.csv`
-    :return:
+def trips_per_day_per_route(df: pd.DataFrame, output_dir: Optional[str] = None) -> pd.DataFrame:
+    """Generates trips per day per route for a trips dataframe.
+
+    Args:
+        df (pd.DataFrame): trips dataframe
+        output_dir (Optional[str], optional):
+            If given, directory to save `trips_per_day_per_service.csv`.
+            Defaults to None.
+
+    Returns:
+        pd.DataFrame: trips per day per route.
     """
     trips_per_day = (
         df.groupby(["route_id", "route_name", "mode"]).nunique()["trip_id"].reset_index()
@@ -163,21 +185,30 @@ def aggregate_by_stop_names(df_aggregate_trips_per_day_per_route_by_end_stop_pai
     return df
 
 
-def divide_network_route(route: List[str], stops_linkrefids: List[str]) -> List[List[str]]:
+def divide_network_route(route: list[str], stops_linkrefids: list[str]) -> list[list[str]]:
+    """Divides the network route traversed by a PT service into list of lists.
+
+    Examples:
+        ```python
+        route = ['a-a', 'a-b', 'b-b', 'b-c', 'c-c', 'c-d']
+        stops_linkrefids = ['a-a', 'b-b', 'c-c']
+        ```
+
+        For a service with stops A, B, C, where the stops are snapped to network links 'a-a', 'b-b', 'c-c' respectively.
+        This method will give you the answer:
+        ```python
+        [['a-a', 'a-b', 'b-b'], ['b-b', 'b-c', 'c-c']]
+        ```
+        i.e. the route between stops A and B, and B and C, in order.
+
+    Args:
+        route (list[str]): list of network link IDs.
+        stops_linkrefids (list[str]): List of network link IDs (str) that the stops on route are snapped to.
+
+    Returns:
+        list[list[str]]: Divided route.
     """
-    Divides into list of lists, the network route traversed by a PT service.
-    E.g.
-    route = ['a-a', 'a-b', 'b-b', 'b-c', 'c-c', 'c-d']
-    stops_linkrefids = ['a-a', 'b-b', 'c-c']
-    For a service with stops A, B, C, where the stops are snapped to network links 'a-a', 'b-b', 'c-c' respectively.
-    This method will give you teh answer:
-    [['a-a', 'a-b', 'b-b'], ['b-b', 'b-c', 'c-c']]
-    i.e. the route between stops A and B, and B and C, in order.
-    :param route: list of network link IDs (str)
-    :param stops_linkrefids: List of network link IDs (str) that the stops on route are snapped to
-    :return:
-    """
-    divided_route = [[]]
+    divided_route: list[list[str]] = [[]]
     for link_id in route:
         divided_route[-1].append(link_id)
         while stops_linkrefids and (link_id == stops_linkrefids[0]):

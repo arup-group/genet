@@ -1,7 +1,7 @@
 import json
 import logging
 import statistics
-from typing import Tuple
+from typing import Union
 
 import geopandas as gpd
 import networkx as nx
@@ -13,6 +13,7 @@ from shapely.geometry import GeometryCollection, LineString, MultiLineString, Po
 from shapely.ops import linemerge, split
 from sklearn.neighbors import BallTree
 
+import genet
 import genet.output.geojson as gngeojson
 from genet.exceptions import EmptySpatialTree
 
@@ -20,75 +21,104 @@ APPROX_EARTH_RADIUS = 6371008.8
 S2_LEVELS_FOR_SPATIAL_INDEXING = [0, 6, 8, 12, 18, 24, 30]
 
 
-def decode_polyline_to_s2_points(_polyline):
+def decode_polyline_to_s2_points(_polyline: str) -> list[int]:
     """
-    :param _polyline: google encoded polyline
-    :return:
+
+    Args:
+        _polyline (str): google encoded polyline.
+
+    Returns:
+        list[int]: S2 points describing the polyline.
     """
     decoded = polyline.decode(_polyline)
     return [generate_index_s2(lat, lon) for lat, lon in decoded]
 
 
-def encode_shapely_linestring_to_polyline(linestring):
+def encode_shapely_linestring_to_polyline(linestring: LineString) -> str:
     """
-    :param linestring: shapely.geometry.LineString
-    :return: google encoded polyline
+
+    Args:
+        linestring (LineString): Shapely LineString to encode.
+
+    Returns:
+        str: Google encoded polyline.
     """
     return polyline.encode(linestring.coords)
 
 
-def swap_x_y_in_linestring(linestring):
-    """
-    swaps x with y in a shapely linestring,e.g. from LineString([(1,2), (3,4)]) to LineString([(2,1), (4,3)])
-    :param linestring: shapely.geometry.LineString
-    :return: shapely.geometry.LineString
+def swap_x_y_in_linestring(linestring: LineString) -> LineString:
+    """Swaps x with y in a shapely linestring.
+
+    e.g. from LineString([(1,2), (3,4)]) to LineString([(2,1), (4,3)]).
+
+    Args:
+        linestring (LineString): Input linestring.
+
+    Returns:
+        LineString: Input linestring with swapped x and y coordinates.
     """
     return LineString((p[1], p[0]) for p in linestring.coords)
 
 
-def merge_linestrings(linestring_list):
+def merge_linestrings(linestring_list: list[LineString]) -> Union[LineString, MultiLineString]:
     """
-    :param linestring_list: ordered list of shapely.geometry.Linestring objects.
-    Assumes lines are contiguous. If they are not, will results in a MultiLineString
-    :return:
+
+    Args:
+        linestring_list (list[LineString]): ordered list of shapely.geometry.Linestring objects.
+
+    Returns:
+        Union[LineString, MultiLineString]:
+            Assumes lines are contiguous. If they are not, will result in a MultiLineString.
     """
     multi_line = MultiLineString(linestring_list)
     return linemerge(multi_line)
 
 
-def snap_point_to_line(point: Point, line: LineString, distance_threshold=1e-8) -> Point:
-    """
-    Snap a point to a line, if over a distance threshold.
+def snap_point_to_line(point: Point, line: LineString, distance_threshold: float = 1e-8) -> Point:
+    """Snap a point to a line, if over a distance threshold.
+
     Not using 'contains' method due to too high accuracy required to evaluate to True.
-    :param point: Point to be snapped to line, IF not close enough
-    :param line: Line to use for the Point to snap to
-    :param distance_threshold: default 1e-8, acceptable distance of point from line before snapping
-    :return:
+
+    Args:
+        point (Point): Point to be potentially snapped to line.
+        line (LineString): Line to use for the Point to snap to
+        distance_threshold (float, optional): Acceptable distance of point from line before snapping. Defaults to 1e-8.
+
+    Returns:
+        Point: Point on line that is closest to input `point` or `point` itself, if it is within `distance_threshold`.
     """
     if line.distance(point) > distance_threshold:
         point = line.interpolate(line.project(point))
     return point
 
 
-def continue_line_from_two_points(p1, p2) -> LineString:
-    """
-    Builds a line from p1, p2 and another point, ahead, the same distance and direction from p2 as p1
-    :param p1:
-    :param p2:
-    :return:
+def continue_line_from_two_points(p1: Point, p2: Point) -> LineString:
+    """Builds a line from p1, p2 and another point, ahead, the same distance and direction from p2 as p1.
+
+    Args:
+        p1 (Point): Start point of line.
+        p2 (Point): End point of line.
+
+    Returns:
+        LineString: Line from p1 to p2.
     """
     return LineString([p1, p2, (p2.x + (p2.x - p1.x), p2.y + (p2.y - p1.y))])
 
 
-def split_line_at_point(point: Point, line: LineString) -> Tuple[LineString, LineString]:
-    """
+def split_line_at_point(point: Point, line: LineString) -> tuple[LineString, LineString]:
+    """Returns a two-tuple of linestring slices of given line, split at the given point.
+
     If the point is not close enough to the line, it will be snapped.
-    Returns a two-tuple of linestring slices of given line, split at the given point. The order in the tuple preserves
-    the given line.
-    :param point: point used for dividing the line
-    :param line: line to divide
-    :return: if given line from A - B, the output will be (A - point, point - B) - subject to point needing to
-    snap closer to the line
+
+    The order in the returned tuple preserves the given line.
+
+    Args:
+        point (Point): point used for dividing the line
+        line (LineString): line to divide
+
+    Returns:
+        tuple[LineString, LineString]:
+            If given line from A - B, the output will be (A - point, point - B) - subject to point needing to snap closer to the line.
     """
     # the point has to be on the line for shapely split
     # https://shapely.readthedocs.io/en/stable/manual.html#splitting
@@ -110,22 +140,30 @@ def split_line_at_point(point: Point, line: LineString) -> Tuple[LineString, Lin
     return result
 
 
-def decode_polyline_to_shapely_linestring(_polyline):
+def decode_polyline_to_shapely_linestring(_polyline: str) -> LineString:
     """
-    :param _polyline: google encoded polyline
-    :return: shapely.geometry.LineString
+
+    Args:
+        _polyline (str): google encoded polyline
+
+    Returns:
+        LineString: Shapely linestring representation of input polyline.
     """
     decoded = polyline.decode(_polyline)
     return LineString(decoded)
 
 
-def compute_average_proximity_to_polyline(poly_1, poly_2):
-    """
-    Computes average distance between points in poly_1 and closest points in poly_2. Works best when poly_1 is less
-    dense with points than poly_2.
-    :param poly_1: google encoded polyline
-    :param poly_2: google encoded polyline
-    :return:
+def compute_average_proximity_to_polyline(poly_1: str, poly_2: str) -> float:
+    """Computes average distance between points in poly_1 and closest points in poly_2.
+
+    Works best when poly_1 is less dense with points than poly_2.
+
+    Args:
+        poly_1 (str): google encoded polyline.
+        poly_2 (str): google encoded polyline
+
+    Returns:
+        float: Average distance between points in poly_1 and their respective closest points in poly_2.
     """
     s2_poly_list_1 = decode_polyline_to_s2_points(poly_1)
     s2_poly_list_2 = decode_polyline_to_s2_points(poly_2)
@@ -156,21 +194,29 @@ def s2_hex_to_cell_union(hex_area):
     return s2.CellUnion(cell_ids=cell_ids)
 
 
-def generate_index_s2(lat, lng):
-    """
-    Returns s2.CellId from lat and lon
-    :param lat
-    :param lng
-    :return:
+def generate_index_s2(lat: float, lng: float) -> int:
+    """Returns s2.CellId from lat and lon
+
+    Args:
+        lat (float): Latitude.
+        lng (float): Longitude.
+
+    Returns:
+        int: S2 cell ID.
     """
     return s2.CellId.from_lat_lng(s2.LatLng.from_degrees(lat, lng)).id()
 
 
-def generate_s2_geometry(points):
-    """
-    Generate ordered list of s2.CellIds
-    :param points: list of (lat,lng) tuples, list of shapely.geometry.Points or LineString
-    :return:
+def generate_s2_geometry(
+    points: Union[LineString, list[tuple[float, float]], list[Point]]
+) -> list[int]:
+    """Generate ordered list of s2.CellIds
+
+    Args:
+        points (Union[LineString, list[tuple[float, float]], list[Point]]): Points to convert to S2 Cell IDs
+
+    Returns:
+        list[int]: List of S2 Cell IDs
     """
     if isinstance(points, LineString):
         points = list(points.coords)
@@ -201,10 +247,17 @@ def grow_point(x, distance):
     return x.buffer(distance)
 
 
-def map_azimuth_to_name(azimuth):
+def map_azimuth_to_name(azimuth: float) -> str:
     """
-    assumes -180 =< azimuth =< 180
-    degrees from North (0)
+
+    Args:
+        azimuth (float): degrees from North (0).
+
+    Raises:
+        NotImplementedError: assumes -180 =< azimuth =< 180.
+
+    Returns:
+        str: String defining compass direction, e.g. "North Bound".
     """
     azimuth_to_name = {
         (-22.5, 22.5): "North Bound",
@@ -312,12 +365,15 @@ class SpatialTree(nx.DiGraph):
         if n is not None:
             self.add_links(n)
 
-    def add_links(self, n):
-        """
-        Generates the spatial tree where all links in `n` are nodes and edges exists between nodes if the two links
-        share to and from (`n`) nodes; i.e. the two links are connected at a node
-        :param n: genet.Network object
-        :return:
+    def add_links(self, n: "genet.core.Network"):
+        """Generates a spatial tree from links in a network.
+
+        Nodes of the spatial tree are generated to represent the links of the network.
+        Edges of the spatial tree are generated between the network links which share `to` and `from` nodes;
+        i.e. the two links are connected at a node.
+
+        Args:
+            n (genet.core.Network): GeNet network.
         """
         self.links = n.to_geodataframe()["links"].to_crs("epsg:4326")
         self.links = self.links.rename(columns={"id": "link_id"})
@@ -348,11 +404,17 @@ class SpatialTree(nx.DiGraph):
             )
         )
 
-    def modal_links_geodataframe(self, modes):
-        """
-        Subsets the links geodataframe on modes
-        :param modes: str or set of str
-        :return:
+    def modal_links_geodataframe(self, modes: Union[str, set[str]]) -> gpd.GeoDataFrame:
+        """Subsets the links geodataframe on modes
+
+        Args:
+            modes (Union[str, set[str]]): single or set of modes.
+
+        Raises:
+            EmptySpatialTree: At least one link must include one of the input modes.
+
+        Returns:
+            gpd.GeoDataFrame: links that include subset of modes.
         """
         if isinstance(modes, str):
             modes = {modes}
@@ -361,25 +423,38 @@ class SpatialTree(nx.DiGraph):
             raise EmptySpatialTree(f"No links found satisfying modes: {modes}")
         return _df
 
-    def modal_subtree(self, modes):
+    def modal_subtree(self, modes: Union[str, set[str]]) -> nx.Graph:
+        """Create a networkx subgraph from subset of links which match the input modes.
+
+        Args:
+            modes (Union[str, set[str]]): single or set of modes.
+
+        Returns:
+            nx.Graph: Subgraph of Self.
         """
-        :param modes: str of set of strings to consider modal subgraph
-        :return:
-        """
+
         sub_tree = self.__class__()
         links = gpd.GeoDataFrame(self.modal_links_geodataframe(modes))
         sub_tree = self.subgraph(links["link_id"])
         sub_tree.links = links
         return sub_tree
 
-    def closest_links(self, gdf_points, distance_radius):
-        """
-        Given a GeoDataFrame `gdf_points` with a`geometry` column with shapely.geometry.Points,
+    def closest_links(
+        self, gdf_points: gpd.GeoDataFrame, distance_radius: float
+    ) -> gpd.GeoDataFrame:
+        """Finds closest links from a list of points within a given radius.
+
+        Given a GeoDataFrame `gdf_points` with a `geometry` column of shapely.geometry.Points,
         finds closest links within `distance_radius` from the spatial tree which accept `mode`.
+
         Does not work very close to the poles.
-        :param gdf_points: GeoDataFrame, uniquely indexed, in crs: EPSG:4326 shapely.geometry.Points (lon,lat)
-        :param distance_radius: metres
-        :return: GeoDataFrame
+
+        Args:
+            gdf_points (gpd.GeoDataFrame): Uniquely indexed, in crs: EPSG:4326 and only containing shapely.geometry.Points (lon,lat).
+            distance_radius (float): Metres in which to consider possible links.
+
+        Returns:
+            gpd.GeoDataFrame: Closest links to points.
         """
         bdds = gdf_points["geometry"].bounds
         approx_lat = (bdds["miny"].mean() + bdds["maxy"].mean()) / 2
@@ -406,14 +481,24 @@ class SpatialTree(nx.DiGraph):
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             pass
 
-    def shortest_paths(self, df_pt_edges, from_col="u", to_col="v", weight="length"):
+    def shortest_paths(
+        self,
+        df_pt_edges: pd.DataFrame,
+        from_col: str = "u",
+        to_col: str = "v",
+        weight: str = "length",
+    ) -> pd.DataFrame:
         """
-        :param df_pt_edges: pandas DataFrame with a `from_col` and `to_col` defining links stored in the graph for
-        which a path is required
-        :param from_col: name of the column which gives ID for the source link
-        :param to_col: name of the column which gives ID for the target link
-        :param weight: weight for routing, defaults ot length
-        :return: df_pt_edges with an extra column 'shortest_path'
+
+        Args:
+            df_pt_edges (pd.DataFrame):
+                DataFrame with a `from_col` and `to_col` defining links stored in the graph for which a path is required
+            from_col (str, optional): Name of the column which gives ID for the source link. Defaults to "u".
+            to_col (str, optional): Name of the column which gives ID for the target link. Defaults to "v".
+            weight (str, optional): Weight for routing. Defaults to "length".
+
+        Returns:
+            pd.DataFrame: `df_pt_edges` with an extra column 'shortest_path'
         """
         if df_pt_edges.empty:
             df_pt_edges["shortest_path"] = None
@@ -436,14 +521,24 @@ class SpatialTree(nx.DiGraph):
         except nx.NetworkXNoPath:
             pass
 
-    def shortest_path_lengths(self, df_pt_edges, from_col="u", to_col="v", weight="length"):
+    def shortest_path_lengths(
+        self,
+        df_pt_edges: pd.DataFrame,
+        from_col: str = "u",
+        to_col: str = "v",
+        weight: str = "length",
+    ) -> pd.DataFrame:
         """
-        :param df_pt_edges: pandas DataFrame with a `from_col` and `to_col` defining links stored in the graph for
-        which a path length is required
-        :param from_col: name of the column which gives ID for the source link
-        :param to_col: name of the column which gives ID for the target link
-        :param weight: weight for routing, defaults ot length
-        :return: df_pt_edges with an extra column 'shortest_path'
+
+        Args:
+            df_pt_edges (pd.DataFrame):
+                DataFrame with a `from_col` and `to_col` defining links stored in the graph for which a path length is required.
+            from_col (str, optional): Name of the column which gives ID for the source link. Defaults to "u".
+            to_col (str, optional): Name of the column which gives ID for the target link. Defaults to "v".
+            weight (str, optional): Weight for routing. Defaults to "length".
+
+        Returns:
+            pd.DataFrame: `df_pt_edges` with an extra column 'shortest_path'
         """
         if df_pt_edges.empty:
             df_pt_edges["path_lengths"] = None
