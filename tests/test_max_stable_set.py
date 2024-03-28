@@ -1,13 +1,12 @@
 import shutil
 
+import genet.utils.spatial as spatial
 import networkx as nx
 import pyomo.environ as pe
 import pytest
-from pandas import DataFrame
-
-import genet.utils.spatial as spatial
 from genet import MaxStableSet, Network, Route, Schedule, Service, Stop
 from genet.max_stable_set import get_indices_of_chosen_problem_graph_nodes
+from pandas import DataFrame
 
 
 @pytest.fixture()
@@ -1073,7 +1072,7 @@ def test_partial_mss_problem_generates_correct_network_routes(
                     "stop_1.link:artificial_link===from:stop_1===to:stop_1",
                 ],
             },
-            "route": {
+            "network_links": {
                 "service_1_route_1": [
                     "artificial_link===from:stop_1===to:stop_1",
                     "artificial_link===from:stop_1===to:node_5",
@@ -1360,7 +1359,7 @@ def test_combining_two_changesets_with_overlap(assert_semantically_equal, partia
                     "stop_3.link:link_7_8_car",
                 ],
             },
-            "route": {
+            "network_links": {
                 "service_1_route_2": [
                     "link_7_8_car",
                     "link_8_7_car",

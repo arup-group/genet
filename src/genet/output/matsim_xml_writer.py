@@ -264,15 +264,15 @@ def write_matsim_schedule(output_dir: str, schedule: Schedule, reproj_processes:
                                         )
                                     else:
                                         if j == 0:
-                                            stop_attribs[
-                                                "departureOffset"
-                                            ] = route.departure_offsets[j]
+                                            stop_attribs["departureOffset"] = (
+                                                route.departure_offsets[j]
+                                            )
                                         elif j == len(route.ordered_stops) - 1:
                                             stop_attribs["arrivalOffset"] = route.arrival_offsets[j]
                                         else:
-                                            stop_attribs[
-                                                "departureOffset"
-                                            ] = route.departure_offsets[j]
+                                            stop_attribs["departureOffset"] = (
+                                                route.departure_offsets[j]
+                                            )
                                             stop_attribs["arrivalOffset"] = route.arrival_offsets[j]
 
                                         if route.await_departure:
@@ -281,7 +281,7 @@ def write_matsim_schedule(output_dir: str, schedule: Schedule, reproj_processes:
                                             ).lower()
                                     xf.write(etree.Element("stop", stop_attribs))
 
-                            if not route.route:
+                            if not route.network_links:
                                 logging.warning(
                                     "Route needs to have a network route composed of a list of network links that "
                                     "the vehicle on this route traverses. If read the Schedule from GTFS, the "
@@ -289,7 +289,7 @@ def write_matsim_schedule(output_dir: str, schedule: Schedule, reproj_processes:
                                 )
                             else:
                                 with xf.element("route"):
-                                    for link_id in route.route:
+                                    for link_id in route.network_links:
                                         route_attribs = {"refId": str(link_id)}
                                         xf.write(etree.Element("link", route_attribs))
 

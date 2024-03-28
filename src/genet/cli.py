@@ -144,7 +144,7 @@ def _generate_modal_network_geojsons(network, modes, output_dir, filename_suffix
         save_geodataframe(_gdf, f"mode_{mode}_{filename_suffix}", output_dir)
 
 
-@click.version_option()
+@click.version_option(package_name="cml-genet")
 @click.group()
 def cli():
     """GeNet Command Line Tool."""

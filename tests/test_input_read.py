@@ -1,10 +1,9 @@
 import os
 
 import pytest
-from shapely.geometry import LineString
-
 from genet.input import read
 from genet.schedule_elements import Route, Service, Stop
+from shapely.geometry import LineString
 
 json_test_folder = pytest.test_data_dir / "json"
 geojson_test_folder = pytest.test_data_dir / "geojson"
@@ -163,7 +162,7 @@ def test_reading_json(assert_semantically_equal):
                     "departure_offsets": ["00:00:00", "00:02:20"],
                     "route_long_name": "",
                     "id": "VJ6c64ab7b477e201cae950efde5bd0cb4e2e8888e",
-                    "route": ["1", "10"],
+                    "network_links": ["1", "10"],
                     "await_departure": [True, True],
                     "ordered_stops": ["490000235X.link:1", "490000235YB.link:10"],
                 }

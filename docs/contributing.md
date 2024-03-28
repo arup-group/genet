@@ -36,7 +36,7 @@ To create a development environment for genet, with all libraries required for d
 4. Change into the `genet` directory: `cd genet`
 5. Create the genet mamba environment: `mamba create -n genet -c conda-forge --file requirements/base.txt --file requirements/dev.txt`
 6. Activate the genet mamba environment: `mamba activate genet`
-7. Install the genet package into the environment, in editable mode and ignoring dependencies (we have dealt with those when creating the mamba environment): `pip install --no-deps -e .`
+7. Install the cml-genet package into the environment, in editable mode and ignoring dependencies (we have dealt with those when creating the mamba environment): `pip install --no-deps -e .`
 
 All together:
 
@@ -72,6 +72,13 @@ pytest tests/ --no-cov
 !!! note
     If you are debugging failing tests using the `--pdb` flag, tests will only run on one thread instead of the default (which is the maximum number of threads your machine has available).
     This will slow down your tests, so do not use `--pdb` unless you are actively debugging.
+
+## Updating the project when the template updates
+
+This project has been built with [cruft](https://cruft.github.io/cruft/) based on the [Arup Cookiecutter template](https://github.com/arup-group/cookiecutter-pypackage).
+When changes are made to the base template, they can be merged into this project by running `cruft update` from the  `genet` mamba environment.
+
+You may be prompted to do this when you open a Pull Request, if our automated checks identify that the template is newer than that used in the project.
 
 ## Submitting changes
 

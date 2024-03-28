@@ -66,6 +66,7 @@ plugins:
             signature_crossrefs: true
             show_root_toc_entry: false
             show_signature_annotations: false
+          paths: [src]
           import:
             - https://docs.python.org/3/objects.inv
             - https://pandas.pydata.org/docs/objects.inv
@@ -73,7 +74,7 @@ plugins:
             - https://geopandas.org/en/stable/objects.inv
             - https://networkx.org/documentation/stable/objects.inv
 watch:
-  - genet
+  - src/genet
 extra_css:
   - static/extras.css
 extra:

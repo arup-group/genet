@@ -1,11 +1,10 @@
 import os
 
-from geopandas import GeoDataFrame
-from shapely.geometry import Point
-
 from genet import Network
 from genet.output import geojson as gngeojson
 from genet.output import sanitiser
+from geopandas import GeoDataFrame
+from shapely.geometry import Point
 
 
 def test_sanitising_list():

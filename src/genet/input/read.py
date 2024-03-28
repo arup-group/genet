@@ -103,14 +103,10 @@ def read_matsim_network(
         core.Network: GeNet Network object.
     """
     n = core.Network(epsg=epsg)
-    (
-        n.graph,
-        n.link_id_mapping,
-        duplicated_nodes,
-        duplicated_links,
-        network_attributes,
-    ) = matsim_reader.read_network(
-        path_to_network, n.transformer, force_long_form_attributes=force_long_form_attributes
+    (n.graph, n.link_id_mapping, duplicated_nodes, duplicated_links, network_attributes) = (
+        matsim_reader.read_network(
+            path_to_network, n.transformer, force_long_form_attributes=force_long_form_attributes
+        )
     )
     n.attributes = dict_support.merge_complex_dictionaries(n.attributes, network_attributes)
     n.graph.graph["crs"] = n.epsg
@@ -165,13 +161,10 @@ def read_matsim_schedule(
     Returns:
         schedule_elements.Schedule: GeNet Schedule object.
     """
-    (
-        services,
-        minimal_transfer_times,
-        transit_stop_id_mapping,
-        schedule_attributes,
-    ) = matsim_reader.read_schedule(
-        path_to_schedule, epsg, force_long_form_attributes=force_long_form_attributes
+    (services, minimal_transfer_times, transit_stop_id_mapping, schedule_attributes) = (
+        matsim_reader.read_schedule(
+            path_to_schedule, epsg, force_long_form_attributes=force_long_form_attributes
+        )
     )
     if path_to_vehicles:
         vehicles, vehicle_types = matsim_reader.read_vehicles(path_to_vehicles)

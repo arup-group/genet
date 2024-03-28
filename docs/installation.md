@@ -15,9 +15,12 @@ Instructions for running GeNet from within the Docker image can be found [here](
 As a `genet` user, it is easiest to install using the [mamba](https://mamba.readthedocs.io/en/latest/index.html) package manager, as follows:
 
 1. Install mamba with the [Mambaforge](https://github.com/conda-forge/miniforge#mambaforge) executable for your operating system.
-2. Open the command line (or the "miniforge prompt" in Windows).
-3. mamba create -n genet -c conda-forge -c city-modelling-lab genet
-4. Activate the genet mamba environment: `mamba activate genet`
+1. Open the command line (or the "miniforge prompt" in Windows).
+1. Download (a.k.a., clone) the genet repository: `git clone git@github.com:{{ cookiecutter.repository_owner }}/genet.git`
+1. Change into the `genet` directory: `cd genet`
+1. Create the genet mamba environment: `mamba create -n genet -c conda-forge -c city-modelling-lab --file requirements/base.txt`
+1. Activate the genet mamba environment: `mamba activate genet`
+1. Install the cml-genet package into the environment, ignoring dependencies (we have dealt with those when creating the mamba environment): `pip install --no-deps .`
 
 All together:
 

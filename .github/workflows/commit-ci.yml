@@ -17,7 +17,7 @@ jobs:
     uses: arup-group/actions-city-modelling-lab/.github/workflows/python-install-lint-test.yml@main
     with:
       os: ubuntu-latest
-      py3version: "11"
+      py3version: "12"
       notebook_kernel: genet
       lint: false
       additional_mamba_args: coin-or-cbc

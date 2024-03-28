@@ -663,8 +663,8 @@ class Network:
                     "network routes will also be retained."
                 )
                 subschedule = self.schedule.subschedule(services)
-                routes = subschedule.route_attribute_data(keys=["route"])
-                links = links | set(np.concatenate(routes["route"].values))
+                routes = subschedule.route_attribute_data(keys=["network_links"])
+                links = links | set(np.concatenate(routes["network_links"].values))
                 subnetwork.schedule = subschedule
         subnetwork.graph = self.subgraph_on_link_conditions(conditions={"id": links})
         subnetwork.link_id_mapping = {k: v for k, v in self.link_id_mapping.items() if k in links}
@@ -2294,7 +2294,7 @@ class Network:
         routes = routes[
             routes.index.to_series().isin({item for sublist in _rs for item in sublist})
         ]
-        routes["route"] = routes["ordered_stops"].apply(lambda x: route_path(x))
+        routes["network_links"] = routes["ordered_stops"].apply(lambda x: route_path(x))
         routes = routes.drop("ordered_stops", axis=1).T.to_dict()
 
         self.add_nodes({node: nodes[node] for node in set(nodes) - set(self.graph.nodes)})
@@ -2383,18 +2383,18 @@ class Network:
             logging.info(f"Rerouting Route `{_id}`")
             modes = {route.mode} | persistence.setify(additional_modes)
             subgraph = self.modal_subgraph(modes)
-            network_route = [linkrefids[0]]
+            network_links = [linkrefids[0]]
             for from_stop_link_id, to_stop_link_id in zip(linkrefids[:-1], linkrefids[1:]):
-                network_route += self.find_shortest_path(
+                network_links += self.find_shortest_path(
                     self.link(from_stop_link_id)["to"],
                     self.link(to_stop_link_id)["from"],
                     subgraph=subgraph,
                 )
-                network_route.append(to_stop_link_id)
-            self.schedule.apply_attributes_to_routes({_id: {"route": network_route}})
+                network_links.append(to_stop_link_id)
+            self.schedule.apply_attributes_to_routes({_id: {"network_links": network_links}})
             links_for_mode_add = {
                 link_id
-                for link_id in set(network_route)
+                for link_id in set(network_links)
                 if not {route.mode}.issubset(persistence.setify(self.link(link_id)["modes"]))
             }
             if links_for_mode_add:
@@ -2432,9 +2432,9 @@ class Network:
     def schedule_routes_nodes(self):
         routes = []
         for _route in self.schedule_routes():
-            if _route.route:
+            if _route.network_links:
                 route_nodes = graph_operations.convert_list_of_link_ids_to_network_nodes(
-                    self, _route.route
+                    self, _route.network_links
                 )
                 if len(route_nodes) != 1:
                     logging.warning(
@@ -2448,8 +2448,8 @@ class Network:
     def schedule_routes_links(self):
         routes = []
         for service_id, _route in self.schedule_routes():
-            if _route.route:
-                routes.append(_route.route)
+            if _route.network_links:
+                routes.append(_route.network_links)
         return routes
 
     def schedule_network_routes_geodataframe(self):
@@ -2466,19 +2466,19 @@ class Network:
 
         gdf_links = self.to_geodataframe()["links"]
         routes = self.schedule.route_attribute_data(
-            keys=["id", "route_short_name", "mode", "route"]
+            keys=["id", "route_short_name", "mode", "network_links"]
         )
         routes = routes.rename(columns={"id": "route_id"})
-        routes["route_sequence"] = routes["route"].apply(lambda x: list(range(len(x))))
+        routes["route_sequence"] = routes["network_links"].apply(lambda x: list(range(len(x))))
 
         # expand on network route link sequence
         routes = pd.DataFrame(
             {
-                col: np.repeat(routes[col].values, routes["route"].str.len())
+                col: np.repeat(routes[col].values, routes["network_links"].str.len())
                 for col in {"route_id", "route_short_name", "mode"}
             }
         ).assign(
-            route=np.concatenate(routes["route"].values),
+            network_links=np.concatenate(routes["network_links"].values),
             route_sequence=np.concatenate(routes["route_sequence"].values),
         )
         routes["service_id"] = routes["route_id"].apply(
@@ -2486,7 +2486,9 @@ class Network:
         )
 
         # get geometry for link IDs
-        routes = pd.merge(routes, gdf_links[["id", "geometry"]], left_on="route", right_on="id")
+        routes = pd.merge(
+            routes, gdf_links[["id", "geometry"]], left_on="network_links", right_on="id"
+        )
         routes = routes.groupby("route_id").apply(combine_geometry).reset_index(drop=True)
         return gpd.GeoDataFrame(routes).set_crs(self.epsg)
 
@@ -2676,12 +2678,12 @@ class Network:
 
     def has_schedule_with_valid_network_routes(self):
         routes = [route for route in self.schedule_routes()]
-        if all([route.has_network_route() for route in routes]):
+        if all([route.has_network_links() for route in routes]):
             return all([self.is_valid_network_route(route) for route in routes])
         return False
 
     def calculate_route_to_crow_fly_ratio(self, route: schedule_elements.Route):
-        route_dist = self.route_distance(route.route)
+        route_dist = self.route_distance(route.network_links)
         crowfly_dist = route.crowfly_distance()
         if crowfly_dist:
             return route_dist / crowfly_dist
@@ -2689,10 +2691,10 @@ class Network:
             return "Division by zero"
 
     def is_valid_network_route(self, route: schedule_elements.Route):
-        if self.has_links(route.route):
-            valid_link_chain = self.has_valid_link_chain(route.route)
+        if self.has_links(route.network_links):
+            valid_link_chain = self.has_valid_link_chain(route.network_links)
             links_have_correct_modes = self.has_links(
-                route.route, {"modes": route.mode}, mixed_dtypes=True
+                route.network_links, {"modes": route.mode}, mixed_dtypes=True
             )
             if not links_have_correct_modes:
                 logging.info(
@@ -2752,7 +2754,7 @@ class Network:
         return [
             route.id
             for route in self.schedule.routes()
-            if not route.has_network_route() or not self.is_valid_network_route(route)
+            if not route.has_network_links() or not self.is_valid_network_route(route)
         ]
 
     def generate_validation_report(
@@ -2815,9 +2817,9 @@ class Network:
         def links_over_threshold_length(value):
             return value >= link_metre_length_threshold
 
-        report["graph"]["link_attributes"][
-            "links_over_1000_length"
-        ] = self.report_on_link_attribute_condition("length", links_over_threshold_length)
+        report["graph"]["link_attributes"]["links_over_1000_length"] = (
+            self.report_on_link_attribute_condition("length", links_over_threshold_length)
+        )
 
         # more general attribute value checks
         non_testable = ["id", "from", "to", "s2_to", "s2_from", "geometry"]
@@ -2850,9 +2852,9 @@ class Network:
             for service_id, route_ids in self.schedule.service_to_route_map().items():
                 route_to_crow_fly_ratio[service_id] = {}
                 for route_id in route_ids:
-                    route_to_crow_fly_ratio[service_id][
-                        route_id
-                    ] = self.calculate_route_to_crow_fly_ratio(self.schedule.route(route_id))
+                    route_to_crow_fly_ratio[service_id][route_id] = (
+                        self.calculate_route_to_crow_fly_ratio(self.schedule.route(route_id))
+                    )
 
             report["routing"] = {
                 "services_have_routes_in_the_graph": self.has_schedule_with_valid_network_routes(),
@@ -3240,10 +3242,10 @@ class Network:
         if self.schedule:
             logging.info("Updating network routes in the PT schedule.")
             # update schedule routes
-            df_routes = self.schedule.route_attribute_data(keys=["route"])
-            df_routes = df_routes[df_routes["route"].apply(lambda x: link_id in x)]
+            df_routes = self.schedule.route_attribute_data(keys=["network_links"])
+            df_routes = df_routes[df_routes["network_links"].apply(lambda x: link_id in x)]
             if not df_routes.empty:
-                df_routes["route"] = df_routes["route"].apply(
+                df_routes["network_links"] = df_routes["network_links"].apply(
                     lambda x: replace_link_on_pt_route(x, {link_id: [new_link_1, new_link_2]})
                 )
                 self.schedule.apply_attributes_to_routes(df_routes.T.to_dict())

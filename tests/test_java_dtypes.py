@@ -1,5 +1,4 @@
 import pytest
-
 from genet.utils.java_dtypes import java_to_python_dtype, python_to_java_dtype
 
 

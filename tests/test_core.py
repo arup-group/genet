@@ -1,7 +1,6 @@
 """Tests for `genet` package."""
 
 import pytest
-
 from genet import core
 
 

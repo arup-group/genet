@@ -412,7 +412,7 @@ def read_schedule(
                 route_short_name=transitLine["transitLine_data"]["name"],
                 mode=mode,
                 stops=stops,
-                route=route,
+                network_links=route,
                 trips=trips,
                 arrival_offsets=arrival_offsets,
                 departure_offsets=departure_offsets,

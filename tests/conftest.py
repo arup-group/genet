@@ -4,18 +4,17 @@ from datetime import datetime
 from pathlib import Path
 
 import dictdiffer
+import genet.modify.change_log as change_log
 import importlib_resources
 import lxml
 import pandas as pd
 import pytest
 import xmltodict
-from networkx import DiGraph, set_node_attributes
-from pyproj import CRS
-
-import genet.modify.change_log as change_log
 from genet.core import Network
 from genet.input import osm_reader, read
 from genet.schedule_elements import Route, Schedule, Service, Stop
+from networkx import DiGraph, set_node_attributes
+from pyproj import CRS
 
 GENET_CONFIG_DIR = importlib_resources.files("genet") / "configs"
 TEST_DATA_DIR = Path(__file__).parent / "test_data"
@@ -303,7 +302,7 @@ def service():
         },
         arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
         departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
-        route=["1", "2", "3", "4"],
+        network_links=["1", "2", "3", "4"],
     )
     route_2 = Route(
         id="2",
@@ -322,7 +321,7 @@ def service():
         },
         arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
         departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
-        route=["5", "6", "7", "8"],
+        network_links=["5", "6", "7", "8"],
     )
     return Service(id="service", routes=[route_1, route_2])
 
@@ -362,7 +361,7 @@ def correct_schedule():
                         },
                         arrival_offsets=["00:00:00", "00:02:00"],
                         departure_offsets=["00:00:00", "00:02:00"],
-                        route=["1", "2"],
+                        network_links=["1", "2"],
                     ),
                     Route(
                         id="2",
@@ -391,7 +390,7 @@ def correct_schedule():
                         },
                         arrival_offsets=["00:00:00", "00:03:00"],
                         departure_offsets=["00:00:00", "00:05:00"],
-                        route=["1", "2"],
+                        network_links=["1", "2"],
                     ),
                 ],
             )
@@ -417,7 +416,7 @@ def schedule_graph():
                 "departure_offsets": ["00:00:00", "00:05:00"],
                 "route_long_name": "",
                 "id": "4",
-                "route": ["4", "5"],
+                "network_links": ["4", "5"],
                 "await_departure": [],
             },
             "3": {
@@ -433,7 +432,7 @@ def schedule_graph():
                 "departure_offsets": ["00:00:00", "00:02:00"],
                 "route_long_name": "",
                 "id": "3",
-                "route": ["3", "4"],
+                "network_links": ["3", "4"],
                 "await_departure": [],
             },
             "1": {
@@ -449,7 +448,7 @@ def schedule_graph():
                 "departure_offsets": ["00:00:00", "00:02:00"],
                 "route_long_name": "",
                 "id": "1",
-                "route": ["0", "1"],
+                "network_links": ["0", "1"],
                 "await_departure": [],
             },
             "2": {
@@ -465,7 +464,7 @@ def schedule_graph():
                 "departure_offsets": ["00:00:00", "00:05:00"],
                 "route_long_name": "",
                 "id": "2",
-                "route": ["1", "2"],
+                "network_links": ["1", "2"],
                 "await_departure": [],
             },
         },
@@ -727,7 +726,7 @@ def route():
         },
         arrival_offsets=["00:00:00", "00:03:00", "00:07:00", "00:13:00"],
         departure_offsets=["00:00:00", "00:05:00", "00:09:00", "00:15:00"],
-        route=["1", "2", "3", "4"],
+        network_links=["1", "2", "3", "4"],
         id="1",
     )
 
@@ -861,7 +860,7 @@ def network_for_intermodal_access_egress_testing():
                                     "trip_departure_time": ["04:40:00"],
                                     "vehicle_id": ["veh_1_bus"],
                                 },
-                                route=["link_AB", "link_BA"],
+                                network_links=["link_AB", "link_BA"],
                                 arrival_offsets=["00:00:00", "00:02:00"],
                                 departure_offsets=["00:00:00", "00:02:00"],
                             )

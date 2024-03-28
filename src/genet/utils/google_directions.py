@@ -98,9 +98,9 @@ def read_api_requests(file_path: str) -> dict:
         except (ValueError, TypeError) as e:
             logging.warning(f"{str(key)} not processed due to {e}")
             continue
-        api_requests[
-            (json_dump[key]["path_nodes"][0], json_dump[key]["path_nodes"][-1])
-        ] = json_dump[key]
+        api_requests[(json_dump[key]["path_nodes"][0], json_dump[key]["path_nodes"][-1])] = (
+            json_dump[key]
+        )
     return api_requests
 
 
@@ -320,10 +320,10 @@ def parse_routes(response: requests.Response, path_polyline: str) -> dict:
             if len(content["routes"]) > 1:
                 for route in content["routes"]:
                     route_data = parse_route(route)
-                    route_data[
-                        "polyline_proximity"
-                    ] = spatial.compute_average_proximity_to_polyline(
-                        route_data["google_polyline"], path_polyline
+                    route_data["polyline_proximity"] = (
+                        spatial.compute_average_proximity_to_polyline(
+                            route_data["google_polyline"], path_polyline
+                        )
                     )
                     if data:
                         # pick closest one
