@@ -1,13 +1,12 @@
 import shutil
 
+import genet.utils.spatial as spatial
 import networkx as nx
 import pytest
-from pandas import DataFrame
-
-import genet.utils.spatial as spatial
 from genet import MaxStableSet, Route, Schedule, Service, Stop
 from genet.input import read
 from genet.modify import schedule as mod_schedule
+from pandas import DataFrame
 
 network_test_file = pytest.test_data_dir / "simplified_network" / "network.xml"
 schedule_test_file = pytest.test_data_dir / "simplified_network" / "schedule.xml"

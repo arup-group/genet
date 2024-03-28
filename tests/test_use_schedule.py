@@ -1,17 +1,16 @@
 import itertools
 from datetime import datetime, timedelta
 
+import genet.use.schedule as use_schedule
 import pytest
+from genet import Route, Schedule, Service, Stop
+from genet.output import geojson as gngeojson
 from geopandas import GeoDataFrame
 from geopandas.testing import assert_geodataframe_equal
 from pandas import DataFrame, Timestamp
 from pandas.testing import assert_frame_equal
 from pyproj import CRS
 from shapely.geometry import LineString
-
-import genet.use.schedule as use_schedule
-from genet import Route, Schedule, Service, Stop
-from genet.output import geojson as gngeojson
 
 
 @pytest.fixture()

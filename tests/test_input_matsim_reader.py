@@ -2,12 +2,11 @@ import os
 from dataclasses import dataclass, field
 
 import pytest
-from pyproj import Proj, Transformer
-from shapely.geometry import LineString
-
 from genet.input import matsim_reader, read
 from genet.schedule_elements import Route, Service, Stop
 from genet.utils import java_dtypes
+from pyproj import Proj, Transformer
+from shapely.geometry import LineString
 
 MATSIM_DATA_DIR = pytest.test_data_dir / "matsim"
 pt2matsim_network_test_file = MATSIM_DATA_DIR / "network.xml"

@@ -1,9 +1,8 @@
 from copy import deepcopy
 
+import genet.utils.dict_support as dict_support
 import pytest
 from pandas import DataFrame
-
-import genet.utils.dict_support as dict_support
 
 
 def test_set_nested_value_overwrites_current_value():

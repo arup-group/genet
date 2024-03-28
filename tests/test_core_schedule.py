@@ -4,13 +4,6 @@ import os
 
 import pandas as pd
 import pytest
-from geopandas import GeoDataFrame
-from geopandas.testing import assert_geodataframe_equal
-from pandas import DataFrame, Timedelta, Timestamp
-from pandas.testing import assert_frame_equal
-from pyproj import CRS
-from shapely.geometry import GeometryCollection, LineString, Polygon
-
 from genet.exceptions import ConflictingStopData, InconsistentVehicleModeError, ServiceIndexError
 from genet.input import matsim_reader, read
 from genet.schedule_elements import (
@@ -23,6 +16,12 @@ from genet.schedule_elements import (
 )
 from genet.utils import plot, spatial
 from genet.validate import schedule as schedule_validation
+from geopandas import GeoDataFrame
+from geopandas.testing import assert_geodataframe_equal
+from pandas import DataFrame, Timedelta, Timestamp
+from pandas.testing import assert_frame_equal
+from pyproj import CRS
+from shapely.geometry import GeometryCollection, LineString, Polygon
 
 pt2matsim_schedule_file = pytest.test_data_dir / "matsim" / "schedule.xml"
 pt2matsim_vehicles_file = pytest.test_data_dir / "matsim" / "vehicles.xml"

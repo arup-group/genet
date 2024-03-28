@@ -1,9 +1,8 @@
 import pytest
-from pandas import DataFrame
-from pandas.testing import assert_frame_equal
-
 from genet.input import gtfs_reader
 from genet.schedule_elements import change_log
+from pandas import DataFrame
+from pandas.testing import assert_frame_equal
 
 gtfs_test_file = pytest.test_data_dir / "gtfs"
 gtfs_test_zip_file = pytest.test_data_dir / "gtfs.zip"

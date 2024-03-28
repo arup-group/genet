@@ -1,5 +1,4 @@
 import pytest
-
 from genet.validate.network import (
     Condition,
     FloatCondition,

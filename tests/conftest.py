@@ -4,18 +4,17 @@ from datetime import datetime
 from pathlib import Path
 
 import dictdiffer
+import genet.modify.change_log as change_log
 import importlib_resources
 import lxml
 import pandas as pd
 import pytest
 import xmltodict
-from networkx import DiGraph, set_node_attributes
-from pyproj import CRS
-
-import genet.modify.change_log as change_log
 from genet.core import Network
 from genet.input import osm_reader, read
 from genet.schedule_elements import Route, Schedule, Service, Stop
+from networkx import DiGraph, set_node_attributes
+from pyproj import CRS
 
 GENET_CONFIG_DIR = importlib_resources.files("genet") / "configs"
 TEST_DATA_DIR = Path(__file__).parent / "test_data"

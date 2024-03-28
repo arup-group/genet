@@ -1,12 +1,11 @@
 import os
 
 import pytest
-from pandas import DataFrame, Timestamp
-from pandas.testing import assert_frame_equal
-
 from genet.exceptions import ServiceIndexError
 from genet.schedule_elements import Route, Stop, verify_graph_schema
 from genet.utils import plot
+from pandas import DataFrame, Timestamp
+from pandas.testing import assert_frame_equal
 
 
 @pytest.fixture()

@@ -6,12 +6,11 @@ from concurrent.futures._base import Future
 
 import polyline
 import pytest
+from genet.core import Network
+from genet.utils import google_directions, secrets_vault
 from requests.models import Response
 from requests_futures.sessions import FuturesSession
 from shapely.geometry import LineString
-
-from genet.core import Network
-from genet.utils import google_directions, secrets_vault
 
 example_google_speed_data = pytest.test_data_dir / "example_google_speed_data" / "api_requests.json"
 

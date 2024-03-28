@@ -1,8 +1,7 @@
 import pytest
-from networkx import DiGraph
-
 from genet.exceptions import RouteIndexError, ScheduleElementGraphSchemaError, ServiceIndexError
 from genet.schedule_elements import Route, Schedule, Service, Stop, verify_graph_schema
+from networkx import DiGraph
 
 
 def assert_all_elements_share_graph(elem):
@@ -757,8 +756,7 @@ def test_splitting_service_edge_case_on_direction_results_in_two_directions(
     )
 
 
-# this one is a right mess, result varies based on order in which routes are specified.
-@pytest.mark.xfail()
+@pytest.mark.skip(reason="Result varies based on order in which routes are specified.")
 def test_splitting_service_edge_case_on_direction_results_in_two_directions_2(
     service_edge_case_loopy_and_non_overlapping_graph,
 ):

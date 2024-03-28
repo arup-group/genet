@@ -261,15 +261,15 @@ def write_matsim_schedule(output_dir, schedule, reproj_processes=1):
                                         )
                                     else:
                                         if j == 0:
-                                            stop_attribs[
-                                                "departureOffset"
-                                            ] = route.departure_offsets[j]
+                                            stop_attribs["departureOffset"] = (
+                                                route.departure_offsets[j]
+                                            )
                                         elif j == len(route.ordered_stops) - 1:
                                             stop_attribs["arrivalOffset"] = route.arrival_offsets[j]
                                         else:
-                                            stop_attribs[
-                                                "departureOffset"
-                                            ] = route.departure_offsets[j]
+                                            stop_attribs["departureOffset"] = (
+                                                route.departure_offsets[j]
+                                            )
                                             stop_attribs["arrivalOffset"] = route.arrival_offsets[j]
 
                                         if route.await_departure:
