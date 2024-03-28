@@ -33,7 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 * GeNet's pre-baked python scripts have been retired in favour of CLI [#194](https://github.com/arup-group/genet/pull/194)
-* **[Breaking change]** Support for python v3.11, updated to more accurate pyproj version [#192](https://github.com/arup-group/genet/pull/192)
+* Support for python v3.11 [#192](https://github.com/arup-group/genet/pull/192) and v3.12 [#234](https://github.com/arup-group/genet/pull/234)
+* **[Breaking change]** Updated to more accurate pyproj version [#192](https://github.com/arup-group/genet/pull/192)
 * **[Breaking change]** Update `Route.route` _attribute_ to `Route.network_links` to differentiate it from the `Route.route` _method_. `Route` instantiation argument `route` is also now `network_links` [#231](https://github.com/arup-group/genet/pull/231)
 
 ## [v4.0.0] - 2023-08-22
