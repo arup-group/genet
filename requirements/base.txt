@@ -25,4 +25,5 @@ s2sphere < 0.3
 scikit-learn >= 1.2, < 2
 shapely >= 1, < 3
 tqdm >= 4, < 5
+xarray <= 2024.2
 xmltodict < 0.14
