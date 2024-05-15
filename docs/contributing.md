@@ -34,7 +34,7 @@ To create a development environment for genet, with all libraries required for d
 2. Open the command line (or the "miniforge prompt" in Windows).
 3. Download (a.k.a., clone) the genet repository: `git clone git@github.com:arup-group/genet.git`
 4. Change into the `genet` directory: `cd genet`
-5. Create the genet mamba environment: `mamba create -n genet -c conda-forge --file requirements/base.txt --file requirements/dev.txt`
+5. Create the genet mamba environment: `mamba create -n genet -c conda-forge -c city-modelling-lab --file requirements/base.txt --file requirements/dev.txt`
 6. Activate the genet mamba environment: `mamba activate genet`
 7. Install the cml-genet package into the environment, in editable mode and ignoring dependencies (we have dealt with those when creating the mamba environment): `pip install --no-deps -e .`
 
