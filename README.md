@@ -58,7 +58,7 @@ To install genet (indexed online as cml-genet), we recommend using the [mamba](h
 ``` shell
 git clone git@github.com:arup-group/genet.git
 cd genet
-mamba create -n genet -c conda-forge --file requirements/base.txt
+mamba create -n genet -c conda-forge -c city-modelling-lab --file requirements/base.txt
 mamba activate genet
 pip install --no-deps .
 ```
@@ -84,7 +84,7 @@ For more information, see our [documentation](https://arup-group.github.io/genet
 ``` shell
 git clone git@github.com:arup-group/genet.git
 cd genet
-mamba create -n genet -c conda-forge --file requirements/base.txt --file requirements/dev.txt
+mamba create -n genet -c conda-forge -c city-modelling-lab --file requirements/base.txt --file requirements/dev.txt
 mamba activate genet
 pip install --no-deps -e .
 ipython kernel install --user --name=genet

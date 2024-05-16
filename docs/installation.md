@@ -47,7 +47,7 @@ jupyter notebook
 If you would like to use a different name to `genet` for your mamba environment, the installation becomes (where `[my-env-name]` is your preferred name for the environment):
 
 ``` shell
-mamba create -n [my-env-name] -c conda-forge --file requirements/base.txt
+mamba create -n [my-env-name] -c conda-forge -c city-modelling-lab --file requirements/base.txt
 mamba activate [my-env-name]
 ipython kernel install --user --name=[my-env-name]
 ```
