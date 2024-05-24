@@ -9,15 +9,16 @@ import lxml
 import networkx as nx
 import pandas as pd
 import pytest
+from geopandas.testing import assert_geodataframe_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
+from shapely.geometry import LineString, Point, Polygon
+
 from genet import exceptions
 from genet.core import Network
 from genet.input import matsim_reader, read
 from genet.schedule_elements import Route, Schedule, Service, Stop
 from genet.utils import plot, spatial
 from genet.validate import network as network_validation
-from geopandas.testing import assert_geodataframe_equal
-from pandas.testing import assert_frame_equal, assert_series_equal
-from shapely.geometry import LineString, Point, Polygon
 
 pt2matsim_network_test_file = pytest.test_data_dir / "matsim" / "network.xml"
 pt2matsim_schedule_file = pytest.test_data_dir / "matsim" / "schedule.xml"
@@ -5369,7 +5370,7 @@ def test_transforming_network_to_geodataframe(network_1_geo_and_json):
 
 def test_saving_network_to_geojson(network1, correct_schedule, tmpdir):
     network1.schedule = correct_schedule
-    network1.write_to_geojson(tmpdir)
+    network1.write_spatial(tmpdir, filetype="geojson")
     assert set(os.listdir(tmpdir)) == {
         "network_nodes_geometry_only.geojson",
         "network_nodes.geojson",

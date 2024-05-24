@@ -8,7 +8,7 @@ import time
 import polyline
 from requests_futures.sessions import FuturesSession
 
-import genet.output.geojson as geojson
+import genet.output.spatial as spatial_output
 import genet.utils.persistence as persistence
 import genet.utils.secrets_vault as secrets_vault
 import genet.utils.simplification as simplification
@@ -212,9 +212,9 @@ def _generate_requests_for_simplified_network(n):
     :param n: genet.Network
     :return:
     """
-    gdf_links = geojson.generate_geodataframes(n.modal_subgraph(modes="car"))["links"].to_crs(
-        "epsg:4326"
-    )
+    gdf_links = spatial_output.generate_geodataframes(n.modal_subgraph(modes="car"))[
+        "links"
+    ].to_crs("epsg:4326")
     gdf_links["path_polyline"] = gdf_links["geometry"].apply(
         lambda x: spatial.swap_x_y_in_linestring(x)
     )

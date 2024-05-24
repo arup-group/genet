@@ -25,12 +25,13 @@ from shapely.geometry.base import BaseGeometry
 
 import genet.modify.change_log as change_log
 import genet.modify.schedule as mod_schedule
-import genet.output.geojson as gngeojson
 import genet.output.matsim_xml_writer as matsim_xml_writer
 import genet.output.sanitiser as sanitiser
+import genet.output.spatial as spatial_output
 import genet.use.schedule as use_schedule
 import genet.utils.dict_support as dict_support
 import genet.utils.graph_operations as graph_operations
+import genet.utils.io
 import genet.utils.parallel as parallel
 import genet.utils.persistence as persistence
 import genet.utils.plot as plot
@@ -619,7 +620,7 @@ class ScheduleElement(ABC):
         Returns:
             dict[str, gpd.GeoDataFrame]: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and edges
         """
-        return gngeojson.generate_geodataframes(self.graph())
+        return spatial_output.generate_geodataframes(self.graph())
 
     def kepler_map(self, output_dir="", file_name="kepler_map", data=False):
         gdf = self.to_geodataframe()
@@ -3626,9 +3627,7 @@ class Schedule(ScheduleElement):
     def generate_validation_report(self):
         return schedule_validation.generate_validation_report(schedule=self)
 
-    def generate_standard_outputs(
-        self, output_dir, gtfs_day="19700101", include_geojson_files=False, include_shp_files=False
-    ):
+    def generate_standard_outputs(self, output_dir, gtfs_day="19700101", filetype: str = "parquet"):
         """Generates geojsons that can be used for generating standard kepler visualisations.
 
         These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes, the shape of modal subgraphs.
@@ -3638,15 +3637,12 @@ class Schedule(ScheduleElement):
             gtfs_day (str, optional):
                 Day in format YYYYMMDD for the network's schedule for consistency in visualisations,
                 Defaults to "19700101" (1970-01-01).
-            include_shp_files (bool, optional): If True, also store shapefiles. Defaults to False.
-            include_geojson_files (bool, optional): If True, also store geojson. Defaults to False.
+            filetype (str, optional):
+                The file type to save the GeoDataFrame to: geojson, geoparquet or shp are supported.
+                Defaults to parquet format.
         """
-        gngeojson.generate_standard_outputs_for_schedule(
-            self,
-            output_dir=output_dir,
-            gtfs_day=gtfs_day,
-            include_geojson_files=include_geojson_files,
-            include_shp_files=include_shp_files,
+        spatial_output.generate_standard_outputs_for_schedule(
+            self, output_dir=output_dir, gtfs_day=gtfs_day, filetype=filetype
         )
         logging.info("Finished generating standard outputs. Zipping folder.")
         persistence.zip_folder(output_dir)
@@ -3702,23 +3698,23 @@ class Schedule(ScheduleElement):
             json.dump(self.to_json(), outfile)
         self.write_extras(output_dir)
 
-    def write_spatial(
-        self, output_dir, epsg: str = None, to_parquet=False, to_geojson=False, to_shp=False
-    ):
+    def write_spatial(self, output_dir, epsg: str = None, filetype: Optional[str] = "parquet"):
+        """Transforms Schedule (if applicable) to geopandas.GeoDataFrame of nodes and links and saves to
+        the requested file format.
+
+        Args:
+            output_dir (str):
+                Path to folder where to save the file.
+            epsg (Optional[str], optional):
+                Projection if the geometry is to be reprojected. Defaults to None (no reprojection).
+            filetype (str, optional):
+                The file type to save the GeoDataFrame to: geojson, geoparquet or shp are supported.
+                Defaults to parquet format.
         """
-        Transforms Schedule to geopandas.GeoDataFrame of nodes and links and saves to
-        the given format to the requested file format(s)
-        :param output_dir: output directory
-        :param epsg: projection, if the geometry is to be reprojected, defaults to own projection
-        :param to_parquet: whether to save to parquet file format, defaults to no
-        :param to_geojson: whether to save to geojson file format, defaults to no
-        :param to_shp: whether to save to shape file format, defaults to no
-        :return: None, files are saved to disk
-        """
-        if not any((to_parquet, to_geojson, to_shp)):
+        if filetype.lower() not in genet.utils.io.SUPPORTED_FILE_FORMATS:
             raise RuntimeError(
                 "You've requested to save Schedule as a GeoDataFrame but did not select any of the "
-                "file formats available"
+                f"file formats available: {', '.join(genet.utils.io.SUPPORTED_FILE_FORMATS)}"
             )
 
         persistence.ensure_dir(output_dir)
@@ -3733,43 +3729,8 @@ class Schedule(ScheduleElement):
             (_gdfs["nodes"]["geometry"], "schedule_nodes_geometry_only"),
             (_gdfs["links"]["geometry"], "schedule_links_geometry_only"),
         ):
-            gngeojson.save_geodataframe(
-                gdf,
-                filename,
-                output_dir,
-                to_parquet=to_parquet,
-                to_geojson=to_geojson,
-                to_shp=to_shp,
-            )
+            genet.utils.io.save_geodataframe(gdf, filename, output_dir, filetype=filetype)
         self.write_extras(output_dir)
-
-    def write_to_geojson(self, output_dir: str, epsg: str):
-        """Writes Schedule graph to nodes and edges geojson files.
-
-        Args:
-            output_dir (str): output directory.
-            epsg (str): projection if the geometry is to be reprojected, defaults to own projection.
-
-        """
-        self.write_spatial(output_dir=output_dir, epsg=epsg, to_geojson=True)
-
-    def write_to_parquet(self, output_dir, epsg: str = None):
-        """
-        Writes Schedule to nodes and links parquet files.
-        :param output_dir: output directory
-        :param epsg: projection if the geometry is to be reprojected, defaults to own projection
-        :return: None, files are saved to disk
-        """
-        self.write_spatial(output_dir=output_dir, epsg=epsg, to_parquet=True)
-
-    def write_to_shp(self, output_dir, epsg: str = None):
-        """
-        Writes Schedule to nodes and links shape files.
-        :param output_dir: output directory
-        :param epsg: projection if the geometry is to be reprojected, defaults to own projection
-        :return: None, files are saved to disk
-        """
-        self.write_spatial(output_dir=output_dir, epsg=epsg, to_shp=True)
 
     def to_gtfs(self, gtfs_day: str, mode_to_route_type: Optional[dict] = None) -> dict:
         """Transforms Schedule in to GTFS-like format.

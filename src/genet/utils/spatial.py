@@ -13,7 +13,7 @@ from shapely.geometry import GeometryCollection, LineString, MultiLineString, Po
 from shapely.ops import linemerge, split
 from sklearn.neighbors import BallTree
 
-import genet.output.geojson as gngeojson
+import genet.output.spatial as spatial_output
 from genet.exceptions import EmptySpatialTree
 
 APPROX_EARTH_RADIUS = 6371008.8
@@ -356,7 +356,7 @@ class SpatialTree(nx.DiGraph):
         """
         if isinstance(modes, str):
             modes = {modes}
-        _df = self.links[self.links.apply(lambda x: gngeojson.modal_subset(x, modes), axis=1)]
+        _df = self.links[self.links.apply(lambda x: spatial_output.modal_subset(x, modes), axis=1)]
         if _df.empty:
             raise EmptySpatialTree(f"No links found satisfying modes: {modes}")
         return _df

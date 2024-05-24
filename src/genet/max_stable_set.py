@@ -7,7 +7,7 @@ import networkx as nx
 import pandas as pd
 import pyomo.environ as pe
 
-import genet.output.geojson as gngeojson
+import genet.output.spatial as spatial_output
 import genet.utils.dict_support as dict_support
 import genet.utils.graph_operations as graph_operations
 from genet.exceptions import InvalidMaxStableSetProblem
@@ -34,7 +34,7 @@ class MaxStableSet:
         self.step_size = step_size
         self.network_spatial_tree = network_spatial_tree
         self.pt_graph = pt_graph
-        _gdf = gngeojson.generate_geodataframes(pt_graph)
+        _gdf = spatial_output.generate_geodataframes(pt_graph)
         self.stops, self.pt_edges = _gdf["nodes"].to_crs("epsg:4326"), _gdf["links"].to_crs(
             "epsg:4326"
         )

@@ -3,9 +3,10 @@ import os
 from geopandas import GeoDataFrame
 from shapely.geometry import Point
 
+import genet.utils.io
 from genet import Network
-from genet.output import geojson as gngeojson
 from genet.output import sanitiser
+from genet.output import spatial as spatial_output
 
 
 def test_sanitising_list():
@@ -47,7 +48,7 @@ def test_sanitising_geodataframes_with_ids_list(assert_semantically_equal):
         "modes": {"link_0": "car,walk"},
     }
 
-    gdfs = gngeojson.generate_geodataframes(n.graph)
+    gdfs = spatial_output.generate_geodataframes(n.graph)
     nodes, links = gdfs["nodes"], gdfs["links"]
     nodes = sanitiser.sanitise_geodataframe(nodes)
     links = sanitiser.sanitise_geodataframe(links)
@@ -65,7 +66,7 @@ def test_saving_geodataframe_with_missing_geometry_produces_file(tmpdir):
 
     data = {"id": ["1", "2"], "geometry": [float("nan"), Point(2, 1)]}
     gdf = GeoDataFrame(data, crs="EPSG:4326")
-    gngeojson.save_geodataframe(gdf, filename=expected_file_name, output_dir=tmpdir)
+    genet.utils.io.save_geodataframe(gdf, filename=expected_file_name, output_dir=tmpdir)
 
     assert os.path.exists(expected_output_path)
 
@@ -77,6 +78,6 @@ def test_saving_geodataframe_with_missing_data_in_string_column_produces_file(tm
 
     data = {"id": ["1", float("nan")], "geometry": [Point(2, 1), Point(2, 1)]}
     gdf = GeoDataFrame(data, crs="EPSG:4326")
-    gngeojson.save_geodataframe(gdf, filename=expected_file_name, output_dir=tmpdir)
+    genet.utils.io.save_geodataframe(gdf, filename=expected_file_name, output_dir=tmpdir)
 
     assert os.path.exists(expected_output_path)

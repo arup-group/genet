@@ -1,16 +1,17 @@
 import itertools
 from datetime import datetime, timedelta
 
-import genet.use.schedule as use_schedule
 import pytest
-from genet import Route, Schedule, Service, Stop
-from genet.output import geojson as gngeojson
 from geopandas import GeoDataFrame
 from geopandas.testing import assert_geodataframe_equal
 from pandas import DataFrame, Timestamp
 from pandas.testing import assert_frame_equal
 from pyproj import CRS
 from shapely.geometry import LineString
+
+import genet.use.schedule as use_schedule
+from genet import Route, Schedule, Service, Stop
+from genet.output import spatial as spatial_output
 
 
 @pytest.fixture()
@@ -81,7 +82,7 @@ def test_offsets_going_over_24_hrs_why_not():
 
 
 def test_generating_edge_vph_geodataframe(schedule):
-    gdfs = gngeojson.generate_geodataframes(schedule.graph())
+    gdfs = spatial_output.generate_geodataframes(schedule.graph())
     links = gdfs["links"]
     df = schedule.trips_with_stops_to_dataframe()
     gdf = use_schedule.generate_edge_vph_geodataframe(df, links)
@@ -185,7 +186,7 @@ def test_generating_edge_vph_geodataframe(schedule):
 
 
 def test_generating_edge_vph_geodataframe_for_service(schedule):
-    gdfs = gngeojson.generate_geodataframes(schedule["service"].graph())
+    gdfs = spatial_output.generate_geodataframes(schedule["service"].graph())
     links = gdfs["links"]
     df = schedule["service"].trips_with_stops_to_dataframe()
     gdf = use_schedule.generate_edge_vph_geodataframe(df, links)
@@ -290,7 +291,7 @@ def test_generating_edge_vph_geodataframe_for_service(schedule):
 
 
 def test_generating_edge_vph_geodataframe_for_route(schedule):
-    gdfs = gngeojson.generate_geodataframes(schedule.route("2").graph())
+    gdfs = spatial_output.generate_geodataframes(schedule.route("2").graph())
     links = gdfs["links"]
     df = schedule.route("2").trips_with_stops_to_dataframe()
     gdf = use_schedule.generate_edge_vph_geodataframe(df, links)
