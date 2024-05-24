@@ -2,12 +2,11 @@ import os
 from dataclasses import dataclass, field
 
 import pytest
-from pyproj import Proj, Transformer
-from shapely.geometry import LineString
-
 from genet.input import matsim_reader, read
 from genet.schedule_elements import Route, Service, Stop
 from genet.utils import java_dtypes
+from pyproj import Proj, Transformer
+from shapely.geometry import LineString
 
 MATSIM_DATA_DIR = pytest.test_data_dir / "matsim"
 pt2matsim_network_test_file = MATSIM_DATA_DIR / "network.xml"
@@ -58,7 +57,7 @@ def correct_services_from_test_pt2matsim_schedule():
                     route_short_name="12",
                     mode="bus",
                     stops=stops,
-                    route=["1"],
+                    network_links=["1"],
                     trips={
                         "trip_id": ["VJ00938baa194cee94700312812d208fe79f3297ee_04:40:00"],
                         "trip_departure_time": ["04:40:00"],
@@ -118,13 +117,9 @@ def test_read_network_builds_graph_with_correct_data_on_nodes_and_edges(assert_s
 
     transformer = Transformer.from_proj(Proj("epsg:27700"), Proj("epsg:4326"), always_xy=True)
 
-    (
-        g,
-        link_id_mapping,
-        duplicated_nodes,
-        duplicated_link_ids,
-        attributes,
-    ) = matsim_reader.read_network(pt2matsim_network_test_file, transformer)
+    (g, _, duplicated_nodes, duplicated_link_ids, _) = matsim_reader.read_network(
+        pt2matsim_network_test_file, transformer
+    )
 
     for u, data in g.nodes(data=True):
         assert str(u) in correct_nodes
@@ -258,13 +253,9 @@ def test_read_network_builds_graph_with_multiple_edges_with_correct_data_on_node
 
     transformer = Transformer.from_proj(Proj("epsg:27700"), Proj("epsg:4326"), always_xy=True)
 
-    (
-        g,
-        link_id_mapping,
-        duplicated_nodes,
-        duplicated_link_ids,
-        attributes,
-    ) = matsim_reader.read_network(pt2matsim_network_multiple_edges_test_file, transformer)
+    (g, link_id_mapping, duplicated_nodes, duplicated_link_ids, _) = matsim_reader.read_network(
+        pt2matsim_network_multiple_edges_test_file, transformer
+    )
 
     for u, data in g.nodes(data=True):
         assert str(u) in correct_nodes
@@ -356,13 +347,9 @@ def test_read_network_builds_graph_with_unique_links_given_matsim_network_with_c
 
     transformer = Transformer.from_proj(Proj("epsg:27700"), Proj("epsg:4326"), always_xy=True)
 
-    (
-        g,
-        link_id_mapping,
-        duplicated_nodes,
-        duplicated_link_ids,
-        attributes,
-    ) = matsim_reader.read_network(pt2matsim_network_clashing_link_ids_test_file, transformer)
+    (g, link_id_mapping, duplicated_nodes, duplicated_link_ids, _) = matsim_reader.read_network(
+        pt2matsim_network_clashing_link_ids_test_file, transformer
+    )
 
     assert len(g.nodes) == len(correct_nodes)
     for u, data in g.nodes(data=True):
@@ -429,13 +416,9 @@ def test_read_network_rejects_non_unique_nodes(assert_semantically_equal):
 
     transformer = Transformer.from_proj(Proj("epsg:27700"), Proj("epsg:4326"), always_xy=True)
 
-    (
-        g,
-        link_id_mapping,
-        duplicated_nodes,
-        duplicated_link_ids,
-        attributes,
-    ) = matsim_reader.read_network(pt2matsim_network_clashing_node_ids_test_file, transformer)
+    (g, link_id_mapping, duplicated_nodes, duplicated_link_ids, _) = matsim_reader.read_network(
+        pt2matsim_network_clashing_node_ids_test_file, transformer
+    )
 
     assert len(g.nodes) == len(correct_nodes)
     for u, data in g.nodes(data=True):
@@ -715,12 +698,9 @@ def test_forcing_long_form_in_network_with_additional_node_attributes_reads_netw
 def test_read_schedule_reads_the_data_correctly(
     assert_semantically_equal, correct_services_from_test_pt2matsim_schedule
 ):
-    (
-        services,
-        minimalTransferTimes,
-        transit_stop_id_mapping,
-        schedule_attribs,
-    ) = matsim_reader.read_schedule(pt2matsim_schedule_file, "epsg:27700")
+    (services, minimalTransferTimes, _, _) = matsim_reader.read_schedule(
+        pt2matsim_schedule_file, "epsg:27700"
+    )
 
     correct_minimalTransferTimes = {
         "26997928P": {"26997928P.link:1": 0.0},
@@ -1038,3 +1018,25 @@ def make_network_with_elevations_xml_string(nodes_with_elevations_dict, link_dic
         network_xml += " </attributes> </link>"
     network_xml += " </links> </network>"
     return network_xml
+
+
+class ElemWithText:
+    def __init__(self, text):
+        self.text = text
+        self.attrib = {"name": "doesn't matter"}
+
+
+@pytest.mark.parametrize(
+    "case,input_elem_text,expected_output",
+    [
+        ("is_just_a_string", "hello", "hello"),
+        ("is_a_java_array", "{'hello', 'yes'}", {"hello", "yes"}),
+        ("is_none", None, ""),
+    ],
+)
+def test_read_additional_attrib_text(case, input_elem_text, expected_output):
+    elem = ElemWithText(input_elem_text)
+    output = matsim_reader._read_additional_attrib_text(elem=elem)
+    assert output == expected_output, AssertionError(
+        f"Elem for case {case} did not produce the expected result"
+    )

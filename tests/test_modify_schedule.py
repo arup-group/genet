@@ -1,11 +1,12 @@
-import networkx as nx
-import pytest
-from pandas import DataFrame
+import shutil
 
 import genet.utils.spatial as spatial
+import networkx as nx
+import pytest
 from genet import MaxStableSet, Route, Schedule, Service, Stop
 from genet.input import read
 from genet.modify import schedule as mod_schedule
+from pandas import DataFrame
 
 network_test_file = pytest.test_data_dir / "simplified_network" / "network.xml"
 schedule_test_file = pytest.test_data_dir / "simplified_network" / "schedule.xml"
@@ -131,6 +132,8 @@ def test_service():
 def test_snapping_pt_route_results_in_all_stops_with_link_references_and_routes_between_them(
     test_network, test_spatialtree
 ):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     mss = MaxStableSet(
         pt_graph=test_network.schedule.route("40230_1").graph(),
         network_spatial_tree=test_spatialtree.modal_subtree(modes={"car", "bus"}),
@@ -148,6 +151,8 @@ def test_snapping_pt_route_results_in_all_stops_with_link_references_and_routes_
 def test_snapping_partial_pt_route_results_in_all_stops_with_link_references_and_routes_between_viable_catchments(
     mocker, test_network, test_spatialtree
 ):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     df = DataFrame(
         {
             "index_left": {
@@ -248,6 +253,8 @@ def test_snapping_partial_pt_route_results_in_all_stops_with_link_references_and
 def test_snapping_disconnected_partial_pt_route_results_in_all_stops_with_link_references_and_routes_between_viable_catchments(
     mocker, test_network, test_spatialtree
 ):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     df = DataFrame(
         {
             "index_left": {
@@ -358,6 +365,8 @@ def test_snapping_disconnected_partial_pt_route_results_in_all_stops_with_link_r
 def test_artificially_filling_in_solution_for_partial_pt_routing_problem_results_in_correct_solution_and_routed_path(
     mocker, test_network, test_spatialtree
 ):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     df = DataFrame(
         {
             "index_left": {
@@ -471,6 +480,8 @@ def test_artificially_filling_in_solution_for_partial_pt_routing_problem_results
 
 
 def test_routing_service_with_directional_split(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_service("service_bus", allow_directional_split=True)
 
@@ -481,6 +492,8 @@ def test_routing_service_with_directional_split(test_network, test_service):
 
 
 def test_routing_service_without_directional_split(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_service("service_bus", allow_directional_split=False)
 
@@ -491,6 +504,8 @@ def test_routing_service_without_directional_split(test_network, test_service):
 
 
 def test_routing_service_with_additional_modes(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_service("service_bus", additional_modes="car")
 
@@ -501,6 +516,8 @@ def test_routing_service_with_additional_modes(test_network, test_service):
 
 
 def test_routing_services_with_shared_stops(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     test_network.schedule = Schedule(
         epsg="epsg:27700",
         services=[
@@ -607,6 +624,8 @@ def test_routing_services_with_stops_that_have_colons_in_id_and_are_unsnapped(te
 
 
 def test_routing_services_to_network_with_clashing_artificial_links(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     # teleport first to create artificial links - recreates a InvalidMaxStableSetProblem of completely connected
     # catchments
@@ -627,14 +646,14 @@ def test_teleporting_service(test_network, test_service):
     assert rep["graph"]["graph_connectivity"]["car"]["number_of_connected_subgraphs"] == 1
     assert rep["schedule"]["schedule_level"]["is_valid_schedule"]
     assert rep["routing"]["services_have_routes_in_the_graph"]
-    assert test_network.schedule.route("route_1").route == [
+    assert test_network.schedule.route("route_1").network_links == [
         "artificial_link===from:490004695A===to:490004695A",
         "artificial_link===from:490004695A===to:490000235C",
         "artificial_link===from:490000235C===to:490000235C",
         "artificial_link===from:490000235C===to:490000089A",
         "artificial_link===from:490000089A===to:490000089A",
     ]
-    assert test_network.schedule.route("route_2").route == [
+    assert test_network.schedule.route("route_2").network_links == [
         "artificial_link===from:490000089A===to:490000089A",
         "artificial_link===from:490000089A===to:490000252X",
         "artificial_link===from:490000252X===to:490000252X",
@@ -705,21 +724,21 @@ def test_teleporting_more_than_one_service(test_network, test_service):
     assert rep["graph"]["graph_connectivity"]["car"]["number_of_connected_subgraphs"] == 1
     assert rep["schedule"]["schedule_level"]["is_valid_schedule"]
     assert rep["routing"]["services_have_routes_in_the_graph"]
-    assert test_network.schedule.route("route_1").route == [
+    assert test_network.schedule.route("route_1").network_links == [
         "artificial_link===from:490004695A===to:490004695A",
         "artificial_link===from:490004695A===to:490000235C",
         "artificial_link===from:490000235C===to:490000235C",
         "artificial_link===from:490000235C===to:490000089A",
         "artificial_link===from:490000089A===to:490000089A",
     ]
-    assert test_network.schedule.route("route_2").route == [
+    assert test_network.schedule.route("route_2").network_links == [
         "artificial_link===from:490000089A===to:490000089A",
         "artificial_link===from:490000089A===to:490000252X",
         "artificial_link===from:490000252X===to:490000252X",
         "artificial_link===from:490000252X===to:490000078Q",
         "artificial_link===from:490000078Q===to:490000078Q",
     ]
-    assert test_network.schedule.route("route_1_rail").route == [
+    assert test_network.schedule.route("route_1_rail").network_links == [
         "artificial_link===from:490004695A===to:490004695A",
         "artificial_link===from:490004695A===to:490000235C",
         "artificial_link===from:490000235C===to:490000235C",
@@ -772,14 +791,14 @@ def test_teleporting_service_with_some_snapped_stops(test_network, test_service)
     assert rep["graph"]["graph_connectivity"]["car"]["number_of_connected_subgraphs"] == 1
     assert rep["schedule"]["schedule_level"]["is_valid_schedule"]
     assert rep["routing"]["services_have_routes_in_the_graph"]
-    assert test_network.schedule.route("route_1").route == [
+    assert test_network.schedule.route("route_1").network_links == [
         "artificial_link===from:490004695A===to:490004695A",
         "artificial_link===from:490004695A===to:490000235C",
         "artificial_link===from:490000235C===to:490000235C",
         "artificial_link===from:490000235C===to:490000089A",
         "artificial_link===from:490000089A===to:490000089A",
     ]
-    assert test_network.schedule.route("route_2").route == [
+    assert test_network.schedule.route("route_2").network_links == [
         "artificial_link===from:490000089A===to:490000089A",
         "artificial_link===from:490000089A===to:5221366094904818311",
         "5221366094904818311_5221366094903752729",
@@ -819,14 +838,14 @@ def test_teleporting_service_with_some_stops_snapped_to_non_existing_links(
     assert rep["graph"]["graph_connectivity"]["car"]["number_of_connected_subgraphs"] == 1
     assert rep["schedule"]["schedule_level"]["is_valid_schedule"]
     assert rep["routing"]["services_have_routes_in_the_graph"]
-    assert test_network.schedule.route("route_1").route == [
+    assert test_network.schedule.route("route_1").network_links == [
         "artificial_link===from:490004695A===to:490004695A",
         "artificial_link===from:490004695A===to:490000235C",
         "artificial_link===from:490000235C===to:490000235C",
         "artificial_link===from:490000235C===to:490000089A",
         "artificial_link===from:490000089A===to:490000089A",
     ]
-    assert test_network.schedule.route("route_2").route == [
+    assert test_network.schedule.route("route_2").network_links == [
         "artificial_link===from:490000089A===to:490000089A",
         "artificial_link===from:490000089A===to:490000252X",
         "artificial_link===from:490000252X===to:490000252X",
@@ -849,6 +868,9 @@ def test_teleporting_service_with_some_stops_snapped_to_non_existing_links(
 
 
 def test_routing_schedule_with_directional_split(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
+
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_schedule(allow_directional_split=True)
 
@@ -859,6 +881,9 @@ def test_routing_schedule_with_directional_split(test_network, test_service):
 
 
 def test_routing_schedule_without_directional_split(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
+
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_schedule(allow_directional_split=False)
 
@@ -869,6 +894,9 @@ def test_routing_schedule_without_directional_split(test_network, test_service):
 
 
 def test_routing_schedule_with_additional_modes(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
+
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_schedule(
         additional_modes={"bus": {"car"}, "tram": ["rail", "car"], "subway": "rail"}
@@ -881,6 +909,9 @@ def test_routing_schedule_with_additional_modes(test_network, test_service):
 
 
 def test_routing_schedule_specifying_services(test_network, test_service):
+    if not shutil.which("cbc"):
+        pytest.skip("CBC solver not installed")
+
     test_network.schedule = Schedule(epsg="epsg:27700", services=[test_service])
     test_network.route_schedule(services=["service_bus"])
 
@@ -891,22 +922,22 @@ def test_routing_schedule_specifying_services(test_network, test_service):
 
 
 def test_rerouting_service(test_network):
-    test_network.schedule._graph.graph["routes"]["7797_0"]["route"] = []
-    test_network.schedule._graph.graph["routes"]["7797_1"]["route"] = []
+    test_network.schedule._graph.graph["routes"]["7797_0"]["network_links"] = []
+    test_network.schedule._graph.graph["routes"]["7797_1"]["network_links"] = []
 
     test_network.reroute("7797")
 
-    assert test_network.schedule._graph.graph["routes"]["7797_0"]["route"]
-    assert test_network.schedule._graph.graph["routes"]["7797_1"]["route"]
+    assert test_network.schedule._graph.graph["routes"]["7797_0"]["network_links"]
+    assert test_network.schedule._graph.graph["routes"]["7797_1"]["network_links"]
     test_network.schedule["7797"].is_valid_service()
 
 
 def test_rerouting_route(test_network):
-    test_network.schedule._graph.graph["routes"]["7797_0"]["route"] = []
+    test_network.schedule._graph.graph["routes"]["7797_0"]["network_links"] = []
 
     test_network.reroute("7797_0")
 
-    assert test_network.schedule._graph.graph["routes"]["7797_0"]["route"]
+    assert test_network.schedule._graph.graph["routes"]["7797_0"]["network_links"]
     test_network.schedule.route("7797_0").is_valid_route()
 
 
@@ -933,7 +964,7 @@ def test_rerouting_with_stops_that_have_repeated_linkrefids_does_not_route_betwe
     ]
     test_network.reroute("7797_1")
 
-    new_route = test_network.schedule.route("7797_1").route
+    new_route = test_network.schedule.route("7797_1").network_links
     assert new_route != old_route
     # check double linkref is mentioned only once
     assert [i for i in new_route if i == "5221390688151572741_5221390688151572741"] == [
@@ -948,11 +979,11 @@ def test_rerouting_nonexistent_id_throws_error(test_network):
 
 
 def test_rerouting_with_extra_mode(test_network):
-    test_network.schedule._graph.graph["routes"]["7797_0"]["route"] = []
+    test_network.schedule._graph.graph["routes"]["7797_0"]["network_links"] = []
 
     test_network.reroute("7797_0", additional_modes="car")
 
-    assert test_network.schedule._graph.graph["routes"]["7797_0"]["route"]
+    assert test_network.schedule._graph.graph["routes"]["7797_0"]["network_links"]
     test_network.schedule.route("7797_0").is_valid_route()
 
 

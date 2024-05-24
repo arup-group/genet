@@ -1,13 +1,11 @@
-FROM python:3.11.4-bullseye
+FROM mambaorg/micromamba:1.5.3-bullseye-slim
 
-RUN apt-get update && \
-apt-get upgrade -y && \
-apt-get -y install gcc git libgdal-dev libgeos-dev libspatialindex-dev curl coinor-cbc cmake &&  \
-rm -rf /var/lib/apt/lists/*
+COPY --chown=$MAMBA_USER:$MAMBA_USER . ./src
 
-RUN python -m pip install --no-cache-dir --compile --upgrade pip
+RUN micromamba install -y -n base -c conda-forge -c city-modelling-lab python=3.11 "proj>=9.3" pip coin-or-cbc --file src/requirements/base.txt && \
+    micromamba clean --all --yes
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
 
-COPY . ./src
+RUN pip install --no-deps ./src
 
-RUN pip3 install --no-cache-dir --compile -e ./src && pip cache purge
-
+ENTRYPOINT ["/usr/local/bin/_entrypoint.sh"]

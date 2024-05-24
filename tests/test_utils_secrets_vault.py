@@ -3,7 +3,6 @@ from unittest import mock
 
 import boto3
 import pytest
-
 from genet.utils import secrets_vault
 
 # pytest's expected error mechanism ('raises' context mgr) is not intuitive and I want to make it clearer

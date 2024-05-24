@@ -1,11 +1,10 @@
 import logging
 
 from anytree import RenderTree
-from pandas import DataFrame
-from pandas.testing import assert_frame_equal
-
 from genet.core import Network
 from genet.utils import graph_operations
+from pandas import DataFrame
+from pandas.testing import assert_frame_equal
 
 
 def generate_output_tree(root):

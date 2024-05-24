@@ -1,35 +1,13 @@
+<!--- --8<-- [start:docs] -->
 # Network Scenario Generator (GeNet)
 
 [![DOI](https://zenodo.org/badge/265256468.svg)](https://zenodo.org/badge/latestdoi/265256468)
-
-
-## Table of Contents
-- [Overview](#overview)
-- [Setup](#setup)
-  * [Using Docker](#using-docker)
-    + [Building the image](#build-the-image)
-    + [Running GeNet from the container](#running-a-container-with-a-pre-baked-script)
-  * [Installation as a Python Package](#installation-as-a-python-package)
-    + [Native dependencies](#native-dependencies)
-    + [A note on the mathematical solver](#a-note-on-the-mathematical-solver)
-    + [Installing the native dependencies](#installing-the-native-dependencies)
-    + [Install dev prereqs](#install-dev-prereqs)
-    + [Install Python dependencies](#install-python-dependencies)
-    + [Install GeNet in to the virtual environment](#install-genet-in-to-the-virtual-environment)
-    + [Install Kepler dependencies](#install-kepler-dependencies)
-- [Developing GeNet](#developing-genet)
-  * [Unit tests](#unit-tests)
-  * [Code coverage report](#generate-a-unit-test-code-coverage-report)
-  * [Linting](#lint-the-python-code)
-  * [Smoke testing Jupyter notebooks](#smoke-test-the-jupyter-notebooks)
-
-
-## Overview
 
 GeNet provides tools to represent and work with a multi-modal transport network with public transport (PT)
 services. It is based on [MATSim's](https://www.matsim.org/) representation of such networks.
 
 The goal of GeNet is to:
+
 - Provide a formalised in-memory data structure for representing a multi-modal network with a PT service
 - Enable using the data structure for tasks such as generating auxiliary MATSim files e.g. Road Pricing
 - Simplify the process of modifying a network and provide a simple change log to track the differences between the input
@@ -47,170 +25,84 @@ classes: the `Schedule` relies on a list of `genet.Service`'s, which in turn con
 Each `Route` class object has an attribute `stops` which consists of `genet.Stops` objects. The `Stops` carry spatial
 information for the PT stop.
 
-
-## Setup
-
-GeNet CLI supports a number of different usage scenarios. For these you can use docker, which will save you the
-work of installing GeNet locally:
-
-### Using Docker
-Docker is the recommended way to use GeNet if you do not plan to make any code changes.
-
-#### Build the image
-
-    docker build -t "cml-genet" .
-
-#### Using the cli inside a container
-
-    docker run cml-genet genet --help
-
-to show the list of available commands, and e.g.
-
-    docker run cml-genet genet simplify-network --help
-
-to show description of the command and parameters:
-```commandline
-Usage: genet simplify-network [OPTIONS]
-
-  Simplify a MATSim network by removing intermediate links from paths
-
-Options:
-  -n, --network PATH              Location of the input network.xml file
-                                  [required]
-  -s, --schedule PATH             Location of the input schedule.xml file
-  -v, --vehicles PATH             Location of the input vehicles.xml file
-  -p, --projection TEXT           The projection network is in, eg.
-                                  "epsg:27700"  [required]
-  -pp, --processes INTEGER        Number of parallel processes to split
-                                  process across
-  -vsc, --vehicle_scalings TEXT   Comma delimited list of scales for vehicles
-  -od, --output_dir DIRECTORY     Output directory  [required]
-  -fc, --force_strongly_connected_graph
-                                  If True, checks for disconnected subgraphs
-                                  for modes `walk`, `bike` and `car`. If there
-                                  are more than one strongly connected
-                                  subgraph, genet connects them with links at
-                                  closest points in the graph. The links used
-                                  to connect are weighted at 20% of
-                                  surrounding freespeed and capacity values.
-  --help                          Show this message and exit.
-```
-
-Note, you will reference data outside the docker container as inputs, the docker command will need the path to data
-mounted and be referenced according to the alias given, e.g.
-
-    docker run -v /local/path/:/mnt/ cml-genet genet simplify-network --network /mnt/network.xml [...]
-
-If the input network file lives at `/local/path/network.xml`.
-
-#### Running custom script inside a container
-
-Say you write a script `/local/path/my_genet_scripts/script.py` and you want to run it inside a docker container.
-You will need to mount the local path to the container for the script to be found and use the generic `python`
-as part of your command:
-
-    docker run -v /local/path/:/mnt/ cml-genet python /mnt/my_genet_scripts/script.py
-
-Note, if you reference data inside your script, or pass them as arguments to the script, they need to reference the
-aliased path inside the container, here: `/mnt/`, rather than the path `/local/path/`.
-
-### Installation as a Python Package / CLI
-
-You can in your base installation of python or a virtual environment.
 You can use GeNet's CLI to run pre-baked modifications or checks on networks.
-You can also write your own python scripts, importing genet as a package, use IPython shell or Jupyter Notebook to load
-up a network, inspect or change it and save it out to file. Check out the
-[wiki pages](https://github.com/arup-group/genet/wiki/Functionality-and-Usage-Guide) and
-[example jupyter notebooks](https://github.com/arup-group/genet/tree/master/notebooks)
-for usage examples.
+You can also write your own python scripts, importing genet as a package, use IPython shell or Jupyter Notebook to load up a network, inspect or change it and save it out to file.
 
-**Note:** if you plan only to _use_ GeNet rather than make code changes to it, you can avoid having to perform any
-local installation by using [GeNet's Docker image](#using-docker). If you are going to make code changes or use GeNet's
-CLI locally, follow the steps below:
+<!--- --8<-- [end:docs] -->
 
-#### Native dependencies
-GeNet uses some Python libraries that rely on underlying native libraries for things like geospatial calculations and
-linear programming solvers. Before you install GeNet's Python dependencies, you must first install these native
-libraries.
+## Documentation
 
-#### A note on the mathematical solver
-**Note**: The default CBC solver is pre-installed inside [GeNet's Docker image](#using-docker), which can save you some
-installation effort
+For more detailed instructions, see our [documentation](https://arup-group.github.io/genet/latest).
 
-To use methods which snap public transit to the graph, GeNet uses a mathematical solver. If you won't be using such
-functionality, you do not need to install this solver.
-Methods default to [CBC](https://projects.coin-or.org/Cbc), an open source solver.
-Another good open source choice is [GLPK](https://www.gnu.org/software/glpk/).
-The solver you use needs to support MILP - mixed integer linear programming.
+## Installation
 
-#### Installing the native dependencies
-The commands for installing the necessary native libraries vary according to the operating system you are using, for
-example:
+If you do not plan to make any code changes, you can install GeNet as a [Docker image](#as-a-docker-image) or a [Python package](#as-a-python-package).
 
-| OS       | Commands                                                                                                                                                                                                                      |
-|----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|Mac OS    | `brew install boost` <br/> `brew install spatialindex` <br/> `brew install gdal --HEAD` <br/> `brew install gdal` <br/> `brew tap coin-or-tools/coinor` <br/> `brew install coin-or-tools/coinor/cbc` <br/> `brew install cbc` |
-|Ubuntu    | `sudo apt install libspatialindex-dev` <br/> `sudo apt install libgdal-dev` <br/> `sudo apt install coinor-cbc`                                                                                                               |
+For more detailed instructions, see our [documentation](https://arup-group.github.io/genet/latest/installation/).
 
-#### Install dev prereqs
-(Use equivalent linux or Windows package management as appropriate for your environment)
+### As a Docker image
 
-    brew install python3.11
-    brew install virtualenv
-
-#### Install Python dependencies
-Create and activate a Python virtual environment
-
-    virtualenv -p python3.11 venv
-    source venv/bin/activate
-
-#### Install GeNet in to the virtual environment
-Finally, install `GeNet`'s Python dependencies
-
-    pip install -e .
-
-After installation, you should be able to successfully run the help command to see all possible commands:
-
-    genet --help
-
-To inspect a specific command, run e.g.:
-
-    genet simplify-network --help
-
-#### Install Kepler dependencies
-
-Please follow [kepler's installation instructions](https://docs.kepler.gl/docs/keplergl-jupyter#install) to be able to
-use the visualisation methods. To see the maps in a jupyter notebook, make sure you enable widgets.
+<!--- --8<-- [start:docs-install-docker] -->
+```shell
+git clone git@github.com:arup-group/genet.git
+cd genet
+docker build -t "cml-genet" .
 ```
-jupyter nbextension enable --py widgetsnbextension
+<!--- --8<-- [end:docs-install-docker] -->
+
+### As a Python package
+
+To install genet (indexed online as cml-genet), we recommend using the [mamba](https://mamba.readthedocs.io/en/latest/index.html) package manager:
+
+<!--- --8<-- [start:docs-install-user] -->
+``` shell
+git clone git@github.com:arup-group/genet.git
+cd genet
+mamba create -n genet -c conda-forge -c city-modelling-lab --file requirements/base.txt
+mamba activate genet
+pip install --no-deps .
+```
+<!--- --8<-- [end:docs-install-user] -->
+
+## Contributing
+
+There are many ways to contribute to genet.
+Before making contributions to the genet source code, see our contribution guidelines and follow the [development install instructions](#installing-a-development-environment).
+
+If you plan to make changes to the code then please make regular use of the following tools to verify the codebase while you work:
+
+- `pre-commit`: run `pre-commit install` in your command line to load inbuilt checks that will run every time you commit your changes.
+The checks are: 1. check no large files have been staged, 2. lint python files for major errors, 3. format python files to conform with the [pep8 standard](https://peps.python.org/pep-0008/).
+You can also run these checks yourself at any time to ensure staged changes are clean by simple calling `pre-commit`.
+- `pytest` - run the unit test suite and check test coverage.
+
+For more information, see our [documentation](https://arup-group.github.io/genet/latest/contributing/).
+
+### Installing a development environment
+
+<!--- --8<-- [start:docs-install-dev] -->
+``` shell
+git clone git@github.com:arup-group/genet.git
+cd genet
+mamba create -n genet -c conda-forge -c city-modelling-lab --file requirements/base.txt --file requirements/dev.txt
+mamba activate genet
+pip install --no-deps -e .
+ipython kernel install --user --name=genet
+```
+<!--- --8<-- [end:docs-install-dev] -->
+
+## Building the documentation
+
+If you are unable to access the online documentation, you can build the documentation locally.
+First, [install a development environment of genet](#installing-a-development-environment), then deploy the documentation using [mike](https://github.com/jimporter/mike):
+
+```
+mike deploy develop
+mike serve
 ```
 
-## Developing GeNet
+Then you can view the documentation in a browser at http://localhost:8000/.
 
-We welcome community contributions to GeNet; please see our [guide to contributing](CONTRIBUTING.md) and our
-[community code of conduct](CODE_OF_CONDUCT.md). If you are making changes to the codebase, you should use the tools
-described below to verify that the code still works. All of the following commands assume you are in the project's root
-directory.
+## Credits
 
-### Unit tests
-To run unit tests within genet python environment:
-
-    python -m pytest -vv tests
-
-and within a docker container:
-
-    docker run cml-genet pytest -vv tests
-
-### Generate a unit test code coverage report
-
-To generate an HTML coverage report at `reports/coverage/index.html`:
-
-    ./bash_scripts/code-coverage.sh
-
-### Lint the python code
-
-    Run `pre-commit install` to install pre-commit, which will lint and format your code whenever you commit staged changes.
-
-### Smoke test the Jupyter notebooks
-
-    ./bash_scripts/notebooks-smoke-test.sh
+This package was created with [Cookiecutter](https://github.com/audreyr/cookiecutter) and the [arup-group/cookiecutter-pypackage](https://github.com/arup-group/cookiecutter-pypackage) project template.

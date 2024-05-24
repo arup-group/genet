@@ -1,25 +1,52 @@
+<!---
+Changelog headings can be any of:
+
+Added: for new features.
+Changed: for changes in existing functionality.
+Deprecated: for soon-to-be removed features.
+Removed: for now removed features.
+Fixed: for any bug fixes.
+Security: in case of vulnerabilities.
+
+Release headings should be of the form:
+## [X.Y.Z] - YEAR-MONTH-DAY
+-->
+
 # Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ### Fixed
-* Fixed generating standard outputs by highway tag which were broken after moving to to storing additional attributes in short form [#217](https://github.com/arup-group/genet/pull/217)
+
+* Fixed generating standard outputs by highway tag which were broken after moving to storing additional attributes in short form [#217](https://github.com/arup-group/genet/pull/217)
 * Fixed summary report:
-  * Node/Links numbers were reported incorrectly (switched) [#207](https://github.com/arup-group/genet/pull/207)
   * Intermodal Access/Egress reporting is more general (not expecting just car and bike mode access to PT) [#204](https://github.com/arup-group/genet/pull/204)
+  * Node/Links numbers were reported incorrectly (switched) [#207](https://github.com/arup-group/genet/pull/207)
+* Fixed reading `java.lang.Array` types in MATSim xml files [#216](https://github.com/arup-group/genet/pull/216)
+* Fixed problem snapping and routing PT services with stops whose names started with 'x' [#225](https://github.com/arup-group/genet/pull/225)
+* Fixed issues saving geodataframes with missing geometry values, refined how geodataframes with empty values are saved to keep them more true to originals [#226](https://github.com/arup-group/genet/pull/226)
 
 ### Changed
+
 * GeNet's standard outputs now produce geoparquet format by default [#217](https://github.com/arup-group/genet/pull/217). The output file size is reduced significantly (e.g. network links output was reduced by ~80% on a test network). Networks/Schedules can still be saved to geojson and shape files as before.
 * GeNet's pre-baked python scripts have been retired in favour of CLI [#194](https://github.com/arup-group/genet/pull/194)
-* **[Breaking change]** Support for python v3.11, updated to more accurate pyproj version [#192](https://github.com/arup-group/genet/pull/192)
+* Support for python v3.11 [#192](https://github.com/arup-group/genet/pull/192) and v3.12 [#234](https://github.com/arup-group/genet/pull/234)
+* **[Breaking change]** Updated to more accurate pyproj version [#192](https://github.com/arup-group/genet/pull/192)
+* **[Breaking change]** Update `Route.route` _attribute_ to `Route.network_links` to differentiate it from the `Route.route` _method_. `Route` instantiation argument `route` is also now `network_links` [#231](https://github.com/arup-group/genet/pull/231)
 
 ## [v4.0.0] - 2023-08-22
 
 ### Added
+
 * Validation for [intermodal access/egress for MATSim](https://github.com/matsim-org/matsim-libs/tree/master/contribs/sbb-extensions#intermodal-access-and-egress)
 * GeNet Scripts for: [#179](https://github.com/arup-group/genet/pull/179)
   * automated PT Schedule fixing (zero headways and infinite speeds)
-  * 'squeezing' (or reducing attribute values) speed and capacity on links defined by spatial boundaries 
+  * 'squeezing' (or reducing attribute values) speed and capacity on links defined by spatial boundaries
   * scaling vehicles (separately from any other operation, so it can be performed independently)
 * Script to split modal subgraphs (so they have dedicated links) [#153](https://github.com/arup-group/genet/pull/153)
 * Validation checks for zero and infinite speeds PT speeds + many convenience methods [#147](https://github.com/arup-group/genet/pull/147)
@@ -48,40 +75,43 @@
 ## [v3.0.0] - 2022-07-14
 
 ### Added
+
 * Addition of elevation and slope data to networks using [STRM](https://srtm.csi.cgiar.org/srtmdata/) files
 * Vehicle capacity and pce scaling
   * Conveniently save multiple `vehicle.xml` files for use with simulations at different scales: 1%, 5%, 10%, etc.
 * Ability to read and write additional attributes for different network and schedule elements
-  * Allows you to pass any data to network links and nodes, PT schedule stops, routes and services and have it be 
+  * Allows you to pass any data to network links and nodes, PT schedule stops, routes and services and have it be
   saved to the MATSim network
-* Multimodal access/egress for PT stops 
-  * Script to add attributes to PT stops of various PT modes that allow agents to 
+* Multimodal access/egress for PT stops
+  * Script to add attributes to PT stops of various PT modes that allow agents to
   access via network or teleported modes
 
 ### Changed
+
 * **[Breaking change]** New, **default**, representation of additional attributes
-  ```python
-  'attributes': {
-    'osm:way:highway': 'primary' 
-  }
-  ```
-  Instead of:
-  ```python
-  'attributes': {
-    'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}
-  }
-  ```
-    * Crucially, this will affect methods that search for different values of OSM data, for example: find all links 
-  of `highway` type `primary`, or links with particular OSM IDs. 
-    * For backwards compatibility, use: `force_long_form_attributes=True` when reading the network and/or schedule 
+    ```python
+    'attributes': {
+      'osm:way:highway': 'primary'
+    }
+    ```
+    Instead of:
+    ```python
+    'attributes': {
+      'osm:way:highway': {'name': 'osm:way:highway', 'class': 'java.lang.String', 'text': 'primary'}
+    }
+    ```
+  * Crucially, this will affect methods that search for different values of OSM data, for example: find all links
+  of `highway` type `primary`, or links with particular OSM IDs.
+  * For backwards compatibility, use: `force_long_form_attributes=True` when reading the network and/or schedule
   objects
 * **[Breaking change]** folders renamed:
-    * `inputs_handler` -> `input`
-    * `outputs_handler` -> `output` 
+  * `inputs_handler` -> `input`
+  * `outputs_handler` -> `output`
 
 ## [v2.0.1-snapshot] - 2022-04-08
 
 ### Changed
+
 * Loosen version constraints for various pytest-related dependencies by @mfitz in https://github.com/arup-group/genet/pull/114
 
 **Full Changelog**: https://github.com/arup-group/genet/compare/v2.0.0-snapshot...v2.0.1-snapshot
@@ -91,6 +121,7 @@
 Not production ready. No release notes other than the automated ones generated from commits.
 
 ### Changed
+
 * update readme by @KasiaKoz in https://github.com/arup-group/genet/pull/53
 * Fix simplifications script's help message (LAB-990) by @mfitz in https://github.com/arup-group/genet/pull/54
 * Make link 'oneway' attribute optional when writing networks to disk by @mfitz in https://github.com/arup-group/genet/pull/56
@@ -144,6 +175,7 @@ Not production ready. No release notes other than the automated ones generated f
 * Add/Remove Services and Routes in groups by @KasiaKoz in https://github.com/arup-group/genet/pull/112
 
 ### New Contributors
+
 * @syhwawa made their first contribution in https://github.com/arup-group/genet/pull/88
 * @ana-kop made their first contribution in https://github.com/arup-group/genet/pull/96
 
@@ -152,4 +184,5 @@ Not production ready. No release notes other than the automated ones generated f
 ## [v1.0.0] - 2021-02-01
 
 ### Initial release
+
 This is the first release, please check documentation/wiki for the usage guide

@@ -6,11 +6,11 @@ minversion = "6.0"
 # `--nbmake --nbmake-kernel=genet` - test example notebooks using the "genet" notebook kernel (uses nbmake)
 # `--cov --cov-report=xml --cov-config=pyproject.toml` - generate coverage report for tests (uses pytest-cov; call `--no-cov` in CLI to switch off; `--cov-config` include to avoid bug)
 addopts = "-rav --strict-markers -nauto --nbmake --nbmake-kernel=genet --cov --cov-report=xml --cov-config=pyproject.toml"
-testpaths = ["tests", "notebooks"]
+testpaths = ["tests", "examples"]
 
 # to mark a test, decorate it with `@pytest.mark.MARKER-NAME`
 # then add MARKER-NAME to the markers list.
-markers = []
+markers = ["uses_example_data"]
 
 filterwarnings = [
     # https://github.com/pytest-dev/pytest-xdist/issues/825
@@ -19,7 +19,7 @@ filterwarnings = [
 
 [tool.coverage.run]
 branch = true
-source = ["genet/"]
+source = ["src/"]
 
 [tool.coverage.report]
 fail_under = 94
@@ -32,10 +32,12 @@ output = "reports/coverage/coverage.xml"
 
 [tool.black]
 line-length = 100
-skip_magic_trailing_comma = true
+skip-magic-trailing-comma = true
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "Q"]
 
 ignore = [
@@ -50,32 +52,33 @@ exclude = [".*", "__pypackages__", "build", "dist", "venv", "reports/"]
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 # Unlike Flake8, default to a complexity level of 10.
 max-complexity = 10
 
+[tool.ruff.lint.per-file-ignores]
 # Ignore `E402` (import violations) and `F401` (unused imports) in all `__init__.py` files
-[tool.ruff.per-file-ignores]
 "__init__.py" = ["E402", "F401"]
-"*.ipynb" = ["E402"]
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
 
 # Ignore `E402` for all notebooks
 [tool.nbqa.addopts]
 ruff = ["--extend-ignore=E402"]
 
-[tool.ruff.flake8-quotes]
-docstring-quotes = "double"
-
 [tool.setuptools.packages.find]
 include = ["genet*"]
+where = ["src"]
 
 [tool.setuptools.package-data]
 # Add file globs from the source code directory if they include non-py files that should be packaged
 # E.g. "fixtures/**/*"
-genet = ["configs/**/*"]
+# "py.typed" is added by default. It allows `mypy` to register the package as having type hints.
+genet = ["py.typed", "configs/**/*"]
 
 [build-system]
 requires = ["setuptools"]
@@ -97,7 +100,7 @@ maintainers = []
 description = "GeNet provides tools to represent and work with a multi-modal transport network with public transport (PT) services"
 readme = "README.md"
 requires-python = ">=3.9"
-keywords = ["genet"]
+keywords = ["cml-genet", "arup"]
 license = { text = "MIT" }
 dynamic = ["dependencies", "optional-dependencies", "version"]
 
@@ -114,3 +117,4 @@ dev = { file = ["requirements/dev.txt"] }
 [project.urls]
 repository = "https://github.com/arup-group/genet"
 changelog = "https://github.com/arup-group/genet/blob/main/CHANGELOG.md"
+documentation = "https://arup-group.github.io/genet"

@@ -1,10 +1,9 @@
 import os
 
 import pytest
+from genet import AuxiliaryFile, Network, Route, Service, Stop
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
-
-from genet import AuxiliaryFile, Network, Route, Service, Stop
 
 links_benchmark_path = pytest.test_data_dir / "auxiliary_files" / "links_benchmark.json"
 links_benchmark_csv_path = pytest.test_data_dir / "auxiliary_files" / "links_benchmark.csv"
