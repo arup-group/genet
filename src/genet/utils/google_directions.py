@@ -4,8 +4,10 @@ import json
 import logging
 import os
 import time
+from typing import Callable, Optional, Union
 
 import polyline
+import requests
 from requests_futures.sessions import FuturesSession
 
 import genet.output.spatial as spatial_output
@@ -13,36 +15,49 @@ import genet.utils.persistence as persistence
 import genet.utils.secrets_vault as secrets_vault
 import genet.utils.simplification as simplification
 import genet.utils.spatial as spatial
+from genet.core import Network
 
 session = FuturesSession(max_workers=2)
 
 
 def send_requests_for_network(
-    n,
+    n: Network,
     request_number_threshold: int,
-    output_dir,
-    departure_time,
-    traffic_model: str = None,
-    key: str = None,
-    secret_name: str = None,
-    region_name: str = None,
-):
-    """
-    Generates, sends and parses results from Google Directions API for the car modal subgraph for network n.
-    You can pass your API key to this function under `key` variable. Alternatively, you can use AWS Secrets manager
-    for storing your API and pass secret_name and region_name (make sure you are authenticated to your AWS account).
-    You can also export an environmental variable in your terminal $ export GOOGLE_DIR_API_KEY='your key'
-    :param n: genet.Network
-    :param request_number_threshold: max number of requests
-    :param output_dir: output directory where to save the google directions api parsed data
-    :param departure_time: specifies the desired time of departure, in seconds since midnight, January 1, 1970 UTC,
-    i.e. unix time; if set to None, API will return results for average time-independent traffic conditions
-    :param traffic_model: str, specifies the assumptions to use when calculating time in traffic for choices see
-    https://developers.google.com/maps/documentation/directions/get-directions#traffic_model
-    :param key: API key
-    :param secret_name: if using aws secrets manager, the name where your directions api key is stored
-    :param region_name: the aws region you operate in
-    :return: api requests
+    output_dir: str,
+    departure_time: int,
+    traffic_model: Optional[str] = None,
+    key: Optional[str] = None,
+    secret_name: Optional[str] = None,
+    region_name: Optional[str] = None,
+) -> dict:
+    """Generates, sends and parses results from Google Directions API for the car modal subgraph for network n.
+
+    You can pass your API key to this function under `key` variable.
+
+    Alternatively, you can use AWS Secrets manager for storing your API and pass secret_name and region_name (make sure you are authenticated to your AWS account).
+
+    You can also export an environmental variable in your terminal `$ export GOOGLE_DIR_API_KEY='your key'`.
+
+    Args:
+        n (Network): GeNet Network.
+        request_number_threshold (int): max number of requests.
+        output_dir (str): output directory where to save the google directions api parsed data.
+        departure_time (int):
+            specifies the desired time of departure, in seconds since midnight, January 1, 1970 UTC.
+            i.e. unix time; if set to None, API will return results for average time-independent traffic conditions.
+        traffic_model (Optional[str], optional):
+            If given, specifies the assumptions to use when calculating time in traffic.
+            For choices see https://developers.google.com/maps/documentation/directions/get-directions#traffic_model.
+            Defaults to None.
+        key (Optional[str], optional): API key. Defaults to None.
+        secret_name (Optional[str], optional): If using AWS secrets manager, the name where your directions api key is stored. Defaults to None.
+        region_name (Optional[str], optional): The AWS region you operate in. Defaults to None.
+
+    Raises:
+        RuntimeError: Can only make as many requests as `request_number`.
+
+    Returns:
+        dict: API request results.
     """
     logging.info("Generating Google Directions API requests")
     api_requests = generate_requests(n)
@@ -65,12 +80,14 @@ def send_requests_for_network(
     return api_requests
 
 
-def read_api_requests(file_path):
-    """
-    Read the Google Directions API requests, generated to be sent and received back from the API, in the `file_path`
-    JSON file.
-    :param file_path: path to the JSON file where the google directions api requests were saved
-    :return:
+def read_api_requests(file_path: str) -> dict:
+    """Read the Google Directions API request results stored in the `file_path` JSON file.
+
+    Args:
+        file_path (str): path to the JSON file where the google directions api requests were saved.
+
+    Returns:
+        dict: Loaded API request results
     """
     api_requests = {}
     with open(file_path, "rb") as handle:
@@ -118,11 +135,11 @@ def make_request(origin_attributes, destination_attributes, key, departure_time,
 
 def send_requests(
     api_requests: dict,
-    departure_time,
-    traffic_model: str = None,
-    key: str = None,
-    secret_name: str = None,
-    region_name: str = None,
+    departure_time: int,
+    traffic_model: Optional[str] = None,
+    key: Optional[str] = None,
+    secret_name: Optional[str] = None,
+    region_name: Optional[str] = None,
 ):
     if key is None:
         key = secrets_vault.get_google_directions_api_key(secret_name, region_name)
@@ -148,12 +165,18 @@ def send_requests(
     return api_requests
 
 
-def generate_requests(n, osm_tags=all):
-    """
-    Generates a dictionary describing pairs of nodes for which we need to request
-    directions from Google directions API.
-    :param n: genet.Network
-    :return:
+def generate_requests(n: Network, osm_tags: Union[Callable, list[str]] = all) -> dict:
+    """Generates a dictionary describing pairs of nodes for which we need to request directions from Google directions API.
+
+    Args:
+        n (Network): GeNet network.
+        osm_tags (Union[Callable, list[str]], optional): OSM tags to subset the network on. Defaults to all (no subsetting).
+
+    Raises:
+        RuntimeError: Can only subset on tags for non-simplified networks.
+
+    Returns:
+        dict: Generated requests.
     """
     if n.is_simplified():
         logging.info("Generating Google Directions API requests for a simplified network.")
@@ -168,13 +191,21 @@ def generate_requests(n, osm_tags=all):
         return _generate_requests_for_non_simplified_network(n, osm_tags)
 
 
-def _generate_requests_for_non_simplified_network(n, osm_tags=all):
-    """
-    Generates a dictionary describing pairs of nodes for which we need to request
-    directions from Google directions API. For a non-simplified network n
-    :param n: genet.Network
-    :param osm_tags: takes a list of OSM tags to subset the network on, e.g. ['primary', 'secondary', 'tertiary']
-    :return:
+def _generate_requests_for_non_simplified_network(
+    n: Network, osm_tags: Union[Callable, list[str]] = all
+) -> dict:
+    """Generates a dictionary describing pairs of nodes for which we need to request directions from Google directions API.
+
+    For a non-simplified network.
+
+    Args:
+        n (Network): Non-simplified network n.
+        osm_tags (Union[Callable, list[str]], optional):
+            If given, a list of OSM tags to subset the network on, e.g. ['primary', 'secondary', 'tertiary'].
+            Defaults to all (no subsetting).
+
+    Returns:
+        dict: Generated requests.
     """
     if osm_tags == all:
         g = n.modal_subgraph(modes="car")
@@ -205,12 +236,16 @@ def _generate_requests_for_non_simplified_network(n, osm_tags=all):
     return api_requests
 
 
-def _generate_requests_for_simplified_network(n):
-    """
-    Generates a dictionary describing pairs of nodes for which we need to request
-    directions from Google directions API. For a simplified network n
-    :param n: genet.Network
-    :return:
+def _generate_requests_for_simplified_network(n: Network) -> dict:
+    """Generates a dictionary describing pairs of nodes for which we need to request directions from Google directions API.
+
+    For a simplified network.
+
+    Args:
+        n (Network): Simplified network n.
+
+    Returns:
+        dict: Generated requests.
     """
     gdf_links = spatial_output.generate_geodataframes(n.modal_subgraph(modes="car"))[
         "links"
@@ -265,15 +300,19 @@ def parse_route(route: dict):
     return data
 
 
-def parse_routes(response, path_polyline):
+def parse_routes(response: requests.Response, path_polyline: str) -> dict:
+    """Parses response contents to infer speed.
+
+    If response returned more than one route, it picks the one closest on average to the original request.
+
+    Args:
+        response (requests.Response): request content
+        path_polyline (str): original request path encoded list of lat lon tuples
+
+    Returns:
+        dict: Parsed routes.
     """
-    Parses response contents to infer speed. If response returned more than one route, it picks the one closest on
-    average to the original request
-    :param response: request content
-    :param path_polyline: original request path encoded list of lat lon tuples
-    :return:
-    """
-    data = {}
+    data: dict = {}
 
     if response.status_code == 200:
         content = response.json()
@@ -306,11 +345,14 @@ def parse_routes(response, path_polyline):
     return data
 
 
-def parse_results(api_requests):
-    """
-    Goes through all api requests and parses results
-    :param api_requests: generated and 'sent' api requests
-    :return:
+def parse_results(api_requests: dict) -> dict:
+    """Goes through all api requests and parses results.
+
+    Args:
+        api_requests (dict): generated and 'sent' api requests.
+
+    Returns:
+        dict: Requests with parsed results.
     """
     api_requests_with_response = {}
     for node_request_pair, api_requests_attribs in api_requests.items():

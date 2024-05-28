@@ -1,21 +1,26 @@
 from datetime import datetime
-from typing import List, Union
+from typing import Optional, Union
 
 import dictdiffer
 import pandas as pd
+from typing_extensions import Self
 
 
 class ChangeLog(pd.DataFrame):
-    """
-    Records changes in genet.core.Network into a pandas.DataFrame
+    def __init__(self, df: Optional[pd.DataFrame] = None):
+        """Records changes in genet.core.Network in a pandas.DataFrame
 
-    Change Events:
-    • Add :
-    • Modify :
-    • Remove :
-    """
+        Change Events:
+        • Add :
+        • Modify :
+        • Remove :
 
-    def __init__(self, df=None):
+        Args:
+            df (Optional[pd.DataFrame], optional):
+                If given, initialise with `df`.
+                If not given, initialise with an empty DataFrame.
+                Defaults to None.
+        """
         if df is None:
             super().__init__(
                 columns=[
@@ -53,13 +58,16 @@ class ChangeLog(pd.DataFrame):
         )
 
     def add_bunch(
-        self, object_type: str, id_bunch: List[Union[int, str]], attributes_bunch: List[dict]
-    ):
+        self, object_type: str, id_bunch: list[Union[int, str]], attributes_bunch: list[dict]
+    ) -> Self:
         """
-        :param object_type:
-        :param id_bunch: same len as attributes_bunch
-        :param attributes_bunch: same len as id_bunch
-        :return:
+        Args:
+            object_type (str): GeNet object type.
+            id_bunch (list[Union[int, str]]): same len as `attributes_bunch`.
+            attributes_bunch (list[dict]): same len as `id_bunch`.
+
+        Returns:
+            Self: Existing config concatenated with input bunch.
         """
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return self.__class__(
@@ -110,18 +118,21 @@ class ChangeLog(pd.DataFrame):
     def modify_bunch(
         self,
         object_type: str,
-        old_id_bunch: List[Union[int, str]],
-        old_attributes: List[dict],
-        new_id_bunch: List[Union[int, str]],
-        new_attributes: List[dict],
-    ):
+        old_id_bunch: list[Union[int, str]],
+        old_attributes: list[dict],
+        new_id_bunch: list[Union[int, str]],
+        new_attributes: list[dict],
+    ) -> Self:
         """
-        :param object_type:
-        :param old_id_bunch: same len as attributes_bunch
-        :param old_attributes: same len as attributes_bunch
-        :param new_id_bunch: same len as id_bunch
-        :param new_attributes: same len as id_bunch
-        :return:
+        Args:
+            object_type (str): GeNet object type.
+            old_id_bunch (list[Union[int, str]]): Same len as `attributes_bunch`.
+            old_attributes (list[dict]): Same len as `id_bunch.`
+            new_id_bunch (list[Union[int, str]]): Same len as `attributes_bunch`.
+            new_attributes (list[dict]): Same len as `id_bunch.`
+
+        Returns:
+            Self: Existing config concatenated with modified bunch.
         """
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return self.__class__(
@@ -151,16 +162,25 @@ class ChangeLog(pd.DataFrame):
         )
 
     def simplify_bunch(
-        self, old_ids_list_bunch, new_id_bunch, indexed_paths_to_simplify, links_to_add
-    ):
-        """Series of ordered lists of indecies and attributes to log simplification of links, data prior to
-        simplification and the nodes simplified
-        :param old_ids_list_bunch: old ids list
-        :param new_id_bunch: same new ids list
-        :param indexed_paths_to_simplify: same len as id_bunch
-        :param links_to_add: lists of nodes deleted in order e.g. is path_before = [A, B, C, D] and path_after = [A, D]
-        path_diff = [B, C], list of those for all links
-        :return:
+        self,
+        old_ids_list_bunch: list,
+        new_id_bunch: list,
+        indexed_paths_to_simplify: dict,
+        links_to_add: dict,
+    ) -> Self:
+        """Series of ordered lists of indices and attributes to log simplification of links, data prior to simplification and the nodes simplified.
+
+        Args:
+            old_ids_list_bunch (list): old ids list.
+            new_id_bunch (list): new ids list
+            indexed_paths_to_simplify (dict): same len as ID bunches
+            links_to_add (dict):
+                Lists of nodes deleted in order.
+                E.g. if path_before = [A, B, C, D] and path_after = [A, D], then path_diff = [B, C].
+                Dictionary is list of `path_diff` for all links.
+
+        Returns:
+            Self: Existing config concatenated with simplified bunch.
         """
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return self.__class__(
@@ -205,13 +225,17 @@ class ChangeLog(pd.DataFrame):
         )
 
     def remove_bunch(
-        self, object_type: str, id_bunch: List[Union[int, str]], attributes_bunch: List[dict]
-    ):
+        self, object_type: str, id_bunch: list[Union[int, str]], attributes_bunch: list[dict]
+    ) -> Self:
         """
-        :param object_type:
-        :param id_bunch: same len as attributes_bunch
-        :param attributes_bunch: same len as id_bunch
-        :return:
+
+        Args:
+            object_type (str): GeNet object type.
+            id_bunch (list[Union[int, str]]):  same len as `attributes_bunch`.
+            attributes_bunch (list[dict]): same len as `id_bunch`.
+
+        Returns:
+            Self: Existing config concatenated with removed bunch.
         """
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return self.__class__(
