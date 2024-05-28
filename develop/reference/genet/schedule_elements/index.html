@@ -10233,7 +10233,7 @@ In the case of a dictionary all values stored under <code>location</code> will b
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" title="typing.Callable" href="https://docs.python.org/3/library/typing.html#typing.Callable">Callable</a></code>
+                      <code><a class="autorefs autorefs-external" title="typing.Union" href="https://docs.python.org/3/library/typing.html#typing.Union">Union</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a>, <a class="autorefs autorefs-external" title="typing.Callable" href="https://docs.python.org/3/library/typing.html#typing.Callable">Callable</a>]</code>
                   </span>
               </p>
             </td>
@@ -10273,14 +10273,14 @@ In the case of a dictionary all values stored under <code>location</code> will b
 <span class="normal"><a href="#__codelineno-0-3024">3024</a></span>
 <span class="normal"><a href="#__codelineno-0-3025">3025</a></span>
 <span class="normal"><a href="#__codelineno-0-3026">3026</a></span>
-<span class="normal"><a href="#__codelineno-0-3027">3027</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-3011"><a id="__codelineno-0-3011" name="__codelineno-0-3011"></a><span class="k">def</span> <span class="nf">apply_function_to_routes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-3027">3027</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-3011"><a id="__codelineno-0-3011" name="__codelineno-0-3011"></a><span class="k">def</span> <span class="nf">apply_function_to_routes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">function</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">Callable</span><span class="p">],</span> <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 </span><span id="__span-0-3012"><a id="__codelineno-0-3012" name="__codelineno-0-3012"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Applies a function or mapping to Routes within the Schedule.</span>
 </span><span id="__span-0-3013"><a id="__codelineno-0-3013" name="__codelineno-0-3013"></a>
 </span><span id="__span-0-3014"><a id="__codelineno-0-3014" name="__codelineno-0-3014"></a><span class="sd">    Fails silently, if the keys referred to by the function are not present, they will not be considered.</span>
 </span><span id="__span-0-3015"><a id="__codelineno-0-3015" name="__codelineno-0-3015"></a><span class="sd">    The function will only be applied where it is possible.</span>
 </span><span id="__span-0-3016"><a id="__codelineno-0-3016" name="__codelineno-0-3016"></a>
 </span><span id="__span-0-3017"><a id="__codelineno-0-3017" name="__codelineno-0-3017"></a><span class="sd">    Args:</span>
-</span><span id="__span-0-3018"><a id="__codelineno-0-3018" name="__codelineno-0-3018"></a><span class="sd">        function (Callable):</span>
+</span><span id="__span-0-3018"><a id="__codelineno-0-3018" name="__codelineno-0-3018"></a><span class="sd">        function (Union[dict, Callable]):</span>
 </span><span id="__span-0-3019"><a id="__codelineno-0-3019" name="__codelineno-0-3019"></a><span class="sd">            Function of Service attributes dictionary returning a value that should be stored under `location` or a dictionary mapping.</span>
 </span><span id="__span-0-3020"><a id="__codelineno-0-3020" name="__codelineno-0-3020"></a><span class="sd">            In the case of a dictionary all values stored under `location` will be mapped to new values given by the mapping, if they are present.</span>
 </span><span id="__span-0-3021"><a id="__codelineno-0-3021" name="__codelineno-0-3021"></a>
@@ -10427,7 +10427,7 @@ In the case of a dictionary all values stored under <code>location</code> will b
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" title="typing.Callable" href="https://docs.python.org/3/library/typing.html#typing.Callable">Callable</a></code>
+                      <code><a class="autorefs autorefs-external" title="typing.Union" href="https://docs.python.org/3/library/typing.html#typing.Union">Union</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a>, <a class="autorefs autorefs-external" title="typing.Callable" href="https://docs.python.org/3/library/typing.html#typing.Callable">Callable</a>]</code>
                   </span>
               </p>
             </td>
@@ -10467,14 +10467,14 @@ In the case of a dictionary all values stored under <code>location</code> will b
 <span class="normal"><a href="#__codelineno-0-3042">3042</a></span>
 <span class="normal"><a href="#__codelineno-0-3043">3043</a></span>
 <span class="normal"><a href="#__codelineno-0-3044">3044</a></span>
-<span class="normal"><a href="#__codelineno-0-3045">3045</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-3029"><a id="__codelineno-0-3029" name="__codelineno-0-3029"></a><span class="k">def</span> <span class="nf">apply_function_to_stops</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-3045">3045</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-3029"><a id="__codelineno-0-3029" name="__codelineno-0-3029"></a><span class="k">def</span> <span class="nf">apply_function_to_stops</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">function</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">Callable</span><span class="p">],</span> <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 </span><span id="__span-0-3030"><a id="__codelineno-0-3030" name="__codelineno-0-3030"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Applies a function or mapping to Stops within the Schedule.</span>
 </span><span id="__span-0-3031"><a id="__codelineno-0-3031" name="__codelineno-0-3031"></a>
 </span><span id="__span-0-3032"><a id="__codelineno-0-3032" name="__codelineno-0-3032"></a><span class="sd">    Fails silently, if the keys referred to by the function are not present, they will not be considered.</span>
 </span><span id="__span-0-3033"><a id="__codelineno-0-3033" name="__codelineno-0-3033"></a><span class="sd">    The function will only be applied where it is possible.</span>
 </span><span id="__span-0-3034"><a id="__codelineno-0-3034" name="__codelineno-0-3034"></a>
 </span><span id="__span-0-3035"><a id="__codelineno-0-3035" name="__codelineno-0-3035"></a><span class="sd">    Args:</span>
-</span><span id="__span-0-3036"><a id="__codelineno-0-3036" name="__codelineno-0-3036"></a><span class="sd">        function (Callable):</span>
+</span><span id="__span-0-3036"><a id="__codelineno-0-3036" name="__codelineno-0-3036"></a><span class="sd">        function (Union[dict, Callable]):</span>
 </span><span id="__span-0-3037"><a id="__codelineno-0-3037" name="__codelineno-0-3037"></a><span class="sd">            Function of Service attributes dictionary returning a value that should be stored under `location` or a dictionary mapping.</span>
 </span><span id="__span-0-3038"><a id="__codelineno-0-3038" name="__codelineno-0-3038"></a><span class="sd">            In the case of a dictionary all values stored under `location` will be mapped to new values given by the mapping, if they are present.</span>
 </span><span id="__span-0-3039"><a id="__codelineno-0-3039" name="__codelineno-0-3039"></a>
