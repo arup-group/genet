@@ -1,11 +1,6 @@
-import os
-
-import genet.utils.io
 from genet import Network
 from genet.output import sanitiser
 from genet.output import spatial as spatial_output
-from geopandas import GeoDataFrame
-from shapely.geometry import Point
 
 
 def test_sanitising_list():
@@ -56,27 +51,3 @@ def test_sanitising_geodataframes_with_ids_list(assert_semantically_equal):
     assert_semantically_equal(
         links[["length", "from", "to", "id", "ids", "u", "v", "modes"]].to_dict(), correct_links
     )
-
-
-def test_saving_geodataframe_with_missing_geometry_produces_file(tmpdir):
-    expected_file_name = "tmp"
-    expected_output_path = tmpdir / expected_file_name + ".parquet"
-    assert not os.path.exists(expected_output_path)
-
-    data = {"id": ["1", "2"], "geometry": [float("nan"), Point(2, 1)]}
-    gdf = GeoDataFrame(data, crs="EPSG:4326")
-    genet.utils.io.save_geodataframe(gdf, filename=expected_file_name, output_dir=tmpdir)
-
-    assert os.path.exists(expected_output_path)
-
-
-def test_saving_geodataframe_with_missing_data_in_string_column_produces_file(tmpdir):
-    expected_file_name = "tmp"
-    expected_output_path = tmpdir / expected_file_name + ".parquet"
-    assert not os.path.exists(expected_output_path)
-
-    data = {"id": ["1", float("nan")], "geometry": [Point(2, 1), Point(2, 1)]}
-    gdf = GeoDataFrame(data, crs="EPSG:4326")
-    genet.utils.io.save_geodataframe(gdf, filename=expected_file_name, output_dir=tmpdir)
-
-    assert os.path.exists(expected_output_path)
