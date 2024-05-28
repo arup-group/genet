@@ -13,22 +13,22 @@
       
       
       
-        <link rel="prev" href="../installation/">
+        <link rel="prev" href="../graph_operations/">
       
       
-        <link rel="next" href="../examples/1_intro_to_genet/">
+        <link rel="next" href="../java_dtypes/">
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.20">
     
     
       
-        <title>Using GeNet as a Docker image - Network Scenario Generator (GeNet)</title>
+        <title>genet.utils.io - Network Scenario Generator (GeNet)</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.66ac8b77.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.66ac8b77.min.css">
       
       
 
@@ -47,11 +47,11 @@
       
     
     
-      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../static/extras.css">
+      <link rel="stylesheet" href="../../../../static/extras.css">
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#using-genet-as-a-docker-image" class="md-skip">
+        <a href="#genet.utils.io.SUPPORTED_FILE_FORMATS" class="md-skip">
           Skip to content
         </a>
       
@@ -90,7 +90,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Network Scenario Generator (GeNet)" class="md-header__button md-logo" aria-label="Network Scenario Generator (GeNet)" data-md-component="logo">
+    <a href="../../../.." title="Network Scenario Generator (GeNet)" class="md-header__button md-logo" aria-label="Network Scenario Generator (GeNet)" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Using GeNet as a Docker image
+              genet.utils.io
             
           </span>
         </div>
@@ -197,7 +197,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Network Scenario Generator (GeNet)" class="md-nav__button md-logo" aria-label="Network Scenario Generator (GeNet)" data-md-component="logo">
+    <a href="../../../.." title="Network Scenario Generator (GeNet)" class="md-nav__button md-logo" aria-label="Network Scenario Generator (GeNet)" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -227,7 +227,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../../../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -247,7 +247,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../../../../installation/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -264,30 +264,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Using GeNet as a Docker image
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../../docker/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -296,44 +276,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#using-the-cli-inside-a-container" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using the cli inside a container
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#running-custom-script-inside-a-container" class="md-nav__link">
-    <span class="md-ellipsis">
-      Running custom script inside a container
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -424,7 +366,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/1_intro_to_genet/" class="md-nav__link">
+      <a href="../../../../examples/1_intro_to_genet/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -445,7 +387,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/2_1_reading_data_matsim/" class="md-nav__link">
+      <a href="../../../../examples/2_1_reading_data_matsim/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -466,7 +408,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/2_2_reading_data_osm/" class="md-nav__link">
+      <a href="../../../../examples/2_2_reading_data_osm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -487,7 +429,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/2_3_reading_data_gtfs/" class="md-nav__link">
+      <a href="../../../../examples/2_3_reading_data_gtfs/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -508,7 +450,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/2_4_reading_data_csv/" class="md-nav__link">
+      <a href="../../../../examples/2_4_reading_data_csv/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -529,7 +471,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/2_5_reading_data_json_geojson/" class="md-nav__link">
+      <a href="../../../../examples/2_5_reading_data_json_geojson/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -550,7 +492,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/3_1_writing_data_matsim/" class="md-nav__link">
+      <a href="../../../../examples/3_1_writing_data_matsim/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -571,7 +513,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/3_2_writing_data_gtfs/" class="md-nav__link">
+      <a href="../../../../examples/3_2_writing_data_gtfs/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -592,7 +534,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/3_3_writing_data_csv/" class="md-nav__link">
+      <a href="../../../../examples/3_3_writing_data_csv/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -613,7 +555,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/3_4_writing_data_json_geojson/" class="md-nav__link">
+      <a href="../../../../examples/3_4_writing_data_json_geojson/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -634,7 +576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/4_1_using_network_accessing_data/" class="md-nav__link">
+      <a href="../../../../examples/4_1_using_network_accessing_data/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -655,7 +597,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/4_2_using_network_road_pricing/" class="md-nav__link">
+      <a href="../../../../examples/4_2_using_network_road_pricing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -676,7 +618,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/4_3_using_network_routing/" class="md-nav__link">
+      <a href="../../../../examples/4_3_using_network_routing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -697,7 +639,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/4_4_using_network_auxiliary_files_referencing_network_ids/" class="md-nav__link">
+      <a href="../../../../examples/4_4_using_network_auxiliary_files_referencing_network_ids/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -718,7 +660,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/5_1_modifying_network_graph/" class="md-nav__link">
+      <a href="../../../../examples/5_1_modifying_network_graph/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -739,7 +681,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/5_2_modifying_network_pt_schedule/" class="md-nav__link">
+      <a href="../../../../examples/5_2_modifying_network_pt_schedule/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -760,7 +702,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/5_3_modifying_network_simplification/" class="md-nav__link">
+      <a href="../../../../examples/5_3_modifying_network_simplification/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -781,7 +723,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/5_4_modifying_network_addition/" class="md-nav__link">
+      <a href="../../../../examples/5_4_modifying_network_addition/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -802,7 +744,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/6_1_validating_network_matsim_specific/" class="md-nav__link">
+      <a href="../../../../examples/6_1_validating_network_matsim_specific/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -823,7 +765,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/6_2_validating_network_google_directions_api/" class="md-nav__link">
+      <a href="../../../../examples/6_2_validating_network_google_directions_api/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -844,7 +786,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../examples/7_visualising_network/" class="md-nav__link">
+      <a href="../../../../examples/7_visualising_network/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -872,7 +814,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../contributing/" class="md-nav__link">
+      <a href="../../../../contributing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -892,7 +834,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../CHANGELOG/" class="md-nav__link">
+      <a href="../../../../CHANGELOG/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -909,8 +851,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -921,11 +865,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
@@ -939,7 +883,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             Reference
@@ -953,7 +897,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/cli/" class="md-nav__link">
+      <a href="../../../../api/cli/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -971,8 +915,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1003,11 +949,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_2" checked>
         
           
           <label class="md-nav__link" for="__nav_7_2" id="__nav_7_2_label" tabindex="0">
@@ -1021,7 +967,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7_2">
             <span class="md-nav__icon md-icon"></span>
             Python API
@@ -1035,7 +981,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/auxiliary_files/" class="md-nav__link">
+      <a href="../../auxiliary_files/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1056,7 +1002,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/core/" class="md-nav__link">
+      <a href="../../core/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1077,7 +1023,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/exceptions/" class="md-nav__link">
+      <a href="../../exceptions/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1098,7 +1044,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/max_stable_set/" class="md-nav__link">
+      <a href="../../max_stable_set/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1119,7 +1065,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/schedule_elements/" class="md-nav__link">
+      <a href="../../schedule_elements/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1140,7 +1086,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/variables/" class="md-nav__link">
+      <a href="../../variables/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1208,7 +1154,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/input/gtfs_reader/" class="md-nav__link">
+      <a href="../../input/gtfs_reader/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1229,7 +1175,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/input/matsim_reader/" class="md-nav__link">
+      <a href="../../input/matsim_reader/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1250,7 +1196,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/input/osm_reader/" class="md-nav__link">
+      <a href="../../input/osm_reader/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1271,7 +1217,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/input/osmnx_customised/" class="md-nav__link">
+      <a href="../../input/osmnx_customised/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1292,7 +1238,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/input/read/" class="md-nav__link">
+      <a href="../../input/read/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1364,7 +1310,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/modify/change_log/" class="md-nav__link">
+      <a href="../../modify/change_log/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1385,7 +1331,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/modify/graph/" class="md-nav__link">
+      <a href="../../modify/graph/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1406,7 +1352,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/modify/schedule/" class="md-nav__link">
+      <a href="../../modify/schedule/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1480,7 +1426,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/output/matsim_xml_values/" class="md-nav__link">
+      <a href="../../output/matsim_xml_values/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1501,7 +1447,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/output/matsim_xml_writer/" class="md-nav__link">
+      <a href="../../output/matsim_xml_writer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1522,7 +1468,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/output/sanitiser/" class="md-nav__link">
+      <a href="../../output/sanitiser/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1543,7 +1489,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/output/spatial/" class="md-nav__link">
+      <a href="../../output/spatial/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1613,7 +1559,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/use/road_pricing/" class="md-nav__link">
+      <a href="../../use/road_pricing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1634,7 +1580,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/use/schedule/" class="md-nav__link">
+      <a href="../../use/schedule/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1660,8 +1606,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1694,11 +1642,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_2_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_2_11" checked>
         
           
           <label class="md-nav__link" for="__nav_7_2_11" id="__nav_7_2_11_label" tabindex="0">
@@ -1712,7 +1660,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_7_2_11_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_7_2_11_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7_2_11">
             <span class="md-nav__icon md-icon"></span>
             genet.utils
@@ -1726,7 +1674,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/utils/dict_support/" class="md-nav__link">
+      <a href="../dict_support/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1747,7 +1695,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/utils/elevation/" class="md-nav__link">
+      <a href="../elevation/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1768,7 +1716,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/utils/google_directions/" class="md-nav__link">
+      <a href="../google_directions/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1789,7 +1737,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/utils/graph_operations/" class="md-nav__link">
+      <a href="../graph_operations/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1807,10 +1755,28 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../reference/genet/utils/io/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    genet.utils.io
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1819,6 +1785,51 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#genet.utils.io.SUPPORTED_FILE_FORMATS" class="md-nav__link">
+    <span class="md-ellipsis">
+      SUPPORTED_FILE_FORMATS
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#genet.utils.io.check_file_type_is_supported" class="md-nav__link">
+    <span class="md-ellipsis">
+      check_file_type_is_supported
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#genet.utils.io.save_geodataframe" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_geodataframe
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1831,7 +1842,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/utils/java_dtypes/" class="md-nav__link">
+      <a href="../java_dtypes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1852,7 +1863,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/utils/pandas_helpers/" class="md-nav__link">
+      <a href="../pandas_helpers/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1873,7 +1884,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/utils/parallel/" class="md-nav__link">
+      <a href="../parallel/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1894,7 +1905,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/utils/persistence/" class="md-nav__link">
+      <a href="../persistence/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1915,7 +1926,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/utils/plot/" class="md-nav__link">
+      <a href="../plot/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1936,7 +1947,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/utils/secrets_vault/" class="md-nav__link">
+      <a href="../secrets_vault/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1957,7 +1968,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/utils/simplification/" class="md-nav__link">
+      <a href="../simplification/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1978,7 +1989,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/utils/spatial/" class="md-nav__link">
+      <a href="../spatial/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2048,7 +2059,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/validate/network/" class="md-nav__link">
+      <a href="../../validate/network/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2069,7 +2080,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/validate/schedule/" class="md-nav__link">
+      <a href="../../validate/schedule/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2123,8 +2134,6 @@
   
   
   
-    
-  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -2133,18 +2142,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#using-the-cli-inside-a-container" class="md-nav__link">
+  <a href="#genet.utils.io.SUPPORTED_FILE_FORMATS" class="md-nav__link">
     <span class="md-ellipsis">
-      Using the cli inside a container
+      SUPPORTED_FILE_FORMATS
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-custom-script-inside-a-container" class="md-nav__link">
+  <a href="#genet.utils.io.check_file_type_is_supported" class="md-nav__link">
     <span class="md-ellipsis">
-      Running custom script inside a container
+      check_file_type_is_supported
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#genet.utils.io.save_geodataframe" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_geodataframe
     </span>
   </a>
   
@@ -2171,39 +2189,299 @@
   
 
 
-<h1 id="using-genet-as-a-docker-image">Using GeNet as a Docker image<a class="headerlink" href="#using-genet-as-a-docker-image" title="Permanent link">#</a></h1>
-<p>If you have <a href="../installation/#using-docker">installed GeNet as a Docker image</a>, you can follow the steps here to run the GeNet CLI and to run your own scripts.</p>
-<h2 id="using-the-cli-inside-a-container">Using the cli inside a container<a class="headerlink" href="#using-the-cli-inside-a-container" title="Permanent link">#</a></h2>
-<p>Use <code>docker run cml-genet genet ...</code> to run the command line scripts within the Docker image, e.g.:</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker<span class="w"> </span>run<span class="w"> </span>cml-genet<span class="w"> </span>genet<span class="w"> </span>simplify-network<span class="w"> </span>--network<span class="w"> </span>/path/to/network.xml<span class="w"> </span><span class="o">[</span>...<span class="o">]</span>
-</span></code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>You will reference data outside the docker container as inputs, the docker command will need the path to data
-mounted and be referenced according to the alias given, e.g.</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-v<span class="w"> </span>/local/path/:/mnt/<span class="w"> </span>cml-genet<span class="w"> </span>genet<span class="w"> </span>simplify-network<span class="w"> </span>--network<span class="w"> </span>/mnt/network.xml<span class="w"> </span><span class="o">[</span>...<span class="o">]</span>
-</span></code></pre></div>
-<p>If the input network file lives at <code>/local/path/network.xml</code>.</p>
+  <h1>genet.utils.io</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+
+    <div class="doc doc-contents first">
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h2 id="genet.utils.io.SUPPORTED_FILE_FORMATS" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">SUPPORTED_FILE_FORMATS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;parquet&#39;</span><span class="p">,</span> <span class="s1">&#39;geoparquet&#39;</span><span class="p">,</span> <span class="s1">&#39;geojson&#39;</span><span class="p">,</span> <span class="s1">&#39;shp&#39;</span><span class="p">,</span> <span class="s1">&#39;shapefile&#39;</span><span class="p">]</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#genet.utils.io.SUPPORTED_FILE_FORMATS" class="headerlink" title="Permanent link">#</a></h2>
+
+
+    <div class="doc doc-contents ">
+    </div>
+
 </div>
-<p>A full list of the available command line scripts is given on our <a href="../api/cli/">CLI page</a>.
-You can also get a list of options directly from the image:</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>docker<span class="w"> </span>run<span class="w"> </span>cml-genet<span class="w"> </span>genet<span class="w"> </span>--help
-</span></code></pre></div>
-<p>to show the list of available commands, and e.g.</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>run<span class="w"> </span>cml-genet<span class="w"> </span>genet<span class="w"> </span>simplify-network<span class="w"> </span>--help
-</span></code></pre></div>
-<p>to show description of the command and parameters.</p>
-<h2 id="running-custom-script-inside-a-container">Running custom script inside a container<a class="headerlink" href="#running-custom-script-inside-a-container" title="Permanent link">#</a></h2>
-<p>Say you write a script <code>/local/path/my_genet_scripts/script.py</code> and you want to run it inside a docker container.
-You will need to mount the local path to the container for the script to be found and use the generic <code>python</code>
-as part of your command:</p>
-<div class="language-shell highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-v<span class="w"> </span>/local/path/:/mnt/<span class="w"> </span>cml-genet<span class="w"> </span>python<span class="w"> </span>/mnt/my_genet_scripts/script.py
-</span></code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>If you reference data inside your script, or pass them as arguments to the script,
-they need to reference the aliased path inside the container.
-Here: <code>/mnt/</code>, rather than the path <code>/local/path/</code>.</p>
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="genet.utils.io.check_file_type_is_supported" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">check_file_type_is_supported</span><span class="p">(</span><span class="n">filetype</span><span class="p">)</span></code>
+
+<a href="#genet.utils.io.check_file_type_is_supported" class="headerlink" title="Permanent link">#</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+      <p>Checks there is support for the given file type</p>
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">PARAMETER</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>filetype</code></td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>The file type to save a spatial object to.</p>
+              </div>
+              <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">RAISES</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+              <span class="doc-raises-annotation">
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError">RuntimeError</a></code>
+              </span>
+            </td>
+            <td class="doc-raises-details">
+              <div class="doc-md-description">
+                <p><code>filetype</code> is not a supported file type</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/genet/utils/io.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-12">12</a></span>
+<span class="normal"><a href="#__codelineno-0-13">13</a></span>
+<span class="normal"><a href="#__codelineno-0-14">14</a></span>
+<span class="normal"><a href="#__codelineno-0-15">15</a></span>
+<span class="normal"><a href="#__codelineno-0-16">16</a></span>
+<span class="normal"><a href="#__codelineno-0-17">17</a></span>
+<span class="normal"><a href="#__codelineno-0-18">18</a></span>
+<span class="normal"><a href="#__codelineno-0-19">19</a></span>
+<span class="normal"><a href="#__codelineno-0-20">20</a></span>
+<span class="normal"><a href="#__codelineno-0-21">21</a></span>
+<span class="normal"><a href="#__codelineno-0-22">22</a></span>
+<span class="normal"><a href="#__codelineno-0-23">23</a></span>
+<span class="normal"><a href="#__codelineno-0-24">24</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12"></a><span class="k">def</span> <span class="nf">check_file_type_is_supported</span><span class="p">(</span><span class="n">filetype</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Checks there is support for the given file type</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14"></a>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15"></a><span class="sd">    Args:</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16"></a><span class="sd">        filetype (str, optional): The file type to save a spatial object to.</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17"></a>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18"></a><span class="sd">    Raises:</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19"></a><span class="sd">        RuntimeError: `filetype` is not a supported file type</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21"></a>    <span class="k">if</span> <span class="n">filetype</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">SUPPORTED_FILE_FORMATS</span><span class="p">:</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22"></a>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filetype</span><span class="si">}</span><span class="s2"> is not a supported file type: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">SUPPORTED_FILE_FORMATS</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24"></a>        <span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="genet.utils.io.save_geodataframe" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">save_geodataframe</span><span class="p">(</span><span class="n">gdf</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">filetype</span><span class="o">=</span><span class="s1">&#39;parquet&#39;</span><span class="p">)</span></code>
+
+<a href="#genet.utils.io.save_geodataframe" class="headerlink" title="Permanent link">#</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+      <p>Saves geopandas.GeoDataFrame to the requested file format</p>
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">PARAMETER</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>gdf</code></td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>GeoDataFrame to save to disk.</p>
+              </div>
+              <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-external" title="geopandas.GeoDataFrame" href="https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas.GeoDataFrame">GeoDataFrame</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>filename</code></td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>Name of the file, without extension.</p>
+              </div>
+              <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>output_dir</code></td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>Path to folder where to save the file.</p>
+              </div>
+              <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>filetype</code></td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>The file type to save the GeoDataFrame to: geojson, geoparquet or shp are supported.
+Defaults to parquet format.</p>
+              </div>
+              <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                  </span>
+                  <span class="doc-param-default">
+                    <b>DEFAULT:</b>
+                      <code>&#39;parquet&#39;</code>
+                  </span>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/genet/utils/io.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-27">27</a></span>
+<span class="normal"><a href="#__codelineno-0-28">28</a></span>
+<span class="normal"><a href="#__codelineno-0-29">29</a></span>
+<span class="normal"><a href="#__codelineno-0-30">30</a></span>
+<span class="normal"><a href="#__codelineno-0-31">31</a></span>
+<span class="normal"><a href="#__codelineno-0-32">32</a></span>
+<span class="normal"><a href="#__codelineno-0-33">33</a></span>
+<span class="normal"><a href="#__codelineno-0-34">34</a></span>
+<span class="normal"><a href="#__codelineno-0-35">35</a></span>
+<span class="normal"><a href="#__codelineno-0-36">36</a></span>
+<span class="normal"><a href="#__codelineno-0-37">37</a></span>
+<span class="normal"><a href="#__codelineno-0-38">38</a></span>
+<span class="normal"><a href="#__codelineno-0-39">39</a></span>
+<span class="normal"><a href="#__codelineno-0-40">40</a></span>
+<span class="normal"><a href="#__codelineno-0-41">41</a></span>
+<span class="normal"><a href="#__codelineno-0-42">42</a></span>
+<span class="normal"><a href="#__codelineno-0-43">43</a></span>
+<span class="normal"><a href="#__codelineno-0-44">44</a></span>
+<span class="normal"><a href="#__codelineno-0-45">45</a></span>
+<span class="normal"><a href="#__codelineno-0-46">46</a></span>
+<span class="normal"><a href="#__codelineno-0-47">47</a></span>
+<span class="normal"><a href="#__codelineno-0-48">48</a></span>
+<span class="normal"><a href="#__codelineno-0-49">49</a></span>
+<span class="normal"><a href="#__codelineno-0-50">50</a></span>
+<span class="normal"><a href="#__codelineno-0-51">51</a></span>
+<span class="normal"><a href="#__codelineno-0-52">52</a></span>
+<span class="normal"><a href="#__codelineno-0-53">53</a></span>
+<span class="normal"><a href="#__codelineno-0-54">54</a></span>
+<span class="normal"><a href="#__codelineno-0-55">55</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="k">def</span> <span class="nf">save_geodataframe</span><span class="p">(</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28"></a>    <span class="n">gdf</span><span class="p">:</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">filetype</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;parquet&quot;</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="p">):</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Saves geopandas.GeoDataFrame to the requested file format</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31"></a>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">    Args:</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="sd">        gdf (gpd.GeoDataFrame): GeoDataFrame to save to disk.</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="sd">        filename (str): Name of the file, without extension.</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="sd">        output_dir (str): Path to folder where to save the file.</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="sd">        filetype (str, optional):</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">            The file type to save the GeoDataFrame to: geojson, geoparquet or shp are supported.</span>
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">            Defaults to parquet format.</span>
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">gdf</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41"></a>        <span class="n">check_file_type_is_supported</span><span class="p">(</span><span class="n">filetype</span><span class="p">)</span>
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42"></a>
+</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43"></a>        <span class="n">_gdf</span> <span class="o">=</span> <span class="n">sanitiser</span><span class="o">.</span><span class="n">sanitise_geodataframe</span><span class="p">(</span><span class="n">gdf</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44"></a>        <span class="n">persistence</span><span class="o">.</span><span class="n">ensure_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45"></a>
+</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46"></a>        <span class="k">if</span> <span class="n">filetype</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> <span class="s2">&quot;geoparquet&quot;</span><span class="p">]:</span>
+</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47"></a>            <span class="n">_gdf</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">.parquet&quot;</span><span class="p">))</span>
+</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48"></a>        <span class="k">elif</span> <span class="n">filetype</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;geojson&quot;</span><span class="p">:</span>
+</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49"></a>            <span class="n">_gdf</span><span class="o">.</span><span class="n">to_file</span><span class="p">(</span>
+</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50"></a>                <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">.geojson&quot;</span><span class="p">),</span> <span class="n">driver</span><span class="o">=</span><span class="s2">&quot;GeoJSON&quot;</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s2">&quot;pyogrio&quot;</span>
+</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51"></a>            <span class="p">)</span>
+</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52"></a>        <span class="k">elif</span> <span class="n">filetype</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;shp&quot;</span><span class="p">,</span> <span class="s2">&quot;shapefile&quot;</span><span class="p">]:</span>
+</span><span id="__span-0-53"><a id="__codelineno-0-53" name="__codelineno-0-53"></a>            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">_gdf</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">is_datetime</span><span class="p">(</span><span class="n">_gdf</span><span class="p">[</span><span class="n">col</span><span class="p">])]:</span>
+</span><span id="__span-0-54"><a id="__codelineno-0-54" name="__codelineno-0-54"></a>                <span class="n">_gdf</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">_gdf</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+</span><span id="__span-0-55"><a id="__codelineno-0-55" name="__codelineno-0-55"></a>            <span class="n">_gdf</span><span class="o">.</span><span class="n">to_file</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">.shp&quot;</span><span class="p">))</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
 </div>
 
 
@@ -2258,10 +2536,10 @@ Here: <code>/mnt/</code>, rather than the path <code>/local/path/</code>.</p>
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.indexes", "navigation.top", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.indexes", "navigation.top", "content.code.copy", "content.code.annotate"], "search": "../../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.dd8806f2.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.dd8806f2.min.js"></script>
       
     
   </body>

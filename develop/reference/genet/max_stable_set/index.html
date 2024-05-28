@@ -1924,27 +1924,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../output/geojson/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    genet.output.geojson
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../output/matsim_xml_values/" class="md-nav__link">
         
   
@@ -1992,6 +1971,27 @@
   
   <span class="md-ellipsis">
     genet.output.sanitiser
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../output/spatial/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.output.spatial
   </span>
   
 
@@ -2133,6 +2133,8 @@
       
         
       
+        
+      
     
     
     
@@ -2236,6 +2238,27 @@
   
   <span class="md-ellipsis">
     genet.utils.graph_operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../utils/io/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.io
   </span>
   
 
@@ -3570,7 +3593,7 @@
 </span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">step_size</span> <span class="o">=</span> <span class="n">step_size</span>
 </span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">network_spatial_tree</span> <span class="o">=</span> <span class="n">network_spatial_tree</span>
 </span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">pt_graph</span> <span class="o">=</span> <span class="n">pt_graph</span>
-</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a>    <span class="n">_gdf</span> <span class="o">=</span> <span class="n">gngeojson</span><span class="o">.</span><span class="n">generate_geodataframes</span><span class="p">(</span><span class="n">pt_graph</span><span class="p">)</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a>    <span class="n">_gdf</span> <span class="o">=</span> <span class="n">spatial_output</span><span class="o">.</span><span class="n">generate_geodataframes</span><span class="p">(</span><span class="n">pt_graph</span><span class="p">)</span>
 </span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">stops</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pt_edges</span> <span class="o">=</span> <span class="n">_gdf</span><span class="p">[</span><span class="s2">&quot;nodes&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span><span class="s2">&quot;epsg:4326&quot;</span><span class="p">),</span> <span class="n">_gdf</span><span class="p">[</span><span class="s2">&quot;links&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span>
 </span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39"></a>        <span class="s2">&quot;epsg:4326&quot;</span>
 </span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40"></a>    <span class="p">)</span>

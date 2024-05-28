@@ -1497,27 +1497,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/genet/output/geojson/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    genet.output.geojson
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../reference/genet/output/matsim_xml_values/" class="md-nav__link">
         
   
@@ -1565,6 +1544,27 @@
   
   <span class="md-ellipsis">
     genet.output.sanitiser
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/output/spatial/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.output.spatial
   </span>
   
 
@@ -1706,6 +1706,8 @@
       
         
       
+        
+      
     
     
     
@@ -1809,6 +1811,27 @@
   
   <span class="md-ellipsis">
     genet.utils.graph_operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/io/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.io
   </span>
   
 
@@ -2660,7 +2683,8 @@ will be equal to the number of edges.</p>
 <span class="kn">import</span> <span class="nn">genet</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">from</span> <span class="nn">genet</span> <span class="kn">import</span> <span class="n">google_directions</span><span class="p">,</span> <span class="n">read_matsim</span>
-<span class="kn">from</span> <span class="nn">genet.output.geojson</span> <span class="kn">import</span> <span class="n">generate_geodataframes</span>
+<span class="kn">from</span> <span class="nn">genet.output.spatial</span> <span class="kn">import</span> <span class="n">generate_geodataframes</span>
+<span class="kn">from</span> <span class="nn">genet.utils.io</span> <span class="kn">import</span> <span class="n">save_geodataframe</span>
 <span class="kn">from</span> <span class="nn">shapely.geometry</span> <span class="kn">import</span> <span class="n">LineString</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-1">import logging
@@ -2670,7 +2694,8 @@ import random
 import genet
 import matplotlib.pyplot as plt
 from genet import google_directions, read_matsim
-from genet.output.geojson import generate_geodataframes
+from genet.output.spatial import generate_geodataframes
+from genet.utils.io import save_geodataframe
 from shapely.geometry import LineString</div>
 </div>
 </div>
@@ -4095,13 +4120,13 @@ gdf.plot(column="google_speed", ax=ax, legend=True, cmap="hot", linewidth=2.5)</
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"saving network links with valid google speed values to geojson"</span><span class="p">)</span>
-<span class="n">genet</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">geojson</span><span class="o">.</span><span class="n">save_geodataframe</span><span class="p">(</span>
-    <span class="n">with_gs</span><span class="p">,</span> <span class="s2">"api_requests_viz"</span><span class="p">,</span> <span class="s2">"example_data/outputs/google_speed_data/"</span>
+<span class="n">save_geodataframe</span><span class="p">(</span>
+    <span class="n">with_gs</span><span class="p">,</span> <span class="s2">"api_requests_viz"</span><span class="p">,</span> <span class="s2">"example_data/outputs/google_speed_data/"</span><span class="p">,</span> <span class="n">filetype</span><span class="o">=</span><span class="s2">"geojson"</span>
 <span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-23">logging.info("saving network links with valid google speed values to geojson")
-genet.output.geojson.save_geodataframe(
-    with_gs, "api_requests_viz", "example_data/outputs/google_speed_data/"
+save_geodataframe(
+    with_gs, "api_requests_viz", "example_data/outputs/google_speed_data/", filetype="geojson"
 )</div>
 </div>
 </div>

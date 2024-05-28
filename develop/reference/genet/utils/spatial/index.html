@@ -1426,27 +1426,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../output/geojson/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    genet.output.geojson
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../output/matsim_xml_values/" class="md-nav__link">
         
   
@@ -1494,6 +1473,27 @@
   
   <span class="md-ellipsis">
     genet.output.sanitiser
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../output/spatial/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.output.spatial
   </span>
   
 
@@ -1637,6 +1637,8 @@
       
         
       
+        
+      
     
     
     
@@ -1740,6 +1742,27 @@
   
   <span class="md-ellipsis">
     genet.utils.graph_operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../io/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.io
   </span>
   
 
@@ -3220,7 +3243,7 @@ finds closest links within <code>distance_radius</code> from the spatial tree wh
 </span><span id="__span-0-418"><a id="__codelineno-0-418" name="__codelineno-0-418"></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="__span-0-419"><a id="__codelineno-0-419" name="__codelineno-0-419"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">modes</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
 </span><span id="__span-0-420"><a id="__codelineno-0-420" name="__codelineno-0-420"></a>        <span class="n">modes</span> <span class="o">=</span> <span class="p">{</span><span class="n">modes</span><span class="p">}</span>
-</span><span id="__span-0-421"><a id="__codelineno-0-421" name="__codelineno-0-421"></a>    <span class="n">_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">gngeojson</span><span class="o">.</span><span class="n">modal_subset</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">modes</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)]</span>
+</span><span id="__span-0-421"><a id="__codelineno-0-421" name="__codelineno-0-421"></a>    <span class="n">_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">spatial_output</span><span class="o">.</span><span class="n">modal_subset</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">modes</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)]</span>
 </span><span id="__span-0-422"><a id="__codelineno-0-422" name="__codelineno-0-422"></a>    <span class="k">if</span> <span class="n">_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
 </span><span id="__span-0-423"><a id="__codelineno-0-423" name="__codelineno-0-423"></a>        <span class="k">raise</span> <span class="n">EmptySpatialTree</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No links found satisfying modes: </span><span class="si">{</span><span class="n">modes</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span><span id="__span-0-424"><a id="__codelineno-0-424" name="__codelineno-0-424"></a>    <span class="k">return</span> <span class="n">_df</span>

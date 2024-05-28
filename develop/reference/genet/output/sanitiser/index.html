@@ -16,7 +16,7 @@
         <link rel="prev" href="../matsim_xml_writer/">
       
       
-        <link rel="next" href="../../use/road_pricing/">
+        <link rel="next" href="../spatial/">
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
@@ -1428,27 +1428,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../geojson/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    genet.output.geojson
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../matsim_xml_values/" class="md-nav__link">
         
   
@@ -1572,6 +1551,27 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spatial/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.output.spatial
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -1709,6 +1709,8 @@
       
         
       
+        
+      
     
     
     
@@ -1812,6 +1814,27 @@
   
   <span class="md-ellipsis">
     genet.utils.graph_operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../utils/io/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.io
   </span>
   
 
@@ -2309,7 +2332,7 @@
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19"></a>        <span class="n">not_missing_mask</span> <span class="o">=</span> <span class="n">gdf</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
 </span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20"></a>        <span class="k">if</span> <span class="n">gdf</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">set</span><span class="p">,</span> <span class="nb">list</span><span class="p">)))</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
 </span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21"></a>            <span class="n">gdf</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">not_missing_mask</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">not_missing_mask</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22"></a>                <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22"></a>                <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">set</span><span class="p">))</span> <span class="k">else</span> <span class="n">x</span>
 </span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23"></a>            <span class="p">)</span>
 </span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24"></a>        <span class="k">elif</span> <span class="n">gdf</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">dict</span><span class="p">))</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
 </span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25"></a>            <span class="n">gdf</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">not_missing_mask</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">not_missing_mask</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>

@@ -1434,27 +1434,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/genet/output/geojson/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    genet.output.geojson
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../reference/genet/output/matsim_xml_values/" class="md-nav__link">
         
   
@@ -1502,6 +1481,27 @@
   
   <span class="md-ellipsis">
     genet.output.sanitiser
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/output/spatial/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.output.spatial
   </span>
   
 
@@ -1643,6 +1643,8 @@
       
         
       
+        
+      
     
     
     
@@ -1746,6 +1748,27 @@
   
   <span class="md-ellipsis">
     genet.utils.graph_operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/genet/utils/io/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.io
   </span>
   
 
@@ -2678,9 +2701,9 @@ Number of stops: 118
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>You can also choose to write the network to GeoJSON. This will produce spatial representation of the Network graph and the Schedule graph.</p>
+<p>You can also choose to write the network to GeoJSON, GeoParquet or as a shapefile. This will produce spatial representation of the Network graph and the Schedule graph.</p>
 <ul>
-<li>The main diference for the Network graph outputs is that the link geometry is a <code>LINESTRING</code>, whereas in the JSON outputs, this geometry is an encoded polyline.</li>
+<li>The main difference for the Network graph outputs is that the link geometry is a <code>LINESTRING</code>, whereas in the JSON outputs, this geometry is an encoded polyline.</li>
 <li>The biggest difference is for the Schedule graph. With JSON output you get the entire Schedule data saved to file. With GeoJSON you get only the spatial representation of the graph, nodes and edges, where nodes are the Stops in the Schedule and edges are the connections between Stops as defined by the Route and Service objects which use those Stops.  It does not include any information about the vehicles, their IDs or modes, vehicle definitions or network routes (the edges are straight lines between the Stops)</li>
 </ul>
 </div>
@@ -2705,9 +2728,9 @@ Number of stops: 118
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">n</span><span class="o">.</span><span class="n">write_to_geojson</span><span class="p">(</span><span class="s2">"example_data/outputs/geojson"</span><span class="p">)</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">n</span><span class="o">.</span><span class="n">write_spatial</span><span class="p">(</span><span class="s2">"example_data/outputs/geojson"</span><span class="p">,</span> <span class="n">filetype</span><span class="o">=</span><span class="s2">"geojson"</span><span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-3">n.write_to_geojson("example_data/outputs/geojson")</div>
+<div class="clipboard-copy-txt" id="cell-3">n.write_spatial("example_data/outputs/geojson", filetype="geojson")</div>
 </div>
 </div>
 </div>

@@ -1651,27 +1651,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/genet/output/geojson/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    genet.output.geojson
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../reference/genet/output/matsim_xml_values/" class="md-nav__link">
         
   
@@ -1719,6 +1698,27 @@
   
   <span class="md-ellipsis">
     genet.output.sanitiser
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/genet/output/spatial/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.output.spatial
   </span>
   
 
@@ -1860,6 +1860,8 @@
       
         
       
+        
+      
     
     
     
@@ -1963,6 +1965,27 @@
   
   <span class="md-ellipsis">
     genet.utils.graph_operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/genet/utils/io/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    genet.utils.io
   </span>
   
 
@@ -2511,6 +2534,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 <h2 id="unreleased">[Unreleased]<a class="headerlink" href="#unreleased" title="Permanent link">#</a></h2>
 <h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">#</a></h3>
 <ul>
+<li>Fixed generating standard outputs by highway tag which were broken after moving to storing additional attributes in short form <a href="https://github.com/arup-group/genet/pull/217">#217</a></li>
 <li>Fixed summary report:</li>
 <li>Intermodal Access/Egress reporting is more general (not expecting just car and bike mode access to PT) <a href="https://github.com/arup-group/genet/pull/204">#204</a></li>
 <li>Node/Links numbers were reported incorrectly (switched) <a href="https://github.com/arup-group/genet/pull/207">#207</a></li>
@@ -2520,6 +2544,7 @@ and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semant
 </ul>
 <h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">#</a></h3>
 <ul>
+<li>GeNet's standard outputs now produce geoparquet format by default <a href="https://github.com/arup-group/genet/pull/217">#217</a>. The output file size is reduced significantly (e.g. network links output was reduced by ~80% on a test network). Networks/Schedules can still be saved to geojson and shape files as before.</li>
 <li>GeNet's pre-baked python scripts have been retired in favour of CLI <a href="https://github.com/arup-group/genet/pull/194">#194</a></li>
 <li>Support for python v3.11 <a href="https://github.com/arup-group/genet/pull/192">#192</a> and v3.12 <a href="https://github.com/arup-group/genet/pull/234">#234</a></li>
 <li><strong>[Breaking change]</strong> Updated to more accurate pyproj version <a href="https://github.com/arup-group/genet/pull/192">#192</a></li>
