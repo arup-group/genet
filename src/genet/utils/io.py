@@ -4,8 +4,8 @@ from typing import Optional
 import geopandas as gpd
 from pandas.core.dtypes.common import is_datetime64_any_dtype as is_datetime
 
-from genet.output import sanitiser as sanitiser
-from genet.utils import persistence as persistence
+from genet.output import sanitiser
+from genet.utils import persistence
 
 SUPPORTED_FILE_FORMATS = ["parquet", "geoparquet", "geojson", "shp", "shapefile"]
 
@@ -26,7 +26,7 @@ def check_file_type_is_supported(filetype: str):
 
 
 def save_geodataframe(
-    gdf: gpd.GeoDataFrame, filename: str, output_dir: str, filetype: Optional[str] = "parquet"
+    gdf: gpd.GeoDataFrame, filename: str, output_dir: str, filetype: str = "parquet"
 ):
     """Saves geopandas.GeoDataFrame to the requested file format
 
