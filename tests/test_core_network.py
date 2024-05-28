@@ -9,16 +9,15 @@ import lxml
 import networkx as nx
 import pandas as pd
 import pytest
-from geopandas.testing import assert_geodataframe_equal
-from pandas.testing import assert_frame_equal, assert_series_equal
-from shapely.geometry import LineString, Point, Polygon
-
 from genet import exceptions
 from genet.core import Network
 from genet.input import matsim_reader, read
 from genet.schedule_elements import Route, Schedule, Service, Stop
 from genet.utils import plot, spatial
 from genet.validate import network as network_validation
+from geopandas.testing import assert_geodataframe_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
+from shapely.geometry import LineString, Point, Polygon
 
 pt2matsim_network_test_file = pytest.test_data_dir / "matsim" / "network.xml"
 pt2matsim_schedule_file = pytest.test_data_dir / "matsim" / "schedule.xml"

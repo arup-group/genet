@@ -1,12 +1,11 @@
 import os
 
-from geopandas import GeoDataFrame
-from shapely.geometry import Point
-
 import genet.utils.io
 from genet import Network
 from genet.output import sanitiser
 from genet.output import spatial as spatial_output
+from geopandas import GeoDataFrame
+from shapely.geometry import Point
 
 
 def test_sanitising_list():

@@ -3,7 +3,6 @@ import os
 import importlib_resources
 import pytest
 from click.testing import CliRunner
-
 from genet import cli
 
 GENET_SRC_DIR = importlib_resources.files("genet")

@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 
 import pytest
-
 from genet import Network, Route, Schedule, Service, Stop
 from genet.output import spatial as spatial_output
 
