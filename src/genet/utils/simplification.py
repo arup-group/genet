@@ -4,6 +4,7 @@ from statistics import median
 
 from shapely.geometry import LineString, Point
 
+import genet
 import genet.utils.parallel as parallel
 from genet.utils.persistence import setify
 
@@ -116,13 +117,21 @@ def _assemble_path_data(n, indexed_paths_to_simplify):
     return return_d
 
 
-def _is_endpoint(node_neighbours):
+def _is_endpoint(node_neighbours: dict) -> list[str]:
     """
-    :param node_neighbours: dict {node: {
-     successors: {set of nodes that you can reach from node},
-     predecessors: {set of nodes that lead to node}
-    }}
-    :return:
+
+    Args:
+        node_neighbours (dict):
+            E.g.,
+            ```python
+            {node: {
+                successors: {set of nodes that you can reach from node},
+                predecessors: {set of nodes that lead to node}
+            }}
+            ```
+
+    Returns:
+        list[str]: Nodes that are endpoints.
     """
     return [
         node
@@ -198,26 +207,22 @@ def _get_edge_groups_to_simplify(G, no_processes=1):
     )
 
 
-def simplify_graph(n, no_processes=1):
-    """
+def simplify_graph(n: "genet.core.Network", no_processes=1):
+    """Simplify a graph's topology by removing interstitial nodes.
+
     MONKEY PATCH OF OSMNX'S GRAPH SIMPLIFICATION ALGO
 
-    Simplify a graph's topology by removing interstitial nodes.
+    Simplify graph topology by removing all nodes that are not intersections or dead-ends.
+    Create an edge directly between the end points that encapsulate them,
+    but retain the geometry of the original edges, saved as attribute in new edge.
 
-    Simplify graph topology by removing all nodes that are not intersections
-    or dead-ends. Create an edge directly between the end points that
-    encapsulate them, but retain the geometry of the original edges, saved as
-    attribute in new edge.
+    Updates network graph, indexing and schedule routes in-place.
+    Adds a new attribute to n that records map between old and new link indices
 
-    Parameters
-    ----------
-    n: genet.Network object
-    no_processes: number of processes to split some of the processess across
-
-    Returns
-    -------
-    None, updates n.graph, indexing and schedule routes. Adds a new attribute to n that records map between old
-    and new link indices
+    Args:
+        n (Network): GeNet network.
+        no_processes (int, optional):
+            Number of processes to split some of the processes across. Defaults to 1.
     """
     logging.info("Begin simplifying the graph")
     initial_node_count = len(list(n.graph.nodes()))

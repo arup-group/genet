@@ -3008,14 +3008,14 @@ class Schedule(ScheduleElement):
         )
         self.apply_attributes_to_services(new_attributes)
 
-    def apply_function_to_routes(self, function: Callable, location: str):
+    def apply_function_to_routes(self, function: Union[dict, Callable], location: str):
         """Applies a function or mapping to Routes within the Schedule.
 
         Fails silently, if the keys referred to by the function are not present, they will not be considered.
         The function will only be applied where it is possible.
 
         Args:
-            function (Callable):
+            function (Union[dict, Callable]):
                 Function of Service attributes dictionary returning a value that should be stored under `location` or a dictionary mapping.
                 In the case of a dictionary all values stored under `location` will be mapped to new values given by the mapping, if they are present.
 
@@ -3026,14 +3026,14 @@ class Schedule(ScheduleElement):
         )
         self.apply_attributes_to_routes(new_attributes)
 
-    def apply_function_to_stops(self, function: Callable, location: str):
+    def apply_function_to_stops(self, function: Union[dict, Callable], location: str):
         """Applies a function or mapping to Stops within the Schedule.
 
         Fails silently, if the keys referred to by the function are not present, they will not be considered.
         The function will only be applied where it is possible.
 
         Args:
-            function (Callable):
+            function (Union[dict, Callable]):
                 Function of Service attributes dictionary returning a value that should be stored under `location` or a dictionary mapping.
                 In the case of a dictionary all values stored under `location` will be mapped to new values given by the mapping, if they are present.
 

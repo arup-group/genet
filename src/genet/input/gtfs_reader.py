@@ -13,12 +13,19 @@ from genet import variables
 from genet.utils import persistence, spatial
 
 
-def read_services_from_calendar(path, day):
-    """
-    return list of services to be included
-    :param path: path to GTFS folder
-    :param day: 'YYYYMMDD' for specific day
-    :return:
+def read_services_from_calendar(path: str, day: str) -> list:
+    """Return list of services to be included.
+
+    Args:
+        path (str): Path to GTFS directory.
+        day (str): 'YYYYMMDD' for specific day in which to find services.
+
+    Raises:
+        RuntimeError: There must be at least one service on the day selected.
+        RuntimeError: GTFS directory must include a calendar file.
+
+    Returns:
+        list: Included service IDs.
     """
     logging.info("Reading the calendar for GTFS")
 

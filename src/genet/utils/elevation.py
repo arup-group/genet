@@ -22,15 +22,18 @@ def get_elevation_data(img, lat, lon):
     return elevation_meters
 
 
-def validation_report_for_node_elevation(elev_dict, low_limit=-50, mont_blanc_height=4809):
-    """
-    Generates a validation report for the node elevation dictionary.
-    :param elev_dict: contains node_id as key and elevation in meters as value
-    :param low_limit: values below this param get flagged as possibly wrong; set at -50m (below sea level) by default,
-    can optionally set a different value
-    :param mont_blanc_height: values above this param get flagged as possibly wrong; defaults to 4809m,
-    the height of Mont Blank, can optionally set a different value
-    :return: dict, with 2 data subsets - summary statistics, and extreme values lists
+def validation_report_for_node_elevation(
+    elev_dict: dict, low_limit: int = -50, mont_blanc_height: int = 4809
+) -> dict:
+    """Generates a validation report for the node elevation dictionary.
+
+    Args:
+        elev_dict (dict): contains node_id as key and elevation in meters as value.
+        low_limit (int, optional): values below this get flagged as possibly wrong. Defaults to -50 (below sea level).
+        mont_blanc_height (int, optional): values above this get flagged as possibly wrong. Defaults to 4809 (the height of Mont Blanc).
+
+    Returns:
+        dict: Contains summary statistics, and extreme values lists.
     """
 
     elevation_list = []
@@ -68,11 +71,12 @@ def validation_report_for_node_elevation(elev_dict, low_limit=-50, mont_blanc_he
     return report
 
 
-def write_slope_xml(link_slope_dictionary, output_dir):
-    """
-    Generates a link_slopes XML file.
-    :param link_slope_dictionary: dictionary of link slopes in format {link_id: {'slope': slope_value}}
-    :param output_dir: directory where the XML file will be written to
+def write_slope_xml(link_slope_dictionary: dict, output_dir: str):
+    """Generates a link_slopes XML file.
+
+    Args:
+        link_slope_dictionary (dict): dictionary of link slopes in format `{link_id: {'slope': slope_value}}`
+        output_dir (str): directory where the XML file will be written to.
     """
     fname = os.path.join(output_dir, "link_slopes.xml")
     logging.info(f"Writing {fname}")
