@@ -25,12 +25,13 @@ from shapely.geometry.base import BaseGeometry
 
 import genet.modify.change_log as change_log
 import genet.modify.schedule as mod_schedule
-import genet.output.geojson as gngeojson
 import genet.output.matsim_xml_writer as matsim_xml_writer
 import genet.output.sanitiser as sanitiser
+import genet.output.spatial as spatial_output
 import genet.use.schedule as use_schedule
 import genet.utils.dict_support as dict_support
 import genet.utils.graph_operations as graph_operations
+import genet.utils.io
 import genet.utils.parallel as parallel
 import genet.utils.persistence as persistence
 import genet.utils.plot as plot
@@ -619,7 +620,7 @@ class ScheduleElement(ABC):
         Returns:
             dict[str, gpd.GeoDataFrame]: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and edges
         """
-        return gngeojson.generate_geodataframes(self.graph())
+        return spatial_output.generate_geodataframes(self.graph())
 
     def kepler_map(self, output_dir="", file_name="kepler_map", data=False):
         gdf = self.to_geodataframe()
@@ -3626,9 +3627,7 @@ class Schedule(ScheduleElement):
     def generate_validation_report(self):
         return schedule_validation.generate_validation_report(schedule=self)
 
-    def generate_standard_outputs(
-        self, output_dir: str, gtfs_day: str = "19700101", include_shp_files: bool = False
-    ):
+    def generate_standard_outputs(self, output_dir, gtfs_day="19700101", filetype: str = "parquet"):
         """Generates geojsons that can be used for generating standard kepler visualisations.
 
         These can also be used for validating network for example inspecting link capacity, freespeed, number of lanes, the shape of modal subgraphs.
@@ -3638,10 +3637,12 @@ class Schedule(ScheduleElement):
             gtfs_day (str, optional):
                 Day in format YYYYMMDD for the network's schedule for consistency in visualisations,
                 Defaults to "19700101" (1970-01-01).
-            include_shp_files (bool, optional): If True, also store shapefiles. Defaults to False.
+            filetype (str, optional):
+                The file type to save the GeoDataFrame to: geojson, geoparquet or shp are supported.
+                Defaults to parquet format.
         """
-        gngeojson.generate_standard_outputs_for_schedule(
-            self, output_dir, gtfs_day, include_shp_files
+        spatial_output.generate_standard_outputs_for_schedule(
+            self, output_dir=output_dir, gtfs_day=gtfs_day, filetype=filetype
         )
         logging.info("Finished generating standard outputs. Zipping folder.")
         persistence.zip_folder(output_dir)
@@ -3697,28 +3698,38 @@ class Schedule(ScheduleElement):
             json.dump(self.to_json(), outfile)
         self.write_extras(output_dir)
 
-    def write_to_geojson(self, output_dir: str, epsg: str):
-        """Writes Schedule graph to nodes and edges geojson files.
+    def write_spatial(self, output_dir, epsg: Optional[str] = None, filetype: str = "parquet"):
+        """Transforms Schedule (if applicable) to geopandas.GeoDataFrame of nodes and links and saves to
+        the requested file format.
 
         Args:
-            output_dir (str): output directory.
-            epsg (str): projection if the geometry is to be reprojected, defaults to own projection.
-
+            output_dir (str):
+                Path to folder where to save the file.
+            epsg (Optional[str], optional):
+                Projection if the geometry is to be reprojected. Defaults to None (no reprojection).
+            filetype (str, optional):
+                The file type to save the GeoDataFrame to: geojson, geoparquet or shp are supported.
+                Defaults to parquet format.
         """
+        if filetype.lower() not in genet.utils.io.SUPPORTED_FILE_FORMATS:
+            raise RuntimeError(
+                "You've requested to save Schedule as a GeoDataFrame but did not select any of the "
+                f"file formats available: {', '.join(genet.utils.io.SUPPORTED_FILE_FORMATS)}"
+            )
+
         persistence.ensure_dir(output_dir)
         _gdfs = self.to_geodataframe()
         if epsg is not None:
             _gdfs["nodes"] = _gdfs["nodes"].to_crs(epsg)
             _gdfs["links"] = _gdfs["links"].to_crs(epsg)
-        logging.info(f"Saving Schedule to GeoJSON in {output_dir}")
-        gngeojson.save_geodataframe(_gdfs["nodes"], "schedule_nodes", output_dir)
-        gngeojson.save_geodataframe(_gdfs["links"], "schedule_links", output_dir)
-        gngeojson.save_geodataframe(
-            _gdfs["nodes"]["geometry"], "schedule_nodes_geometry_only", output_dir
-        )
-        gngeojson.save_geodataframe(
-            _gdfs["links"]["geometry"], "schedule_links_geometry_only", output_dir
-        )
+        logging.info(f"Saving Schedule in {output_dir}")
+        for gdf, filename in (
+            (_gdfs["nodes"], "schedule_nodes"),
+            (_gdfs["links"], "schedule_links"),
+            (_gdfs["nodes"]["geometry"], "schedule_nodes_geometry_only"),
+            (_gdfs["links"]["geometry"], "schedule_links_geometry_only"),
+        ):
+            genet.utils.io.save_geodataframe(gdf, filename, output_dir, filetype=filetype)
         self.write_extras(output_dir)
 
     def to_gtfs(self, gtfs_day: str, mode_to_route_type: Optional[dict] = None) -> dict:

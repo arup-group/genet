@@ -5369,7 +5369,7 @@ def test_transforming_network_to_geodataframe(network_1_geo_and_json):
 
 def test_saving_network_to_geojson(network1, correct_schedule, tmpdir):
     network1.schedule = correct_schedule
-    network1.write_to_geojson(tmpdir)
+    network1.write_spatial(tmpdir, filetype="geojson")
     assert set(os.listdir(tmpdir)) == {
         "network_nodes_geometry_only.geojson",
         "network_nodes.geojson",

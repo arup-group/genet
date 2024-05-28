@@ -22,13 +22,14 @@ import genet.exceptions as exceptions
 import genet.modify.change_log as change_log
 import genet.modify.graph as modify_graph
 import genet.modify.schedule as modify_schedule
-import genet.output.geojson as geojson
 import genet.output.matsim_xml_writer as matsim_xml_writer
 import genet.output.sanitiser as sanitiser
+import genet.output.spatial as spatial_output
 import genet.schedule_elements as schedule_elements
 import genet.utils.dict_support as dict_support
 import genet.utils.elevation as elevation
 import genet.utils.graph_operations as graph_operations
+import genet.utils.io as gnio
 import genet.utils.pandas_helpers as pd_helpers
 import genet.utils.parallel as parallel
 import genet.utils.persistence as persistence
@@ -2917,7 +2918,7 @@ class Network:
         return con_desc
 
     def generate_standard_outputs(
-        self, output_dir: str, gtfs_day: str = "19700101", include_shp_files: bool = False
+        self, output_dir: str, gtfs_day: str = "19700101", filetype: str = "parquet"
     ):
         """Generates geojsons that can be used for generating standard kepler visualisations.
 
@@ -2928,9 +2929,13 @@ class Network:
             gtfs_day (str, optional):
                 Day in format YYYYMMDD for the network's schedule for consistency in visualisations,
                 Defaults to "19700101" (1970-01-01).
-            include_shp_files (bool, optional): If True, also store shapefiles. Defaults to False.
+            filetype (str, optional):
+                The file type to save the GeoDataFrame to: geojson, geoparquet or shp are supported.
+                Defaults to parquet format.
         """
-        geojson.generate_standard_outputs(self, output_dir, gtfs_day, include_shp_files)
+        spatial_output.generate_standard_outputs(
+            self, output_dir, gtfs_day=gtfs_day, filetype=filetype
+        )
         logging.info("Finished generating standard outputs. Zipping folder.")
         persistence.zip_folder(output_dir)
 
@@ -3010,30 +3015,37 @@ class Network:
             self.schedule.write_to_json(output_dir)
         self.write_extras(output_dir)
 
-    def write_to_geojson(self, output_dir: str, epsg: Optional[str] = None):
-        """Writes Network graph and Schedule (if applicable) to nodes and links geojson files.
+    def write_spatial(self, output_dir, epsg: Optional[str] = None, filetype: str = "parquet"):
+        """Transforms Network and Schedule (if applicable) to geopandas.GeoDataFrame of nodes and links and saves to
+        the requested file format.
 
         Args:
-            output_dir (str): Output directory.
+            output_dir (str):
+                Path to folder where to save the file.
             epsg (Optional[str], optional):
                 Projection if the geometry is to be reprojected. Defaults to None (no reprojection).
+            filetype (str, optional):
+                The file type to save the GeoDataFrame to: geojson, geoparquet or shp are supported.
+                Defaults to parquet format.
         """
+        # do a quick check the file type is supported before generating all the files
+        gnio.check_file_type_is_supported(filetype)
+
         persistence.ensure_dir(output_dir)
         _network = self.to_geodataframe()
         if epsg is not None:
             _network["nodes"] = _network["nodes"].to_crs(epsg)
             _network["links"] = _network["links"].to_crs(epsg)
-        logging.info(f"Saving Network to GeoJSON in {output_dir}")
-        geojson.save_geodataframe(_network["nodes"], "network_nodes", output_dir)
-        geojson.save_geodataframe(_network["links"], "network_links", output_dir)
-        geojson.save_geodataframe(
-            _network["nodes"]["geometry"], "network_nodes_geometry_only", output_dir
-        )
-        geojson.save_geodataframe(
-            _network["links"]["geometry"], "network_links_geometry_only", output_dir
-        )
+        logging.info(f"Saving Network in {output_dir}")
+        for gdf, filename in (
+            (_network["nodes"], "network_nodes"),
+            (_network["links"], "network_links"),
+            (_network["nodes"]["geometry"], "network_nodes_geometry_only"),
+            (_network["links"]["geometry"], "network_links_geometry_only"),
+        ):
+            gnio.save_geodataframe(gdf, filename, output_dir, filetype=filetype)
         if self.schedule:
-            self.schedule.write_to_geojson(output_dir, epsg)
+            self.schedule.write_spatial(output_dir, epsg=epsg, filetype=filetype)
         self.write_extras(output_dir)
 
     def to_geodataframe(self) -> dict:
@@ -3042,7 +3054,7 @@ class Network:
         Returns:
             dict: dict with keys 'nodes' and 'links', values are the GeoDataFrames corresponding to nodes and links.
         """
-        return geojson.generate_geodataframes(self.graph)
+        return spatial_output.generate_geodataframes(self.graph)
 
     def to_encoded_geometry_dataframe(self):
         _network = self.to_geodataframe()

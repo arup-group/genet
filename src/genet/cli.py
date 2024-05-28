@@ -15,12 +15,8 @@ import genet.output.sanitiser as sanitiser
 import genet.utils.spatial as spatial
 from genet import google_directions, read_gtfs, read_matsim, read_matsim_schedule, read_osm
 from genet.core import Network
-from genet.output.geojson import (
-    generate_headway_geojson,
-    generate_speed_geojson,
-    modal_subset,
-    save_geodataframe,
-)
+from genet.output.spatial import generate_headway_geojson, generate_speed_geojson, modal_subset
+from genet.utils.io import save_geodataframe
 from genet.utils.persistence import ensure_dir
 from genet.variables import EPSG4326
 

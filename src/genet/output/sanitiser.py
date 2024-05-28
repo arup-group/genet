@@ -19,7 +19,7 @@ def sanitise_geodataframe(gdf):
         not_missing_mask = gdf[col].notna()
         if gdf[col].apply(lambda x: isinstance(x, (set, list))).any():
             gdf.loc[not_missing_mask, col] = gdf.loc[not_missing_mask, col].apply(
-                lambda x: ",".join(x)
+                lambda x: ",".join(x) if isinstance(x, (list, set)) else x
             )
         elif gdf[col].apply(lambda x: isinstance(x, dict)).any():
             gdf.loc[not_missing_mask, col] = gdf.loc[not_missing_mask, col].apply(lambda x: str(x))

@@ -1,8 +1,9 @@
 import os
+from pathlib import Path
 
 import pytest
 from genet import Network, Route, Schedule, Service, Stop
-from genet.output import geojson as gngeojson
+from genet.output import spatial as spatial_output
 
 
 @pytest.fixture()
@@ -23,13 +24,7 @@ def network(correct_schedule):
         attribs={
             "length": 123,
             "modes": ["bike"],
-            "attributes": {
-                "osm:way:highway": {
-                    "name": "osm:way:highway",
-                    "class": "java.lang.String",
-                    "text": "unclassified",
-                }
-            },
+            "attributes": {"osm:way:highway": "unclassified"},
         },
     )
     n.add_link("link_2", "1", "0", attribs={"length": 123, "modes": ["rail"]})
@@ -50,11 +45,11 @@ def test_saving_values_which_result_in_overflow(tmpdir):
     n.add_link(
         "link_0", "0", "1", attribs={"length": 123, "modes": ["car", "walk"], "ids": ["1", "2"]}
     )
-    n.write_to_geojson(tmpdir)
+    n.write_spatial(tmpdir, filetype="geojson")
 
 
 def test_generating_network_graph_geodataframe(assert_semantically_equal, network):
-    gdfs = gngeojson.generate_geodataframes(network.graph)
+    gdfs = spatial_output.generate_geodataframes(network.graph)
     nodes, links = gdfs["nodes"], gdfs["links"]
     correct_nodes = {
         "id": {"0": "0", "1": "1"},
@@ -70,13 +65,7 @@ def test_generating_network_graph_geodataframe(assert_semantically_equal, networ
         "length": {"link_0": 123, "link_1": 123, "link_2": 123},
         "attributes": {
             "link_0": float("nan"),
-            "link_1": {
-                "osm:way:highway": {
-                    "name": "osm:way:highway",
-                    "class": "java.lang.String",
-                    "text": "unclassified",
-                }
-            },
+            "link_1": {"osm:way:highway": "unclassified"},
             "link_2": float("nan"),
         },
         "to": {"link_0": "1", "link_1": "1", "link_2": "0"},
@@ -110,7 +99,7 @@ def test_generating_network_graph_geodataframe(assert_semantically_equal, networ
 
 
 def test_generating_schedule_graph_geodataframe(assert_semantically_equal, network):
-    gdfs = gngeojson.generate_geodataframes(network.schedule.graph())
+    gdfs = spatial_output.generate_geodataframes(network.schedule.graph())
     nodes, links = gdfs["nodes"], gdfs["links"]
     correct_nodes = {
         "services": {"0": {"service"}, "1": {"service"}},
@@ -151,9 +140,9 @@ def test_generating_schedule_graph_geodataframe(assert_semantically_equal, netwo
 
 
 def test_modal_subset(network):
-    gdfs = gngeojson.generate_geodataframes(network.graph)
+    gdfs = spatial_output.generate_geodataframes(network.graph)
     links = gdfs["links"]
-    car = links[links.apply(lambda x: gngeojson.modal_subset(x, {"car"}), axis=1)]
+    car = links[links.apply(lambda x: spatial_output.modal_subset(x, {"car"}), axis=1)]
 
     assert len(car) == 1
     assert car.loc["link_0", "modes"] == ["car", "walk"]
@@ -163,27 +152,77 @@ def test_generating_standard_outputs_after_modifying_modes_in_schedule(network, 
     network.schedule.apply_attributes_to_routes(
         {"1": {"mode": "different_bus"}, "2": {"mode": "other_bus"}}
     )
-    gngeojson.generate_standard_outputs_for_schedule(network.schedule, tmpdir)
+    spatial_output.generate_standard_outputs_for_schedule(network.schedule, tmpdir)
 
 
-def test_save_to_geojson(network, tmpdir):
+def test_save_to_geojson_generates_files(network, tmpdir):
     assert os.listdir(tmpdir) == []
-    network.write_to_geojson(tmpdir)
+    network.write_spatial(tmpdir, filetype="geojson")
     assert set(os.listdir(tmpdir)) == {
-        "schedule_nodes.geojson",
-        "schedule_links.geojson",
         "network_nodes.geojson",
-        "schedule_nodes_geometry_only.geojson",
         "network_nodes_geometry_only.geojson",
-        "schedule_links_geometry_only.geojson",
-        "network_links_geometry_only.geojson",
         "network_links.geojson",
+        "network_links_geometry_only.geojson",
+        "schedule_nodes.geojson",
+        "schedule_nodes_geometry_only.geojson",
+        "schedule_links.geojson",
+        "schedule_links_geometry_only.geojson",
         "network_change_log.csv",
         "schedule_change_log.csv",
     }
 
 
-def test_generating_standard_outputs(network, tmpdir):
+def test_save_to_parquet_generates_files(network, tmpdir):
+    assert os.listdir(tmpdir) == []
+    network.write_spatial(tmpdir, filetype="parquet")
+    assert set(os.listdir(tmpdir)) == {
+        "network_nodes.parquet",
+        "network_nodes_geometry_only.parquet",
+        "network_links.parquet",
+        "network_links_geometry_only.parquet",
+        "schedule_nodes.parquet",
+        "schedule_nodes_geometry_only.parquet",
+        "schedule_links.parquet",
+        "schedule_links_geometry_only.parquet",
+        "network_change_log.csv",
+        "schedule_change_log.csv",
+    }
+
+
+def test_save_to_shp_generates_files(network, tmpdir):
+    assert os.listdir(tmpdir) == []
+
+    network.write_spatial(tmpdir, filetype="shp")
+
+    assert set(os.listdir(tmpdir)) == {
+        f"{file}.{ext}"
+        for file in {
+            "network_nodes",
+            "network_nodes_geometry_only",
+            "network_links",
+            "network_links_geometry_only",
+            "schedule_nodes",
+            "schedule_nodes_geometry_only",
+            "schedule_links",
+            "schedule_links_geometry_only",
+        }
+        for ext in {"cpg", "shx", "shp", "prj", "dbf"}
+    } | {"schedule_change_log.csv", "network_change_log.csv"}
+
+
+@pytest.mark.parametrize(
+    ["requested_file_type", "expected_file_extensions"],
+    [
+        ("parquet", ["parquet"]),
+        ("geoparquet", ["parquet"]),
+        ("geojson", ["geojson"]),
+        ("shp", ["shp", "shx", "prj", "dbf", "cpg"]),
+        ("shapefile", ["shp", "shx", "prj", "dbf", "cpg"]),
+    ],
+)
+def test_generating_standard_outputs_produces_expected_files(
+    network, tmpdir, requested_file_type, expected_file_extensions
+):
     network.schedule = Schedule(
         epsg="epsg:27700",
         services=[
@@ -305,157 +344,75 @@ def test_generating_standard_outputs(network, tmpdir):
         ],
     )
     assert os.listdir(tmpdir) == []
-    network.generate_standard_outputs(tmpdir, include_shp_files=True)
-    assert set(os.listdir(tmpdir)) == {
-        "graph",
-        "schedule_links_geometry_only.geojson",
-        "network_nodes_geometry_only.geojson",
-        "network_links.geojson",
-        "network_links_geometry_only.geojson",
-        "schedule_nodes.geojson",
-        "schedule_nodes_geometry_only.geojson",
-        "schedule",
-        "network_nodes.geojson",
-        "schedule_links.geojson",
-        "network_change_log.csv",
-        "schedule_change_log.csv",
-        "routing",
-        "summary_report.json",
-    }
-    assert set(os.listdir(os.path.join(tmpdir, "graph"))) == {
-        "car_capacity_subgraph.geojson",
-        "car_freespeed_subgraph.geojson",
-        "car_osm_highway_unclassified.geojson",
-        "geometry_only_subgraphs",
-        "shp_files",
-    }
-    assert set(os.listdir(os.path.join(tmpdir, "graph", "shp_files"))) == {
-        "car_osm_highway_unclassified.dbf",
-        "car_capacity_subgraph.cpg",
-        "car_freespeed_subgraph.shx",
-        "car_freespeed_subgraph.cpg",
-        "car_capacity_subgraph.prj",
-        "car_osm_highway_unclassified.prj",
-        "car_osm_highway_unclassified.shp",
-        "car_freespeed_subgraph.prj",
-        "car_osm_highway_unclassified.shx",
-        "car_capacity_subgraph.shp",
-        "car_capacity_subgraph.dbf",
-        "car_capacity_subgraph.shx",
-        "car_freespeed_subgraph.dbf",
-        "car_freespeed_subgraph.shp",
-        "car_osm_highway_unclassified.cpg",
-    }
-    assert set(os.listdir(os.path.join(tmpdir, "graph", "geometry_only_subgraphs"))) == {
-        "subgraph_geometry_walk.geojson",
-        "subgraph_geometry_rail.geojson",
-        "subgraph_geometry_car.geojson",
-        "shp_files",
-        "subgraph_geometry_bike.geojson",
-    }
-    assert set(
-        os.listdir(os.path.join(tmpdir, "graph", "geometry_only_subgraphs", "shp_files"))
-    ) == {
-        "subgraph_geometry_walk.shp",
-        "subgraph_geometry_rail.prj",
-        "subgraph_geometry_bike.dbf",
-        "subgraph_geometry_rail.shx",
-        "subgraph_geometry_car.cpg",
-        "subgraph_geometry_car.dbf",
-        "subgraph_geometry_car.shp",
-        "subgraph_geometry_bike.shp",
-        "subgraph_geometry_walk.dbf",
-        "subgraph_geometry_bike.shx",
-        "subgraph_geometry_rail.cpg",
-        "subgraph_geometry_bike.cpg",
-        "subgraph_geometry_car.shx",
-        "subgraph_geometry_walk.cpg",
-        "subgraph_geometry_car.prj",
-        "subgraph_geometry_rail.dbf",
-        "subgraph_geometry_walk.prj",
-        "subgraph_geometry_walk.shx",
-        "subgraph_geometry_bike.prj",
-        "subgraph_geometry_rail.shp",
-    }
 
-    assert set(os.listdir(os.path.join(tmpdir, "schedule"))) == {
-        "vehicles_per_hour",
-        "subgraphs",
-        "trips_per_day_per_service.csv",
-        "trips_per_day_per_route.csv",
-        "trips_per_day_per_route_aggregated_per_stop_id_pair.csv",
-        "trips_per_day_per_route_aggregated_per_stop_name_pair.csv",
-        "speed",
-    }
-    assert set(os.listdir(os.path.join(tmpdir, "schedule", "speed"))) == {
-        "pt_speeds.geojson",
-        "shp_files",
-        "pt_network_speeds.geojson",
-    }
-    assert set(os.listdir(os.path.join(tmpdir, "schedule", "vehicles_per_hour"))) == {
-        "vph_per_service.csv",
-        "vehicles_per_hour_all_modes.geojson",
-        "vph_per_stop_departing_from.csv",
-        "vph_all_modes_within_6_30-7_30.geojson",
-        "vph_per_stop_arriving_at.csv",
-        "shp_files",
-        "vehicles_per_hour_bus.geojson",
-        "vehicles_per_hour_rail.geojson",
-    }
-    assert set(os.listdir(os.path.join(tmpdir, "schedule", "vehicles_per_hour", "shp_files"))) == {
-        "vehicles_per_hour_all_modes.cpg",
-        "vph_all_modes_within_6_30-7_30.shx",
-        "vehicles_per_hour_rail.prj",
-        "vehicles_per_hour_bus.shp",
-        "vehicles_per_hour_bus.dbf",
-        "vehicles_per_hour_rail.shx",
-        "vehicles_per_hour_bus.prj",
-        "vehicles_per_hour_all_modes.prj",
-        "vehicles_per_hour_bus.shx",
-        "vehicles_per_hour_rail.dbf",
-        "vph_all_modes_within_6_30-7_30.dbf",
-        "vehicles_per_hour_rail.cpg",
-        "vph_all_modes_within_6_30-7_30.shp",
-        "vehicles_per_hour_rail.shp",
-        "vehicles_per_hour_all_modes.shx",
-        "vehicles_per_hour_bus.cpg",
-        "vehicles_per_hour_all_modes.shp",
-        "vph_all_modes_within_6_30-7_30.prj",
-        "vehicles_per_hour_all_modes.dbf",
-        "vph_all_modes_within_6_30-7_30.cpg",
-    }
-    assert set(os.listdir(os.path.join(tmpdir, "schedule", "subgraphs"))) == {
-        "schedule_subgraph_links_bus.geojson",
-        "schedule_subgraph_links_rail.geojson",
-        "shp_files",
-        "schedule_subgraph_nodes_bus.geojson",
-        "schedule_subgraph_nodes_rail.geojson",
-    }
-    assert set(os.listdir(os.path.join(tmpdir, "schedule", "subgraphs", "shp_files"))) == {
-        "schedule_subgraph_nodes_rail.prj",
-        "schedule_subgraph_links_bus.shx",
-        "schedule_subgraph_links_bus.prj",
-        "schedule_subgraph_nodes_rail.dbf",
-        "schedule_subgraph_nodes_rail.shx",
-        "schedule_subgraph_links_rail.dbf",
-        "schedule_subgraph_links_rail.shx",
-        "schedule_subgraph_nodes_bus.cpg",
-        "schedule_subgraph_links_rail.shp",
-        "schedule_subgraph_nodes_bus.prj",
-        "schedule_subgraph_nodes_bus.dbf",
-        "schedule_subgraph_links_rail.cpg",
-        "schedule_subgraph_links_bus.dbf",
-        "schedule_subgraph_links_bus.shp",
-        "schedule_subgraph_links_rail.prj",
-        "schedule_subgraph_nodes_bus.shx",
-        "schedule_subgraph_links_bus.cpg",
-        "schedule_subgraph_nodes_bus.shp",
-        "schedule_subgraph_nodes_rail.cpg",
-        "schedule_subgraph_nodes_rail.shp",
-    }
+    network.generate_standard_outputs(tmpdir, filetype=requested_file_type)
 
-    assert set(os.listdir(os.path.join(tmpdir, "routing"))) == {
-        "shp_files",
-        "schedule_network_routes_geodataframe.geojson",
-    }
+    expected_files = set()
+    for extension in expected_file_extensions:
+        expected_files |= {
+            Path(tmpdir) / f"schedule_links_geometry_only.{extension}",
+            Path(tmpdir) / f"network_nodes_geometry_only.{extension}",
+            Path(tmpdir) / f"network_links.{extension}",
+            Path(tmpdir) / f"network_links_geometry_only.{extension}",
+            Path(tmpdir) / f"schedule_nodes.{extension}",
+            Path(tmpdir) / f"schedule_nodes_geometry_only.{extension}",
+            Path(tmpdir) / f"network_nodes.{extension}",
+            Path(tmpdir) / f"schedule_links.{extension}",
+            Path(tmpdir) / "network_change_log.csv",
+            Path(tmpdir) / "schedule_change_log.csv",
+            Path(tmpdir) / "summary_report.json",
+            Path(tmpdir) / "graph" / f"car_capacity_subgraph.{extension}",
+            Path(tmpdir) / "graph" / f"car_freespeed_subgraph.{extension}",
+            Path(tmpdir) / "graph" / f"car_osm_highway_unclassified.{extension}",
+            Path(tmpdir)
+            / "graph"
+            / "geometry_only_subgraphs"
+            / f"subgraph_geometry_walk.{extension}",
+            Path(tmpdir)
+            / "graph"
+            / "geometry_only_subgraphs"
+            / f"subgraph_geometry_rail.{extension}",
+            Path(tmpdir)
+            / "graph"
+            / "geometry_only_subgraphs"
+            / f"subgraph_geometry_car.{extension}",
+            Path(tmpdir)
+            / "graph"
+            / "geometry_only_subgraphs"
+            / f"subgraph_geometry_bike.{extension}",
+            Path(tmpdir)
+            / "graph"
+            / "geometry_only_subgraphs"
+            / f"subgraph_geometry_bike.{extension}",
+            Path(tmpdir)
+            / "graph"
+            / "geometry_only_subgraphs"
+            / f"subgraph_geometry_bike.{extension}",
+            Path(tmpdir) / "schedule" / "trips_per_day_per_service.csv",
+            Path(tmpdir) / "schedule" / "trips_per_day_per_route.csv",
+            Path(tmpdir) / "schedule" / "trips_per_day_per_route_aggregated_per_stop_id_pair.csv",
+            Path(tmpdir) / "schedule" / "trips_per_day_per_route_aggregated_per_stop_name_pair.csv",
+            Path(tmpdir) / "schedule" / "speed" / f"pt_speeds.{extension}",
+            Path(tmpdir) / "schedule" / "speed" / f"pt_network_speeds.{extension}",
+            Path(tmpdir) / "schedule" / "vehicles_per_hour" / "vph_per_service.csv",
+            Path(tmpdir)
+            / "schedule"
+            / "vehicles_per_hour"
+            / f"vehicles_per_hour_all_modes.{extension}",
+            Path(tmpdir) / "schedule" / "vehicles_per_hour" / "vph_per_stop_departing_from.csv",
+            Path(tmpdir) / "schedule" / "vehicles_per_hour" / "vph_per_stop_arriving_at.csv",
+            Path(tmpdir)
+            / "schedule"
+            / "vehicles_per_hour"
+            / f"vph_all_modes_within_6_30-7_30.{extension}",
+            Path(tmpdir) / "schedule" / "vehicles_per_hour" / f"vehicles_per_hour_bus.{extension}",
+            Path(tmpdir) / "schedule" / "vehicles_per_hour" / f"vehicles_per_hour_rail.{extension}",
+            Path(tmpdir) / "schedule" / "subgraphs" / f"schedule_subgraph_links_bus.{extension}",
+            Path(tmpdir) / "schedule" / "subgraphs" / f"schedule_subgraph_links_rail.{extension}",
+            Path(tmpdir) / "schedule" / "subgraphs" / f"schedule_subgraph_nodes_bus.{extension}",
+            Path(tmpdir) / "schedule" / "subgraphs" / f"schedule_subgraph_nodes_rail.{extension}",
+            Path(tmpdir) / "routing" / f"schedule_network_routes_geodataframe.{extension}",
+        }
+
+    assert {path for path in Path(tmpdir).glob("**/*") if path.is_file()} == expected_files
     assert os.path.exists(tmpdir + ".zip")
