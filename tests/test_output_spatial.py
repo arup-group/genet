@@ -192,13 +192,10 @@ def test_save_to_parquet_generates_files(network, tmpdir):
 
 def test_save_to_shp_generates_files(network, tmpdir):
     assert os.listdir(tmpdir) == []
+
     network.write_spatial(tmpdir, filetype="shp")
+
     assert set(os.listdir(tmpdir)) == {
-        "shp_files",
-        "schedule_change_log.csv",
-        "network_change_log.csv",
-    }
-    assert set(os.listdir(tmpdir / "shp_files")) == {
         f"{file}.{ext}"
         for file in {
             "network_nodes",
@@ -211,7 +208,7 @@ def test_save_to_shp_generates_files(network, tmpdir):
             "schedule_links_geometry_only",
         }
         for ext in {"cpg", "shx", "shp", "prj", "dbf"}
-    }
+    } | {"schedule_change_log.csv", "network_change_log.csv"}
 
 
 @pytest.mark.parametrize(

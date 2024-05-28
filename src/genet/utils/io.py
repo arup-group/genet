@@ -50,7 +50,7 @@ def save_geodataframe(
             _gdf.to_file(
                 os.path.join(output_dir, f"{filename}.geojson"), driver="GeoJSON", engine="pyogrio"
             )
-        elif filetype.lower() == ["shp", "shapefile"]:
+        elif filetype.lower() in ["shp", "shapefile"]:
             for col in [col for col in _gdf.columns if is_datetime(_gdf[col])]:
                 _gdf[col] = _gdf[col].astype(str)
             _gdf.to_file(os.path.join(output_dir, f"{filename}.shp"))
