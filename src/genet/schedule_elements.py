@@ -3698,7 +3698,7 @@ class Schedule(ScheduleElement):
             json.dump(self.to_json(), outfile)
         self.write_extras(output_dir)
 
-    def write_spatial(self, output_dir, epsg: str = None, filetype: str = "parquet"):
+    def write_spatial(self, output_dir, epsg: Optional[str] = None, filetype: str = "parquet"):
         """Transforms Schedule (if applicable) to geopandas.GeoDataFrame of nodes and links and saves to
         the requested file format.
 

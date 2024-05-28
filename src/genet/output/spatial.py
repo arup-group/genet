@@ -3,7 +3,6 @@ import logging
 import math
 import os
 from itertools import chain
-from typing import Optional
 
 import geopandas as gpd
 import pandas as pd
@@ -63,8 +62,8 @@ def generate_geodataframes(graph):
 def generate_standard_outputs_for_schedule(
     schedule,
     output_dir: str,
-    gtfs_day: Optional[str] = "19700101",
-    filetype: Optional[str] = "parquet",
+    gtfs_day: str = "19700101",
+    filetype: str = "parquet",
     schedule_network_factor=1.3,
     gdf_network_links=None,
 ):
@@ -204,11 +203,7 @@ def generate_standard_outputs_for_schedule(
 
 
 def generate_standard_outputs(
-    n,
-    output_dir,
-    gtfs_day="19700101",
-    filetype: Optional[str] = "parquet",
-    schedule_network_factor=1.3,
+    n, output_dir, gtfs_day="19700101", filetype: str = "parquet", schedule_network_factor=1.3
 ):
     """Generates spatial files that can be used for generating standard visualisations.
 

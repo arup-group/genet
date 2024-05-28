@@ -13,6 +13,17 @@ def test_throws_error_when_filetype_is_not_supported():
     assert "is not a supported file type" in str(e.value)
 
 
+def test_saving_empty_geodataframe_does_not_produce_file(tmpdir):
+    expected_file_name = "tmp"
+    expected_output_path = tmpdir / expected_file_name + ".parquet"
+    assert not os.path.exists(expected_output_path)
+
+    gdf = GeoDataFrame(columns=["id", "geometry"])
+    genet.utils.io.save_geodataframe(gdf, filename=expected_file_name, output_dir=tmpdir)
+
+    assert not os.path.exists(expected_output_path)
+
+
 def test_saving_geodataframe_with_missing_geometry_produces_file(tmpdir):
     expected_file_name = "tmp"
     expected_output_path = tmpdir / expected_file_name + ".parquet"
