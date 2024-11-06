@@ -2402,6 +2402,61 @@ def test_removing_mode_from_links_removes_empty_links():
     assert n.has_link("0")
 
 
+def test_splitting_links_removes_required_mode_from_existing_links():
+    n = Network("epsg:27700")
+    n.add_link("0", 1, 2, attribs={"modes": {"car", "bike"}, "length": 1})
+
+    n.split_links_on_mode("bike")
+
+    assert n.link("0")["modes"] == {"car"}
+
+
+def test_splitting_links_creates_new_links_of_required_mode():
+    n = Network("epsg:27700")
+    n.add_link("0", 1, 2, attribs={"modes": {"car", "bike"}, "length": 1})
+
+    new_links = n.split_links_on_mode("bike")
+
+    assert len(new_links) == 1
+    new_link = list(new_links)[0]
+    assert n.has_link(new_link)
+    assert n.link(new_link)["modes"] == {"bike"}
+
+
+def test_data_retained_when_splitting_links():
+    n = Network("epsg:27700")
+    n.add_link("0", 1, 2, attribs={"modes": {"car", "bike"}, "length": 1, "BIG": "DATA"})
+
+    new_links = n.split_links_on_mode("bike")
+
+    assert len(new_links) == 1
+    new_link = list(new_links)[0]
+    assert "BIG" in n.link(new_link)
+    assert n.link(new_link)["BIG"] == "DATA"
+
+
+def test_splitting_links_uses_desired_prefix_for_new_link_ids():
+    n = Network("epsg:27700")
+    n.add_link("0", 1, 2, attribs={"modes": {"car", "bike"}, "length": 1})
+
+    new_links = n.split_links_on_mode("bike", link_id_prefix="HEYO-")
+
+    assert len(new_links) > 0
+    for link_id in new_links:
+        assert link_id.startswith("HEYO-")
+
+
+def test_splitting_links_generates_unique_ids_for_new_links():
+    n = Network("epsg:27700")
+    for i in range(10):
+        n.add_link(str(i), i, i + 1, attribs={"modes": {"car", "bike"}, "length": 1})
+
+    new_links = n.split_links_on_mode("bike", link_id_prefix="HEYO-")
+
+    assert isinstance(new_links, set)
+    assert len(new_links) == 10
+
+
 def test_find_shortest_path_when_graph_has_no_extra_edge_choices():
     n = Network("epsg:27700")
     n.add_link("0", 1, 2, attribs={"modes": ["car", "bike"], "length": 1})

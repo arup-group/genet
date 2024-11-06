@@ -5,7 +5,7 @@ import os
 import traceback
 import uuid
 from copy import deepcopy
-from typing import Any, Callable, Iterator, Literal, Optional, Union
+from typing import Any, Callable, Iterator, Literal, Optional, Set, Union
 
 import geopandas as gpd
 import networkx as nx
@@ -783,6 +783,21 @@ class Network:
             self.links(), {"modes": empty_modes}, mixed_dtypes=False
         )
         self.remove_links(no_mode_links)
+
+    def split_links_on_mode(self, mode: str, link_id_prefix: Optional[str] = None) -> Set[str]:
+        if link_id_prefix is None:
+            link_id_prefix = f"{mode}---"
+        modal_links = self.links_on_modal_condition({mode})
+        new_links = {
+            f"{link_id_prefix}{k}": {
+                **self.link(k),
+                **{"modes": {mode}, "id": f"{link_id_prefix}{k}"},
+            }
+            for k in modal_links
+        }
+        self.remove_mode_from_links(modal_links, mode)
+        self.add_links(new_links)
+        return set(new_links.keys())
 
     def retain_n_connected_subgraphs(self, n: int, mode: str):
         """Method to remove modes in-place from link which do not belong to largest connected n components.
