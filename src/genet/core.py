@@ -743,6 +743,14 @@ class Network:
             n_connected_components=n_connected_components,
         )
 
+    def remove_mode_from_all_links(self, mode: Union[set, list, str]):
+        """Method to remove modes from links in-place.
+
+        Args:
+            mode (Union[set, list, str]): Which mode to remove.
+        """
+        self.remove_mode_from_links(set(self.link_id_mapping.keys()), mode)
+
     def remove_mode_from_links(self, links: Union[set, list], mode: Union[set, list, str]):
         """Method to remove modes from links in-place.
 
