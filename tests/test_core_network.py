@@ -2342,8 +2342,8 @@ def test_removing_mode_from_all_links_retains_other_modes_on_links():
 
     n.remove_mode_from_all_links(mode="bike")
 
-    assert n.link("0")["modes"] == {"car", "piggyback"}
-    assert n.link("1")["modes"] == {"car"}
+    assert n.link("0")["modes"] == {"car", "piggyback"}, "The link modes have been incorrectly set"
+    assert n.link("1")["modes"] == {"car"}, "The link modes have been incorrectly set"
 
 
 def test_removing_mode_from_all_links_deletes_links_with_no_other_modes():
@@ -2353,7 +2353,7 @@ def test_removing_mode_from_all_links_deletes_links_with_no_other_modes():
 
     n.remove_mode_from_all_links(mode="bike")
 
-    assert not n.has_link("1")
+    assert not n.has_link("1"), "The link with empty modes has not been removed"
 
 
 def test_removing_mode_from_all_links_does_not_omit_any_links():
@@ -2364,7 +2364,9 @@ def test_removing_mode_from_all_links_does_not_omit_any_links():
     n.remove_mode_from_all_links(mode="bike")
 
     for i in range(10):
-        assert "bike" not in n.link(str(i))["modes"]
+        assert (
+            "bike" not in n.link(str(i))["modes"]
+        ), f"The `bike` mode as not been deleted from link `{i}`"
 
 
 def test_removing_mode_from_links_updates_the_modes():
@@ -2408,7 +2410,7 @@ def test_splitting_links_removes_required_mode_from_existing_links():
 
     n.split_links_on_mode("bike")
 
-    assert n.link("0")["modes"] == {"car"}
+    assert n.link("0")["modes"] == {"car"}, "The link modes have been incorrectly set"
 
 
 def test_splitting_links_creates_new_links_of_required_mode():
@@ -2417,10 +2419,10 @@ def test_splitting_links_creates_new_links_of_required_mode():
 
     new_links = n.split_links_on_mode("bike")
 
-    assert len(new_links) == 1
+    assert len(new_links) == 1, "A new link was not generated"
     new_link = list(new_links)[0]
-    assert n.has_link(new_link)
-    assert n.link(new_link)["modes"] == {"bike"}
+    assert n.has_link(new_link), "The new link was not found in the Network"
+    assert n.link(new_link)["modes"] == {"bike"}, "The mode of the new link is wrong"
 
 
 def test_data_retained_when_splitting_links():
@@ -2429,10 +2431,12 @@ def test_data_retained_when_splitting_links():
 
     new_links = n.split_links_on_mode("bike")
 
-    assert len(new_links) == 1
+    assert len(new_links) == 1, "A new link was not generated"
     new_link = list(new_links)[0]
-    assert "BIG" in n.link(new_link)
-    assert n.link(new_link)["BIG"] == "DATA"
+    assert "BIG" in n.link(new_link), "Attribute key was not found in the data saved on the link"
+    assert (
+        n.link(new_link)["BIG"] == "DATA"
+    ), "The new link did not inherit the same attribute value"
 
 
 def test_splitting_links_uses_desired_prefix_for_new_link_ids():
@@ -2441,9 +2445,11 @@ def test_splitting_links_uses_desired_prefix_for_new_link_ids():
 
     new_links = n.split_links_on_mode("bike", link_id_prefix="HEYO-")
 
-    assert len(new_links) > 0
+    assert len(new_links) > 0, "No new links were generated"
     for link_id in new_links:
-        assert link_id.startswith("HEYO-")
+        assert link_id.startswith(
+            "HEYO-"
+        ), "The ID of a new link did not start with the desired prefix"
 
 
 def test_splitting_links_generates_unique_ids_for_new_links():
@@ -2453,8 +2459,29 @@ def test_splitting_links_generates_unique_ids_for_new_links():
 
     new_links = n.split_links_on_mode("bike", link_id_prefix="HEYO-")
 
-    assert isinstance(new_links, set)
-    assert len(new_links) == 10
+    new_links = set(new_links)  # To force uniqueness
+    assert len(new_links) == 10, "The number of link IDs is incorrect"
+    for link_id in new_links:
+        assert (
+            n.link(link_id)["id"] == link_id
+        ), "The ID declared in attributes does not match the ID in the Network object"
+
+
+def test_splitting_links_generates_unique_ids_for_new_links_if_given_empty_prefix():
+    n = Network("epsg:27700")
+    link_ids = {str(i) for i in range(10)}
+    for i, link_id in enumerate(link_ids):
+        n.add_link(link_id, i, i + 1, attribs={"modes": {"car", "bike"}, "length": 1})
+
+    new_links = n.split_links_on_mode("bike", link_id_prefix="")
+
+    new_links = set(new_links)  # To force uniqueness
+    assert len(new_links) == 10, "The number of link IDs is incorrect"
+    assert new_links & link_ids == set(), "There is an overlap between IDs already used and new"
+    for link_id in new_links:
+        assert (
+            n.link(link_id)["id"] == link_id
+        ), "The ID declared in attributes does not match the ID in the Network object"
 
 
 def test_find_shortest_path_when_graph_has_no_extra_edge_choices():
