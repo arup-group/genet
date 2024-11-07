@@ -11,9 +11,20 @@ on:
       - CONTRIBUTING.md
       - docs/**
       - mkdocs.yml
+      - ".github/**/*"
+      - "!.github/workflows/pr-ci.yml"
 
 jobs:
+  lint:
+    if: github.event.repository.private
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pre-commit/action@v3.0.1
+
   test:
+    needs: lint
+    if: always() && (needs.lint.result  == 'success' || needs.lint.result  == 'skipped')
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
