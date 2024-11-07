@@ -2342,8 +2342,8 @@ def test_removing_mode_from_all_links_retains_other_modes_on_links():
 
     n.remove_mode_from_all_links(mode="bike")
 
-    assert n.link("0")["modes"] == {"car", "piggyback"}
-    assert n.link("1")["modes"] == {"car"}
+    assert n.link("0")["modes"] == {"car", "piggyback"}, "The link modes have been incorrectly set"
+    assert n.link("1")["modes"] == {"car"}, "The link modes have been incorrectly set"
 
 
 def test_removing_mode_from_all_links_deletes_links_with_no_other_modes():
@@ -2353,7 +2353,7 @@ def test_removing_mode_from_all_links_deletes_links_with_no_other_modes():
 
     n.remove_mode_from_all_links(mode="bike")
 
-    assert not n.has_link("1")
+    assert not n.has_link("1"), "The link with empty modes has not been removed"
 
 
 def test_removing_mode_from_all_links_does_not_omit_any_links():
@@ -2364,7 +2364,9 @@ def test_removing_mode_from_all_links_does_not_omit_any_links():
     n.remove_mode_from_all_links(mode="bike")
 
     for i in range(10):
-        assert "bike" not in n.link(str(i))["modes"]
+        assert (
+            "bike" not in n.link(str(i))["modes"]
+        ), f"The `bike` mode as not been deleted from link `{i}`"
 
 
 def test_removing_mode_from_links_updates_the_modes():
