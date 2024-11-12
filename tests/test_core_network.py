@@ -2335,6 +2335,40 @@ def test_subnetwork_on_spatial_condition_delagates_to_spatial_methods_to_get_sub
     )
 
 
+def test_removing_mode_from_all_links_retains_other_modes_on_links():
+    n = Network("epsg:27700")
+    n.add_link("0", 1, 2, attribs={"modes": {"car", "bike", "piggyback"}, "length": 1})
+    n.add_link("1", 2, 3, attribs={"modes": {"car", "bike"}, "length": 1})
+
+    n.remove_mode_from_all_links(mode="bike")
+
+    assert n.link("0")["modes"] == {"car", "piggyback"}, "The link modes have been incorrectly set"
+    assert n.link("1")["modes"] == {"car"}, "The link modes have been incorrectly set"
+
+
+def test_removing_mode_from_all_links_deletes_links_with_no_other_modes():
+    n = Network("epsg:27700")
+    n.add_link("0", 1, 2, attribs={"modes": {"car", "bike"}, "length": 1})
+    n.add_link("1", 2, 3, attribs={"modes": {"bike"}, "length": 1})
+
+    n.remove_mode_from_all_links(mode="bike")
+
+    assert not n.has_link("1"), "The link with empty modes has not been removed"
+
+
+def test_removing_mode_from_all_links_does_not_omit_any_links():
+    n = Network("epsg:27700")
+    for i in range(10):
+        n.add_link(str(i), i, i + 1, attribs={"modes": {"car", "bike"}, "length": 1})
+
+    n.remove_mode_from_all_links(mode="bike")
+
+    for i in range(10):
+        assert (
+            "bike" not in n.link(str(i))["modes"]
+        ), f"The `bike` mode as not been deleted from link `{i}`"
+
+
 def test_removing_mode_from_links_updates_the_modes():
     n = Network("epsg:27700")
     n.add_link("0", 1, 2, attribs={"modes": {"car", "bike"}, "length": 1})
