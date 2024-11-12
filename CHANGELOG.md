@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 * Convenience method to strip all links of a given mode [#243](https://github.com/arup-group/genet/issues/243)
+* Method to split links on mode. New links are generated of given mode based on existing links [#244](https://github.com/arup-group/genet/issues/244)
 
 ### Fixed
 
