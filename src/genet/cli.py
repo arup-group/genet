@@ -1045,8 +1045,8 @@ def separate_modes_in_network(
         [out] {"id": "bike---LINK_ID", "modes": {"bike"}, "freespeed": 5, ...}
         ```
 
-        In the case when a link already has a single dedicated mode, no updates are made to the link ID.
-        You can assume that all links that were in the network previously are still there, but their allowed modes may have changed.
+        In the case when a link already has a single dedicated mode, it will be replaced aby a link with a new, prefixed ID.
+        Other links modes will have changed also.
         So, any simulation outputs may not be valid with this new network.
     """
     modes = modes.split(",")
