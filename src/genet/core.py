@@ -788,7 +788,25 @@ class Network:
         """Method to split links depending on mode.
         Existing links with mode `mode` will have that mode removed.
         New links will be added with only the mode `mode` and inheriting data from the link they originated from.
-        The IDs of ne link IDs will by default identify the mode, but can be changed with `link_id_prefix`.
+        The IDs of new link IDs will by default identify the mode, but can be changed with `link_id_prefix`.
+
+        Examples:
+            ```python
+            [1] network.link("LINK_ID")
+            [out] {"id": "LINK_ID", "modes": {"car", "bike"}, "freespeed": 5, ...}
+            ```
+
+            The new bike link will assume all the same attributes apart from the "modes":
+            ```python
+            [3] network.link("bike---LINK_ID")`
+            [out] {"id": "bike---LINK_ID", "modes": {"bike"}, "freespeed": 5, ...}
+            ```
+
+            The old link will have the `bike` mode removed
+            ```python
+            [4] network.link("LINK_ID")
+            [out] {"id": "LINK_ID", "modes": {"car"}, "freespeed": 5, ...}
+            ```
 
         Args:
             mode (str): Mode to split from the links.
