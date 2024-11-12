@@ -15,7 +15,6 @@ theme:
     - navigation.indexes
     - navigation.top
     - content.code.copy
-    - content.code.annotate
 repo_url: https://github.com/arup-group/genet/
 site_dir: .docs
 markdown_extensions:
