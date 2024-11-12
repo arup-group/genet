@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+* Convenience method to strip all links of a given mode [#243](https://github.com/arup-group/genet/issues/243)
+
 ### Fixed
 
 * Fixed generating standard outputs by highway tag which were broken after moving to storing additional attributes in short form [#217](https://github.com/arup-group/genet/pull/217)
