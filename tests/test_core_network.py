@@ -1938,6 +1938,26 @@ def test_adding_multiple_links_with_id_and_multi_idx_clashes(assert_semantically
     )
 
 
+def test_adding_many_links_with_id_and_multi_idx_clashes(assert_semantically_equal, mocker):
+    n = Network("epsg:27700")
+    for i in range(3):
+        n.add_link(str(i), 1, 2)
+    n.remove_link(str(1))
+    # this method will sometimes output the smallest multiindex and sometimes just the next
+    # one after the highest used one. We fix it's return value to 1, an available index
+    # inbetween which caused this issue: https://github.com/arup-group/genet/issues/248
+    # I'm mocking this method here and not at the top of this test because adding the initial links
+    # to the graph would be impacted by it
+    mocker.patch.object(nx.MultiDiGraph, "new_edge_key", return_value=1)
+    links_to_add = {f"new-{i}": {"id": f"new-{i}", "from": 1, "to": 2} for i in range(3)}
+
+    reindexing_dict, links_and_attribs = n.add_links(links_to_add)
+
+    assert (
+        len({v["multi_edge_idx"] for v in n.link_id_mapping.values()}) == 5
+    ), "Some multiindices were not unique"
+
+
 def test_adding_multiple_links_missing_some_from_nodes():
     n = Network("epsg:27700")
     with pytest.raises(RuntimeError) as error_info:
