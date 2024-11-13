@@ -796,6 +796,11 @@ class Network:
             [out] {"id": "LINK_ID", "modes": {"car", "bike"}, "freespeed": 5, ...}
             ```
 
+            ```python
+            [2] network.split_links_on_mode("bike")
+            [out] {"bike---LINK_ID"}
+            ```
+
             The new bike link will assume all the same attributes apart from the "modes":
             ```python
             [3] network.link("bike---LINK_ID")`

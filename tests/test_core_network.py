@@ -2445,11 +2445,10 @@ def test_splitting_links_uses_desired_prefix_for_new_link_ids():
 
     new_links = n.split_links_on_mode("bike", link_id_prefix="HEYO-")
 
-    assert len(new_links) > 0, "No new links were generated"
-    for link_id in new_links:
-        assert link_id.startswith(
-            "HEYO-"
-        ), "The ID of a new link did not start with the desired prefix"
+    assert len(new_links) == 1, "No new links were generated"
+    assert list(new_links)[0].startswith(
+        "HEYO-"
+    ), "The ID of a new link did not start with the desired prefix"
 
 
 def test_splitting_links_generates_unique_ids_for_new_links():
@@ -2459,12 +2458,15 @@ def test_splitting_links_generates_unique_ids_for_new_links():
 
     new_links = n.split_links_on_mode("bike", link_id_prefix="HEYO-")
 
-    new_links = set(new_links)  # To force uniqueness
+    assert isinstance(new_links, set)  # To force uniqueness
     assert len(new_links) == 10, "The number of link IDs is incorrect"
     for link_id in new_links:
         assert (
             n.link(link_id)["id"] == link_id
         ), "The ID declared in attributes does not match the ID in the Network object"
+        assert link_id.startswith(
+            "HEYO-"
+        ), "The ID of a new link did not start with the desired prefix"
 
 
 def test_splitting_links_generates_unique_ids_for_new_links_if_given_empty_prefix():
@@ -2475,7 +2477,7 @@ def test_splitting_links_generates_unique_ids_for_new_links_if_given_empty_prefi
 
     new_links = n.split_links_on_mode("bike", link_id_prefix="")
 
-    new_links = set(new_links)  # To force uniqueness
+    assert isinstance(new_links, set)  # To force uniqueness
     assert len(new_links) == 10, "The number of link IDs is incorrect"
     assert new_links & link_ids == set(), "There is an overlap between IDs already used and new"
     for link_id in new_links:
