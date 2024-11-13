@@ -5,7 +5,7 @@ import os
 import traceback
 import uuid
 from copy import deepcopy
-from typing import Any, Callable, Iterator, Literal, Optional, Union
+from typing import Any, Callable, Iterator, Literal, Optional, Set, Union
 
 import geopandas as gpd
 import networkx as nx
@@ -783,6 +783,61 @@ class Network:
             self.links(), {"modes": empty_modes}, mixed_dtypes=False
         )
         self.remove_links(no_mode_links)
+
+    def split_links_on_mode(self, mode: str, link_id_prefix: Optional[str] = None) -> Set[str]:
+        """Method to split links depending on mode.
+        Existing links with mode `mode` will have that mode removed.
+        New links will be added with only the mode `mode` and inheriting data from the link they originated from.
+        The IDs of new link IDs will by default identify the mode, but can be changed with `link_id_prefix`.
+
+        Examples:
+            ```python
+            [1] network.link("LINK_ID")
+            [out] {"id": "LINK_ID", "modes": {"car", "bike"}, "freespeed": 5, ...}
+            ```
+
+            ```python
+            [2] network.split_links_on_mode("bike")
+            [out] {"bike---LINK_ID"}
+            ```
+
+            The new bike link will assume all the same attributes apart from the "modes":
+            ```python
+            [3] network.link("bike---LINK_ID")`
+            [out] {"id": "bike---LINK_ID", "modes": {"bike"}, "freespeed": 5, ...}
+            ```
+
+            The old link will have the `bike` mode removed
+            ```python
+            [4] network.link("LINK_ID")
+            [out] {"id": "LINK_ID", "modes": {"car"}, "freespeed": 5, ...}
+            ```
+
+        Args:
+            mode (str): Mode to split from the links.
+            link_id_prefix (str): Optional, you can request what the
+
+        Returns:
+            Set of link IDs of the new links
+        """
+        modal_links = self.links_on_modal_condition({mode})
+        modal_links = list(modal_links)
+
+        if link_id_prefix == "":
+            logging.warning("Empty string was set as prefix, the IDs will be randomly assigned")
+            new_link_ids = self.generate_indices_for_n_edges(len(modal_links))
+        else:
+            if link_id_prefix is None:
+                link_id_prefix = f"{mode}---"
+            new_link_ids = [f"{link_id_prefix}{link_id}" for link_id in modal_links]
+        new_links = {
+            new_link_id: {**self.link(old_link_id), **{"modes": {mode}, "id": new_link_id}}
+            for new_link_id, old_link_id in zip(new_link_ids, modal_links)
+        }
+
+        self.remove_mode_from_links(modal_links, mode)
+        self.add_links(new_links)
+        return set(new_links.keys())
 
     def retain_n_connected_subgraphs(self, n: int, mode: str):
         """Method to remove modes in-place from link which do not belong to largest connected n components.

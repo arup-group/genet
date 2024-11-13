@@ -1045,8 +1045,8 @@ def separate_modes_in_network(
         [out] {"id": "bike---LINK_ID", "modes": {"bike"}, "freespeed": 5, ...}
         ```
 
-        In the case when a link already has a single dedicated mode, no updates are made to the link ID.
-        You can assume that all links that were in the network previously are still there, but their allowed modes may have changed.
+        In the case when a link already has a single dedicated mode, it will be replaced aby a link with a new, prefixed ID.
+        Other links modes will have changed also.
         So, any simulation outputs may not be valid with this new network.
     """
     modes = modes.split(",")
@@ -1061,23 +1061,12 @@ def separate_modes_in_network(
 
     for mode in modes:
         logging.info(f"Splitting links for mode: {mode}")
-        df = network.link_attribute_data_under_key("modes")
-        modal_links = network.links_on_modal_condition({mode})
-        # leave the links that have a single mode as they are
-        modal_links = set(modal_links) & set(df[df != {mode}].index)
-        update_mode_links = {k: {"modes": df.loc[k] - {mode}} for k in modal_links}
-        new_links = {
-            f"{mode}---{k}": {**network.link(k), **{"modes": {mode}, "id": f"{mode}---{k}"}}
-            for k in modal_links
-        }
-        network.apply_attributes_to_links(update_mode_links)
-        network.add_links(new_links)
+        new_links = network.split_links_on_mode(mode)
         if increase_capacity:
             logging.info(f"Increasing capacity for link of mode {mode} to 9999")
-            mode_links = network.extract_links_on_edge_attributes({"modes": mode})
-            df_capacity = network.link_attribute_data_under_keys(["capacity"]).loc[mode_links, :]
-            df_capacity["capacity"] = 9999
-            network.apply_attributes_to_links(df_capacity.T.to_dict())
+            network.apply_attributes_to_links(
+                {link_id: {"capacity": 9999} for link_id in new_links}
+            )
 
     logging.info(f"Number of links after separating graph: {len(network.link_id_mapping)}")
 
