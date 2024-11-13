@@ -1308,6 +1308,7 @@ class Network:
                 df_links[df_links["id"].isin(clashing_multi_idxs)]
                 .groupby(["from", "to"])
                 .apply(generate_unique_multi_idx)
+                .set_index("id", drop=False)
             )
 
             # generate unique indices if not
