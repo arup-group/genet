@@ -1938,7 +1938,7 @@ def test_adding_multiple_links_with_id_and_multi_idx_clashes(assert_semantically
     )
 
 
-def test_adding_many_links_with_id_and_multi_idx_clashes(assert_semantically_equal, mocker):
+def test_avoids_destructive_index_clashes_when_adding_replacement_links(mocker):
     n = Network("epsg:27700")
     for i in range(3):
         n.add_link(str(i), 1, 2)
@@ -1954,8 +1954,11 @@ def test_adding_many_links_with_id_and_multi_idx_clashes(assert_semantically_equ
     reindexing_dict, links_and_attribs = n.add_links(links_to_add)
 
     assert (
+        len(list(n.links())) == 5
+    ), "Network does not have the expected number of links: 5 = (3 original - 1 removed) + 3 new links"
+    assert (
         len({v["multi_edge_idx"] for v in n.link_id_mapping.values()}) == 5
-    ), "Some multiindices were not unique"
+    ), "Some multi-indices are not unique"
 
 
 def test_adding_multiple_links_missing_some_from_nodes():
