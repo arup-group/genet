@@ -1958,7 +1958,7 @@ def test_avoids_destructive_index_clashes_when_adding_replacement_links(mocker):
     ), "Network does not have the expected number of links: 5 = (3 original - 1 removed) + 3 new links"
     assert (
         len({v["multi_edge_idx"] for v in n.link_id_mapping.values()}) == 5
-    ), "Some multi-indices are not unique"
+    ), "Some multi-indices are not unique, the number of multi-indeces should match the number of links"
 
 
 def test_adding_multiple_links_missing_some_from_nodes():
