@@ -136,7 +136,7 @@ def _generate_modal_network_geojsons(network, modes, output_dir, filename_suffix
     gdf = network.to_geodataframe()["links"].to_crs(EPSG4326)
     for mode in modes:
         _gdf = gdf[gdf["modes"].apply(lambda x: mode in x)]
-        _gdf["modes"] = _gdf["modes"].apply(lambda x: ",".join(sorted(list(x))))
+        _gdf.loc[:, "modes"] = _gdf.loc[:, "modes"].apply(lambda x: ",".join(sorted(list(x))))
         save_geodataframe(_gdf, f"mode_{mode}_{filename_suffix}", output_dir)
 
 
@@ -1230,7 +1230,7 @@ def replace_modal_subgraph(
             # though this is unlikely, we extract link ids on mode,
             # to account for any ID clashes when adding links to the network
             modal_links = network.links_on_modal_condition({mode})
-            mode_links = {link_id: {"capacity": 9999} for link_id in modal_links.keys()}
+            mode_links = {link_id: {"capacity": 9999} for link_id in modal_links}
             network.apply_attributes_to_links(mode_links)
 
     logging.info(f"Number of nodes after adding modal graphs:{len(list(network.nodes()))}")
