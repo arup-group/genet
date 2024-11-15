@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+* Issue when adding edges to fill spaces left by removing other edges (failure in resolving multi indexing) [#248](https://github.com/arup-group/genet/issues/248)
 * Fixed generating standard outputs by highway tag which were broken after moving to storing additional attributes in short form [#217](https://github.com/arup-group/genet/pull/217)
 * Fixed summary report:
   * Intermodal Access/Egress reporting is more general (not expecting just car and bike mode access to PT) [#204](https://github.com/arup-group/genet/pull/204)
