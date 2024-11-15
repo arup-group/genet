@@ -221,7 +221,7 @@ class TestCLI:
             args=[
                 f"--network={EXAMPLE_NETWORK}",
                 f"--projection={PROJECTION}",
-                f"--subgraph={EXAMPLE_NETWORK}",
+                f"--subgraph={VERY_SMALL_NETWORK}",
                 "--modes=bike",
                 "--increase_capacity",
             ],
