@@ -229,7 +229,6 @@ class TestCLI:
                 "validation_report.json",
                 "network.xml",
                 os.path.join("supporting_outputs", "mode_bike_after.parquet"),
-                os.path.join("supporting_outputs", "mode_bike_before.parquet"),
             ],
         )
 
