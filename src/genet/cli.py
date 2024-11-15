@@ -1157,6 +1157,7 @@ def replace_modal_subgraph(
     ensure_dir(output_dir)
     ensure_dir(supporting_outputs)
 
+    # read all the data, report current state
     network = _read_network(path_to_network, projection)
     logging.info(f"Number of nodes in original network: {len(list(network.nodes()))}")
     logging.info(f"Number of links in original network: {len(network.link_id_mapping)}")
@@ -1164,32 +1165,52 @@ def replace_modal_subgraph(
     _generate_modal_network_geojsons(network, modes, supporting_outputs, "before_original_network")
     subgraph_network = _read_network(path_to_subgraph, projection)
 
+    # get nodes from the subgraph network for modes requested, networks can share nodes,
+    # we don't want to add them twice
+    logging.info(
+        "Extracting nodes connected to the subgraph links. "
+        "This happens only once for all modes concerned, to reduce the number of nodes added."
+    )
+    subgraph_modal_node_ids = subgraph_network.nodes_on_modal_condition(modes)
+    logging.info("Generating nodes to be added")
+    node_id_prefix = "-".join(modes) + "---"
+    # this mapping is used later for modal links that will use these modes
+    # we change IDs of the nodes to avoid clash with original network, and to make them distinguishable
+    sub_net_node_id_mapping = {
+        node_id: f"{node_id_prefix}-{node_id}" for node_id in subgraph_modal_node_ids
+    }
+    new_nodes = {
+        new_id: subgraph_network.node(old_id) | {"id": new_id}
+        for old_id, new_id in sub_net_node_id_mapping.items()
+    }
+    nodes_overlap = set(new_nodes.keys()) & set(network.link_id_mapping.keys())
+    if len(nodes_overlap) > 0:
+        logging.warning(
+            f"There are {len(nodes_overlap)} nodes that have clashing IDs with the original network."
+            "These clashes will be handled when added to the original network, "
+            f"but they will loose the prefix: `{node_id_prefix}` in their IDs"
+        )
+    logging.info(
+        f"Adding nodes from the subgraph network associated with the modes: {modes} to the original network"
+    )
+    network.add_nodes(new_nodes)
+
+    # get links from each modal subgraph
     for mode in modes:
-        id_prefix = f"{mode}---"
+        link_id_prefix = f"{mode}---"
 
         logging.info(f"Cleansing original network from mode: {mode}")
         network.remove_mode_from_all_links(mode)
 
         logging.info(f"Extracting links from subgraph for mode: {mode}")
         subgraph_modal_link_ids = subgraph_network.split_links_on_mode(
-            mode, link_id_prefix=id_prefix
+            mode, link_id_prefix=link_id_prefix
         )
         if len(subgraph_modal_link_ids) == 0:
             raise RuntimeError(f"The subgraph network had no links of mode {mode}!")
         logging.info(
             f"Number of links of mode {mode} in subgraph network: {len(subgraph_modal_link_ids)}"
         )
-
-        logging.info("Extracting nodes connected to the subgraph links")
-        subgraph_modal_node_ids = subgraph_network.nodes_on_modal_condition({mode})
-        logging.info("Generating nodes to be added")
-        sub_net_node_id_mapping = {
-            node_id: f"{id_prefix}{node_id}" for node_id in subgraph_modal_node_ids
-        }
-        new_nodes = {
-            new_id: subgraph_network.node(old_id) | {"id": new_id}
-            for old_id, new_id in sub_net_node_id_mapping.items()
-        }
 
         logging.info("Generating links to be added")
         new_links = {}
@@ -1207,20 +1228,8 @@ def replace_modal_subgraph(
             logging.warning(
                 f"There are {len(links_overlap)} modal links that have clashing IDs with the original network."
                 "These clashes will be handled when added to the original network, "
-                f"but they will loose the prefix: `{id_prefix}` in their IDs"
+                f"but they will loose the prefix: `{link_id_prefix}` in their IDs"
             )
-        nodes_overlap = set(new_nodes.keys()) & set(network.link_id_mapping.keys())
-        if len(nodes_overlap) > 0:
-            logging.warning(
-                f"There are {len(nodes_overlap)} nodes that have clashing IDs with the original network."
-                "These clashes will be handled when added to the original network, "
-                f"but they will loose the prefix: `{id_prefix}` in their IDs"
-            )
-
-        logging.info(
-            f"Adding nodes from the subgraph network associated with the mode {mode} to the original network"
-        )
-        network.add_nodes(new_nodes)
 
         logging.info(f"Adding modal subgraph links of mode {mode} to the original network")
         network.add_links(new_links)
@@ -1233,14 +1242,15 @@ def replace_modal_subgraph(
             mode_links = {link_id: {"capacity": 9999} for link_id in modal_links}
             network.apply_attributes_to_links(mode_links)
 
-    logging.info(f"Number of nodes after adding modal graphs:{len(list(network.nodes()))}")
+    # report on final state, save outputs
+    logging.info(f"Number of nodes after adding modal graphs: {len(list(network.nodes()))}")
     logging.info(f"Number of links after adding modal graphs: {len(network.link_id_mapping)}")
 
     network.write_to_matsim(output_dir)
 
     logging.info("Generating validation report")
     report = network.generate_validation_report()
-    logging.info(f'Graph validation: {report["graph"]["graph_connectivity"]}')
+    logging.info(f"Graph validation: {report["graph"]["graph_connectivity"]}")
     _to_json(report, output_dir / "validation_report.json")
 
     _generate_modal_network_geojsons(network, modes, supporting_outputs, "after")
