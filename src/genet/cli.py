@@ -1242,6 +1242,11 @@ def replace_modal_subgraph(
             mode_links = {link_id: {"capacity": 9999} for link_id in modal_links}
             network.apply_attributes_to_links(mode_links)
 
+    # finally check and remove any isolated nodes that may have been left after removing modal links from the
+    # original network
+    logging.info("Checking for isolated nodes")
+    network.remove_isolated_nodes()
+
     # report on final state, save outputs
     logging.info(f"Number of nodes after adding modal graphs: {len(list(network.nodes()))}")
     logging.info(f"Number of links after adding modal graphs: {len(network.link_id_mapping)}")
