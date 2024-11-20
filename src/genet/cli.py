@@ -1250,7 +1250,7 @@ def replace_modal_subgraph(
 
     logging.info("Generating validation report")
     report = network.generate_validation_report()
-    logging.info(f"Graph validation: {report["graph"]["graph_connectivity"]}")
+    logging.info(f'Graph validation: {report["graph"]["graph_connectivity"]}')
     _to_json(report, output_dir / "validation_report.json")
 
     _generate_modal_network_geojsons(network, modes, supporting_outputs, "after")
