@@ -1115,7 +1115,7 @@ def replace_modal_subgraph(
     modes: str,
     increase_capacity: bool,
 ):
-    """Add extracted modal subgraphs from the `subgraph network` to the main `network` (without merging links)
+    """Add extracted modal subgraphs from the `subgraph network` to the main `network` (without merging links).
 
     This creates separate modal subgraphs for the given modes.
     It replaces any mentions or links of specified modes, in the original network, and replaces them with links taken
@@ -1141,15 +1141,18 @@ def replace_modal_subgraph(
         [out] {"id": "LINK_ID", "modes": {"car"}, "some_attrib": "network", ...}
         ```
 
-        The new bike links will make their way from the subgraph network, with just the intended mode,
-        inheriting data from the subgraph links
+        The new bike links will make their way from the subgraph network, with just the intended mode.
+        The links will retain all data from the subgraph links.
+        Their ID will change to indicate the modal subgraph they belong to.
         ```python
         [1] network.link("bike---SUBNET_LINK_ID")`
         [out] {"id": "bike---SUBNET_LINK_ID", "modes": {"bike"}, "some_attrib": "sub_network", ...}
         ```
 
-        In the case when a link already has a single dedicated mode in the network, that link will be removed.
-        For other links in the network, their allowed modes may have changed.
+        Nodes related to the subgraph links will also be added, only once
+        (if multiple modes are requested, and they share nodes)
+        In the case when a link in the original network has a single dedicated mode, that link will be removed.
+        For other links in the network, their allowed modes will have changed if they allowed the requested modes.
         So, any simulation outputs may not be valid with this new network.
     """
     modes = modes.split(",")
@@ -1195,7 +1198,7 @@ def replace_modal_subgraph(
     )
     network.add_nodes(new_nodes)
 
-    # get links from each modal subgraph
+    # strip and add links for each modal subgraph
     for mode in modes:
         link_id_prefix = f"{mode}---"
 
