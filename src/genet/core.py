@@ -774,7 +774,8 @@ class Network:
 
         df["modes"] = df["modes"].apply(lambda x: persistence.setify(x))
 
-        df = df.loc[df.index.intersection(links)][df["modes"].apply(lambda x: bool(mode & x))]
+        df = df.loc[df.index.intersection(links)]
+        df = df[df["modes"].apply(lambda x: bool(mode & x))]
         df["modes"] = df["modes"].apply(lambda x: x - mode)
         self.apply_attributes_to_links(df.T.to_dict())
 

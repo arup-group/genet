@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v2.dtd">
+<network>
+    <attributes>
+        <attribute name="crs" class="java.lang.String">epsg:27700</attribute>
+    </attributes>
+    <nodes>
+        <node id="A" x="528704.1425925883" y="182068.78193707118"/>
+        <node id="B" x="528835.203274008" y="182006.27331298392"/>
+        <node id="C" x="528610.5713256176" y="181809.83394514362"/>
+    </nodes>
+    <links>
+        <link id="A-B" from="A" to="B" length="10" freespeed="5" capacity="200" permlanes="1" oneway="1" modes="car,bike">
+            <attributes>
+                <attribute name="osm:way:highway" class="java.lang.String">secondary</attribute>
+            </attributes>
+        </link>
+        <link id="B-C" from="B" to="C" length="10" freespeed="5" capacity="200" permlanes="1" oneway="1" modes="car,bike">
+            <attributes>
+                <attribute name="osm:way:highway" class="java.lang.String">secondary</attribute>
+            </attributes>
+        </link>
+        <link id="B-A" from="B" to="A" length="10" freespeed="5" capacity="200" permlanes="1" oneway="1" modes="car,bike">
+            <attributes>
+                <attribute name="osm:way:highway" class="java.lang.String">secondary</attribute>
+            </attributes>
+        </link>
+        <link id="C-B" from="C" to="B" length="10" freespeed="5" capacity="200" permlanes="1" oneway="1" modes="car,bike">
+            <attributes>
+                <attribute name="osm:way:highway" class="java.lang.String">secondary</attribute>
+            </attributes>
+        </link>
+        <link id="bike-C-A" from="C" to="A" length="25" freespeed="5" capacity="200" permlanes="1" oneway="1" modes="bike">
+            <attributes>
+                <attribute name="shortcut" class="java.lang.String">yes</attribute>
+            </attributes>
+        </link>
+    </links>
+</network>

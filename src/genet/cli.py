@@ -136,7 +136,7 @@ def _generate_modal_network_geojsons(network, modes, output_dir, filename_suffix
     gdf = network.to_geodataframe()["links"].to_crs(EPSG4326)
     for mode in modes:
         _gdf = gdf[gdf["modes"].apply(lambda x: mode in x)]
-        _gdf["modes"] = _gdf["modes"].apply(lambda x: ",".join(sorted(list(x))))
+        _gdf.loc[:, "modes"] = _gdf.loc[:, "modes"].apply(lambda x: ",".join(sorted(list(x))))
         save_geodataframe(_gdf, f"mode_{mode}_{filename_suffix}", output_dir)
 
 
@@ -1063,7 +1063,7 @@ def separate_modes_in_network(
         logging.info(f"Splitting links for mode: {mode}")
         new_links = network.split_links_on_mode(mode)
         if increase_capacity:
-            logging.info(f"Increasing capacity for link of mode {mode} to 9999")
+            logging.info(f"Increasing capacity for links of mode {mode} to 9999")
             network.apply_attributes_to_links(
                 {link_id: {"capacity": 9999} for link_id in new_links}
             )
@@ -1078,6 +1078,204 @@ def separate_modes_in_network(
     _to_json(report, output_dir / "validation_report.json")
 
     _generate_modal_network_geojsons(network, modes, supporting_outputs, "after")
+
+
+@cli.command()
+@xml_file("network")
+@projection
+@output_dir
+@click.option(
+    "-sg",
+    "--subgraph",
+    "path_to_subgraph",
+    help="Path to the network xml file of the subgraph(s) to be added",
+    type=click.Path(exists=True, path_type=Path),
+    required=True,
+)
+@click.option(
+    "-m",
+    "--modes",
+    help="Comma delimited list of modes to add from the subgraph network",
+    type=str,
+    required=True,
+)
+@click.option(
+    "-ic",
+    "--increase_capacity",
+    help="Sets capacity on added links to 9999",
+    required=False,
+    default=False,
+    is_flag=True,
+)
+def replace_modal_subgraph(
+    path_to_network: Path,
+    projection: str,
+    output_dir: Path,
+    path_to_subgraph: Path,
+    modes: str,
+    increase_capacity: bool,
+):
+    """Add extracted modal subgraphs from the `subgraph network` to the main `network` (without merging links).
+
+    This creates separate modal subgraphs for the given modes.
+    It replaces any mentions or links of specified modes, in the original network, and replaces them with links taken
+    from the subgraph network.
+    The modes do not come in contact with any other modes. The links will be independent of each other.
+
+    Examples:
+        Let's say we have a network with some bike mode links, e.g.
+        ```python
+        [1] network.link("LINK_ID")
+        [out] {"id": "LINK_ID", "modes": {"car", "bike"}, "some_attrib": "network", ...}
+        ```
+
+        And a subgraph network, loaded from another network file, which also has different modes
+        ```python
+        [1] subgraph_network.link("SUBNET_LINK_ID")
+        [out] {"id": "SUBNET_LINK_ID", "modes": {"car", "bike"}, "some_attrib": "sub_network", ...}
+        ```
+
+        When opting for "bike" mode replacement. The links in the original network will have their bike modes stripped
+        ```python
+        [1] network.link("LINK_ID")
+        [out] {"id": "LINK_ID", "modes": {"car"}, "some_attrib": "network", ...}
+        ```
+
+        The new bike links will make their way from the subgraph network, with just the intended mode.
+        The links will retain all data from the subgraph links.
+        Their ID will change to indicate the modal subgraph they belong to.
+        ```python
+        [1] network.link("bike---SUBNET_LINK_ID")`
+        [out] {"id": "bike---SUBNET_LINK_ID", "modes": {"bike"}, "some_attrib": "sub_network", ...}
+        ```
+
+        Nodes related to the subgraph links will also be added, only once
+        (if multiple modes are requested, and they share nodes)
+        In the case when a link in the original network has a single dedicated mode, that link will be removed.
+        For other links in the network, their allowed modes will have changed if they allowed the requested modes.
+        So, any simulation outputs may not be valid with this new network.
+    """
+    _replace_modal_subgraph(
+        path_to_network, projection, output_dir, path_to_subgraph, modes, increase_capacity
+    )
+
+
+def _replace_modal_subgraph(
+    path_to_network: Path,
+    projection: str,
+    output_dir: Path,
+    path_to_subgraph: Path,
+    modes: str,
+    increase_capacity: bool,
+) -> Network:
+    modes = modes.split(",")
+    supporting_outputs = output_dir / "supporting_outputs"
+    ensure_dir(output_dir)
+    ensure_dir(supporting_outputs)
+
+    # read all the data, report current state
+    network = _read_network(path_to_network, projection)
+    logging.info(f"Number of nodes in original network: {len(list(network.nodes()))}")
+    logging.info(f"Number of links in original network: {len(network.link_id_mapping)}")
+
+    _generate_modal_network_geojsons(network, modes, supporting_outputs, "before_original_network")
+    subgraph_network = _read_network(path_to_subgraph, projection)
+
+    # get nodes from the subgraph network for modes requested, networks can share nodes,
+    # we don't want to add them twice
+    logging.info(
+        "Extracting nodes connected to the subgraph links. "
+        "This happens only once for all modes concerned, to reduce the number of nodes added."
+    )
+    subgraph_modal_node_ids = subgraph_network.nodes_on_modal_condition(modes)
+    logging.info("Generating nodes to be added")
+    node_id_prefix = "-".join(modes) + "---"
+    # this mapping is used later for modal links that will use these modes
+    # we change IDs of the nodes to avoid clash with original network, and to make them distinguishable
+    sub_net_node_id_mapping = {
+        node_id: f"{node_id_prefix}-{node_id}" for node_id in subgraph_modal_node_ids
+    }
+    new_nodes = {
+        new_id: subgraph_network.node(old_id) | {"id": new_id}
+        for old_id, new_id in sub_net_node_id_mapping.items()
+    }
+    nodes_overlap = set(new_nodes.keys()) & set(network.link_id_mapping.keys())
+    if len(nodes_overlap) > 0:
+        logging.warning(
+            f"There are {len(nodes_overlap)} nodes that have clashing IDs with the original network."
+            "These clashes will be handled when added to the original network, "
+            f"but they will loose the prefix: `{node_id_prefix}` in their IDs"
+        )
+    logging.info(
+        f"Adding nodes from the subgraph network associated with the modes: {modes} to the original network"
+    )
+    network.add_nodes(new_nodes)
+
+    # strip and add links for each modal subgraph
+    for mode in modes:
+        link_id_prefix = f"{mode}---"
+
+        logging.info(f"Cleansing original network from mode: {mode}")
+        network.remove_mode_from_all_links(mode)
+
+        logging.info(f"Extracting links from subgraph for mode: {mode}")
+        subgraph_modal_link_ids = subgraph_network.split_links_on_mode(
+            mode, link_id_prefix=link_id_prefix
+        )
+        if len(subgraph_modal_link_ids) == 0:
+            raise RuntimeError(f"The subgraph network had no links of mode {mode}!")
+        logging.info(
+            f"Number of links of mode {mode} in subgraph network: {len(subgraph_modal_link_ids)}"
+        )
+
+        logging.info("Generating links to be added")
+        new_links = {}
+        for link_id in subgraph_modal_link_ids:
+            links_data = subgraph_network.link(link_id)
+            new_links[link_id] = (
+                links_data
+                | {"from": sub_net_node_id_mapping[links_data["from"]]}
+                | {"to": sub_net_node_id_mapping[links_data["to"]]}
+            )
+
+        logging.info("Checking uniqueness of IDs between two networks")
+        links_overlap = set(subgraph_modal_link_ids) & set(network.link_id_mapping.keys())
+        if len(links_overlap) > 0:
+            logging.warning(
+                f"There are {len(links_overlap)} modal links that have clashing IDs with the original network."
+                "These clashes will be handled when added to the original network, "
+                f"but they will loose the prefix: `{link_id_prefix}` in their IDs"
+            )
+
+        logging.info(f"Adding modal subgraph links of mode {mode} to the original network")
+        network.add_links(new_links)
+
+        if increase_capacity:
+            logging.info(f"Increasing capacity for links of mode {mode} to `9999`")
+            # though this is unlikely, we extract link ids on mode,
+            # to account for any ID clashes when adding links to the network
+            modal_links = network.links_on_modal_condition({mode})
+            mode_links = {link_id: {"capacity": 9999} for link_id in modal_links}
+            network.apply_attributes_to_links(mode_links)
+
+    # finally check and remove any isolated nodes that may have been left after removing modal links from the
+    # original network
+    logging.info("Checking for isolated nodes")
+    network.remove_isolated_nodes()
+
+    # report on final state, save outputs
+    logging.info(f"Number of nodes after adding modal graphs: {len(list(network.nodes()))}")
+    logging.info(f"Number of links after adding modal graphs: {len(network.link_id_mapping)}")
+
+    network.write_to_matsim(output_dir)
+
+    logging.info("Generating validation report")
+    report = network.generate_validation_report()
+    logging.info(f'Graph validation: {report["graph"]["graph_connectivity"]}')
+    _to_json(report, output_dir / "validation_report.json")
+
+    _generate_modal_network_geojsons(network, modes, supporting_outputs, "after")
+    return network
 
 
 @cli.command()
