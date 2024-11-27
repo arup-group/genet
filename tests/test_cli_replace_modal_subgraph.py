@@ -16,7 +16,7 @@ def network(tmpdir):
         attribs={"modes": {"car", "bike", "bus"}, "permlanes": 1, "freespeed": 1, "capacity": 1},
     )
     n.write_to_matsim(output_dir)
-    return {"network": n, "bike_link_id": "link_n1_n2", "path": output_dir / "network.xml"}
+    return {"network": n, "link_id": "link_n1_n2", "path": output_dir / "network.xml"}
 
 
 @pytest.fixture()
@@ -39,11 +39,8 @@ def sub_network(tmpdir):
     n.write_to_matsim(output_dir)
     return {
         "network": n,
-        "bike_node_ids": ["n1", "n2"],
         "bike_link_id": "link_n1_n2",
-        "expected_bike_node_ids": ["bike---n1", "bike---n2"],
         "expected_bike_link_id": "bike---link_n1_n2",
-        "expected_node_id_mapping": {"n1": "bike---bike---n1", "n2": "bike---n2"},
         "expected_link_id_mapping": {"link_n1_n2": "bike---link_n1_n2"},
         "path": output_dir / "network.xml",
     }
@@ -128,7 +125,7 @@ def test_increases_capacity_for_added_links_only(tmpdir, network, sub_network):
         output_network.link(expected_new_link_id)["capacity"] == 9999
     ), f"Link {expected_new_link_id} did not have capacity increased"
 
-    link_id = network["bike_link_id"]
+    link_id = network["link_id"]
     assert output_network.has_link(link_id), f"Link {link_id} is missing from the output network"
     assert (
         output_network.link(link_id)["capacity"] == original_net_capacity[link_id]
