@@ -1155,6 +1155,19 @@ def replace_modal_subgraph(
         For other links in the network, their allowed modes will have changed if they allowed the requested modes.
         So, any simulation outputs may not be valid with this new network.
     """
+    _replace_modal_subgraph(
+        path_to_network, projection, output_dir, path_to_subgraph, modes, increase_capacity
+    )
+
+
+def _replace_modal_subgraph(
+    path_to_network: Path,
+    projection: str,
+    output_dir: Path,
+    path_to_subgraph: Path,
+    modes: str,
+    increase_capacity: bool,
+) -> Network:
     modes = modes.split(",")
     supporting_outputs = output_dir / "supporting_outputs"
     ensure_dir(output_dir)
@@ -1262,6 +1275,7 @@ def replace_modal_subgraph(
     _to_json(report, output_dir / "validation_report.json")
 
     _generate_modal_network_geojsons(network, modes, supporting_outputs, "after")
+    return network
 
 
 @cli.command()
