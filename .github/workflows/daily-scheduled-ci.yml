@@ -19,10 +19,10 @@ jobs:
       py3version: "12"
       notebook_kernel: genet
       pytest_args: '--no-cov'  # ignore coverage
-      cache_mamba_env: false
+      cache_env: false
       lint: false
-      mamba_env_name: daily-ci
-      additional_mamba_args: coin-or-cbc
+      env_name: daily-ci
+      additional_env_create_args: coin-or-cbc
 
   slack-notify-ci:
     needs: test

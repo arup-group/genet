@@ -20,7 +20,7 @@ jobs:
       py3version: "12"
       notebook_kernel: genet
       lint: false
-      additional_mamba_args: coin-or-cbc
+      additional_env_create_args: coin-or-cbc
 
   aws-upload:
     needs: test
