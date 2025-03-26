@@ -13,6 +13,7 @@
       "package_name": "cml-genet",
       "module_name": "genet",
       "project_short_description": "GeNet provides tools to represent and work with a multi-modal transport network with public transport (PT) services",
+      "project_visibility": "public",
       "upload_pypi_package": "y",
       "upload_conda_package": "y",
       "upload_aws_image": "n",
