@@ -35,7 +35,7 @@ jobs:
           - os: macos-latest
             add_args: coin-or-cbc
       fail-fast: false
-    uses: arup-group/actions-city-modelling-lab/.github/workflows/python-install-lint-test.yml@main
+    uses: arup-group/actions-city-modelling-lab/.github/workflows/python-install-lint-test.yml@v1.1.0
     with:
       os: ${{ matrix.os }}
       py3version: ${{ matrix.py3version }}
@@ -46,7 +46,7 @@ jobs:
       additional_env_create_args: ${{ matrix.add_args }}
 
   test-coverage:
-    uses: arup-group/actions-city-modelling-lab/.github/workflows/python-install-lint-test.yml@main
+    uses: arup-group/actions-city-modelling-lab/.github/workflows/python-install-lint-test.yml@v1.1.0
     with:
       os: ubuntu-latest
       py3version: "12"
@@ -57,4 +57,4 @@ jobs:
       additional_env_create_args: coin-or-cbc
 
   cruft-check:
-    uses: arup-group/actions-city-modelling-lab/.github/workflows/template-check.yml@main
+    uses: arup-group/actions-city-modelling-lab/.github/workflows/template-check.yml@v1.1.0
