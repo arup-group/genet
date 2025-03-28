@@ -7,7 +7,7 @@ on:
 
 jobs:
   conda-build:
-    uses: arup-group/actions-city-modelling-lab/.github/workflows/conda-build.yml@main
+    uses: arup-group/actions-city-modelling-lab/.github/workflows/conda-build.yml@v1.1.1
     secrets:
       ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
     with:
@@ -15,7 +15,7 @@ jobs:
       package_name: cml-genet
 
   pip-build:
-    uses: arup-group/actions-city-modelling-lab/.github/workflows/pip-build.yml@main
+    uses: arup-group/actions-city-modelling-lab/.github/workflows/pip-build.yml@v1.1.1
     secrets:
       TEST_PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
     with:

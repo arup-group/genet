@@ -76,7 +76,7 @@ pytest tests/ --no-cov
 ## Updating the project when the template updates
 
 This project has been built with [cruft](https://cruft.github.io/cruft/) based on the [Arup Cookiecutter template](https://github.com/arup-group/cookiecutter-pypackage).
-When changes are made to the base template, they can be merged into this project by running `cruft update` from the  `genet` mamba environment.
+When changes are made to the base template, they can be merged into this project by running `cruft update` from the  `genet` conda environment.
 
 You may be prompted to do this when you open a Pull Request, if our automated checks identify that the template is newer than that used in the project.
 
