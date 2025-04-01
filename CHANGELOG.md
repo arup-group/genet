@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 * Convenience method to strip all links of a given mode [#243](https://github.com/arup-group/genet/issues/243)
 * Method to split links on mode. New links are generated of given mode based on existing links [#244](https://github.com/arup-group/genet/issues/244)
+* CLI command to attach a modal subgraph from another network. Clears any mention of that mode from the original network before attaching [#245](https://github.com/arup-group/genet/issues/245)
 
 ### Fixed
 

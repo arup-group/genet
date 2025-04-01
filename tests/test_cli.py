@@ -13,6 +13,8 @@ EXAMPLE_SCHEDULE = EXAMPLE_DATA_DIR / "pt2matsim_network" / "schedule.xml"
 EXAMPLE_VEHICLES = EXAMPLE_DATA_DIR / "pt2matsim_network" / "vehicles.xml"
 PROJECTION = "epsg:27700"
 
+VERY_SMALL_NETWORK = EXAMPLE_DATA_DIR / "very_small_network" / "network.xml"
+
 
 @pytest.fixture(scope="function")
 def invoke_runner_and_check_files(tmpdir_factory):
@@ -210,6 +212,23 @@ class TestCLI:
                 "network.xml",
                 os.path.join("supporting_outputs", "mode_bus_after.parquet"),
                 os.path.join("supporting_outputs", "mode_bus_before.parquet"),
+            ],
+        )
+
+    def test_replace_modal_subgraph(self, invoke_runner_and_check_files):
+        invoke_runner_and_check_files(
+            "replace_modal_subgraph",
+            args=[
+                f"--network={EXAMPLE_NETWORK}",
+                f"--projection={PROJECTION}",
+                f"--subgraph={VERY_SMALL_NETWORK}",
+                "--modes=bike",
+                "--increase_capacity",
+            ],
+            expected_files=[
+                "validation_report.json",
+                "network.xml",
+                os.path.join("supporting_outputs", "mode_bike_after.parquet"),
             ],
         )
 
