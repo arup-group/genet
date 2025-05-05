@@ -1,5 +1,6 @@
-from genet.schedule_elements import SPATIAL_TOLERANCE, Stop
 from pyproj import Proj, Transformer
+
+from genet.schedule_elements import SPATIAL_TOLERANCE, Stop
 
 
 def test_initiate_stop_with_kwargs():

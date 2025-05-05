@@ -4,9 +4,10 @@ import os
 import lxml
 import pandas as pd
 import pytest
+from pandas.testing import assert_frame_equal
+
 from genet.input import read
 from genet.use import road_pricing
-from pandas.testing import assert_frame_equal
 
 
 @pytest.fixture

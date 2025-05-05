@@ -1,9 +1,10 @@
 import os
 
-import genet.utils.io
 import pytest
 from geopandas import GeoDataFrame
 from shapely import Point
+
+import genet.utils.io
 
 
 def test_throws_error_when_filetype_is_not_supported():

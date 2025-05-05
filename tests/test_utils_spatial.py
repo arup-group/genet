@@ -1,13 +1,14 @@
 import pytest
 import s2sphere
-from genet import Network
-from genet.exceptions import EmptySpatialTree
-from genet.utils import spatial
 from geopandas import GeoDataFrame
 from numpy import int64
 from pandas import DataFrame
 from pyproj import CRS, Geod
 from shapely.geometry import LineString, MultiLineString, Point, Polygon
+
+from genet import Network
+from genet.exceptions import EmptySpatialTree
+from genet.utils import spatial
 
 test_geojson = pytest.test_data_dir / "test_geojson.geojson"
 

@@ -1,6 +1,7 @@
-from genet.modify import ChangeLog
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
+
+from genet.modify import ChangeLog
 
 
 def test_change_log_records_adding_objects():

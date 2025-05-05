@@ -6,12 +6,13 @@ from copy import deepcopy
 import lxml
 import pytest
 import xmltodict
+from shapely.geometry import LineString
+
 from genet.core import Network
 from genet.exceptions import MalformedAdditionalAttributeError
 from genet.input import read
 from genet.output import matsim_xml_writer
 from genet.schedule_elements import read_vehicle_types
-from shapely.geometry import LineString
 
 MATSIM_DATA_DIR = pytest.test_data_dir / "matsim"
 pt2matsim_network_test_file = MATSIM_DATA_DIR / "network.xml"
