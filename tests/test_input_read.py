@@ -1,9 +1,10 @@
 import os
 
 import pytest
+from shapely.geometry import LineString
+
 from genet.input import read
 from genet.schedule_elements import Route, Service, Stop
-from shapely.geometry import LineString
 
 json_test_folder = pytest.test_data_dir / "json"
 geojson_test_folder = pytest.test_data_dir / "geojson"

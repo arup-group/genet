@@ -1,8 +1,9 @@
 import os
 
-import genet.utils.elevation as elevation
 import pytest
 import xarray as xr
+
+import genet.utils.elevation as elevation
 
 elevation_test_folder = pytest.test_data_dir / "elevation"
 tif_path = elevation_test_folder / "hk_elevation_example.tif"

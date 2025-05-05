@@ -1,7 +1,8 @@
 import pytest
+from networkx import DiGraph
+
 from genet.exceptions import RouteIndexError, ScheduleElementGraphSchemaError, ServiceIndexError
 from genet.schedule_elements import Route, Schedule, Service, Stop, verify_graph_schema
-from networkx import DiGraph
 
 
 def assert_all_elements_share_graph(elem):

@@ -1,5 +1,6 @@
-from genet.utils import pandas_helpers
 from pandas import Float64Dtype, Int64Dtype
+
+from genet.utils import pandas_helpers
 
 
 def test_uses_object_dtype_for_empty_dictionary():

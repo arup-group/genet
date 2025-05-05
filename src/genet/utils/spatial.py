@@ -208,7 +208,7 @@ def generate_index_s2(lat: float, lng: float) -> int:
 
 
 def generate_s2_geometry(
-    points: Union[LineString, list[tuple[float, float]], list[Point]]
+    points: Union[LineString, list[tuple[float, float]], list[Point]],
 ) -> list[int]:
     """Generate ordered list of s2.CellIds
 
