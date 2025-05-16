@@ -2,6 +2,7 @@
 # Network Scenario Generator (GeNet)
 
 [![DOI](https://zenodo.org/badge/265256468.svg)](https://zenodo.org/badge/latestdoi/265256468)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/arup-group/genet)
 
 GeNet provides tools to represent and work with a multi-modal transport network with public transport (PT)
 services. It is based on [MATSim's](https://www.matsim.org/) representation of such networks.
@@ -32,7 +33,9 @@ You can also write your own python scripts, importing genet as a package, use IP
 
 ## Documentation
 
-For more detailed instructions, see our [documentation](https://arup-group.github.io/genet/latest).
+For more detailed instructions, see our [documentation](https://arup-group.github.io/genet/latest). We also
+autogenerate queryable documentation using [DeepWiki](https://deepwiki.com/); you can find that
+[here](https://deepwiki.com/arup-group/genet).
 
 ## Installation
 
